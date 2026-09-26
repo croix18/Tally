@@ -201,7 +201,7 @@ function points(sec, unit, si) {
 
 /* ---------- import ---------- */
 async function importFiles(files) {
-  let ok = [], fails = [], skipped = 0, gbImported = [];
+  let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [];
   for (const f of files) {
     try {
       const rows = await fileToRows(f);
@@ -211,12 +211,7 @@ async function importFiles(files) {
         // not an IXL grid — maybe a gradebook export (Focus): students down, assignments across
         const gb = parseGradebook(rows);
         if (!gb) throw e;
-        const target = await pickSection(f.name, gb);
-        if (!target) { skipped++; continue; }
-        const sec = state.sections[target]; sec.grades = sec.grades || { assignments: [], students: [] };
-        sec.grades.students = gb.students; sec.grades.importedAt = new Date().toISOString(); sec.grades.file = f.name; sec.grades.raw = gb.raw || {};
-        sec.grades.assignments = gb.assignments;   // whole-gradebook exports replace, so stale columns and index drift can't happen
-        gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}`);
+        deferred.push({ f, gb });   // attached after every IXL grid in this drop has been imported, so a mixed drop works in any order
         continue;
       }
       const meta = parseIxlFilename(f.name);
@@ -256,6 +251,14 @@ async function importFiles(files) {
       if (!state.order.includes(meta.key)) state.order.push(meta.key);
       state.active = meta.key; ok.push(state.sections[meta.key]);
     } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); }
+  }
+  for (const { f, gb } of deferred) {
+    const target = await pickSection(f.name, gb);
+    if (!target) { skipped++; continue; }
+    const sec = state.sections[target]; sec.grades = sec.grades || { assignments: [], students: [] };
+    sec.grades.students = gb.students; sec.grades.importedAt = new Date().toISOString(); sec.grades.file = f.name; sec.grades.raw = gb.raw || {};
+    sec.grades.assignments = gb.assignments;   // whole-gradebook exports replace, so stale columns and index drift can't happen
+    gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}`);
   }
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
   search = ''; $('#search').value = ''; view = { mode: 'units', unit: null };
@@ -765,9 +768,13 @@ function pickSection(fileName, gb) {
   return new Promise(resolve => {
     const m = $('#modal'); m.classList.remove('hidden');
     const preview = gb.assignments.slice(0, 6).map(a => esc(a.name)).join(', ') + (gb.assignments.length > 6 ? ', …' : '');
+    // Suggest the class whose IXL students the gradebook's names match best (same matcher the roster uses).
+    const roster = gb.students.join('\n');
+    const hits = state.order.map(k => { let n = 0; try { n = buildRows({ ...state.sections[k], roster }).filter(r => r.status === 'ok').length; } catch (e) {} return [k, n]; }).sort((a, b) => b[1] - a[1]);
+    const best = hits.length && hits[0][1] >= Math.max(3, gb.students.length / 2) && (hits.length === 1 || hits[0][1] > hits[1][1]) ? hits[0][0] : null;
     m.innerHTML = `<div class="panel narrow"><header><h2>Which class is this gradebook?</h2><button id="mClose" aria-label="Close">×</button></header>
       <div class="body one"><p><b>${esc(fileName)}</b><br>${plural(gb.students.length, 'student')} · ${plural(gb.assignments.length, 'assignment')}: ${preview}${gb.unread ? `<br><span class="warnline">${plural(gb.unread, 'cell')} couldn't be read (${esc(gb.examples.map(x => '“' + x + '”').join(', '))}) and will count as no score.</span>` : ''}</p>
-      <div class="picks">${state.order.length ? state.order.map(k => `<button class="chip" data-sec="${esc(k)}">${esc(state.sections[k].label)}</button>`).join('') : '<em>Import an IXL export for that class first — a gradebook attaches to a class.</em>'}</div>
+      <div class="picks">${state.order.length ? state.order.map(k => `<button class="chip${k === best ? ' on' : ''}" data-sec="${esc(k)}">${esc(state.sections[k].label)}${k === best ? ' <small>· names match</small>' : ''}</button>`).join('') : '<em>Import an IXL export for that class first — a gradebook attaches to a class.</em>'}</div>
       <div class="rp-actions"><button class="pill pale" id="mCancel">Skip this file</button></div></div></div>`;
     const done = v => { m.classList.add('hidden'); m.innerHTML = ''; resolve(v); };
     m._cancel = () => done(null); $('#mClose').onclick = m._cancel; $('#mCancel').onclick = m._cancel; m.onclick = e => { if (e.target === m) done(null); };

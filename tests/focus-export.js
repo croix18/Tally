@@ -28,6 +28,16 @@ const { chromium, fs, path, exe, check, done } = require('./lib');
   await p.click('[data-sec]'); await p.waitForTimeout(500);
   const s=await p.evaluate(()=>{ const s=window.__tally.state.sections['1205050-7T1A']; return s.grades && { n:s.grades.assignments.length, students:s.grades.students.length }; });
   check(s && s.n===13 && s.students===23,'gradebook attached to the class: '+JSON.stringify(s));
+  // a mixed drop with the gradebook listed FIRST still works: IXL grids import before gradebooks attach,
+  // and the picker points at the class whose IXL names match
+  const p3=await ctx.newPage(); p3.on('dialog',d=>d.accept()); await p3.goto('file://'+path.resolve('Tally.html')); await p3.evaluate(()=>{localStorage.clear(); sessionStorage.clear();}); await p3.reload(); await p3.waitForTimeout(300);
+  const realIxl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
+  await p3.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv'), path.resolve('fixtures',realIxl), path.resolve('fixtures', fs.readdirSync('fixtures').find(f=>/^f1473588.*7T3A/.test(f)))]); await p3.waitForTimeout(900);
+  check(await p3.locator('.picks [data-sec]').count()===2,'picker offers classes even though the gradebook was first in the drop');
+  const sug=await p3.locator('.picks .chip.on'); check(await sug.count()===1 && /7T1A|ACC/.test(await sug.textContent()) && /names match/.test(await sug.textContent()),'picker suggests the class whose names match: '+(await sug.textContent().catch(()=>'')));
+  await sug.click(); await p3.waitForTimeout(400);
+  check(await p3.evaluate(()=>{const s=window.__tally.state.sections['1205050-7T1A']; return !!(s.grades && s.grades.assignments.length===13);}),'gradebook attached to the suggested class');
+  await p3.close();
   check(errs.length===0,'no page errors: '+errs.join(' | '));
   await b.close(); done();
 })();
