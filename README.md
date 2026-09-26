@@ -23,7 +23,7 @@ Student-facing screens (Race and Data Lab) never show names and lock behind a ho
 | `scrub.src.html` | the anonymizer's markup, CSS and logic |
 | `build.py` | assembles `Tally.html` (app.html + parser.js + app.js) and `Scrub.html` (scrub.src.html + parser.js) |
 | `tests/` | Playwright end-to-end suites, one file per area, run by `tests/run.js` |
-| `fixtures/` | synthetic IXL/Focus exports and rosters, plus one scrubbed real Focus gradebook export (`focus_gradebook_scrubbed.csv`) |
+| `fixtures/` | synthetic IXL/Focus exports and rosters, plus scrubbed exports of one real class: `ixl_7T1A_scrubbed_*.csv`, `focus_gradebook_scrubbed.csv`, `focus_roster_scrubbed.txt` |
 
 ```
 python3 build.py      # shipped files (no debug handle)
@@ -34,4 +34,4 @@ node tests/run.js grid scrub   # just those suites
 
 The shipped `Tally.html` carries no `window.__tally`; `python3 build.py --test` keeps it for the suites (`npm test` does this for you). Suites write screenshots and scrub output to a temp folder, never into the repo.
 
-`real-ixl-and-focus` and `real-focus-check` use scrubbed exports of real classes (`fixtures/real_*`, `fixtures/real2_*`), which are not committed; they skip when those files are absent.
+`real-class`, `focus-export` and `focus-check` run against the scrubbed real-class exports. Seven of that roster's names are scrubber artifacts (IXL and Focus were given different fake names), so a 16-of-23 match is the expected result there.

@@ -1,13 +1,15 @@
-const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
+// Focus check against a real class (scrubbed): IXL export of 2026-09-26, the Focus roster, and the Focus
+// gradebook whose "Unit 1 IXL" (15 pts) and "Unit 2 IXL" (17 pts) columns must map back to the IXL units.
+// Seven roster names are scrubber artifacts (the scrubber gave IXL and Focus different fake names) and stay unmatched.
+const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
 (async()=>{
-  need('real2_roster.txt','real2_gradebook.csv'); if(!fs.readdirSync('fixtures').some(f=>f.startsWith('real2_IXL'))) need('real2_IXL*');
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
   await p.goto('file://'+path.resolve('Tally.html'));
-  const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('real2_IXL'));
+  const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(600);
-  await p.fill('#rpText', fs.readFileSync('fixtures/real2_roster.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(400);
-  await p.setInputFiles('#file',[path.resolve('fixtures/real2_gradebook.csv')]); await p.waitForTimeout(500); await p.click('[data-sec]'); await p.waitForTimeout(500);
+  await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(400);
+  await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await p.click('[data-sec]'); await p.waitForTimeout(500);
   const rc=await p.evaluate(()=>window.__tally.reconcile(Object.values(window.__tally.state.sections)[0]).map(c=>({unit:c.unit.short,a:c.assignment.name,max:c.assignment.max,total:c.unit.total,maxOK:c.maxOK,counts:c.counts})));
   console.log(JSON.stringify(rc));
   check(rc.length===2 && rc.map(c=>c.unit+'←'+c.a).join('|')==='Unit 2←Unit 2 IXL|Unit 1←Unit 1 IXL','both Focus IXL columns auto-mapped to their units');
