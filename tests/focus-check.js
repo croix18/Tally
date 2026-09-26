@@ -26,7 +26,9 @@ const { chromium, fs, path, exe, check, done, tmp, unskip } = require('./lib');
   // skip-to-match suggestion: Unit 1 has 23 skills vs 15 Focus points → offer the 8 least-touched skills, apply, points now agree
   await p.click('#mCancel'); await p.waitForTimeout(300);
   await p.click('.fcheck[data-fc="Unit 1 Equations and Inequalities"]'); await p.waitForTimeout(300);
-  const sugg=await p.textContent('#modal'); check(/Skip 8 skills to match Focus/.test(sugg),'panel suggests skipping 8 skills');
+  const sugg=await p.textContent('#modal'); check(/Skip 8 skills to match Focus/.test(sugg) && await p.locator('[data-sk]:checked').count()===8 && await p.locator('[data-sk]').count()===23 && /matches Focus/.test(await p.textContent('#skipCount')),'panel lists all 23 skills with the 8 least-touched pre-ticked and a live count');
+  await p.locator('[data-sk]:checked').first().uncheck(); await p.waitForTimeout(100); check(/out of 16/.test(await p.textContent('#skipCount')) && /Focus: 15/.test(await p.textContent('#skipCount')),'unticking one updates the count');
+  await p.locator('[data-sk]:not(:checked)').first().check(); await p.waitForTimeout(100);
   await p.click('#skipCand'); await p.waitForTimeout(400);
   const u1=await p.evaluate(()=>{const T=window.__tally; const c=T.reconcile(Object.values(T.state.sections)[0]).find(c=>c.unit.short==='Unit 1'); return {maxOK:c.maxOK,total:c.unit.total,counts:c.counts};});
   console.log(JSON.stringify(u1));

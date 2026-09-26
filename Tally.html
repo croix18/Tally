@@ -41,6 +41,7 @@
 .stuspark small{display:block;font-size:var(--t-xs);color:var(--ink-soft)}
 .arrow{white-space:nowrap}.arrow small{color:var(--teal)}
 .checkTable tr.total td{border-top:2px solid var(--navy)}
+.skipList{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow:auto;margin:8px 0;padding:6px 8px;border:2px solid var(--grid);border-radius:10px}.skipList label{display:flex;gap:8px;align-items:center;font-size:var(--t-s)}.skipList small{color:var(--teal);margin-left:auto}
 .nextrow{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:var(--t-s)}
 .nextrow input[type=number]{border:2px solid var(--grid);border-radius:8px;padding:4px 6px;font:inherit}
 .nextrow input[type=range]{width:180px;vertical-align:middle}
@@ -1096,7 +1097,7 @@ function load() {
 function migrate() {
   const st = state.settings || {};
   state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
-    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 2 } };   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
+    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 } };   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
   state.assigned = state.assigned && typeof state.assigned === 'object' ? state.assigned : {}; state.assigned.acc = state.assigned.acc || {}; state.assigned.on = state.assigned.on || {};
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && c.id && c.label) : [];
@@ -2186,6 +2187,22 @@ function downloadUnitCSV(sec, unit) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv' })); a.download = `${sec.label.replace(/[^\w-]+/g, '_')}_${unit.short.replace(/\s+/g, '')}_${sec.date || ''}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast(`CSV saved — ${plural(rows.length, 'row')} keyed by student ID${rows.some(r => !r.id) ? ' (some rows have no ID in the pasted roster)' : ''}`, false, 4500);
 }
+function legacyCopy(text) {
+  const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:0;outline:0;box-shadow:none;background:transparent;font-size:16px;opacity:.01';
+  document.body.appendChild(ta); ta.focus(); ta.select(); try { ta.setSelectionRange(0, text.length); } catch (e) {}
+  let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove(); return ok;
+}
+// When nothing can reach the clipboard (a file opened from a file manager on Android, say), show the column to copy by hand.
+function showCopyBox(text, title) {
+  const m = $('#modal'); m.classList.remove('hidden');
+  m.innerHTML = `<div class="panel narrow"><header><h2>Copy by hand</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one"><p>This browser wouldn't let Tally write to the clipboard (it happens when the file is opened from a file manager instead of a web address). Tap <b>Select all</b>, then copy, and paste into the Focus column <b>${esc(title)}</b>.</p>
+      <textarea id="copyBox" readonly style="width:100%;min-height:220px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px">${esc(text)}</textarea>
+      <div class="rp-actions"><button class="pill" id="copySel">Select all</button><button class="pill pale" id="mCancel">Close</button></div></div></div>`;
+  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  $('#copySel').onclick = () => { const ta = $('#copyBox'); ta.focus(); ta.select(); try { ta.setSelectionRange(0, text.length); } catch (e) {} };
+}
 async function copyUnit(sec, unit) {
   if (sec.placeholder) { toast('Copy is disabled for this export because it has no student names.', true); return; }
   if (!unit.total) { toast(`${esc(unit.short)} has no skills that count — include at least one.`, true); return; }
@@ -2197,12 +2214,12 @@ async function copyUnit(sec, unit) {
   const lines = unitColumn(sec, unit, mode); const text = lines.join('\n');
   const modified = rowsAll.filter(r => r.ixl != null && totalFor(sec, unit, r.ixl) !== unit.total).length;
   let ok = false;
-  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
-  if (!ok) { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { ok = document.execCommand('copy'); } catch (e) {} ta.remove(); }
+  ok = legacyCopy(text);   // synchronous first, while the tap still counts as a user gesture (needed on Android and anywhere without the clipboard API)
+  if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} }
   const blanks = rowsAll.filter(r => r.ixl == null).length; const leftOut = buildRows(sec).filter(r => r.status === 'ixlOnly').length;
   if (ok) { sec.receipts[unit.name] = { at: new Date().toISOString(), exportDate: sec.date, goal: sec.threshold, outOf: unit.total, skipped: unit.idx.filter(k => !unit.active.includes(k)).map(k => sec.skills[k].name), rows: rowsAll.map(r => [r.display, r.ixl == null ? null : points(sec, unit, r.ixl), r.ixl == null ? null : totalFor(sec, unit, r.ixl)]) }; save(); if (view.mode === 'units') { const sl = $('#gridwrap').scrollLeft; renderGrid(); $('#gridwrap').scrollLeft = sl; } }
   if (ok) toast(`<b>${esc(unit.short)}</b> copied — ${plural(lines.length, 'row')}${rs.count ? ' in FOCUS order' : ' with names (no roster, so order is by last name)'} · FOCUS title: <b>IXL ${esc(unit.short)} · ${fmtDate(sec.date) || 'today'} · /${unit.total}</b>${blanks ? ` · ${plural(blanks, 'blank row')} (not in IXL)` : ''}${leftOut ? ` · <b>${plural(leftOut, 'IXL student')} not on the roster — left out</b> (tap their flag)` : ''}${modified ? ` · <b>${plural(modified, 'student')} on a modified list</b> — set their max by hand in FOCUS` : ''}`, false, modified ? 7000 : 4500);
-  else toast('Copy failed — your browser blocked clipboard access.', true);
+  else showCopyBox(text, `IXL ${unit.short} · ${fmtDate(sec.date) || 'today'} · /${unit.total}`);
 }
 
 /* ---------- Still owed: a printer-friendly, black-and-white page per class ---------- */
@@ -2303,7 +2320,7 @@ dd{margin:0}
 <dt>Goal</dt><dd>The SmartScore a skill must reach to earn its point.</dd>
 <dt>Skip</dt><dd>A skill that doesn't count — for the class (tap the skill) or one student (tap their cell).</dd>
 <dt>Grades</dt><dd>After a Focus gradebook is loaded: the real course grade (weighted categories, proved against the Focus Grade column), trends since the last import, sliding students, IXL against assessment scores, and per-student what-ifs — turn in, retake, next assessment — with a printable one-student page. Categories are proved from the Grade column where possible; move any assignment from its row.</dd>
-<dt>Assigned</dt><dd>Units that count toward grades and the Race. Unassigned units are hidden but kept. By default the first two on-level units aren't assigned (change in Settings); tap a unit's Assigned button to override either way.</dd>
+<dt>Assigned</dt><dd>Units that count toward grades and the Race. Unassigned units are hidden but kept. By default the first on-level unit isn't assigned (change in Settings); tap a unit's Assigned button to override either way.</dd>
 <dt>Best</dt><dd>A score from an earlier export that was higher than today's. Points once earned are kept.</dd>
 <dt>Copied</dt><dd>A receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</dd>
 <dt>Focus ✓ / off</dt><dd>Whether the Focus column matches what Tally counts today.</dd>
@@ -2403,7 +2420,10 @@ function openFocusCheck(sec, unitName) {
       ${(() => { if (rc.maxOK || rc.assignment.max == null) return ''; const diff = rc.unit.total - rc.assignment.max; if (diff <= 0) return `<p>Tally counts fewer skills than the Focus assignment is worth — un-skip ${plural(-diff, 'skill')} in the unit view, or change the assignment's points in Focus.</p>`;
         // the skills fewest students touched are almost always the "also consider" extras that weren't required
         const pop = population(sec); const cand = rc.unit.active.map(k => ({ k, n: pop.filter(x => sec.scores[k][x.i] != null).length })).sort((a, b) => a.n - b.n || a.k - b.k).slice(0, diff);
-        return `<div class="report"><b>Skip ${plural(diff, 'skill')} to match Focus?</b> These are the ${diff} skills the fewest students touched — usually the "also consider" extras:<ul>${cand.map(c => `<li>${esc(sec.skills[c.k].name)} <small>(${c.n} of ${pop.length} students)</small></li>`).join('')}</ul><button class="pill small" id="skipCand">Skip these ${diff}</button></div>`; })()}
+        const sug = new Set(cand.map(c => c.k)); const all = rc.unit.active.map(k => ({ k, n: pop.filter(x => sec.scores[k][x.i] != null).length })).sort((a, b) => a.n - b.n || a.k - b.k);
+        return `<div class="report skipPick"><b>Skip ${plural(diff, 'skill')} to match Focus?</b> Tick the skills that weren't required — the ${diff} fewest students touched are pre-ticked (usually the "also consider" extras). Applies to every ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} class.
+          <div class="skipList">${all.map(c => `<label><input type="checkbox" data-sk="${c.k}" ${sug.has(c.k) ? 'checked' : ''}> ${esc(sec.skills[c.k].name)} <small>${c.n} of ${pop.length}</small></label>`).join('')}</div>
+          <p class="ghint" id="skipCount"></p><button class="pill small" id="skipCand">Skip the ticked skills</button></div>`; })()}
       <p class="checkSummary"><span class="ok">${rc.counts.match} match</span>${rc.counts.stale ? ` · <span class="stale">${rc.counts.stale} up since you copied</span>` : ''}${rc.counts.differ ? ` · <span class="bad">${rc.counts.differ} differ</span>` : ''}${rc.counts.missing ? ` · <span class="bad">${rc.counts.missing} blank in Focus</span>` : ''}${rc.counts.unmatched ? ` · ${rc.counts.unmatched} not matched to IXL` : ''}</p>
       <div class="field"><label>This Focus column is</label><select id="gbMap">${[['', '— not an IXL unit —']].concat(unitsOf(sec).map(u => [u.name, u.short + (u.title ? ' · ' + u.title : '')])).map(([v, l]) => `<option value="${esc(v)}" ${v === rc.unit.name ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
       ${bad.length ? `<table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th></th></tr></thead><tbody>${bad.map(line).join('')}</tbody></table>` : '<p class="ok">Every student matches. Nothing to fix.</p>'}
@@ -2412,8 +2432,12 @@ function openFocusCheck(sec, unitName) {
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   $('#gbMap').onchange = () => { sec.gbUnitMap = sec.gbUnitMap || {}; sec.gbUnitMap[rc.assignment.name] = $('#gbMap').value; save(); close(); if ($('#gbMap') === null && sec.gbUnitMap[rc.assignment.name]) openFocusCheck(sec, sec.gbUnitMap[rc.assignment.name]); };
-  const put = async (text, msg) => { let ok = false; try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} toast(ok ? msg : 'Copy failed — clipboard blocked.', !ok); };
-  const sc = $('#skipCand'); if (sc) sc.onclick = () => { const diff = rc.unit.total - rc.assignment.max; const pop = population(sec); const cand = rc.unit.active.map(k => ({ k, n: pop.filter(x => sec.scores[k][x.i] != null).length })).sort((a, b) => a.n - b.n || a.k - b.k).slice(0, diff); cand.forEach(c => { sec.excluded[skillKey(sec.skills[c.k])] = true; }); save(); toast(`Skipped ${plural(cand.length, 'skill')} in ${esc(rc.unit.short)}`, false); openFocusCheck(sec, unitName); };
+  const put = async (text, msg) => { let ok = legacyCopy(text); if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} } if (ok) toast(msg, false); else showCopyBox(text, rc.assignment.name); };
+  const sc = $('#skipCand'); if (sc) {
+    const count = () => { const n = m.querySelectorAll('[data-sk]:checked').length; const left = rc.unit.total - n; $('#skipCount').innerHTML = `${plural(n, 'skill')} ticked → ${esc(rc.unit.short)} out of <b>${left}</b>${left === rc.assignment.max ? ' — matches Focus' : ` (Focus: ${rc.assignment.max})`}`; };
+    m.querySelectorAll('[data-sk]').forEach(cb => cb.onchange = count); count();
+    sc.onclick = () => { const ks = [...m.querySelectorAll('[data-sk]:checked')].map(cb => Number(cb.dataset.sk)); ks.forEach(k => { sec.excluded[skillKey(sec.skills[k])] = true; }); save(); toast(`Skipped ${plural(ks.length, 'skill')} in ${esc(rc.unit.short)} for every ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); openFocusCheck(sec, unitName); };
+  }
   const cf = $('#copyFix'); if (cf) cf.onclick = () => { const lines = bad.filter(r => r.tally != null).map(r => (state.settings.copyMode === 'ids' ? (r.id || '') : r.display) + '\t' + r.tally); put(lines.join('\n'), `Copied ${plural(lines.length, 'correction')} for ${esc(rc.unit.short)}`); };
   $('#copyCol').onclick = () => copyUnit(sec, rc.unit);
 }
@@ -2500,7 +2524,7 @@ function openSettings() {
   if (rosterEl) { rosterEl.oninput = () => { $('#matchReport').innerHTML = matchReport(s, rosterEl.value); wireReport(); }; rosterEl.focus(); }
   $('#mSave').onclick = () => {
     const tv = parseInt($('#thr').value, 10); if (!isNaN(tv) && clampThr(tv) !== s.threshold) { s.threshold = clampThr(tv); snapshot(s); }
-    state.settings.copyMode = copyMode; state.settings.remindDays = remind; state.settings.skipFirst = state.settings.skipFirst || { acc: 0, on: 2 }; state.settings.skipFirst[prep] = skipFirst;
+    state.settings.copyMode = copyMode; state.settings.remindDays = remind; state.settings.skipFirst = state.settings.skipFirst || { acc: 0, on: 1 }; state.settings.skipFirst[prep] = skipFirst;
     s.label = $('#secLabel').value.trim() || s.autoLabel; s.team = ''; s.prep = prep; s.excluded = state.skips[prep]; state.settings.useBest = $('#useBest').checked;
     if (rosterEl && rosterEl.value !== s.roster) { s.roster = rosterEl.value; s.rosterAt = new Date().toISOString(); if (parseRosterText(s.roster).length) s.skipRoster = false; if (s.pool) materialize(s); }
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
@@ -2543,7 +2567,7 @@ function openSettings() {
   $('#importCfg').onclick = () => $('#cfgFile').click();
   $('#cfgFile').onchange = async e => {
     try { const cfg = JSON.parse(await e.target.files[0].text()); if (!cfg || !cfg.tally || typeof cfg.sections !== 'object') throw 0;
-      if (cfg.settings) { if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object') state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 0, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 2 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
+      if (cfg.settings) { if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object') state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 0, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 1 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
       if (cfg.assigned && typeof cfg.assigned === 'object') { state.assigned.acc = Object.assign({}, state.assigned.acc, cfg.assigned.acc || {}); state.assigned.on = Object.assign({}, state.assigned.on, cfg.assigned.on || {}); }
       if (cfg.grading && typeof cfg.grading === 'object') ['acc', 'on'].forEach(pp => { const g = cfg.grading[pp]; if (g && Array.isArray(g.cats) && g.cats.length) state.grading[pp] = { cats: g.cats.filter(c => c && c.name && isFinite(c.w)).map(c => ({ name: String(c.name), w: Number(c.w) })), map: g.map && typeof g.map === 'object' ? g.map : {}, how: g.how && typeof g.how === 'object' ? g.how : {} }; });
       if (Array.isArray(cfg.custom)) cfg.custom.forEach(c => { if (c && c.id && c.label && !state.custom.some(x => x.id === c.id)) state.custom.push(c); });
