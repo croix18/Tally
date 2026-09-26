@@ -51,6 +51,18 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   check((await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['period-2']).filter(u=>!u.assigned).map(u=>u.short))).includes('Unit 3'),'Settings: "First 3" unassigns Unit 3 for the on-level course');
   await p.evaluate(()=>{ const T=window.__tally; T.state.assigned.on['Unit 2 Probability']=true; T.save(); T.render(); });
   check((await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['period-2']).find(u=>u.short==='Unit 2').assigned))===true,'a unit marked Assigned by hand overrides the default');
+  // skill skips are course-wide: skipping in one class skips it for the other class of the same course
+  await p.evaluate(()=>{ const T=window.__tally; const S=T.state.sections; S['period-3']={...S['period-1'], key:'period-3', label:'3rd Period · Accelerated', period:3, excluded:S['period-1'].excluded, receipts:{}, history:[]}; T.state.order.push('period-3'); T.save(); T.render(); });
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(200); await p.click('th.unit .ulink'); await p.waitForTimeout(300);
+  const before=await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['period-3'])[0].total);
+  await p.click('th.skill button[data-x]'); await p.waitForTimeout(300);
+  check(/for every accelerated class/.test(await p.textContent('#toast')),'skip toast says it applies to the course');
+  const after=await p.evaluate(()=>{const T=window.__tally; return [T.unitsOf(T.state.sections['period-3'])[0].total, Object.keys(T.state.skips.acc).length];});
+  check(after[0]===before-1 && after[1]===1,'the other accelerated class lost the same skill; state.skips.acc holds it');
+  await p.reload(); await p.waitForTimeout(500);
+  check(await p.evaluate(()=>{const T=window.__tally; const S=T.state.sections; return S['period-1'].excluded===S['period-3'].excluded && S['period-1'].excluded===T.state.skips.acc && Object.keys(T.state.skips.acc).length===1;}),'after reload every accelerated class still shares the course skips');
+  await p.evaluate(()=>{ const T=window.__tally; delete T.state.sections['period-3']; T.state.order=T.state.order.filter(k=>k!=='period-3'); T.state.skips.acc={}; T.state.order.forEach(k=>{ const s=T.state.sections[k]; if(s.prep==='acc') s.excluded=T.state.skips.acc; }); T.save(); T.render(); });
+  await p.click('#back').catch(()=>{}); await p.waitForTimeout(200);
   // re-import the accelerated pool → the class refreshes and the toast says so
   await p.setInputFiles('#file',[path.resolve('fixtures',acc)]); await p.waitForTimeout(800);
   check(/IXL course export/.test(await p.textContent('#toast')) && /1 class updated/.test(await p.textContent('#toast')),'re-importing the pool refreshes its classes');

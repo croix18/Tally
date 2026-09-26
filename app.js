@@ -32,6 +32,8 @@ function migrate() {
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && c.id && c.label) : [];
   state.grading = state.grading && typeof state.grading === 'object' ? state.grading : {};
   state.pools = state.pools && typeof state.pools === 'object' ? state.pools : {};
+  // Skill skips are course-wide: state.skips[prep] is the one object every class of that course reads as sec.excluded.
+  state.skips = state.skips && typeof state.skips === 'object' ? state.skips : {}; state.skips.acc = state.skips.acc || {}; state.skips.on = state.skips.on || {};
   state.settings.copyMode = ['points', 'names', 'ids'].includes(state.settings.copyMode) ? state.settings.copyMode : (state.settings.copyNames ? 'names' : 'points');
   for (const k in state.sections) {
     const s = state.sections[k];
@@ -40,10 +42,11 @@ function migrate() {
     s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
     if (s.hiddenUnits && Object.keys(s.hiddenUnits).length) { for (const u in s.hiddenUnits) if (state.assigned[s.prep || 'on'][u] == null) state.assigned[s.prep || 'on'][u] = !s.hiddenUnits[u]; s.hiddenUnits = {}; }
-    s.excluded = s.excluded || {}; s.aliases = s.aliases || {}; s.hiddenUnits = s.hiddenUnits || {};
+    s.aliases = s.aliases || {}; s.hiddenUnits = s.hiddenUnits || {};
     s.gradeHistory = Array.isArray(s.gradeHistory) ? s.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : [];
     // snapshots once carried per-student mastered/touched arrays that nothing reads; keep only the aggregate fields
     s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
+    { const course = state.skips[s.prep === 'acc' ? 'acc' : 'on']; if (s.excluded && s.excluded !== course) Object.keys(s.excluded).forEach(key => { if (s.excluded[key]) course[key] = true; }); s.excluded = course; }   // older saves kept skips per class
     if (s.threshold == null) s.threshold = s.accelerated ? (st.thrAcc || DEFAULT_THR.acc) : (st.thrOn || DEFAULT_THR.on);
     s.threshold = clampThr(s.threshold);
     // ignored used to be keyed by normalized name; now by "Name#occurrence"
@@ -248,7 +251,7 @@ async function importFiles(files) {
         date: meta.date, file: f.name, importedAt: new Date().toISOString(),
         students, skills: g.skills, scores: g.scores,
         roster: keep.roster || '', rosterAt: keep.rosterAt || null, skipRoster: !!keep.skipRoster,
-        excluded: keep.excluded || {}, ignored: keep.ignored || {}, aliases: keep.aliases || {}, hiddenUnits: {}, studentSkips: keep.studentSkips || {},
+        excluded: state.skips[keep.prep || (meta.accelerated ? 'acc' : 'on')], ignored: keep.ignored || {}, aliases: keep.aliases || {}, hiddenUnits: {}, studentSkips: keep.studentSkips || {},
         history: keep.history || [], team: keep.team || '', prep: keep.prep || (meta.accelerated ? 'acc' : 'on'),
         placeholder, allBlank
       };
@@ -833,7 +836,7 @@ function askNewClass(fileName, gb) {
       const key = 'period-' + period; const label = `${PERIOD_ORD(period)} Period · ${prep === 'acc' ? 'Accelerated' : 'On-level'}`;
       state.sections[key] = { key, label, autoLabel: label, period, pool: true, accelerated: prep === 'acc', prep, threshold: prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on,
         date: null, file: '', importedAt: new Date().toISOString(), students: [], skills: [], scores: [], roster: '', rosterAt: null, skipRoster: false,
-        excluded: {}, ignored: {}, aliases: {}, hiddenUnits: {}, studentSkips: {}, history: [], team: '', placeholder: false, allBlank: false, best: null, receipts: {}, _keys: null };
+        excluded: state.skips[prep], ignored: {}, aliases: {}, hiddenUnits: {}, studentSkips: {}, history: [], team: '', placeholder: false, allBlank: false, best: null, receipts: {}, _keys: null };
       if (!state.order.includes(key)) state.order.push(key); state.active = key;
       done(key);
     };
@@ -940,7 +943,7 @@ function renderBar() {
       ${s.receipts[u.name] ? `<button class="pill toggle" id="rcUnit" title="What was copied to Focus, and when">Copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}
       <button class="pill toggle" id="csvUnit" title="Download this unit as a CSV keyed by student ID">CSV</button>
       <button class="pill onbar" id="copyUnit"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
-      <div class="legend"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped — tap a skill for the class, a cell for one student</span></div>`;
+      <div class="legend"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped — tap a skill for the whole course, a cell for one student</span></div>`;
   }
   $('#bar').innerHTML = html; $('#bar').classList.toggle('detail', view.mode !== 'units');
   const back = $('#back'); if (back) back.onclick = () => { view = { mode: 'units', unit: null }; render(); };
@@ -1036,12 +1039,12 @@ function renderGrid() {
       if (s.excluded[key]) delete s.excluded[key]; else s.excluded[key] = true;
       save(); const st = wrap.scrollLeft; render(); $('#gridwrap').scrollLeft = st;
       const uu = unitsOf(s).find(x => x.name === view.unit);
-      toast(`${s.excluded[key] ? 'Skipped' : 'Counting'} <b>${esc(sk.name)}</b> · ${esc(uu.short)} is now out of <b>${uu.total}</b>`, false);
+      toast(`${s.excluded[key] ? 'Skipped' : 'Counting'} <b>${esc(sk.name)}</b> for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class · ${esc(uu.short)} is now out of <b>${uu.total}</b>`, false);
     });
   }
   wrap.querySelectorAll('[data-cell]').forEach(el => el.onclick = () => {
     const [k, si] = el.dataset.cell.split('|').map(Number); const sk = s.skills[k]; const kk = skillKey(sk);
-    if (s.excluded[kk]) { toast('That skill is skipped for the whole class.', false); return; }
+    if (s.excluded[kk]) { toast('That skill is skipped for the whole course.', false); return; }
     const key = ixlKeyAt(s, si); s.studentSkips[key] = s.studentSkips[key] || {};
     if (s.studentSkips[key][kk]) delete s.studentSkips[key][kk]; else s.studentSkips[key][kk] = true;
     if (!Object.keys(s.studentSkips[key]).length) delete s.studentSkips[key];
@@ -1425,7 +1428,7 @@ function openSettings() {
   $('#mSave').onclick = () => {
     const tv = parseInt($('#thr').value, 10); if (!isNaN(tv) && clampThr(tv) !== s.threshold) { s.threshold = clampThr(tv); snapshot(s); }
     state.settings.copyMode = copyMode; state.settings.remindDays = remind; state.settings.skipFirst = state.settings.skipFirst || { acc: 0, on: 2 }; state.settings.skipFirst[prep] = skipFirst;
-    s.label = $('#secLabel').value.trim() || s.autoLabel; s.team = ''; s.prep = prep; state.settings.useBest = $('#useBest').checked;
+    s.label = $('#secLabel').value.trim() || s.autoLabel; s.team = ''; s.prep = prep; s.excluded = state.skips[prep]; state.settings.useBest = $('#useBest').checked;
     if (rosterEl && rosterEl.value !== s.roster) { s.roster = rosterEl.value; s.rosterAt = new Date().toISOString(); if (parseRosterText(s.roster).length) s.skipRoster = false; if (s.pool) materialize(s); }
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     save(); close(); render(); toast('Saved', false);
