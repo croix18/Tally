@@ -30,6 +30,7 @@ function migrate() {
   state.assigned = state.assigned && typeof state.assigned === 'object' ? state.assigned : {}; state.assigned.acc = state.assigned.acc || {}; state.assigned.on = state.assigned.on || {};
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && c.id && c.label) : [];
   state.grading = state.grading && typeof state.grading === 'object' ? state.grading : {};
+  state.pools = state.pools && typeof state.pools === 'object' ? state.pools : {};
   state.settings.copyMode = ['points', 'names', 'ids'].includes(state.settings.copyMode) ? state.settings.copyMode : (state.settings.copyNames ? 'names' : 'points');
   for (const k in state.sections) {
     const s = state.sections[k];
@@ -110,8 +111,8 @@ const shown = d => state.settings.hideNames ? mask(d) : d;
 
 // state boots here, after every helper it needs is defined (a TDZ on a regex const once blanked the app on reload)
 let bootError = null;
-try { state = load() || { settings: {}, sections: {}, order: [], active: null, pendingCfg: {} }; migrate(); }
-catch (e) { console.error('Tally: could not load saved data', e); bootError = e; try { localStorage.setItem(LS_KEY + '.broken', localStorage.getItem(LS_KEY) || ''); } catch (x) {} state = { settings: {}, sections: {}, order: [], active: null, pendingCfg: {} }; migrate(); }
+try { state = load() || { settings: {}, sections: {}, order: [], active: null, pendingCfg: {}, pools: {} }; migrate(); }
+catch (e) { console.error('Tally: could not load saved data', e); bootError = e; try { localStorage.setItem(LS_KEY + '.broken', localStorage.getItem(LS_KEY) || ''); } catch (x) {} state = { settings: {}, sections: {}, order: [], active: null, pendingCfg: {}, pools: {} }; migrate(); }
 
 // rows: [{ display, sub, ixl, key, status:'ok'|'rosterOnly'|'ambiguous'|'ixlOnly', tier:'exact'|'loose'|'alias'|'' }]
 // Matching runs in PASSES over the whole roster (exact for everyone, then loose), so a nickname never steals an exact match.
@@ -196,7 +197,7 @@ function points(sec, unit, si) {
 
 /* ---------- import ---------- */
 async function importFiles(files) {
-  let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [];
+  let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [], poolImported = [];
   for (const f of files) {
     try {
       const rows = await fileToRows(f);
@@ -210,6 +211,15 @@ async function importFiles(files) {
         continue;
       }
       const meta = parseIxlFilename(f.name);
+      if (!meta.section && g.students.length) {   // a course-wide export (no section code): the pool every class of that course is carved from
+        const prep = meta.accelerated ? 'acc' : 'on'; const prevPool = state.pools[prep];
+        if (prevPool && prevPool.date && meta.date && meta.date < prevPool.date && !confirm(`${f.name}\n\nThis export is dated ${meta.date}, but the ${prep === 'acc' ? 'accelerated' : 'on-level'} course already has data from ${prevPool.date}. Replace the newer data with this older file?`)) { skipped++; continue; }
+        state.pools[prep] = { students: g.students, skills: g.skills, scores: g.scores, date: meta.date, file: f.name, importedAt: new Date().toISOString() };
+        const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === prep);
+        fed.forEach(x => { materialize(x); ok.push(x); });
+        poolImported.push(`<b>${prep === 'acc' ? 'Accelerated' : 'On-level'}</b>: ${plural(g.students.length, 'student')}, ${plural(g.skills.length, 'skill')}${fed.length ? ` → ${plural(fed.length, 'class')} updated` : ' — import a Focus gradebook for each period to make its class'}`);
+        continue;
+      }
       let students = g.students, placeholder = false;
       if (!students.length) {
         const hdr = rows.find(r => r.some(v => typeof v === 'string' && /skill name/i.test(v)));
@@ -248,7 +258,8 @@ async function importFiles(files) {
     } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); }
   }
   for (const { f, gb } of deferred) {
-    const target = await pickSection(f.name, gb);
+    let target = await pickSection(f.name, gb);
+    if (target === '__new__') target = await askNewClass(f.name, gb);
     if (!target) { skipped++; continue; }
     const sec = state.sections[target]; sec.grades = sec.grades || { assignments: [], students: [] };
     sec.grades.students = gb.students; sec.grades.ids = gb.ids || []; sec.grades.overall = gb.overall || null; sec.grades.importedAt = new Date().toISOString(); sec.grades.file = f.name; sec.grades.raw = gb.raw || {};
@@ -260,15 +271,18 @@ async function importFiles(files) {
     let rosterNote = '';
     if (!rosterState(sec).count) {
       const text = gradebookRosterText(gb); let okN = 0; try { okN = buildRows({ ...sec, roster: text }).filter(r => r.status === 'ok').length; } catch (e) {}
-      if (okN >= Math.max(3, gb.students.length / 2)) { sec.roster = text; sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }   // only when its names really are this class
+      if (sec.pool || okN >= Math.max(3, gb.students.length / 2)) { sec.roster = text; sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }   // only when its names really are this class
     }
+    if (sec.pool) { materialize(sec); if (!ok.includes(sec)) ok.push(sec); }
     gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}`);
   }
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
   search = ''; $('#search').value = ''; view = { mode: 'units', unit: null };
   save(); render();
   if (gbImported.length) toast(`Gradebook imported — ${gbImported.join(' · ')}`, false, 5000);
-  if (ok.length) toast(`Imported ${ok.map(s => `<b>${esc(s.label)}</b> (goal ${s.threshold}, ${plural(s.students.length, 'student')})`).join(' · ')}${skipped ? ` · ${skipped} skipped` : ''}`, false, 5000);
+  const poolMsg = poolImported.length ? `IXL course export — ${poolImported.join(' · ')}` : '';
+  if (ok.length) toast(`${poolMsg ? poolMsg + '<br>' : ''}Imported ${ok.map(s => `<b>${esc(s.label)}</b> (goal ${s.threshold}, ${plural(s.students.length, 'student')})`).join(' · ')}${skipped ? ` · ${skipped} skipped` : ''}`, false, poolMsg ? 7000 : 5000);
+  else if (poolMsg) toast(poolMsg, false, 7000);
   else if (skipped && !fails.length && !gbImported.length) toast('Nothing imported.', false);
   if (fails.length) setTimeout(() => toast(fails.join(' — '), true), ok.length || gbImported.length ? 5200 : 0);
 }
@@ -775,6 +789,52 @@ function parseGradebook(rows) {
   const raw = {}; assignments.forEach((a, j) => { raw[a.name] = rawCells[cols.findIndex(c => c === a._col)] || []; delete a._col; });
   return { students, ids, overall: overall.some(v => v != null) ? overall : null, assignments, unread: assignments.reduce((a, x) => a + x.unread, 0), examples, raw };
 }
+/* ---------- course-wide IXL pools ----------
+   When IXL is exported for the whole course (no section code in the file name), every student in the course is in one
+   file. The file is kept as state.pools[prep]; each class made from a Focus gradebook (sec.pool = true) is carved from
+   it: its roster names are matched against the pool and the class gets exactly those students' columns. */
+const PERIOD_ORD = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+function materialize(sec) {
+  const pool = state.pools[sec.prep];
+  if (!pool) { sec.students = sec.students || []; sec.skills = sec.skills || []; sec.scores = sec.scores || []; sec.awaitingPool = true; return; }
+  const tmp = { ...sec, students: pool.students, skills: pool.skills, scores: pool.scores, _keys: null, ignored: {} };
+  const rows = buildRows(tmp).filter(r => r.status === 'ok' && r.ixl != null);
+  const idx = rows.map(r => r.ixl);
+  sec.students = idx.map(i => pool.students[i]); sec.skills = pool.skills; sec.scores = pool.scores.map(row => idx.map(i => row[i]));
+  sec.date = pool.date; sec.file = pool.file; sec.importedAt = pool.importedAt; sec.awaitingPool = false; sec.placeholder = false; sec.allBlank = !sec.scores.some(r => r.some(v => v != null));
+  sec._keys = null; mergeBest(sec); snapshot(sec);
+}
+// The pool students a class could still claim: everyone in the course not already matched by another class of the same prep.
+function poolLeftovers(sec) {
+  const pool = state.pools[sec.prep]; if (!pool) return [];
+  const taken = new Set(); state.order.map(k => state.sections[k]).filter(x => x !== sec && x.pool && x.prep === sec.prep).forEach(x => x.students.forEach(n => taken.add(n)));
+  return pool.students.filter(n => !taken.has(n));
+}
+function askNewClass(fileName, gb) {
+  return new Promise(resolve => {
+    const used = new Set(state.order.map(k => state.sections[k].period).filter(Boolean));
+    const m = $('#modal'); m.classList.remove('hidden');
+    m.innerHTML = `<div class="panel narrow"><header><h2>New class from this gradebook</h2><button id="mClose" aria-label="Close">×</button></header>
+      <div class="body one"><p><b>${esc(fileName)}</b> · ${plural(gb.students.length, 'student')}. Which period is this, and which course?</p>
+        <div class="field"><label>Period</label><div class="seg" id="ncPeriod">${[1, 2, 3, 4, 5, 6, 7].map(n => `<button data-p="${n}" ${used.has(n) ? 'disabled title="already a class"' : ''}>${n}</button>`).join('')}</div></div>
+        <div class="field"><label>Course</label><div class="seg" id="ncPrep"><button data-prep="acc">Accelerated</button><button data-prep="on">On-level</button></div></div>
+        <p class="ghint">The class's IXL grid comes from the course-wide IXL export${state.pools.acc || state.pools.on ? '' : ' — import one for each course when you have it'}.</p>
+        <div class="rp-actions"><button class="pill" id="ncMake" disabled>Make the class</button><button class="pill pale" id="mCancel">Skip this file</button></div></div></div>`;
+    const done = v => { m.classList.add('hidden'); m.innerHTML = ''; resolve(v); };
+    m._cancel = () => done(null); $('#mClose').onclick = m._cancel; $('#mCancel').onclick = m._cancel; m.onclick = e => { if (e.target === m) done(null); };
+    let period = null, prep = null; const arm = () => { $('#ncMake').disabled = !(period && prep); };
+    m.querySelectorAll('#ncPeriod button').forEach(b => b.onclick = () => { period = Number(b.dataset.p); m.querySelectorAll('#ncPeriod button').forEach(x => x.classList.toggle('on', x === b)); arm(); });
+    m.querySelectorAll('#ncPrep button').forEach(b => b.onclick = () => { prep = b.dataset.prep; m.querySelectorAll('#ncPrep button').forEach(x => x.classList.toggle('on', x === b)); arm(); });
+    $('#ncMake').onclick = () => {
+      const key = 'period-' + period; const label = `${PERIOD_ORD(period)} Period · ${prep === 'acc' ? 'Accelerated' : 'On-level'}`;
+      state.sections[key] = { key, label, autoLabel: label, period, pool: true, accelerated: prep === 'acc', prep, threshold: prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on,
+        date: null, file: '', importedAt: new Date().toISOString(), students: [], skills: [], scores: [], roster: '', rosterAt: null, skipRoster: false,
+        excluded: {}, ignored: {}, aliases: {}, hiddenUnits: {}, studentSkips: {}, history: [], team: '', placeholder: false, allBlank: false, best: null, receipts: {}, _keys: null };
+      if (!state.order.includes(key)) state.order.push(key); state.active = key;
+      done(key);
+    };
+  });
+}
 const gradebookRosterText = gb => gb.students.map((n, i) => (gb.ids && gb.ids[i] ? gb.ids[i] + '\t' : '') + n).join('\n');
 // When a pasted roster and the gradebook disagree on who is in the class, the notice offers the gradebook's list.
 function rosterVsGradebook(sec) {
@@ -793,7 +853,7 @@ function pickSection(fileName, gb) {
     const best = hits.length && hits[0][1] >= Math.max(3, gb.students.length / 2) && (hits.length === 1 || hits[0][1] > hits[1][1]) ? hits[0][0] : null;
     m.innerHTML = `<div class="panel narrow"><header><h2>Which class is this gradebook?</h2><button id="mClose" aria-label="Close">×</button></header>
       <div class="body one"><p><b>${esc(fileName)}</b><br>${plural(gb.students.length, 'student')} · ${plural(gb.assignments.length, 'assignment')}: ${preview}${gb.unread ? `<br><span class="warnline">${plural(gb.unread, 'cell')} couldn't be read (${esc(gb.examples.map(x => '“' + x + '”').join(', '))}) and will count as no score.</span>` : ''}</p>
-      <div class="picks">${state.order.length ? state.order.map(k => `<button class="chip${k === best ? ' on' : ''}" data-sec="${esc(k)}">${esc(state.sections[k].label)}${k === best ? ' <small>· names match</small>' : ''}</button>`).join('') : '<em>Import an IXL export for that class first — a gradebook attaches to a class.</em>'}</div>
+      <div class="picks">${state.order.map(k => `<button class="chip${k === best ? ' on' : ''}" data-sec="${esc(k)}">${esc(state.sections[k].label)}${k === best ? ' <small>· names match</small>' : ''}</button>`).join('')}<button class="chip${!best ? ' on' : ''}" data-sec="__new__">+ New class${!best && state.order.length ? ' <small>· no class matches these names</small>' : ''}</button></div>
       <div class="rp-actions"><button class="pill pale" id="mCancel">Skip this file</button></div></div></div>`;
     const done = v => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; resolve(v); };
     m._cancel = () => done(null); $('#mClose').onclick = m._cancel; $('#mCancel').onclick = m._cancel; m.onclick = e => { if (e.target === m) done(null); };
@@ -838,6 +898,7 @@ function renderNotices() {
   else if (s.allBlank) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>No scores were found in this export</b> — every cell is empty. If IXL shows scores for this class, the file may be in a format Tally doesn't recognize; try the .csv export.</span></div>`;
   if (rs.hasText && !rs.count) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>The pasted roster couldn't be read</b> — no names found. Rows are in IXL order, which is probably not FOCUS order.</span><button data-open="roster">Fix roster</button></div>`;
   else if (!rs.count && s.skipRoster) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>No roster.</b> Rows are sorted by last name; Copy includes names so you can check the order.</span><button data-open="roster">Paste roster</button></div>`;
+  if (s.pool && s.awaitingPool) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>Waiting for the ${s.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export.</b> This class was made from its Focus gradebook; import the course-wide IXL Score Grid and its ${plural(parseRosterText(s.roster).length, 'student')} will be matched from it.</span><button data-import="1">Import</button></div>`;
   const rvg = rosterVsGradebook(s);
   if (rvg) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>The Focus gradebook's class list differs from the pasted roster</b> — ${rvg.added.length ? `${plural(rvg.added.length, 'student')} in the gradebook but not on the roster${list(rvg.added.map(d => ({ display: d })))}` : ''}${rvg.added.length && rvg.gone.length ? '; ' : ''}${rvg.gone.length ? `${plural(rvg.gone.length, 'student')} on the roster but not in the gradebook${list(rvg.gone.map(d => ({ display: d })))}` : ''}.</span><button data-gbroster="1">Use the gradebook's list</button></div>`;
   if (ro.length || am.length || io.length) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>Roster mismatch</b> — ${ro.length ? `${ro.length} on the roster but not in IXL${list(ro)}. ` : ''}${am.length ? `${am.length} with two IXL matches${list(am)}. ` : ''}${io.length ? `${plural(io.length, 'IXL account')} not on the roster${list(io)}. ` : ''}${io.length ? 'IXL students not on the roster are left out of copies — tap their flag: re-paste the roster for a new student, skip for one who left. ' : ''}Tap a flag to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.</span></div>`;
@@ -850,7 +911,7 @@ function renderNotices() {
     else if (stale.length) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>Focus matches what you copied</b>, but ${stale.map(c => `${esc(c.unit.short)}: ${plural(c.counts.stale, 'student')}`).join(' · ')} have moved up since. Copy again when you're ready.</span></div>`; }
   if (loose.length) el.innerHTML += `<div class="notice soft"><span>≈</span><span><b>${plural(loose.length, 'name')} matched loosely</b> (nickname or extra name)${H ? '' : ': ' + esc(loose.map(r => r.display + ' → ' + r.ixlName).join('; '))}. Check once; tap the name to change it.</span></div>`;
   el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openSettings());
-  el.querySelectorAll('[data-gbroster]').forEach(b => b.onclick = () => { s.roster = gradebookRosterText(s.grades); s.rosterAt = new Date().toISOString(); s.skipRoster = false; save(); render(); toast(`Roster for ${esc(s.label)} replaced with the gradebook's ${plural(s.grades.students.length, 'student')}.`, false); });
+  el.querySelectorAll('[data-gbroster]').forEach(b => b.onclick = () => { s.roster = gradebookRosterText(s.grades); s.rosterAt = new Date().toISOString(); s.skipRoster = false; if (s.pool) materialize(s); save(); render(); toast(`Roster for ${esc(s.label)} replaced with the gradebook's ${plural(s.grades.students.length, 'student')}.`, false); });
   el.querySelectorAll('[data-import]').forEach(b => b.onclick = () => $('#file').click());
 }
 function renderBar() {
@@ -904,7 +965,7 @@ function renderRosterPanel(s) {
   const ta = $('#rpText');
   ta.oninput = () => { $('#rpReport').innerHTML = matchReport(s, ta.value); };
   if (!state.settings.hideNames) ta.focus();
-  $('#rpSave').onclick = () => { const txt = ta.value; if (!parseRosterText(txt).length) { toast("Couldn't read any names in that paste.", true); return; } s.roster = txt; s.rosterAt = new Date().toISOString(); s.skipRoster = false; save(); render(); toast('Roster saved', false); };
+  $('#rpSave').onclick = () => { const txt = ta.value; if (!parseRosterText(txt).length) { toast("Couldn't read any names in that paste.", true); return; } s.roster = txt; s.rosterAt = new Date().toISOString(); s.skipRoster = false; if (s.pool) materialize(s); save(); render(); toast('Roster saved', false); };
   $('#rpSkip').onclick = () => { s.skipRoster = true; save(); render(); };
 }
 function renderGrid() {
@@ -1010,7 +1071,8 @@ function openNotOnRoster(s, key) {
 function openFixer(s, display) {
   const rows = buildRows(s); const row = rows.find(r => r.display === display);
   const usedIdx = new Set(rows.filter(r => r.status === 'ok' && r.ixl != null && r.display !== display).map(r => r.ixl));
-  const free = ixlList(s).filter(x => !s.ignored[x.key] && !usedIdx.has(x.i));
+  let free = ixlList(s).filter(x => !s.ignored[x.key] && !usedIdx.has(x.i));
+  if (s.pool) { const have = new Set(s.students); free = free.concat(poolLeftovers(s).filter(n => !have.has(n)).map(n => ({ name: n, key: '@pool:' + n, i: -1, dup: false }))); }
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel narrow">
     <header><h2>Match ${esc(shown(display))}</h2><button id="mClose" aria-label="Close">×</button></header>
@@ -1021,8 +1083,8 @@ function openFixer(s, display) {
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  m.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { s.aliases[display] = b.dataset.pick; save(); close(); render(); toast(`${esc(shown(display))} → ${esc(shown(b.dataset.pick.replace(/#\d+$/, '')))}`, false); });
-  $('#unmatch').onclick = () => { s.aliases[display] = '#none'; save(); close(); render(); };
+  m.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { const pick = b.dataset.pick; s.aliases[display] = pick.startsWith('@pool:') ? pick.slice(6) + '#0' : pick; if (s.pool) materialize(s); save(); close(); render(); toast(`${esc(shown(display))} → ${esc(shown(pick.replace(/^@pool:/, '').replace(/#\d+$/, '')))}`, false); });
+  $('#unmatch').onclick = () => { s.aliases[display] = '#none'; if (s.pool) materialize(s); save(); close(); render(); };
 }
 
 /* ---------- copy ---------- */
@@ -1358,7 +1420,7 @@ function openSettings() {
     const tv = parseInt($('#thr').value, 10); if (!isNaN(tv) && clampThr(tv) !== s.threshold) { s.threshold = clampThr(tv); snapshot(s); }
     state.settings.copyMode = copyMode; state.settings.remindDays = remind;
     s.label = $('#secLabel').value.trim() || s.autoLabel; s.team = ''; s.prep = prep; state.settings.useBest = $('#useBest').checked;
-    if (rosterEl && rosterEl.value !== s.roster) { s.roster = rosterEl.value; s.rosterAt = new Date().toISOString(); if (parseRosterText(s.roster).length) s.skipRoster = false; }
+    if (rosterEl && rosterEl.value !== s.roster) { s.roster = rosterEl.value; s.rosterAt = new Date().toISOString(); if (parseRosterText(s.roster).length) s.skipRoster = false; if (s.pool) materialize(s); }
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     save(); close(); render(); toast('Saved', false);
   };

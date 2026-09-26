@@ -18,7 +18,7 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   check(/7 IXL students not on the roster — left out/.test(ct),'copy toast counts the students left out: '+ct.replace(/\s+/g,' ').slice(0,160));
   // Focus gradebook through the picker
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500);
-  check(await p.locator('[data-sec]').count()===1,'picker appears for the Focus export');
+  check(await p.locator('[data-sec]:not([data-sec="__new__"])').count()===1,'picker appears for the Focus export');
   await p.click('[data-sec]'); await p.waitForTimeout(400);
   const g=await p.evaluate(()=>{const s=Object.values(window.__tally.state.sections)[0].grades; return {n:s.students.length, a:s.assignments.map(a=>[a.name,a.max,a.category,a.missing,a.excused,a.unread])};});
   check(g.n===23 && g.a.length===13,'Focus export: 23 students, 13 assignments');

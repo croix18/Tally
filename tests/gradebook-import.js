@@ -8,7 +8,7 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   for(const k of ['1205050-7T1A','1205050-7T3A']){ await p.click('[data-k="'+k+'"]'); await p.waitForTimeout(120); await p.click('#rpSkip'); await p.waitForTimeout(120); }
   // csv gradebook -> picker -> 7T3A
   await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus.csv')]); await p.waitForTimeout(400);
-  check(await p.locator('.picks [data-sec]').count()===2,'period picker appears for a gradebook file');
+  check(await p.locator('.picks [data-sec]:not([data-sec="__new__"])').count()===2,'period picker appears for a gradebook file');
   await p.click('[data-sec="1205050-7T3A"]'); await p.waitForTimeout(400);
   const g=await p.evaluate(()=>{const g=window.__tally.state.sections['1205050-7T3A'].grades; return {n:g.students.length, a:g.assignments.map(x=>[x.name,x.category,x.max,x.missing,x.values.length])};});
   console.log(JSON.stringify(g));

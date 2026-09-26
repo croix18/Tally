@@ -5,6 +5,11 @@ IXL Score Grid → one grade per unit in Focus. A single HTML file: no server, n
 - **Tally.html** — the app (built). Open it in any browser; drop IXL Score Grid exports (`.xlsx`/`.csv`) and Focus gradebook exports onto it. `index.html` is the same file so GitHub Pages serves it at the repo root — on a tablet use the Pages address, not the file from a file manager (Android gives a locally opened file a throwaway storage origin, so nothing would persist).
 - **Scrub.html** — anonymizes exports locally (consistent fake names/IDs) so test data can be shared without student names.
 
+## Two ways to get classes
+
+- **Per-period IXL exports** (file name carries the section code, e.g. `1205050-7T1A-…`): each file becomes a class, labelled by period.
+- **Course-wide IXL exports** (one file per course with every student in it, no section code): the file is kept as that course's *pool*. Each Focus gradebook you drop then makes a period's class — you pick the period and course once — and the class's grid is carved out of the pool by matching the gradebook's names. Re-importing the pool refreshes every class made from it; a class made before its pool arrives waits for it.
+
 ## How it counts
 
 One point per skill whose SmartScore reaches the class goal (60 on-level, 67 accelerated; set from the file name, editable). Best score across imports is kept. Skills can be skipped for a class (tap the skill) or one student (tap the cell); units can be marked *Not assigned* per course. Copy a unit and paste straight into the Focus column — rows come out in Focus order once a roster is in place (a Focus gradebook export fills it in automatically; you can also paste one).
@@ -27,7 +32,7 @@ Student-facing screens (Race and Data Lab) never show names and lock behind a ho
 | `fonts/` | DM Sans (SIL OFL), embedded into both pages at build time |
 | `build.py` | assembles `Tally.html` (app.html + parser.js + app.js + grades.js + font) and `Scrub.html` (scrub.src.html + parser.js + font) |
 | `tests/` | Playwright end-to-end suites, one file per area, run by `tests/run.js` |
-| `fixtures/` | synthetic IXL/Focus exports and rosters, plus scrubbed exports of one real class: `ixl_7T1A_scrubbed_*.csv`, `focus_gradebook_scrubbed.csv`, `focus_roster_scrubbed.txt` |
+| `fixtures/` | synthetic IXL/Focus exports and rosters; scrubbed exports of one real class (`ixl_7T1A_scrubbed_*.csv`, `focus_gradebook_scrubbed.csv`, `focus_roster_scrubbed.txt`); scrubbed course-wide exports (`course_acc_*`, `course_on_*`) with two synthetic gradebooks of their names (`focus_gradebook_pool_p1/p2.csv`) |
 
 ```
 python3 build.py      # shipped files (no debug handle)
