@@ -23,7 +23,7 @@ Student-facing screens (Race and Data Lab) never show names and lock behind a ho
 | `scrub.src.html` | the anonymizer's markup, CSS and logic |
 | `build.py` | assembles `Tally.html` (app.html + parser.js + app.js) and `Scrub.html` (scrub.src.html + parser.js) |
 | `tests/` | Playwright end-to-end suites, one file per area, run by `tests/run.js` |
-| `fixtures/` | synthetic IXL/Focus exports and rosters |
+| `fixtures/` | synthetic IXL/Focus exports and rosters, plus one scrubbed real Focus gradebook export (`focus_gradebook_scrubbed.csv`) |
 
 ```
 python3 build.py      # shipped files (no debug handle)
