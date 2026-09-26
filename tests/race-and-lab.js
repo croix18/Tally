@@ -20,7 +20,7 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   const data=await p.evaluate(()=>window.__tally.leaderboardData());
   console.log(JSON.stringify(data.map(r=>({n:r.name,rank:r.rank,c:+r.completion.toFixed(3),gain:r.gain,active:r.active,assigned:r.assignedSkills})),null,0));
   check(data.length===5 && data.filter(r=>r.prep==='acc').length===1 && data.filter(r=>r.prep==='on').map(r=>r.rank).sort().join()=='1,2,2,2' && data.every(r=>r.completion>=0 && r.completion<=1),'five classes; identical clones share rank 2; ranked on completion');
-  const t1=data.find(r=>r.label==='The Integers'||r.label.includes('7T1A')); check(t1.gain>0 && t1.active>0.5 && !t1.thrChanged,'gain vs older snapshot computed');
+  const t1=data.find(r=>r.key==='1205050-7T1A'); check(t1.gain>0 && t1.active>0.5 && !t1.thrChanged,'gain vs older snapshot computed');
   // open leaderboard
   await p.click('#btnLb'); await p.waitForTimeout(1500);
   check(await p.locator('#lb.hidden').count()===0 && await p.locator('.lbCard').count()===5 && await p.locator('.lbLeagueName').count()===2,'leaderboard shows 5 cards in 2 leagues');

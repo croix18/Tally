@@ -258,7 +258,10 @@ async function importFiles(files) {
     gradeSnapshot(sec);
     // The gradebook's student column IS the Focus roster, in Focus order — use it when no roster has been pasted.
     let rosterNote = '';
-    if (!rosterState(sec).count) { sec.roster = gradebookRosterText(gb); sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }
+    if (!rosterState(sec).count) {
+      const text = gradebookRosterText(gb); let okN = 0; try { okN = buildRows({ ...sec, roster: text }).filter(r => r.status === 'ok').length; } catch (e) {}
+      if (okN >= Math.max(3, gb.students.length / 2)) { sec.roster = text; sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }   // only when its names really are this class
+    }
     gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}`);
   }
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));

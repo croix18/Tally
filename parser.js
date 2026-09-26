@@ -271,8 +271,11 @@ function parseIxlFilename(fn) {
   const flat = base.replace(/_/g, ' ').replace(/-/g, ' ');
   const accelerated = /\bACC\b|Accelerated|Advanced|Honors|\bAlgebra\b(?! *readiness)/i.test(flat) && !/Pre[ -]?Algebra/i.test(flat);
   const key = courseNum && section ? courseNum + '-' + section : base.replace(/_?\d{4}-\d{2}-\d{2}_?/, '_').replace(/_(This|Last)[-_ ]School[-_ ]Year_?/i, '_');   // a renamed class still keys the same week to week
-  const label = section ? section + (courseTag ? ' · ' + courseTag : '') : base.slice(0, 40);
-  return { date, courseNum, section, courseTag, accelerated, key, label };
+  // Lake County section codes read 7T<period>A: 7T1A is 1st period. Label it the way the teacher says it.
+  const pm = section && section.match(/^\d?T(\d)[A-Z]?$/i); const period = pm ? Number(pm[1]) : null;
+  const ord = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+  const label = period ? `${ord(period)} Period · ${accelerated ? 'Accelerated' : 'On-level'}` : section ? section + (courseTag ? ' · ' + courseTag : '') : base.slice(0, 40);
+  return { date, courseNum, section, courseTag, accelerated, key, label, period };
 }
 
 if (typeof module !== 'undefined') module.exports = { inflateRaw, readZip, xlsxToRows, csvToRows, parseIxlGrid, parseIxlFilename, asScore };

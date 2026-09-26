@@ -17,7 +17,7 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   // race: completion headline over assigned units
   const d=await p.evaluate(()=>window.__tally.leaderboardData().map(r=>({n:r.label,c:+r.completion.toFixed(3),poss:r.possible,units:r.assignedUnits.length,rank:r.rank})));
   console.log(JSON.stringify(d));
-  check(d.every(r=>r.poss>0 && r.units>0) && d.filter(r=>r.n.includes('GR7')).every(r=>r.rank>=1),'race data: completion over assigned units');
+  check(d.every(r=>r.poss>0 && r.units>0) && d.every(r=>r.rank>=1),'race data: completion over assigned units');
   await p.click('#btnLb'); await p.waitForTimeout(400); const lbt=await p.textContent('#lb');
   check(/% complete/.test(lbt) && /assigned:/.test(lbt) && /of [\d,]+ skills at goal/.test(lbt),'race shows % complete and the assigned units');
   await p.screenshot({path:path.join(tmp,'shot19.png')}); await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(150);

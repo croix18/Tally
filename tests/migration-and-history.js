@@ -22,20 +22,20 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   const old=fs.readdirSync('fixtures').filter(f=>f.startsWith('old_')).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', old); await p.waitForTimeout(400); await p.setInputFiles('#file', main); await p.waitForTimeout(600);
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await p.click('#rpSkip'); await p.waitForTimeout(150);
-  let d=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.label.includes('7T1A')));
+  let d=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A'));
   check(d.gain!=null && !d.thrChanged,'gain computed when threshold unchanged: '+d.gain.toFixed(2));
   await p.click('#btnSettings'); await p.fill('#thr','50'); await p.click('#mSave'); await p.waitForTimeout(300);
-  d=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.label.includes('7T1A')));
+  d=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A'));
   check(d.gain==null && d.thrChanged,'threshold change → no phantom gain, flagged');
   // 4. population uses roster-matched rows; exclusions respected in masteredAll
   await p.click('#btnSettings'); await p.fill('#thr','67'); await p.click('#mSave'); await p.waitForTimeout(200);
-  const before=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.label.includes('7T1A')).students);
+  const before=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A').students);
   await p.click('#btnSettings'); await p.fill('#roster','Nguyen, Ava\nSmith, Liam\nGarcia, Noah\nJohnson, Emma\nBrown, Mason'); await p.click('#mSave'); await p.waitForTimeout(300);
-  const after=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.label.includes('7T1A')).students);
+  const after=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A').students);
   check(before===23 && after===5,'race population follows the roster: '+before+' → '+after);
-  const mA=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.label.includes('7T1A')).masteredAll);
+  const mA=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A').masteredAll);
   await p.click('th.unit .ulink'); await p.waitForTimeout(200); await p.click('th.skill button'); await p.waitForTimeout(200);
-  const mB=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.label.includes('7T1A')).masteredAll);
+  const mB=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A').masteredAll);
   check(mB<mA,'excluding a skill lowers skills-at-goal total: '+mA+' → '+mB);
   // 5. dot stack cap + n floor + end tick
   const svg=await p.evaluate(()=>{const T=window.__tally; const st=T.stats(Array(28).fill(0).concat([3,5])); return {n:st.n};});

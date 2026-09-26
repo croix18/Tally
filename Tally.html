@@ -731,8 +731,11 @@ function parseIxlFilename(fn) {
   const flat = base.replace(/_/g, ' ').replace(/-/g, ' ');
   const accelerated = /\bACC\b|Accelerated|Advanced|Honors|\bAlgebra\b(?! *readiness)/i.test(flat) && !/Pre[ -]?Algebra/i.test(flat);
   const key = courseNum && section ? courseNum + '-' + section : base.replace(/_?\d{4}-\d{2}-\d{2}_?/, '_').replace(/_(This|Last)[-_ ]School[-_ ]Year_?/i, '_');   // a renamed class still keys the same week to week
-  const label = section ? section + (courseTag ? ' · ' + courseTag : '') : base.slice(0, 40);
-  return { date, courseNum, section, courseTag, accelerated, key, label };
+  // Lake County section codes read 7T<period>A: 7T1A is 1st period. Label it the way the teacher says it.
+  const pm = section && section.match(/^\d?T(\d)[A-Z]?$/i); const period = pm ? Number(pm[1]) : null;
+  const ord = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+  const label = period ? `${ord(period)} Period · ${accelerated ? 'Accelerated' : 'On-level'}` : section ? section + (courseTag ? ' · ' + courseTag : '') : base.slice(0, 40);
+  return { date, courseNum, section, courseTag, accelerated, key, label, period };
 }
 
 
@@ -1322,7 +1325,10 @@ async function importFiles(files) {
     gradeSnapshot(sec);
     // The gradebook's student column IS the Focus roster, in Focus order — use it when no roster has been pasted.
     let rosterNote = '';
-    if (!rosterState(sec).count) { sec.roster = gradebookRosterText(gb); sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }
+    if (!rosterState(sec).count) {
+      const text = gradebookRosterText(gb); let okN = 0; try { okN = buildRows({ ...sec, roster: text }).filter(r => r.status === 'ok').length; } catch (e) {}
+      if (okN >= Math.max(3, gb.students.length / 2)) { sec.roster = text; sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }   // only when its names really are this class
+    }
     gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}`);
   }
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));

@@ -34,7 +34,7 @@ const { chromium, fs, path, exe, check, done } = require('./lib');
   const realIxl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p3.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv'), path.resolve('fixtures',realIxl), path.resolve('fixtures', fs.readdirSync('fixtures').find(f=>/^f1473588.*7T3A/.test(f)))]); await p3.waitForTimeout(900);
   check(await p3.locator('.picks [data-sec]').count()===2,'picker offers classes even though the gradebook was first in the drop');
-  const sug=await p3.locator('.picks .chip.on'); check(await sug.count()===1 && /7T1A|ACC/.test(await sug.textContent()) && /names match/.test(await sug.textContent()),'picker suggests the class whose names match: '+(await sug.textContent().catch(()=>'')));
+  const sug=await p3.locator('.picks .chip.on'); check(await sug.count()===1 && /1st Period/.test(await sug.textContent()) && /names match/.test(await sug.textContent()),'picker suggests the class whose names match: '+(await sug.textContent().catch(()=>'')));
   await sug.click(); await p3.waitForTimeout(400);
   check(await p3.evaluate(()=>{const s=window.__tally.state.sections['1205050-7T1A']; return !!(s.grades && s.grades.assignments.length===13);}),'gradebook attached to the suggested class');
   await p3.close();
