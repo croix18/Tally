@@ -256,7 +256,10 @@ async function importFiles(files) {
     const cats = applyCategories(sec);
     if (cats.ask.length) await askCategories(sec, cats.ask, cats.fit);
     gradeSnapshot(sec);
-    gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}`);
+    // The gradebook's student column IS the Focus roster, in Focus order — use it when no roster has been pasted.
+    let rosterNote = '';
+    if (!rosterState(sec).count) { sec.roster = gradebookRosterText(gb); sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }
+    gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}`);
   }
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
   search = ''; $('#search').value = ''; view = { mode: 'units', unit: null };
@@ -769,6 +772,14 @@ function parseGradebook(rows) {
   const raw = {}; assignments.forEach((a, j) => { raw[a.name] = rawCells[cols.findIndex(c => c === a._col)] || []; delete a._col; });
   return { students, ids, overall: overall.some(v => v != null) ? overall : null, assignments, unread: assignments.reduce((a, x) => a + x.unread, 0), examples, raw };
 }
+const gradebookRosterText = gb => gb.students.map((n, i) => (gb.ids && gb.ids[i] ? gb.ids[i] + '\t' : '') + n).join('\n');
+// When a pasted roster and the gradebook disagree on who is in the class, the notice offers the gradebook's list.
+function rosterVsGradebook(sec) {
+  const gb = sec.grades; if (!gb || !rosterState(sec).count) return null;
+  const have = new Set(parseRosterText(sec.roster).map(r => norm(r.display))); const inGb = new Set(gb.students.map(n => norm(n)));
+  const added = gb.students.filter(n => !have.has(norm(n))), gone = parseRosterText(sec.roster).map(r => r.display).filter(d => !inGb.has(norm(d)));
+  return added.length || gone.length ? { added, gone } : null;
+}
 function pickSection(fileName, gb) {
   return new Promise(resolve => {
     const m = $('#modal'); m.classList.remove('hidden');
@@ -824,6 +835,8 @@ function renderNotices() {
   else if (s.allBlank) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>No scores were found in this export</b> — every cell is empty. If IXL shows scores for this class, the file may be in a format Tally doesn't recognize; try the .csv export.</span></div>`;
   if (rs.hasText && !rs.count) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>The pasted roster couldn't be read</b> — no names found. Rows are in IXL order, which is probably not FOCUS order.</span><button data-open="roster">Fix roster</button></div>`;
   else if (!rs.count && s.skipRoster) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>No roster.</b> Rows are sorted by last name; Copy includes names so you can check the order.</span><button data-open="roster">Paste roster</button></div>`;
+  const rvg = rosterVsGradebook(s);
+  if (rvg) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>The Focus gradebook's class list differs from the pasted roster</b> — ${rvg.added.length ? `${plural(rvg.added.length, 'student')} in the gradebook but not on the roster${list(rvg.added.map(d => ({ display: d })))}` : ''}${rvg.added.length && rvg.gone.length ? '; ' : ''}${rvg.gone.length ? `${plural(rvg.gone.length, 'student')} on the roster but not in the gradebook${list(rvg.gone.map(d => ({ display: d })))}` : ''}.</span><button data-gbroster="1">Use the gradebook's list</button></div>`;
   if (ro.length || am.length || io.length) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>Roster mismatch</b> — ${ro.length ? `${ro.length} on the roster but not in IXL${list(ro)}. ` : ''}${am.length ? `${am.length} with two IXL matches${list(am)}. ` : ''}${io.length ? `${plural(io.length, 'IXL account')} not on the roster${list(io)}. ` : ''}${io.length ? 'IXL students not on the roster are left out of copies — tap their flag: re-paste the roster for a new student, skip for one who left. ' : ''}Tap a flag to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.</span></div>`;
   const od = overdue(s); const gbOd = s.grades && state.settings.remindDays && ageDays(s.grades.importedAt) > state.settings.remindDays ? ageDays(s.grades.importedAt) : null;
   if (od || gbOd) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span>${od ? `<b>This IXL export is ${plural(od, 'day')} old</b> (${fmtDate(dataDate(s))}). ` : ''}${gbOd ? `<b>The Focus gradebook is ${plural(gbOd, 'day')} old</b> (${fmtDate(s.grades.importedAt.slice(0, 10))}). ` : ''}You asked to be reminded after ${state.settings.remindDays} days — export ${od && gbOd ? 'fresh copies' : 'a fresh copy'} and import ${od && gbOd ? 'them' : 'it'}.</span><button data-import="1">Import</button></div>`;
@@ -834,6 +847,7 @@ function renderNotices() {
     else if (stale.length) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>Focus matches what you copied</b>, but ${stale.map(c => `${esc(c.unit.short)}: ${plural(c.counts.stale, 'student')}`).join(' · ')} have moved up since. Copy again when you're ready.</span></div>`; }
   if (loose.length) el.innerHTML += `<div class="notice soft"><span>≈</span><span><b>${plural(loose.length, 'name')} matched loosely</b> (nickname or extra name)${H ? '' : ': ' + esc(loose.map(r => r.display + ' → ' + r.ixlName).join('; '))}. Check once; tap the name to change it.</span></div>`;
   el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openSettings());
+  el.querySelectorAll('[data-gbroster]').forEach(b => b.onclick = () => { s.roster = gradebookRosterText(s.grades); s.rosterAt = new Date().toISOString(); s.skipRoster = false; save(); render(); toast(`Roster for ${esc(s.label)} replaced with the gradebook's ${plural(s.grades.students.length, 'student')}.`, false); });
   el.querySelectorAll('[data-import]').forEach(b => b.onclick = () => $('#file').click());
 }
 function renderBar() {
