@@ -45,6 +45,26 @@
 .nextrow{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:var(--t-s)}
 .nextrow input[type=number]{border:2px solid var(--grid);border-radius:8px;padding:4px 6px;font:inherit}
 .nextrow input[type=range]{width:180px;vertical-align:middle}
+
+/* ---- calm by default: .det shows only in Details view ---- */
+body:not(.details) .det{display:none!important}
+.nstatus{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:2px solid var(--turq);background:var(--paleturq);color:var(--navy);border-radius:14px;padding:8px 16px;font:inherit;font-weight:600;font-size:var(--t-m);cursor:pointer}
+.nstatus.warn{background:var(--coral);border-color:var(--coral)}.nstatus.ok{background:var(--paleturq)}.nstatus i{margin-left:auto;font-style:normal;opacity:.7}
+.nfold{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.more{position:relative}.more .menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--white);border-radius:14px;box-shadow:6px 8px 0 var(--shadow);border:2px solid var(--grid);min-width:220px;z-index:30;display:flex;flex-direction:column;padding:6px}
+.more .menu button{background:none;border:none;text-align:left;padding:10px 14px;font:inherit;font-weight:700;color:var(--navy);border-radius:10px;cursor:pointer}.more .menu button:hover{background:var(--paleturq)}
+body:not(.details) .tab .m{display:none}body:not(.details) .tab{padding:8px 16px}
+/* ---- Overview ---- */
+.home{display:flex;flex-direction:column;gap:18px;padding:4px 0 40px}
+.hcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.hcard{text-align:left;background:var(--white);border:none;border-radius:18px;box-shadow:5px 6px 0 var(--shadow);padding:14px 16px;font:inherit;color:var(--navy);cursor:pointer;display:flex;flex-direction:column;gap:10px}
+.hcard.warn{border:2px solid var(--coral)}.hcard:hover{transform:translateY(-1px)}
+.hhead b{font-size:var(--t-xl);font-weight:900;display:block}.hhead small{color:var(--ink-soft);font-size:var(--t-s)}
+.hnums{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.hnums small{display:block;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:900}
+.hnums b{font-size:24px;font-weight:900;line-height:1.1}.hnums span{display:block;font-size:var(--t-xs);color:var(--ink-soft)}
+.hchips{display:flex;gap:6px;flex-wrap:wrap}.hchip{font-size:var(--t-xs);font-weight:900;border-radius:999px;padding:3px 10px;background:var(--paleturq)}.hchip.warn{background:var(--coral)}.hchip.ok{background:var(--paleturq)}.hchip.muted{background:var(--grid);color:var(--ink-soft)}
+.hchip.letters{display:inline-flex;gap:6px;background:transparent;padding:0}.hchip.letters i{font-style:normal;display:inline-flex;gap:3px;align-items:baseline;background:var(--paleturq);border-radius:8px;padding:2px 7px}.hchip.letters i em{font-style:normal;font-weight:900}.hchip.letters i.D,.hchip.letters i.F{background:var(--sand)}
+.hatt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.hatt li button{width:100%;text-align:left;background:var(--paleturq);border:none;border-radius:10px;padding:8px 12px;font:inherit;color:var(--navy);cursor:pointer;font-size:var(--t-s)}.hatt li.warn button{background:var(--coral)}
 </style>
 <style>
 :root{
@@ -422,9 +442,11 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   <div class="brand"><h1>Tally</h1><small>IXL → FOCUS</small></div>
   <div class="spacer"></div>
   <input id="search" type="search" placeholder="Find a student…" aria-label="Find a student" class="hidden">
+  <button class="pill ghost hidden" id="btnHome" title="Every class at a glance">Overview</button>
   <button class="pill ghost" id="btnGuide" title="One printable page: the weekly flow and what the words mean">Guide</button>
   <button class="pill ghost hidden" id="btnLb" title="Student screen: Race and Data Lab">Race</button>
   <button class="pill ghost hidden" id="btnHide" aria-pressed="true">Names</button>
+  <button class="pill ghost hidden" id="btnDetails" aria-pressed="false" title="Show everything: full notices, counts, legends">Details</button>
   <button class="pill ghost hidden" id="btnSettings" title="Settings, roster, threshold">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     Settings

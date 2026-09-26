@@ -1,6 +1,6 @@
 // A real Focus gradebook export (scrubbed): multi-line headers with "N Points / Assigned / Due",
 // cells like "16.5 - 79 % - C", NHI (missing), NG (excused), a "Grade" column and an "Average" row.
-const { chromium, fs, path, exe, check, done } = require('./lib');
+const { chromium, fs, path, exe, check, done, dense } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -46,7 +46,7 @@ const { chromium, fs, path, exe, check, done } = require('./lib');
   const rs=await p4.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const rows=T.parseRosterText(s.roster); const br=T.buildRows(s); return { n:rows.length, first:rows[0].display, id:rows[0].id, ok:br.filter(r=>r.status==='ok').length }; });
   check(rs.n===23 && rs.first==='SUTTER, HAYDEN SKYLER' && rs.id==='1111860421' && rs.ok===16,'roster has the 23 gradebook students with IDs, in Focus order, matched to IXL: '+JSON.stringify(rs));
   await p4.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.roster=s.roster.split('\n').slice(0,20).join('\n')+'\nNEWKID, SOMEONE'; T.save(); T.render(); });
-  await p4.waitForTimeout(300); const nt=await p4.textContent('#notices');
+  await dense(p4); await p4.waitForTimeout(300); const nt=await p4.textContent('#notices');
   check(/class list differs from the pasted roster/.test(nt) && /3 students in the gradebook but not on the roster/.test(nt) && /1 student on the roster but not in the gradebook/.test(nt),'differing roster → notice with counts');
   await p4.click('[data-gbroster]'); await p4.waitForTimeout(400);
   check((await p4.evaluate(()=>window.__tally.parseRosterText(Object.values(window.__tally.state.sections)[0].roster).length))===23 && !/class list differs/.test(await p4.textContent('#notices')),'"Use the gradebook\'s list" replaces the roster and clears the notice');

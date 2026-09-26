@@ -7,6 +7,10 @@ IXL Score Grid → one grade per unit in Focus. A single HTML file: no server, n
 - **Tally.html** — the app (built). Open it in any browser; drop IXL Score Grid exports (`.xlsx`/`.csv`) and Focus gradebook exports onto it. `index.html` is the same file so GitHub Pages serves it at the repo root — on a tablet use the Pages address, not the file from a file manager (Android gives a locally opened file a throwaway storage origin, so nothing would persist).
 - **Scrub.html** — anonymizes exports locally (consistent fake names/IDs) so test data can be shared without student names.
 
+## Command center
+
+Tally opens on an **Overview**: one card per class (IXL work at goal with change since the last import, Focus average, missing work, sliding students, Focus check, letter counts), a *needs attention* list that jumps to the class, and charts across classes — IXL work at goal, Focus class average by import, letter grades, missing assignments by import. The grid is **calm by default**: notices fold into one status line, secondary controls sit behind a ⋯ menu, and a **Details** button in the header brings everything back. The Data Lab draws each class as a **box plot, dot plot, histogram, stem-and-leaf, bar graph, circle graph, or line graph** (class average by import, all classes on one chart). See `COMMAND_CENTER.md`.
+
 ## Two ways to get classes
 
 - **Per-period IXL exports** (file name carries the section code, e.g. `1205050-7T1A-…`): each file becomes a class, labelled by period.
@@ -29,10 +33,12 @@ Student-facing screens (Race and Data Lab) never show names and lock behind a ho
 | `app.html` | markup + CSS |
 | `app.js` | all logic |
 | `grades.js` | the Grades model and screens (spliced into app.js's closure by the build) |
+| `charts.js` | SVG graph primitives — bars, stacked bars, lines, dot plot, histogram, stem-and-leaf, circle |
+| `home.js` | the Overview: class cards, needs-attention list, teacher charts |
 | `parser.js` | zip/inflate/xlsx/csv readers and the IXL grid + file-name parsers |
 | `scrub.src.html` | the anonymizer's markup, CSS and logic |
 | `fonts/` | DM Sans (SIL OFL), embedded into both pages at build time |
-| `build.py` | assembles `Tally.html` (app.html + parser.js + app.js + grades.js + font) and `Scrub.html` (scrub.src.html + parser.js + font) |
+| `build.py` | assembles `Tally.html` (app.html + parser.js + app.js + grades.js + charts.js + home.js + font) and `Scrub.html` (scrub.src.html + parser.js + font) |
 | `tests/` | Playwright end-to-end suites, one file per area, run by `tests/run.js` |
 | `fixtures/` | synthetic IXL/Focus exports and rosters; scrubbed exports of one real class (`ixl_7T1A_scrubbed_*.csv`, `focus_gradebook_scrubbed.csv`, `focus_roster_scrubbed.txt`); scrubbed course-wide exports (`course_acc_*`, `course_on_*`) with two synthetic gradebooks of their names (`focus_gradebook_pool_p1/p2.csv`) |
 

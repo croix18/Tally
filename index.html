@@ -45,6 +45,26 @@
 .nextrow{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:var(--t-s)}
 .nextrow input[type=number]{border:2px solid var(--grid);border-radius:8px;padding:4px 6px;font:inherit}
 .nextrow input[type=range]{width:180px;vertical-align:middle}
+
+/* ---- calm by default: .det shows only in Details view ---- */
+body:not(.details) .det{display:none!important}
+.nstatus{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:2px solid var(--turq);background:var(--paleturq);color:var(--navy);border-radius:14px;padding:8px 16px;font:inherit;font-weight:600;font-size:var(--t-m);cursor:pointer}
+.nstatus.warn{background:var(--coral);border-color:var(--coral)}.nstatus.ok{background:var(--paleturq)}.nstatus i{margin-left:auto;font-style:normal;opacity:.7}
+.nfold{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.more{position:relative}.more .menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--white);border-radius:14px;box-shadow:6px 8px 0 var(--shadow);border:2px solid var(--grid);min-width:220px;z-index:30;display:flex;flex-direction:column;padding:6px}
+.more .menu button{background:none;border:none;text-align:left;padding:10px 14px;font:inherit;font-weight:700;color:var(--navy);border-radius:10px;cursor:pointer}.more .menu button:hover{background:var(--paleturq)}
+body:not(.details) .tab .m{display:none}body:not(.details) .tab{padding:8px 16px}
+/* ---- Overview ---- */
+.home{display:flex;flex-direction:column;gap:18px;padding:4px 0 40px}
+.hcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.hcard{text-align:left;background:var(--white);border:none;border-radius:18px;box-shadow:5px 6px 0 var(--shadow);padding:14px 16px;font:inherit;color:var(--navy);cursor:pointer;display:flex;flex-direction:column;gap:10px}
+.hcard.warn{border:2px solid var(--coral)}.hcard:hover{transform:translateY(-1px)}
+.hhead b{font-size:var(--t-xl);font-weight:900;display:block}.hhead small{color:var(--ink-soft);font-size:var(--t-s)}
+.hnums{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.hnums small{display:block;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:900}
+.hnums b{font-size:24px;font-weight:900;line-height:1.1}.hnums span{display:block;font-size:var(--t-xs);color:var(--ink-soft)}
+.hchips{display:flex;gap:6px;flex-wrap:wrap}.hchip{font-size:var(--t-xs);font-weight:900;border-radius:999px;padding:3px 10px;background:var(--paleturq)}.hchip.warn{background:var(--coral)}.hchip.ok{background:var(--paleturq)}.hchip.muted{background:var(--grid);color:var(--ink-soft)}
+.hchip.letters{display:inline-flex;gap:6px;background:transparent;padding:0}.hchip.letters i{font-style:normal;display:inline-flex;gap:3px;align-items:baseline;background:var(--paleturq);border-radius:8px;padding:2px 7px}.hchip.letters i em{font-style:normal;font-weight:900}.hchip.letters i.D,.hchip.letters i.F{background:var(--sand)}
+.hatt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.hatt li button{width:100%;text-align:left;background:var(--paleturq);border:none;border-radius:10px;padding:8px 12px;font:inherit;color:var(--navy);cursor:pointer;font-size:var(--t-s)}.hatt li.warn button{background:var(--coral)}
 </style>
 <style>
 :root{
@@ -422,9 +442,11 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   <div class="brand"><h1>Tally</h1><small>IXL → FOCUS</small></div>
   <div class="spacer"></div>
   <input id="search" type="search" placeholder="Find a student…" aria-label="Find a student" class="hidden">
+  <button class="pill ghost hidden" id="btnHome" title="Every class at a glance">Overview</button>
   <button class="pill ghost" id="btnGuide" title="One printable page: the weekly flow and what the words mean">Guide</button>
   <button class="pill ghost hidden" id="btnLb" title="Student screen: Race and Data Lab">Race</button>
   <button class="pill ghost hidden" id="btnHide" aria-pressed="true">Names</button>
+  <button class="pill ghost hidden" id="btnDetails" aria-pressed="false" title="Show everything: full notices, counts, legends">Details</button>
   <button class="pill ghost hidden" id="btnSettings" title="Settings, roster, threshold">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     Settings
@@ -1081,7 +1103,189 @@ function openWeights(sec) {
   $('#wSave').onclick = () => { m.querySelectorAll('[data-w]').forEach(el => { g.cats[Number(el.dataset.w)].w = Math.max(0, Number(el.value) || 0); }); state.order.map(k => state.sections[k]).filter(x => x.prep === sec.prep && x.grades).forEach(gradeSnapshot); save(); close(); render(); };
 }
    // grades.js is spliced in here by build.py (same closure, so it shares state and helpers)
-let view = { mode: 'units', unit: null };
+/* ---------- charts.js — plain-SVG graph primitives (spliced into app.js's closure) ----------
+   Rules (see COMMAND_CENTER.md): single series in the house teal; class-vs-class in a fixed, validated categorical
+   order, always direct-labeled; thin marks; <title> tooltips; text in ink; status colours never used for series. */
+const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#008300'];
+const seriesColor = i => SERIES[i % SERIES.length];
+const fmtV = v => v == null ? '—' : (Math.round(v * 10) / 10).toString();
+const niceMax = (v, step) => { if (!(v > 0)) return step || 10; const s = step || (v > 200 ? 50 : v > 100 ? 20 : v > 40 ? 10 : v > 10 ? 5 : 1); return Math.ceil(v / s) * s; };
+
+// Horizontal bars: items [{ label, value, max?, hint? }]. One hue; value labels on every bar (few bars, so they're the point).
+function chartBars(items, o) {
+  o = o || {}; const w = o.w || 640, rowH = 30, lw = o.labelW || 150, h = items.length * rowH + 28;
+  const max = o.max || niceMax(Math.max(...items.map(i => i.value || 0), 1));
+  const X = v => lw + (v / max) * (w - lw - 60);
+  let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'bar chart')}">`;
+  [0, 0.5, 1].forEach(f => { s += `<line x1="${X(max * f)}" y1="6" x2="${X(max * f)}" y2="${h - 22}" class="gl"/><text x="${X(max * f)}" y="${h - 6}" text-anchor="middle" class="tl">${o.pct ? Math.round(max * f) + '%' : fmtV(max * f)}</text>`; });
+  items.forEach((it, i) => { const y = 8 + i * rowH; const v = it.value || 0;
+    s += `<text x="${lw - 10}" y="${y + 15}" text-anchor="end" class="lbl">${esc(it.label)}</text><rect x="${X(0)}" y="${y + 3}" width="${Math.max(X(v) - X(0), 0)}" height="16" rx="4" class="bar" style="fill:${it.color || 'var(--teal)'}"><title>${esc(it.label)}: ${o.pct ? Math.round(v) + '%' : fmtV(v)}${it.hint ? ' · ' + esc(it.hint) : ''}</title></rect><text x="${X(v) + 6}" y="${y + 15}" class="val">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; });
+  return s + '</svg>';
+}
+// Stacked horizontal bars: rows [{ label, parts: { key: value } }], keys in fixed order with colours; legend always.
+function chartStacked(rows, keys, o) {
+  o = o || {}; const w = o.w || 640, rowH = 30, lw = o.labelW || 150, h = rows.length * rowH + 40;
+  const tot = r => keys.reduce((a, k) => a + (r.parts[k] || 0), 0); const max = o.max || Math.max(...rows.map(tot), 1);
+  const X = v => lw + (v / max) * (w - lw - 20);
+  let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'stacked bar chart')}">`;
+  rows.forEach((r, i) => { const y = 8 + i * rowH; let x = 0; s += `<text x="${lw - 10}" y="${y + 15}" text-anchor="end" class="lbl">${esc(r.label)}</text>`;
+    keys.forEach((k, j) => { const v = r.parts[k] || 0; if (!v) return; s += `<rect x="${X(x) + (x ? 1 : 0)}" y="${y + 3}" width="${Math.max(X(x + v) - X(x) - (x ? 1 : 0), 0)}" height="16" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}"><title>${esc(r.label)} · ${esc(k)}: ${v}</title></rect>${v / max > 0.06 ? `<text x="${(X(x) + X(x + v)) / 2}" y="${y + 15}" text-anchor="middle" class="inv">${v}</text>` : ''}`; x += v; }); });
+  s += `<g class="legend">${keys.map((k, j) => `<rect x="${lw + j * 80}" y="${h - 20}" width="12" height="12" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}"/><text x="${lw + j * 80 + 16}" y="${h - 10}" class="tl">${esc(k)}</text>`).join('')}</g>`;
+  return s + '</svg>';
+}
+// Line chart over labelled x steps: series [{ name, values: [y|null] }], labels [x]. Direct labels at the line ends + legend.
+function chartLines(labels, series, o) {
+  o = o || {}; const w = o.w || 640, h = o.h || 220, l = 44, r = 150, t = 12, b = 30;
+  const ys = series.flatMap(x => x.values).filter(v => v != null); if (!ys.length) return '<div class="lbEmpty">Nothing to plot yet.</div>';
+  const lo = o.min != null ? o.min : Math.max(0, Math.floor(Math.min(...ys) / 10) * 10 - 10), hi = o.max != null ? o.max : niceMax(Math.max(...ys), 10);
+  const X = i => l + (labels.length > 1 ? i / (labels.length - 1) : 0.5) * (w - l - r), Y = v => h - b - (v - lo) / (hi - lo || 1) * (h - t - b);
+  let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'line chart')}">`;
+  const ticks = 4; for (let i = 0; i <= ticks; i++) { const v = lo + (hi - lo) * i / ticks; s += `<line x1="${l}" y1="${Y(v)}" x2="${w - r}" y2="${Y(v)}" class="gl"/><text x="${l - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; }
+  labels.forEach((lb, i) => { s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle" class="tl">${esc(lb)}</text>`; });
+  series.forEach((sr, j) => { const c = series.length === 1 ? 'var(--teal)' : seriesColor(j); let d = '', last = null, pen = false;
+    sr.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; pen = true; last = [i, v]; });
+    s += `<path d="${d}" class="ln" style="stroke:${c}"/>`;
+    sr.values.forEach((v, i) => { if (v != null) s += `<circle cx="${X(i)}" cy="${Y(v)}" r="4" style="fill:${c}"><title>${esc(sr.name)} · ${esc(labels[i])}: ${o.pct ? Math.round(v) + '%' : fmtV(v)}</title></circle>`; });
+    if (last) s += `<text x="${X(last[0]) + 8}" y="${Y(last[1]) + 4}" class="lbl">${esc(sr.name)} <tspan class="val">${o.pct ? Math.round(last[1]) + '%' : fmtV(last[1])}</tspan></text>`; });
+  return s + '</svg>';
+}
+// Dot plot on a 0..max axis; stacks dots at equal values (shrinks radius when tall).
+function chartDots(values, max, o) {
+  o = o || {}; const w = o.w || 800, v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[x] = (counts[x] || 0) + 1);
+  const tallest = Math.max(1, ...Object.values(counts)); const r = tallest > 12 ? 4 : 6; const h = Math.max(60, tallest * (r * 2 + 1) + 34);
+  const X = x => 30 + x / (max || 1) * (w - 60);
+  let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="dot plot">`;
+  const step = max > 40 ? 10 : max > 10 ? 5 : 1; for (let x = 0; x <= max; x += step) s += `<line x1="${X(x)}" y1="${h - 26}" x2="${X(x)}" y2="${h - 20}" class="ax"/><text x="${X(x)}" y="${h - 6}" text-anchor="middle" class="tl">${x}</text>`;
+  s += `<line x1="${X(0)}" y1="${h - 26}" x2="${X(max)}" y2="${h - 26}" class="ax"/>`;
+  Object.keys(counts).map(Number).sort((a, b) => a - b).forEach(x => { for (let i = 0; i < counts[x]; i++) s += `<circle cx="${X(x)}" cy="${h - 28 - r - i * (r * 2 + 1)}" r="${r}" class="dot"><title>${x}: ${counts[x]} student${counts[x] === 1 ? '' : 's'}</title></circle>`; });
+  return s + '</svg>';
+}
+// Histogram with a bin size; bars touch (histograms do), 1px surface gap for legibility.
+function chartHist(values, max, bin, o) {
+  o = o || {}; const w = o.w || 800, h = 200, v = values.filter(x => x != null); bin = bin || (max > 40 ? 10 : max > 10 ? 5 : 1);
+  const nb = Math.max(1, Math.ceil((max + 0.0001) / bin)); const c = new Array(nb).fill(0); v.forEach(x => c[Math.min(nb - 1, Math.floor(x / bin))]++);
+  const top = niceMax(Math.max(...c, 1), c.length && Math.max(...c) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Y = n => h - 30 - n / top * (h - 50);
+  let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="histogram">`;
+  for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
+  c.forEach((n, i) => { const lo = i * bin, hi = Math.min(max, (i + 1) * bin); s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--teal)"><title>${lo}–${hi}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
+  s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${Math.max(max, nb * bin)}</text>`;
+  return s + '</svg>';
+}
+// Stem-and-leaf as a table (stems of 10 for 0–100 data, of 1 for small ranges).
+function chartStem(values, max) {
+  const v = values.filter(x => x != null).map(x => Math.round(x)).sort((a, b) => a - b); if (!v.length) return '';
+  const unit = max > 30 ? 10 : 1; const stems = {}; v.forEach(x => { const st = Math.floor(x / unit); (stems[st] = stems[st] || []).push(unit === 10 ? x % 10 : x); });
+  const lo = Math.floor(v[0] / unit), hi = Math.floor(v[v.length - 1] / unit); let rows = '';
+  for (let st = lo; st <= hi; st++) rows += `<tr><th>${unit === 10 ? st : st}</th><td>${(stems[st] || []).map(l => unit === 10 ? l : '•').join(' ')}</td></tr>`;
+  return `<table class="stem"><tbody>${rows}</tbody></table><p class="ghint">${unit === 10 ? 'Stem = tens, leaf = ones: 6 | 3 5 means 63 and 65.' : 'Stem = the value, each • is one student.'}</p>`;
+}
+// Bar graph of how many students at each value (0..max); a bar per value.
+function chartFreq(values, max, o) {
+  const v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[Math.round(x)] = (counts[Math.round(x)] || 0) + 1);
+  const items = []; for (let x = 0; x <= max; x++) items.push({ label: String(x), value: counts[x] || 0 });
+  if (items.length > 26) return chartHist(values, max, Math.ceil(max / 20), o);   // too many bars: bin them
+  const w = (o && o.w) || 800, h = 200, top = niceMax(Math.max(...items.map(i => i.value), 1), 1); const X = i => 40 + i / items.length * (w - 60), Y = n => h - 30 - n / top * (h - 50);
+  let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="bar graph">`;
+  for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
+  items.forEach((it, i) => { s += `<rect x="${X(i) + 3}" y="${Y(it.value)}" width="${Math.max(X(i + 1) - X(i) - 6, 2)}" height="${Y(0) - Y(it.value)}" rx="3" class="bar" style="fill:var(--teal)"><title>${it.label}: ${it.value} student${it.value === 1 ? '' : 's'}</title></rect><text x="${(X(i) + X(i + 1)) / 2}" y="${h - 10}" text-anchor="middle" class="tl">${it.label}</text>`; });
+  return s + '</svg>';
+}
+// Circle graph: parts [{ label, value }]; percentages direct-labeled outside, legend beside.
+function chartCircle(parts, o) {
+  o = o || {}; const tot = parts.reduce((a, p) => a + p.value, 0); if (!tot) return '<div class="lbEmpty">Nothing to plot yet.</div>';
+  const cx = 130, cy = 110, R = 84; let a0 = -Math.PI / 2; let s = `<svg class="chart circle" viewBox="0 0 ${o.w || 560} 220" role="img" aria-label="circle graph">`;
+  parts.forEach((p, i) => { if (!p.value) return; const a1 = a0 + p.value / tot * 2 * Math.PI; const big = a1 - a0 > Math.PI ? 1 : 0;
+    const x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0), x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
+    const d = p.value === tot ? `M${cx - R} ${cy}A${R} ${R} 0 1 1 ${cx + R} ${cy}A${R} ${R} 0 1 1 ${cx - R} ${cy}` : `M${cx} ${cy}L${x0} ${y0}A${R} ${R} 0 ${big} 1 ${x1} ${y1}Z`;
+    s += `<path d="${d}" style="fill:${p.color || seriesColor(i)}" stroke="#fff" stroke-width="2"><title>${esc(p.label)}: ${p.value} (${Math.round(p.value / tot * 100)}%)</title></path>`;
+    const am = (a0 + a1) / 2; if (p.value / tot >= 0.06) s += `<text x="${cx + (R + 18) * Math.cos(am)}" y="${cy + (R + 18) * Math.sin(am) + 4}" text-anchor="middle" class="val">${Math.round(p.value / tot * 100)}%</text>`; a0 = a1; });
+  parts.forEach((p, i) => { s += `<rect x="260" y="${40 + i * 26}" width="14" height="14" rx="3" style="fill:${p.color || seriesColor(i)}"/><text x="280" y="${52 + i * 26}" class="lbl">${esc(p.label)} <tspan class="tl">${p.value}</tspan></text>`; });
+  return s + '</svg>';
+}
+const CHART_CSS = `
+.chart{width:100%;height:auto;display:block}.chart .gl{stroke:var(--grid);stroke-width:1}.chart .ax{stroke:var(--navy);stroke-width:1.5}
+.chart .tl{font-size:11px;fill:var(--ink-soft)}.chart .lbl{font-size:12.5px;font-weight:700;fill:var(--navy)}.chart .val{font-size:11.5px;font-weight:900;fill:var(--navy)}.chart .inv{font-size:11px;font-weight:900;fill:#fff}
+.chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--teal);stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
+.stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
+.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}
+`;
+// The app page gets the chart styles at boot; the standalone Race/Lab export includes CHART_CSS through LAB_CSS.
+document.head.appendChild(Object.assign(document.createElement('style'), { textContent: CHART_CSS }));
+   // charts.js too
+/* ---------- home.js — the Overview: one card per class, what needs attention, and the teacher charts ----------
+   Spliced into app.js's closure. view.mode === 'home' renders here instead of the grid. */
+function gradeSummary(sec) {
+  if (!sec.grades) return null;
+  const gs = gradeAll(sec); const prev = prevGradeSnap(sec); const letters = { A: 0, B: 0, C: 0, D: 0, F: 0 }; gs.forEach(r => { if (r && r.letter) letters[r.letter]++; });
+  const avg = classAverage(sec); const pv = prev ? prev.grade.filter(v => v != null) : []; const prevAvg = pv.length ? pv.reduce((a, b) => a + b, 0) / pv.length : null;
+  const prevIdx = prev ? new Map(prev.students.map((n, i) => [n, i])) : null; let sliding = 0, missingStudents = 0;
+  sec.grades.students.forEach((name, i) => { const r = gs[i]; const miss = sec.grades.assignments.filter(a => a.status && a.status[i] === 'missing').length; if (miss) missingStudents++;
+    if (prevIdx && prevIdx.has(name)) { const j = prevIdx.get(name); const d = r && r.rounded != null && prev.grade[j] != null ? r.rounded - prev.grade[j] : null; if ((d != null && d <= -3) || miss > (prev.missing[j] || 0)) sliding++; } });
+  return { avg, prevAvg, prevDate: prev ? prev.date : null, letters, missing: sec.grades.assignments.reduce((a, x) => a + x.missing, 0), missingStudents, sliding, fit: fitCategories(sec), date: sec.grades.importedAt.slice(0, 10) };
+}
+// Everything a class could need a look at, one line each, in priority order.
+function attentionItems(sec) {
+  const out = []; const rows = buildRows(sec); const rs = rosterState(sec);
+  if (sec.pool && sec.awaitingPool) out.push({ level: 'warn', text: `waiting for the ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export`, go: 'grid' });
+  if (sec.placeholder) out.push({ level: 'warn', text: 'IXL export has no student names', go: 'grid' });
+  const ro = rows.filter(r => r.status === 'rosterOnly').length, am = rows.filter(r => r.status === 'ambiguous').length, io = rows.filter(r => r.status === 'ixlOnly').length;
+  if (ro || am || io) out.push({ level: 'warn', text: [ro ? `${ro} on the roster not in IXL` : '', am ? `${am} with two IXL matches` : '', io ? `${io} in IXL not on the roster` : ''].filter(Boolean).join(' · '), go: 'grid' });
+  if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings' });
+  if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally — ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid' });
+    const fit = fitCategories(sec); if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' }); if (!sec.grades.overall) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' }); }
+  const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid' });
+  const od = overdue(sec); if (od) out.push({ level: 'info', text: `IXL export is ${plural(od, 'day')} old`, go: 'import' });
+  if (sec.grades && state.settings.remindDays && ageDays(sec.grades.importedAt) > state.settings.remindDays) out.push({ level: 'info', text: `Focus gradebook is ${plural(ageDays(sec.grades.importedAt), 'day')} old`, go: 'import' });
+  if (!sec.grades && !sec.awaitingPool) out.push({ level: 'info', text: 'no Focus gradebook yet', go: 'import' });
+  return out;
+}
+function renderHome() {
+  const secs = state.order.map(k => state.sections[k]); const race = leaderboardData(); const byKey = new Map(race.map(r => [r.key, r]));
+  const H = state.settings.hideNames;
+  const card = s => { const r = byKey.get(s.key); const g = gradeSummary(s); const att = attentionItems(s); const warn = att.filter(a => a.level === 'warn').length;
+    const checks = s.grades ? reconcile(s) : []; const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK).length;
+    const focusChip = !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? '<span class="hchip muted">no IXL columns in Focus</span>' : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : '<span class="hchip ok">Focus ✓</span>';
+    return `<button class="hcard ${warn ? 'warn' : ''}" data-go="${esc(s.key)}">
+      <div class="hhead"><b>${esc(s.label)}</b><small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small></div>
+      <div class="hnums">
+        <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b><span>${r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : 'first import'}</span></div>
+        <div><small>Focus average</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b><span>${g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? 'first gradebook' : ''}</span></div>
+        <div><small>Missing work</small><b>${g ? g.missing : '—'}</b><span>${g ? plural(g.missingStudents, 'student') : ''}</span></div>
+        <div><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b><span>${g && g.prevDate ? 'down 3+ or more missing' : 'needs 2 gradebooks'}</span></div>
+      </div>
+      <div class="hchips">${focusChip}${g ? `<span class="hchip letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${g.letters[l]}</em></i>`).join('')}</span>` : ''}${warn ? `<span class="hchip warn">${plural(warn, 'thing')} to look at</span>` : ''}</div>
+    </button>`; };
+  const att = secs.flatMap(s => attentionItems(s).map(a => ({ ...a, sec: s })));
+  const attList = att.length ? `<ul class="hatt">${att.map(a => `<li class="${a.level}"><button data-go="${esc(a.sec.key)}" data-where="${a.go}"><b>${esc(a.sec.label)}</b> — ${esc(a.text)}</button></li>`).join('')}</ul>` : '<p class="ghint">Nothing needs attention.</p>';
+  // charts
+  const withHist = secs.filter(s => (s.gradeHistory || []).length); const dates = [...new Set(withHist.flatMap(s => s.gradeHistory.map(h => h.date)))].sort();
+  const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, values: dates.map(d => { const h = s.gradeHistory.find(h => h.date === d); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
+  const ixlBars = race.length ? chartBars(race.map(r => ({ label: r.label, value: r.completion * 100, hint: `${r.done} of ${r.possible} skill-points` })), { pct: true, max: 100, labelW: 180, aria: 'IXL assigned work at goal by class' }) : '';
+  const missLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, values: dates.map(d => { const h = s.gradeHistory.find(h => h.date === d); return h ? h.missing.reduce((a, b) => a + b, 0) : null; }) })), { min: 0, h: 220, aria: 'missing assignments by import' }) : '';
+  const lettersRows = secs.filter(s => s.grades).map(s => { const g = gradeSummary(s); return { label: s.label, parts: g.letters }; });
+  const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: { A: '#1baf7a', B: '#2a78d6', C: '#eda100', D: '#eb6834', F: '#e87ba4' }, labelW: 180, aria: 'letter grades by class' }) : '';
+  const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
+  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''}</span><div class="spacer"></div><div class="legend"><span>Tap a class to open it</span></div>`;
+  $('#bar').classList.remove('detail');
+  $('#gridwrap').innerHTML = `<div class="home">
+    <div class="hcards">${secs.map(card).join('')}</div>
+    <div class="gtwo">
+      <section class="gsec"><h3>Needs attention</h3>${attList}</section>
+      <section class="gsec"><h3>IXL work at goal by class</h3>${ixlBars || '<p class="ghint">Import an IXL export.</p>'}</section>
+    </div>
+    <section class="gsec"><h3>Focus class average by import</h3>${avgLines}</section>
+    <div class="gtwo">
+      <section class="gsec"><h3>Letter grades by class</h3>${lettersChart || '<p class="ghint">Import a Focus gradebook.</p>'}</section>
+      <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
+    </div>
+  </div>`;
+  $('#gridwrap').querySelectorAll('[data-go]').forEach(b => b.onclick = e => { e.stopPropagation(); const where = b.dataset.where || 'grid'; state.active = b.dataset.go;
+    if (where === 'import') { $('#file').click(); return; }
+    view = where === 'grades' && state.sections[state.active].grades ? { mode: 'grades', unit: null } : { mode: 'units', unit: null }; save(); render(); if (where === 'settings') openSettings(); });
+}
+     // home.js too
+let view = { mode: 'home', unit: null };   // opens on the Overview
+let noticesOpen = false;
 let search = '';
 
 // Gradebook data is saved with everything else. One earlier build kept it in sessionStorage only; anything still
@@ -1099,7 +1303,7 @@ function load() {
 function migrate() {
   const st = state.settings || {};
   state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
-    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
+    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line'].includes(st.labKind) ? st.labKind : 'box', labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null } };   // the unit each course is working in: everything up to it is assigned, later units are listed as upcoming   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
   state.assigned = state.assigned && typeof state.assigned === 'object' ? state.assigned : {}; state.assigned.acc = state.assigned.acc || {}; state.assigned.on = state.assigned.on || {};
@@ -1597,7 +1801,7 @@ function labSeries(prep, id) {
     else if (id.startsWith('gb:')) { const a = s.grades && s.grades.assignments.find(a => a.name === id.slice(3)); if (!a) return null; vals = a.values; missing = a.missing; excused = a.excused || 0; max = a.max || Math.max(...vals.filter(v => v != null), 1); unit = a.percent ? 'percent' : a.max ? 'points out of ' + a.max : 'score'; }
     else return null;
     const st = stats(vals) || { n: 0 };
-    return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: id.split(':')[0] };
+    return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: id.split(':')[0], values: vals, thr: s.threshold, sec: s };
   }).filter(Boolean);
 }
 const fmtN = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
@@ -1643,14 +1847,38 @@ function valuesMarkup(st, tukey) {
     ${group(upper, 'q', `upper half · median = Q3 = ${fmtN(st.q3)}`)}
   </div>`;
 }
+// One class's plot in the chosen form. Box plots keep their own drawing (whiskers, outliers, dots); the rest use charts.js.
+function labPlot(kind, x, scale, id, o) {
+  const vals = x.values.filter(v => v != null); const max = Math.max(scale, 1);
+  if (kind === 'dots') return chartDots(vals, max);
+  if (kind === 'hist') return chartHist(vals, max, o.bin || 0);
+  if (kind === 'stem') return chartStem(vals, max);
+  if (kind === 'bar') return chartFreq(vals, max);
+  if (kind === 'circle') {
+    if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: 'var(--teal)' }, { label: 'Below goal', value: below, color: '#E6D5B8' }, { label: 'Not started', value: x.missing, color: '#D8C5A0' }]); }
+    if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, value: b[k], color: ['#1baf7a', '#2a78d6', '#eda100', '#eb6834', '#e87ba4'][i] }))); }
+    const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1; const rng = i => `${Math.ceil(m * i / 4)}–${Math.floor(m * (i + 1) / 4) - (i < 3 ? (Number.isInteger(m / 4) ? 1 : 0) : 0)}`;
+    return chartCircle([0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${i === 3 ? Math.ceil(m * 3 / 4) + '–' + m : rng(i)} of ${m})`, value: q[i], color: ['#D8C5A0', '#E6D5B8', '#40E0D0', '#127A85'][i] })));
+  }
+  return boxSVG(x.st, scale, 800, o);
+}
+const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph']];
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
-  statsLevel = +statsLevel || 0;
+  statsLevel = +statsLevel || 0; const kind = state.settings.labKind || 'box';
   const { list, secs } = labDatasets(prep);
   if (!secs.length) return `<div class="lbEmpty">No ${prep === 'acc' ? 'accelerated' : 'on-level'} classes imported yet.</div>`;
   if (!list.some(d => d.id === unitName)) unitName = list[0].id;
   const ds = list.find(d => d.id === unitName);
   const seriesAll = labSeries(prep, unitName);
   const series = seriesAll.filter(x => x.st.n >= MIN_N), thin = seriesAll.filter(x => x.st.n < MIN_N);
+  if (kind === 'line') {   // every class on one chart — the comparison is the point
+    const asOfL = secs.map(s => s.date).filter(Boolean).sort().pop(); let body = '';
+    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = Object.values(h.per); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300 }); }
+    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, aria: 'class average on this assignment by import' }); }
+    else body = '<div class="labNotYet">A line graph needs data over time — pick <b>All units · skills at goal</b> or a Focus assignment.</div>';
+    return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(list.find(d => d.id === unitName).label)} · class average by import · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOfL ? ' · ' + fmtDate(asOfL) : ''}</div></div>
+      <div class="labLegend"><span class="lgNote">Line graph · one line per class · class average by import date</span></div><div class="labRows"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
+  }
   let scale = Math.max(...series.map(x => x.max), 1);
   if (unitName === 'unit:__all__' || series.some(x => x.st.max > x.max)) { const top = Math.max(...series.map(x => Math.max(x.st.max, unitName === 'unit:__all__' ? 0 : x.max)), 1); const step = top > 100 ? 20 : top > 40 ? 10 : 5; scale = Math.ceil((top + 1) / step) * step; }
   const unitLabel = seriesAll.length ? seriesAll[0].unit : 'points';
@@ -1658,7 +1886,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
   const row = x => `<div class="labRow">
       <div class="labName">${esc(x.name)}<small><b>n = ${x.st.n}</b>${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused ? ` · ${x.excused} excused` : ''}</small></div>
-      <div class="labPlot">${boxSVG(x.st, scale, 800, { stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 })}</div>
+      <div class="labPlot">${labPlot(kind, x, scale, unitName, { stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1, bin: state.settings.labBin })}</div>
       ${valuesOn ? valuesMarkup(x.st, tukey) : ''}
       ${statsLevel > 0 ? `<div class="labStats">
         ${cell('min', fmtN(x.st.min))}${cell('Q1', fmtN(x.st.q1))}${cell('median', fmtN(x.st.median))}${cell('Q3', fmtN(x.st.q3))}${cell('max', fmtN(x.st.max))}${cell('range', fmtN(x.st.range))}${cell('IQR', fmtN(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fmtN).join(', ') : 'none')}
@@ -1667,11 +1895,11 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
     </div>`;
   const thinRow = x => `<div class="labRow thin"><div class="labName">${esc(x.name)}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
   return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(ds.label)} · ${esc(unitLabel)} per student · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
-    <div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">whiskers stop at the last value inside 1.5 × IQR</span>' : '<span class="lgNote">whiskers: minimum to maximum</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>
+    ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${esc(LAB_KINDS.find(k => k[0] === kind)[1])} · one row per class · ${kind === 'hist' ? 'bars count students in each range' : kind === 'dots' ? 'one dot per student' : kind === 'stem' ? 'each leaf is one student' : kind === 'bar' ? 'bar height = how many students got that value' : kind === 'circle' ? 'share of the class in each slice' : 'class average by import date'}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">whiskers stop at the last value inside 1.5 × IQR</span>' : '<span class="lgNote">whiskers: minimum to maximum</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
     <div class="labRows">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
     ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">Stats are hidden — read the plots first. Which class has the higher median? The bigger spread?</div>' : ''}`;
 }
-const LAB_CSS = `
+const LAB_CSS = CHART_CSS + `
 .labLegend{display:flex;gap:16px;flex-wrap:wrap;font-weight:700;font-size:clamp(12px,1.2vw,15px);color:var(--navy)}
 .labLegend i{display:inline-block;width:16px;height:12px;vertical-align:-1px;margin-right:6px;border-radius:3px}
 .lgNote{color:var(--teal)}
@@ -1728,10 +1956,12 @@ function renderLeaderboard() {
   const controls = lab
     ? `${hasBoth ? `<div class="seg lbFocus">${[['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-prep="${k}" class="${st.labPrep === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
        <select id="labUnit" class="labSelect" aria-label="Data set">${groups.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label)}</option>`).join('')}</optgroup>`).join('')}</select>
+       <select id="labKind" class="labSelect" aria-label="Show as">${LAB_KINDS.map(([k, n]) => `<option value="${k}" ${st.labKind === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+       ${st.labKind === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${[1, 2, 5, 10].map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
        <button class="pill small" id="labStats" aria-pressed="${st.labStats > 0}">${revealLabel}</button>
-       <button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>
+       ${st.labKind === 'box' ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
        <button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>
-       <button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>`
+       ${st.labKind === 'box' ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`
     : (hasBoth ? `<div class="seg lbFocus">${[['both', 'Both'], ['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-focus="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '');
   el.innerHTML = `<div class="lbWrap">${lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, f)}</div>
     <div class="lbTools">${tabs}${controls}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
@@ -1739,6 +1969,8 @@ function renderLeaderboard() {
   el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { st.lbTab = b.dataset.tab; save(); renderLeaderboard(); });
   el.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { st.labPrep = b.dataset.prep; st.labUnit = ''; save(); renderLeaderboard(); });
   const sel = $('#labUnit'); if (sel) sel.onchange = () => { st.labUnit = sel.value; save(); renderLeaderboard(); };
+  const lk = $('#labKind'); if (lk) lk.onchange = () => { st.labKind = lk.value; save(); renderLeaderboard(); };
+  const lb = $('#labBin'); if (lb) lb.onchange = () => { st.labBin = Number(lb.value); save(); renderLeaderboard(); };
   const ls = $('#labStats'); if (ls) ls.onclick = () => { st.labStats = (st.labStats + 1) % 3; save(); renderLeaderboard(); };
   const ld = $('#labDots'); if (ld) ld.onclick = () => { st.labDots[st.labUnit] = !dotsOn; save(); renderLeaderboard(); };
   const lv = $('#labValues'); if (lv) lv.onclick = () => { st.labValues = !st.labValues; save(); renderLeaderboard(); };
@@ -1963,20 +2195,28 @@ function render() {
   $('#btnHide').setAttribute('aria-pressed', String(!state.settings.hideNames));   // pressed = names showing
   $('#btnHide').title = state.settings.hideNames ? 'Names are hidden (initials only) — tap to show them' : 'Names are showing — tap to hide them before projecting';
   $('#btnHide').textContent = 'Names';
+  $('#btnHome').classList.toggle('hidden', !has);
+  $('#btnHome').setAttribute('aria-pressed', String(view.mode === 'home'));
+  $('#btnDetails').classList.toggle('hidden', !has);
+  $('#btnDetails').setAttribute('aria-pressed', String(!!state.settings.details));
+  document.body.classList.toggle('details', !!state.settings.details);
   if (!has) return;
   if (!state.sections[state.active]) state.active = state.order[0];
-  renderTabs(); renderNotices(); renderBar(); renderGrid();
+  renderTabs();
+  if (view.mode === 'home') { $('#notices').innerHTML = ''; renderHome(); return; }
+  renderNotices(); renderBar(); renderGrid();
 }
 function sectionWarn(s) { const rows = buildRows(s); const rs = rosterState(s); return rows.some(r => r.status !== 'ok') || s.placeholder || s.allBlank || (rs.hasText && !rs.count) || (!rs.count && !s.skipRoster); }
 function renderTabs() {
   $('#tabs').innerHTML = state.order.map(k => {
     const s = state.sections[k]; const warn = sectionWarn(s);
-    return `<button class="tab ${k === state.active ? 'active' : ''} ${warn ? 'warn' : ''}" role="tab" aria-selected="${k === state.active}" data-k="${esc(k)}">
+    const active = k === state.active && view.mode !== 'home';
+    return `<button class="tab ${active ? 'active' : ''} ${warn ? 'warn' : ''}" role="tab" aria-selected="${active}" data-k="${esc(k)}">
       <span class="n">${esc(s.label)}</span>
       <span class="m"><span class="badge">Goal ${s.threshold}</span> ${plural(s.students.length, 'student')} · <span title="IXL export of ${esc(fmtDate(dataDate(s)))}">${overdue(s) ? `<span class="age">${ageText(dataDate(s))}</span>` : (fmtDate(dataDate(s)) || '')}</span></span>${warn ? '<span class="hidden">needs attention</span>' : ''}
     </button>`;
   }).join('');
-  $('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { state.active = b.dataset.k; view = { mode: 'units', unit: null }; search = ''; $('#search').value = ''; save(); render(); });
+  $('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { state.active = b.dataset.k; view = { mode: 'units', unit: null }; noticesOpen = false; search = ''; $('#search').value = ''; save(); render(); });
 }
 function renderNotices() {
   const s = state.sections[state.active]; const rows = buildRows(s); const el = $('#notices'); el.innerHTML = '';
@@ -1999,6 +2239,12 @@ function renderNotices() {
     else if (checks.length && !stale.length) el.innerHTML += `<div class="notice soft"><span>✓</span><span><b>Focus matches Tally</b> for ${checks.map(c => esc(c.unit.short)).join(', ')} (gradebook from ${fmtDate(s.grades.importedAt.slice(0, 10))}).</span></div>`;
     else if (stale.length) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>Focus matches what you copied</b>, but ${stale.map(c => `${esc(c.unit.short)}: ${plural(c.counts.stale, 'student')}`).join(' · ')} have moved up since. Copy again when you're ready.</span></div>`; }
   if (loose.length) el.innerHTML += `<div class="notice soft"><span>≈</span><span><b>${plural(loose.length, 'name')} matched loosely</b> (nickname or extra name)${H ? '' : ': ' + esc(loose.map(r => r.display + ' → ' + r.ixlName).join('; '))}. Check once; tap the name to change it.</span></div>`;
+  if (!state.settings.details && el.children.length) {   // calm: one status line, tap to expand
+    const warn = [...el.children].filter(n => !n.classList.contains('info') && !n.classList.contains('soft')).length, info = [...el.children].filter(n => n.classList.contains('info')).length, ok = [...el.children].filter(n => n.classList.contains('soft')).length;
+    const parts = []; if (warn) parts.push(`<b>${plural(warn, 'thing')} to look at</b>`); if (info) parts.push(plural(info, 'note')); if (!warn && !info && ok) parts.push('all good');
+    el.innerHTML = `<button class="nstatus ${warn ? 'warn' : ok && !info ? 'ok' : ''}" id="nToggle" aria-expanded="${noticesOpen}"><span>${warn ? '⚠︎' : '✓'}</span>${parts.join(' · ')}<i>${noticesOpen ? '▴' : '▾'}</i></button><div class="nfold ${noticesOpen ? '' : 'hidden'}">${el.innerHTML}</div>`;
+    $('#nToggle').onclick = () => { noticesOpen = !noticesOpen; renderNotices(); };
+  }
   el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openSettings());
   el.querySelectorAll('[data-gbroster]').forEach(b => b.onclick = () => { s.roster = gradebookRosterText(s.grades); s.rosterAt = new Date().toISOString(); s.skipRoster = false; if (s.pool) materialize(s); save(); render(); toast(`Roster for ${esc(s.label)} replaced with the gradebook's ${plural(s.grades.students.length, 'student')}.`, false); });
   el.querySelectorAll('[data-import]').forEach(b => b.onclick = () => $('#file').click());
@@ -2008,14 +2254,15 @@ function renderBar() {
   let html = '';
   if (view.mode === 'units') {
     const hid = units.filter(u => u.hidden).length;
-    html = `<h2>${esc(s.label)}</h2><span class="meta">${units.length} units · ${s.skills.length} skills · ${plural(s.students.length, 'student')} · one point per skill at goal (<b>${t}</b>) · IXL export of ${fmtDate(dataDate(s)) || '?'}${dataDate(s) ? ` (${ageText(dataDate(s))})` : ''}</span>
+    html = `<h2>${esc(s.label)}</h2><span class="meta det">${units.length} units · ${s.skills.length} skills · ${plural(s.students.length, 'student')} · one point per skill at goal (<b>${t}</b>) · IXL export of ${fmtDate(dataDate(s)) || '?'}${dataDate(s) ? ` (${ageText(dataDate(s))})` : ''}</span>
       <div class="spacer"></div>
       ${(() => { const cu = units.find(u => u.current); return cu ? `<button class="pill toggle" id="onlyCur" aria-pressed="${!!state.settings.onlyCurrent[s.prep]}" title="Show only the unit this course is working in">${state.settings.onlyCurrent[s.prep] ? 'Just ' + esc(cu.short) : 'Just ' + esc(cu.short)}</button>` : ''; })()}
       ${hid && !state.settings.onlyCurrent[s.prep] ? `<button class="pill toggle" id="toggleAll" aria-pressed="${!!state.settings.showAllUnits}">${plural(hid, 'unassigned unit')}</button>` : ''}
-      <button class="pill toggle" id="printOwed" title="Printer-friendly page: what each student still owes">Still owed</button>
+      <span class="det"><button class="pill toggle" id="printOwed" title="Printer-friendly page: what each student still owes">Still owed</button></span>
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are listed as upcoming">Working in <select id="curUnit"><option value="">— pick —</option>${units.filter(u => u.num > 0).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
-      <div class="legend"><span>Tap a unit for skill scores</span></div>`;
+      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More">⋯</button><div class="menu hidden" id="moreMenu"><button id="mStillOwed">Still owed (print)</button>${hid && !state.settings.onlyCurrent[s.prep] ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}<button id="mDetails">${state.settings.details ? 'Calm view' : 'Details view'}</button></div></div>
+      <div class="legend det"><span>Tap a unit for skill scores</span></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
   } else {
@@ -2036,6 +2283,8 @@ function renderBar() {
   const oc = $('#onlyCur'); if (oc) oc.onclick = () => { state.settings.onlyCurrent[s.prep] = !state.settings.onlyCurrent[s.prep]; save(); render(); };
   const hu = $('#hideUnit'); if (hu) hu.onclick = () => { const u = units.find(u => u.name === view.unit); state.assigned[s.prep][u.name] = !u.assigned; save(); render(); toast(`${esc(u.short)} ${!u.assigned ? 'assigned' : 'unassigned'} for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); };
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
+  const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu'); mb.onclick = e => { e.stopPropagation(); menu.classList.toggle('hidden'); mb.setAttribute('aria-expanded', String(!menu.classList.contains('hidden'))); }; document.addEventListener('click', () => { const mm = $('#moreMenu'); if (mm) mm.classList.add('hidden'); }, { once: true });
+    const so = $('#mStillOwed'); if (so) so.onclick = () => openStillOwed(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; const md = $('#mDetails'); if (md) md.onclick = () => { state.settings.details = !state.settings.details; save(); render(); }; }
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
   const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count; later units are upcoming.` : 'No current unit — units count once a quarter of the class has started them.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
@@ -2079,7 +2328,7 @@ function renderGrid() {
     const shownUnits = onlyCur ? units.filter(u => u.current) : units.filter(u => !u.hidden || state.settings.showAllUnits);
     const checks = reconcile(s);
     let h = `<table class="grid"><thead><tr><th class="idx" scope="col">#</th><th class="stu" scope="col">Student</th>`;
-    shownUnits.forEach(u => { const ui = units.indexOf(u); h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="usub">${u.upcoming ? 'upcoming · ' : u.current ? 'now · ' : ''}out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span>${s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}${(() => { const rc = checks.find(x => x.unit.name === u.name); if (!rc) return ''; const bad = rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1); return `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : 'Focus ✓'}</button>`; })()}<button class="copy" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></th>`; });
+    shownUnits.forEach(u => { const ui = units.indexOf(u); h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="usub">${u.upcoming ? 'upcoming · ' : u.current ? 'now · ' : ''}out of ${u.total}<span class="det">${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span></span>${s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}${(() => { const rc = checks.find(x => x.unit.name === u.name); if (!rc) return ''; const bad = rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1); return `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : 'Focus ✓'}</button>`; })()}<button class="copy" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${shownUnits.length + 1}">No students match “${esc(search)}”.</td></tr>`;
     rows.forEach(r => {
@@ -2632,6 +2881,8 @@ $('#file').onchange = e => { importFiles([...e.target.files]); e.target.value = 
 $('#btnSettings').onclick = () => openSettings();
 $('#btnGuide').onclick = openGuide;
 $('#btnHide').onclick = () => { state.settings.hideNames = !state.settings.hideNames; save(); render(); };
+$('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
+$('#btnDetails').onclick = () => { state.settings.details = !state.settings.details; save(); render(); };
 $('#btnLb').onclick = enterProjected;
 $('#search').oninput = e => { search = e.target.value; renderGrid(); };
 let dragDepth = 0;

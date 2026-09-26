@@ -12,5 +12,6 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tally-test-'));
 // A suite that needs a fixture the repo doesn't ship (scrubbed real exports) calls this first.
 const need = (...files) => { const missing = files.filter(f => !fs.existsSync(path.join('fixtures', f))); if (missing.length) { console.log('SKIP missing fixtures: ' + missing.join(', ')); process.exitCode = 0; process.exit(); } };
 // Suites written when every unit counted: turn off "first N units aren't assigned" right after the page loads.
-const unskip = p => p.evaluate(() => { const T = window.__tally; T.state.settings.skipFirst = { acc: 0, on: 0 }; T.save(); });
-module.exports = { chromium, fs, path, exe, check, done, tmp, need, unskip };
+const unskip = p => p.evaluate(() => { const T = window.__tally; T.state.settings.skipFirst = { acc: 0, on: 0 }; T.state.settings.details = true; T.save(); });   // also the dense (Details) view these suites were written against
+const dense = p => p.evaluate(() => { const T = window.__tally; T.state.settings.details = true; T.save(); T.render(); });
+module.exports = { chromium, fs, path, exe, check, done, tmp, need, unskip, dense };

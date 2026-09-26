@@ -58,6 +58,7 @@ per-section-file era and many items in them are now done).
 - **Privacy**: projected mode forces initials; the one-student card has a near-opaque blurred backdrop and
   dismisses toasts; the shipped build has no `window.__tally` (test build keeps it); DM Sans is embedded so
   the page makes no network requests.
+- **Command center** (26 Sep, evening): opens on an Overview of all classes; calm grid with a Details toggle (`settings.details`); Data Lab "Show as" graph types (`settings.labKind`, `labBin`); charts in `charts.js` use the validated categorical order for class-vs-class and the house teal for single series. See `COMMAND_CENTER.md`.
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 
@@ -84,12 +85,12 @@ per-section-file era and many items in them are now done).
 
 ## Working on the code
 
-- Source: `app.html` (markup + CSS), `parser.js`, `grades.js`, `app.js` (an IIFE; `grades.js` is spliced
-  into it at `/*__GRADES__*/` so they share state), `scrub.src.html`. `python3 build.py` writes
+- Source: `app.html` (markup + CSS), `parser.js`, `grades.js`, `charts.js`, `home.js`, `app.js` (an IIFE; the
+  three are spliced into it at `/*__GRADES__*/`, `/*__CHARTS__*/`, `/*__HOME__*/` so they share state), `scrub.src.html`. `python3 build.py` writes
   `Tally.html`, `index.html` and `Scrub.html`; `--test` keeps the debug handle.
 - Tests: `npm test` (builds the test build, runs every `tests/*.js`, restores the shipped build). Suites
   write only to a temp dir. Fixtures are synthetic or scrubbed; never commit unscrubbed exports.
-  `tests/lib.js` has `unskip(p)` for suites written when every unit counted.
+  `tests/lib.js` has `unskip(p)` (every unit counts + Details view) and `dense(p)` (Details view) for suites written before calm mode.
 - Fixtures worth knowing: `ixl_7T1A_scrubbed_*.csv` + `focus_gradebook_scrubbed.csv` +
   `focus_roster_scrubbed.txt` are one real class; `course_acc_*` / `course_on_*` are the real course-wide
   exports; `focus_gradebook_pool_p1/p2.csv` are synthetic gradebooks of pool names (7 names in the real
