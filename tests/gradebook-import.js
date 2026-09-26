@@ -49,7 +49,15 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   await p.click('#labTukey'); await p.waitForTimeout(300);
   await p.screenshot({path:path.join(tmp,'shot17.png')});
   await p.reload(); await p.waitForTimeout(500);
-  check((await p.evaluate(()=>window.__tally.state.sections['1205050-7T3A'].grades.assignments.length))===5,'gradebook persists');
+  check((await p.evaluate(()=>window.__tally.state.sections['1205050-7T3A'].grades.assignments.length))===5,'gradebook survives a reload of the tab');
+  // scores live in sessionStorage only: never in localStorage, gone in a fresh tab; the column→unit map persists
+  const store=await p.evaluate(()=>({ ls: localStorage.getItem('tally.v1'), ss: sessionStorage.getItem('tally.v1.gradebooks') }));
+  check(!/"grades"/.test(store.ls) && !/"assignments"/.test(store.ls) && /"assignments"/.test(store.ss),'gradebook scores are in sessionStorage, not localStorage');
+  const ls=JSON.parse(store.ls); const fresh=await ctx.newPage(); await fresh.evaluate(()=>{}); // new page shares the context's sessionStorage, so simulate a closed tab with a new context
+  const ctx2=await b.newContext({viewport:{width:1400,height:900}}); const q=await ctx2.newPage(); await q.goto('file://'+path.resolve('Tally.html'));
+  await q.evaluate(v=>localStorage.setItem('tally.v1',v), store.ls); await q.reload(); await q.waitForTimeout(500);
+  check((await q.evaluate(()=>{ const s=window.__tally.state.sections['1205050-7T3A']; return [!!s.grades, s.students.length>0]; })).join()==='false,true','a new tab has the IXL data but no gradebook');
+  await ctx2.close(); await fresh.close();
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();
 })();

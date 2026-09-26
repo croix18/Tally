@@ -27,7 +27,7 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   const txt=await p.textContent('#lb'); check(!/Nguyen|Smith|Garcia/.test(txt),'no student names on leaderboard');
   check(await p.evaluate(()=>getComputedStyle(document.querySelector('#top')).visibility)==='hidden','teacher UI hidden behind leaderboard');
   check((await p.evaluate(()=>window.__tally.state.settings.hideNames))===true,'entering projected mode forces Hide names');
-  check(await p.locator('.lbTie').count()===3 && await p.locator('.trophy').count()===1,'tied classes labelled; trophy only for a clear leader in a multi-class league');
+  check(await p.locator('.lbTie:not(.lead)').count()===3 && await p.locator('.trophy').count()===1 && await p.locator('.lbTie.lead').count()>=1,'tied classes labelled; trophy only for a clear leader; furthest-along tag present');
   check(await p.locator('#lbDownload').count()===0,'no Save button on the student screen');
   await p.screenshot({path:path.join(tmp,'shot12.png')});
   // hold to exit: short tap does nothing, long hold exits
@@ -66,5 +66,29 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   fs.copyFileSync(fp,path.join(tmp,'race.html')); const p2=await ctx.newPage(); await p2.goto('file://'+path.join(tmp,'race.html')); await p2.waitForTimeout(1500); await p2.screenshot({path:path.join(tmp,'shot13.png')}); await p2.close();
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
   console.log('errors:',errs); check(errs.length===0,'no errors');
+  // --- movement ranking with one baseline per league ---
+  // 7T3A: snapshots 09-10 → 09-25, half the class up one skill. 7T4A: 09-01, 09-22, 09-25; all but one student up since 09-01.
+  // The on-level baseline is the earliest "previous" date (09-10), so 7T4A must be measured from its 09-01 snapshot, not 09-22.
+  const mv=await p.evaluate(()=>{ const T=window.__tally; const S=T.state.sections;
+    const mk=(s,date,f)=>{ const cur=s.history[s.history.length-1]; const per={}; Object.keys(cur.per).forEach((k,i)=>per[k]=Math.max(0,cur.per[k]-f(i))); return {date,at:cur.at,thr:cur.thr,students:cur.students,per}; };
+    const a=S['1205050-7T3A'], b=S['1205050-7T4A'];
+    a.history=[mk(a,'2026-09-10',i=>i%2?1:0), a.history[a.history.length-1]];
+    const n=Object.keys(b.history[b.history.length-1].per).length;
+    b.history=[mk(b,'2026-09-01',i=>i===n-1?0:2), mk(b,'2026-09-22',i=>0), b.history[b.history.length-1]];
+    return T.leaderboardData().filter(r=>r.prep==='on').map(r=>({k:r.key.slice(-4),rank:r.rank,active:r.active==null?null:+r.active.toFixed(2),prev:r.prevDate,movers:r.movers,measured:r.measured,c:+r.completion.toFixed(2)})); });
+  console.log(JSON.stringify(mv));
+  const g=k=>mv.find(r=>r.k===k);
+  check(g('7T4A').prev==='2026-09-01' && g('7T3A').prev==='2026-09-10','both classes measured from the league baseline (09-10 → 7T4A falls back to its 09-01 snapshot)');
+  check(g('7T4A').rank===1 && g('7T3A').rank===2,'ranked by share of class that moved up, not by completion');
+  check(g('7T2A').active===null && g('7T5A').active===null && g('7T2A').rank===3 && g('7T5A').rank===4,'classes without a baseline rank below, by completion');
+  await p.click('#btnLb'); await p.waitForTimeout(400); const lbt2=await p.textContent('#lb');
+  check(/nearly all\s*moved up/i.test(lbt2) && /48% moved up/.test(lbt2),'headline hides a 1–2 student remainder ("nearly all") and shows the percent otherwise');
+  check(/Ranked by the share of each class that moved up/.test(lbt2) && /furthest along/.test(lbt2),'subtitle states the rule; furthest-along tag shown');
+  await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
+  // bunched data: IQR of 0 or 1 switches the outlier rule off
+  const bunch=await p.evaluate(()=>{ const S=window.__tally.stats; const a=S([5,5,5,5,5,5,5,5,5,5,5,5,0,10]); const b=S([7,7,7,8,8,8,8,8,8,8,8,8,8,2,14]); const c=S([1,5,6,7,7,8,8,9,9,10,11,12,30]); return {a:[a.iqr,a.bunched,a.outliers.length,a.wLo,a.wHi], b:[b.iqr,b.bunched,b.outliers.length], c:[c.iqr,c.bunched,c.outliers.length]}; });
+  check(bunch.a[0]===0 && bunch.a[1]===true && bunch.a[2]===0 && bunch.a[3]===0 && bunch.a[4]===10,'IQR 0: no outliers, whiskers min–max: '+JSON.stringify(bunch.a));
+  check(bunch.b[0]===1 && bunch.b[1]===true && bunch.b[2]===0,'IQR 1: rule off too');
+  check(bunch.c[1]===false && bunch.c[2]===1,'normal spread still flags the 30');
   await b.close(); done();
 })();

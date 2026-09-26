@@ -10,8 +10,18 @@ let state = null;
 let view = { mode: 'units', unit: null };
 let search = '';
 
+// Gradebook scores (every student's grade on every assignment) never go in localStorage: on a shared classroom
+// computer they would sit next to the roster for good. They live in sessionStorage instead — they survive a reload of
+// the tab and disappear when it closes — so a Focus check needs the gradebook re-imported each day. The column→unit
+// mapping (gbUnitMap) holds no scores and persists normally.
+const GB_KEY = LS_KEY + '.gradebooks';
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(LS_KEY)); if (s && s.sections) return s; } catch (e) {}
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_KEY)); if (!s || !s.sections) return null;
+    try { const g = JSON.parse(sessionStorage.getItem(GB_KEY) || '{}'); for (const k in g) if (s.sections[k] && g[k] && Array.isArray(g[k].assignments)) s.sections[k].grades = g[k]; } catch (e) {}
+    for (const k in s.sections) if (s.sections[k] && s.sections[k].grades && !s.sections[k].grades.assignments) delete s.sections[k].grades;   // gradebooks saved by older builds
+    return s;
+  } catch (e) {}
   return null;
 }
 function migrate() {
@@ -41,7 +51,13 @@ function migrate() {
   for (const k in state.sections) if (!state.order.includes(k)) state.order.push(k);
 }
 function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (fallback != null ? fallback : DEFAULT_THR.on) : Math.max(1, Math.min(100, n)); }
-function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { toast('Could not save to this browser (storage blocked). Your data stays until you close the tab.', true); } }
+function save() {
+  try {
+    const gb = {}; for (const k in state.sections) if (state.sections[k].grades) gb[k] = state.sections[k].grades;
+    localStorage.setItem(LS_KEY, JSON.stringify(state, (key, v) => key === 'grades' ? undefined : v));
+    try { if (Object.keys(gb).length) sessionStorage.setItem(GB_KEY, JSON.stringify(gb)); else sessionStorage.removeItem(GB_KEY); } catch (e) {}
+  } catch (e) { toast('Could not save to this browser (storage blocked). Your data stays until you close the tab.', true); }
+}
 
 /* ---------- names ---------- */
 function norm(s) {
@@ -276,6 +292,15 @@ function assignedUnitsForPrep(prep) {
 }
 function leaderboardData() {
   const out = []; const assignedByPrep = { acc: assignedUnitsForPrep('acc'), on: assignedUnitsForPrep('on') };
+  // One baseline date per prep, so every class in a league is measured over the same window even when they
+  // were imported on different days: the latest date on which every class (that has any earlier snapshot)
+  // already had one. Each class then compares its newest snapshot with its latest snapshot on or before that date.
+  const baseline = {};
+  ['acc', 'on'].forEach(prep => {
+    const dates = state.order.map(k => state.sections[k]).filter(s => s.prep === prep && !s.placeholder && s.history && s.history.length > 1)
+      .map(s => { const cur = s.history[s.history.length - 1]; const prev = s.history.filter(h => h.date < cur.date).pop(); return prev ? prev.date : null; }).filter(Boolean);
+    baseline[prep] = dates.length ? dates.sort()[0] : null;
+  });
   for (const k of state.order) {
     const s = state.sections[k]; if (s.placeholder || !s.students.length) continue;
     const units = unitsOf(s); const t = s.threshold;
@@ -285,24 +310,29 @@ function leaderboardData() {
     aUnits.forEach(u => list.forEach(x => { const own = activeFor(s, u, x.i); possible += own.length; own.forEach(kk => { const v = eff(s, kk, x.i); if (v != null && v >= t) done++; }); }));
     const totalNow = {}; list.forEach(x => totalNow[x.key] = 0);
     let masteredAll = 0; activeIdx(s).forEach(kk => list.forEach(x => { const v = eff(s, kk, x.i); if (v != null && v >= t) { masteredAll++; totalNow[x.key]++; } }));
-    const cur = s.history[s.history.length - 1]; const prev = cur ? s.history.filter(h => h.date < cur.date).pop() : null;
-    let gain = null, active = null, thrChanged = false;
+    const cur = s.history[s.history.length - 1];
+    const prev = cur && baseline[s.prep] ? s.history.filter(h => h.date <= baseline[s.prep] && h.date < cur.date).pop() : null;
+    let gain = null, active = null, movers = 0, measured = 0, thrChanged = false;
     if (prev) {
       if (prev.thr !== cur.thr) thrChanged = true;
-      else { let g = 0, a = 0, m = 0; list.forEach(x => { const before = prev.per[x.key]; if (before == null) return; m++; const d = totalNow[x.key] - before; g += d; if (d > 0) a++; }); if (m) { gain = g / m; active = a / m; } }
+      else { let g = 0, a = 0, m = 0; list.forEach(x => { const before = prev.per[x.key]; if (before == null) return; m++; const d = totalNow[x.key] - before; g += d; if (d > 0) a++; }); if (m) { gain = g / m; active = a / m; movers = a; measured = m; } }
     }
     out.push({ key: k, prep: s.prep, name: s.label, label: s.label, students: n, assignedUnits: aUnits.map(u => u.short), assignedSkills: aUnits.reduce((a, u) => a + u.active.length, 0), done, possible, doneEach: done / n,
-      completion: possible ? done / possible : 0, masteredAll, gain, active, thrChanged, prevDate: prev ? prev.date : null, date: s.date });
+      completion: possible ? done / possible : 0, masteredAll, gain, active, movers, measured, thrChanged, prevDate: prev ? prev.date : null, date: s.date });
   }
-  // The race is COMPLETION of the course's assigned units. Ranked within a course; competition ranking (1, 1, 3) on ties.
-  // The class with the most growth this week gets a "climb" tag, so a trailing class can still win the week.
+  // The race is MOVEMENT: the share of the class that reached at least one more skill since the league's baseline,
+  // with average skills gained as the tiebreak and completion after that. Reaching the goal and stopping earns nothing
+  // next week, a class that starts behind can win, and one student can't swing it. Competition ranking (1, 1, 3) on ties.
+  // Classes with no baseline yet (first week, or the goal changed) rank by completion below the classes with movement.
+  // The furthest-along class in each league is tagged so steady progress is still seen.
   ['acc', 'on'].forEach(p => {
     const rows = out.filter(r => r.prep === p); if (!rows.length) return;
-    const rd = x => Math.round(x * 100);
-    rows.sort((a, b) => rd(b.completion) - rd(a.completion) || (b.gain || 0) - (a.gain || 0));
-    rows.forEach(r => { r.rank = 1 + rows.filter(x => rd(x.completion) > rd(r.completion)).length; r.tied = rows.some(x => x !== r && rd(x.completion) === rd(r.completion)); r.climb = false; });
-    const movers = rows.filter(r => r.gain != null && r.gain > 0);
-    if (rows.length > 1 && movers.length) { const top = Math.max(...movers.map(r => Math.round(r.gain * 10))); movers.forEach(r => { if (Math.round(r.gain * 10) === top) r.climb = true; }); }
+    const rd = x => Math.round(x * 100), r10 = x => Math.round((x || 0) * 10);
+    const key = r => r.active == null ? [-1, 0, rd(r.completion)] : [rd(r.active), r10(r.gain), rd(r.completion)];
+    const cmp = (a, b) => { const ka = key(a), kb = key(b); for (let i = 0; i < 3; i++) if (ka[i] !== kb[i]) return kb[i] - ka[i]; return 0; };
+    rows.sort(cmp);
+    rows.forEach(r => { r.rank = 1 + rows.filter(x => cmp(x, r) < 0).length; r.tied = rows.some(x => x !== r && cmp(x, r) === 0); r.lead = false; });
+    if (rows.length > 1) { const top = Math.max(...rows.map(r => rd(r.completion))); if (top > 0) rows.forEach(r => { if (rd(r.completion) === top) r.lead = true; }); }
   });
   out.sort((a, b) => (a.prep > b.prep ? 1 : a.prep < b.prep ? -1 : 0) || a.rank - b.rank);
   return out;
@@ -322,17 +352,26 @@ function lbMarkup(data, focus) {
   const pct = x => Math.round(x * 100);
   const asOf = data.map(r => r.date).filter(Boolean).sort().pop();
   const signed = x => (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1);
+  // "% of class moved up" is the headline, but a 1- or 2-student remainder would point at those students, so the
+  // number is shown only when everyone moved or at least three didn't; otherwise it reads "nearly all".
+  const headline = r => {
+    if (r.active == null) return `${pct(r.completion)}<small>% complete</small>`;
+    const rest = r.measured - r.movers;
+    if (r.active === 1) return `100<small>% moved up</small>`;
+    if (rest < 3) return `<span class="lbWord">nearly all</span><small>moved up</small>`;
+    return `${pct(r.active)}<small>% moved up</small>`;
+  };
   const card = (r, showTrophy) => `<div class="lbCard r${Math.min(r.rank, 3)}">
       <div class="lbRank">${showTrophy ? '<svg class="trophy" viewBox="0 0 24 24" aria-label="first place"><path d="M7 3h10v3a5 5 0 0 1-10 0V3z"/><path d="M17 5h3v2a4 4 0 0 1-4 4M7 5H4v2a4 4 0 0 0 4 4"/><path d="M12 11v4M8 21h8M9 21v-3h6v3"/></svg>' : r.rank}</div>
       <div class="lbMain">
-        <div class="lbName">${esc(r.name)}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.climb ? ' <span class="lbTie climb">this week\'s climb</span>' : ''}</div>
+        <div class="lbName">${esc(r.name)}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.lead ? ' <span class="lbTie lead">furthest along</span>' : ''}</div>
         <div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div>
         <div class="lbChips">
-          <span class="lbChip">${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skills at goal</span>
-          ${r.thrChanged ? `<span class="lbChip">goal changed — fresh start this week</span>` : r.gain != null ? `<span class="lbChip gain">${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}</span>` + (r.active === 1 || (1 - r.active) * r.students >= 3 ? `<span class="lbChip">${pct(r.active)}% of class moved up</span>` : '') : `<span class="lbChip">first week in the race</span>`}
+          <span class="lbChip">${pct(r.completion)}% complete · ${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skills at goal</span>
+          ${r.thrChanged ? `<span class="lbChip">goal changed — fresh start this week</span>` : r.gain != null ? `<span class="lbChip gain">${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}</span>` : `<span class="lbChip">first week in the race</span>`}
         </div>
       </div>
-      <div class="lbPct">${pct(r.completion)}<small>% complete</small></div>
+      <div class="lbPct">${headline(r)}</div>
     </div>`;
   const leagues = [['acc', 'Accelerated'], ['on', 'On-level']].map(([p, name]) => ({ p, name, rows: data.filter(r => r.prep === p) })).filter(l => l.rows.length);
   const multi = leagues.length > 1;
@@ -344,7 +383,7 @@ function lbMarkup(data, focus) {
     </section>`;
   };
   const one = !multi && leagues[0] ? leagues[0].rows[0].assignedUnits : null;
-  return `<div class="lbHead"><div class="lbTitle">Race</div><div class="lbSub">Assigned IXL work completed${one ? (one.length ? ' · ' + esc(one.join(', ')) : ' · nothing assigned yet') : ''}${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
+  return `<div class="lbHead"><div class="lbTitle">Race</div><div class="lbSub">Ranked by the share of each class that moved up this week${one ? (one.length ? ' · ' + esc(one.join(', ')) : ' · nothing assigned yet') : ''}${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
     <div class="lbLeagues ${multi ? 'two' : ''}">${leagues.map(league).join('')}</div>`;
 }
 const LB_CSS = `
@@ -369,7 +408,8 @@ const LB_CSS = `
 .lbPct small{font-size:.45em;font-weight:900;opacity:.7}
 .lbTie{display:inline-block;vertical-align:middle;font-size:.45em;font-weight:900;letter-spacing:.08em;text-transform:uppercase;background:var(--paleturq);color:var(--teal);border-radius:999px;padding:3px 10px;margin-left:8px}
 .lbBasis{font-weight:700;color:var(--teal);font-size:clamp(12px,1.2vw,15px)}
-.lbTie.climb{background:var(--navy);color:var(--turq)}
+.lbTie.lead{background:var(--navy);color:var(--turq)}
+.lbWord{font-size:.5em;letter-spacing:.01em}
 .trophy{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;margin:0 auto}
 .lbFoot{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
 .lbStat{background:var(--navy);color:var(--white);border-radius:999px;padding:10px 20px;font-weight:700;font-size:clamp(14px,1.4vw,18px)}
@@ -403,7 +443,10 @@ function stats(vals) {
   const iqr = q3 - q1, lo = q1 - 1.5 * iqr, hi = q3 + 1.5 * iqr;
   const mean = v.reduce((a, b) => a + b, 0) / n;
   const mad = v.reduce((a, b) => a + Math.abs(b - mean), 0) / n;
-  const outliers = v.filter(x => x < lo || x > hi); const inside = v.filter(x => x >= lo && x <= hi);
+  // With an IQR of 0 or 1 (scores bunched on a few values) the 1.5 × IQR fences sit on top of the box and would flag
+  // a third of the class, so the rule is switched off: no outliers, whiskers run min to max, and the row says why.
+  const bunched = iqr <= 1;
+  const outliers = bunched ? [] : v.filter(x => x < lo || x > hi); const inside = bunched ? v : v.filter(x => x >= lo && x <= hi);
   const wLo = inside.length ? inside[0] : v[0], wHi = inside.length ? inside[inside.length - 1] : v[n - 1];
   // shape is described from the picture (tail lengths, ceiling, gaps), not declared from mean vs median
   const counts = {}; v.forEach(x => counts[x] = (counts[x] || 0) + 1);
@@ -420,7 +463,7 @@ function stats(vals) {
     if (gap >= Math.max(range * 0.25, 2) && v.filter(x => x <= gapAt[0]).length >= 2 && v.filter(x => x >= gapAt[1]).length >= 2) parts.push('a gap between ' + gapAt[0] + ' and ' + gapAt[1] + ' (two clusters)');
   }
   const shape = parts.join(' · ');
-  return { n, min: v[0], max: v[n - 1], q1, median, q3, iqr, mean, mad, range, outliers, wLo, wHi, shape, mode: modes.length === n ? null : modes, modeCount, values: v };
+  return { n, min: v[0], max: v[n - 1], q1, median, q3, iqr, bunched, mean, mad, range, outliers, wLo, wHi, shape, mode: modes.length === n ? null : modes, modeCount, values: v };
 }
 function labDatasets(prep) {
   const secs = state.order.map(k => state.sections[k]).filter(s => s.prep === prep && !s.placeholder && s.students.length);
@@ -484,7 +527,7 @@ function valuesMarkup(st, tukey) {
   const v = st.values, n = v.length, half = Math.floor(n / 2);
   const lower = v.slice(0, half), mid = n % 2 ? [v[half]] : [], upper = v.slice(n % 2 ? half + 1 : half);
   const medIdx = a => { const m = a.length; return m % 2 ? [(m - 1) / 2] : [m / 2 - 1, m / 2]; };
-  const chip = (x, cls) => `<span class="${cls}${tukey && (x < st.q1 - 1.5 * st.iqr || x > st.q3 + 1.5 * st.iqr) ? ' out' : ''}">${fmtN(x)}</span>`;
+  const chip = (x, cls) => `<span class="${cls}${tukey && st.outliers.includes(x) ? ' out' : ''}">${fmtN(x)}</span>`;
   const group = (arr, cls, label) => arr.length ? `<div class="labHalf"><div class="labChips">${arr.map((x, i) => chip(x, medIdx(arr).includes(i) ? 'q' : '')).join('')}</div><small>${label}</small></div>` : '';
   return `<div class="labValues">
     ${group(lower, 'q', `lower half · median = Q1 = ${fmtN(st.q1)}`)}
@@ -511,7 +554,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
       ${valuesOn ? valuesMarkup(x.st, tukey) : ''}
       ${statsLevel > 0 ? `<div class="labStats">
         ${cell('min', fmtN(x.st.min))}${cell('Q1', fmtN(x.st.q1))}${cell('median', fmtN(x.st.median))}${cell('Q3', fmtN(x.st.q3))}${cell('max', fmtN(x.st.max))}${cell('range', fmtN(x.st.range))}${cell('IQR', fmtN(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fmtN).join(', ') : 'none')}
-        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1))}${cell('MAD', x.st.mad.toFixed(1))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.iqr === 0 ? 'IQR is 0, so every value off the median counts — read the dots instead' : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
+        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1))}${cell('MAD', x.st.mad.toFixed(1))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)} — too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''}
     </div>`;
   const thinRow = x => `<div class="labRow thin"><div class="labName">${esc(x.name)}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
@@ -607,7 +650,7 @@ function downloadLeaderboard(which) {
   const dotsOn = st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit);
   const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, st.lbFocus);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,700;9..40,900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>${(document.getElementById('tallyFont') || {}).textContent || ''}</style>
 <style>:root{--cream:#F8F2E4;--grid:#EADFC6;--sand:#E6D5B8;--shadow:#D8C5A0;--turq:#40E0D0;--paleturq:#D8F6F1;--teal:#127A85;--navy:#17324D;--white:#fff}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:48px 48px}
 ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body></html>`;
@@ -1072,7 +1115,7 @@ dd{margin:0}
 <dt>Copied</dt><dd>A receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</dd>
 <dt>Focus ✓ / off</dt><dd>Whether the Focus column matches what Tally counts today.</dd>
 <dt>Still owed</dt><dd>Printable black-and-white list of what each student is missing, by unit.</dd>
-<dt>Race</dt><dd>Student screen: classes ranked by share of assigned work at goal. Names never show. Hold the exit button to leave.</dd>
+<dt>Race</dt><dd>Student screen: classes ranked by the share of students who reached at least one more skill since last week (average gain breaks ties), so a class that starts behind can still win and one student can't swing it. The bar shows assigned work at goal. Names never show. Hold the exit button to leave.</dd>
 <dt>Data Lab</dt><dd>Student screen: box plots of any unit, skill, assignment, or class-collected data set — no names.</dd>
 <dt>Names</dt><dd>Header toggle. Off = initials only, for projecting.</dd>
 </dl>
@@ -1238,7 +1281,7 @@ function openSettings() {
         <p>Rosters, goals, skips, matches, and each student's weekly skill counts (for the race). Not raw scores. Load it on another computer before or after importing exports.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load backup</button><input type="file" id="cfgFile" accept=".json" class="hidden"></div>
         <h3 class="mt">This computer</h3>
-        <p>Everything Tally shows — IXL scores, rosters, and any gradebook you loaded — is saved in this browser. On a shared computer, clear it when you're done.</p>
+        <p>IXL scores, rosters, goals and skips are saved in this browser. A Focus gradebook is kept only while this tab is open — close the tab and it's gone, so re-import it when you want a Focus check. On a shared computer, clear everything when you're done.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="forget">Remove this class</button><button class="pill danger small" id="wipe">Clear all Tally data</button></div>
       </section>
     </div>
@@ -1272,7 +1315,7 @@ function openSettings() {
   $('#wipe').onclick = () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
     if (!confirm(`Clear everything Tally has saved in this browser — ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? Save a backup first if you want the rosters back.`)) return;
-    localStorage.removeItem(LS_KEY); location.reload();
+    localStorage.removeItem(LS_KEY); try { sessionStorage.removeItem(GB_KEY); } catch (e) {} location.reload();
   };
   $('#addCustom').onclick = () => { close(); openCustomEditor(null, s.prep); };
   m.querySelectorAll('[data-editc]').forEach(b => b.onclick = () => { close(); openCustomEditor(b.dataset.editc); });
