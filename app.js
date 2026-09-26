@@ -7,19 +7,18 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 
 let state = null;
+/*__GRADES__*/   // grades.js is spliced in here by build.py (same closure, so it shares state and helpers)
 let view = { mode: 'units', unit: null };
 let search = '';
 
-// Gradebook scores (every student's grade on every assignment) never go in localStorage: on a shared classroom
-// computer they would sit next to the roster for good. They live in sessionStorage instead — they survive a reload of
-// the tab and disappear when it closes — so a Focus check needs the gradebook re-imported each day. The column→unit
-// mapping (gbUnitMap) holds no scores and persists normally.
+// Gradebook data is saved with everything else. One earlier build kept it in sessionStorage only; anything still
+// there is folded in once and removed.
 const GB_KEY = LS_KEY + '.gradebooks';
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(LS_KEY)); if (!s || !s.sections) return null;
-    try { const g = JSON.parse(sessionStorage.getItem(GB_KEY) || '{}'); for (const k in g) if (s.sections[k] && g[k] && Array.isArray(g[k].assignments)) s.sections[k].grades = g[k]; } catch (e) {}
-    for (const k in s.sections) if (s.sections[k] && s.sections[k].grades && !s.sections[k].grades.assignments) delete s.sections[k].grades;   // gradebooks saved by older builds
+    try { const g = JSON.parse(sessionStorage.getItem(GB_KEY) || '{}'); for (const k in g) if (s.sections[k] && !s.sections[k].grades && g[k] && Array.isArray(g[k].assignments)) s.sections[k].grades = g[k]; sessionStorage.removeItem(GB_KEY); } catch (e) {}
+    for (const k in s.sections) if (s.sections[k] && s.sections[k].grades && !s.sections[k].grades.assignments) delete s.sections[k].grades;
     return s;
   } catch (e) {}
   return null;
@@ -30,6 +29,7 @@ function migrate() {
   state.pendingCfg = state.pendingCfg || {};
   state.assigned = state.assigned && typeof state.assigned === 'object' ? state.assigned : {}; state.assigned.acc = state.assigned.acc || {}; state.assigned.on = state.assigned.on || {};
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && c.id && c.label) : [];
+  state.grading = state.grading && typeof state.grading === 'object' ? state.grading : {};
   state.settings.copyMode = ['points', 'names', 'ids'].includes(state.settings.copyMode) ? state.settings.copyMode : (state.settings.copyNames ? 'names' : 'points');
   for (const k in state.sections) {
     const s = state.sections[k];
@@ -39,6 +39,7 @@ function migrate() {
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
     if (s.hiddenUnits && Object.keys(s.hiddenUnits).length) { for (const u in s.hiddenUnits) if (state.assigned[s.prep || 'on'][u] == null) state.assigned[s.prep || 'on'][u] = !s.hiddenUnits[u]; s.hiddenUnits = {}; }
     s.excluded = s.excluded || {}; s.aliases = s.aliases || {}; s.hiddenUnits = s.hiddenUnits || {};
+    s.gradeHistory = Array.isArray(s.gradeHistory) ? s.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : [];
     // snapshots once carried per-student mastered/touched arrays that nothing reads; keep only the aggregate fields
     s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
     if (s.threshold == null) s.threshold = s.accelerated ? (st.thrAcc || DEFAULT_THR.acc) : (st.thrOn || DEFAULT_THR.on);
@@ -51,13 +52,7 @@ function migrate() {
   for (const k in state.sections) if (!state.order.includes(k)) state.order.push(k);
 }
 function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (fallback != null ? fallback : DEFAULT_THR.on) : Math.max(1, Math.min(100, n)); }
-function save() {
-  try {
-    const gb = {}; for (const k in state.sections) if (state.sections[k].grades) gb[k] = state.sections[k].grades;
-    localStorage.setItem(LS_KEY, JSON.stringify(state, (key, v) => key === 'grades' ? undefined : v));
-    try { if (Object.keys(gb).length) sessionStorage.setItem(GB_KEY, JSON.stringify(gb)); else sessionStorage.removeItem(GB_KEY); } catch (e) {}
-  } catch (e) { toast('Could not save to this browser (storage blocked). Your data stays until you close the tab.', true); }
-}
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { toast('Could not save to this browser (storage blocked). Your data stays until you close the tab.', true); } }
 
 /* ---------- names ---------- */
 function norm(s) {
@@ -256,9 +251,12 @@ async function importFiles(files) {
     const target = await pickSection(f.name, gb);
     if (!target) { skipped++; continue; }
     const sec = state.sections[target]; sec.grades = sec.grades || { assignments: [], students: [] };
-    sec.grades.students = gb.students; sec.grades.importedAt = new Date().toISOString(); sec.grades.file = f.name; sec.grades.raw = gb.raw || {};
+    sec.grades.students = gb.students; sec.grades.ids = gb.ids || []; sec.grades.overall = gb.overall || null; sec.grades.importedAt = new Date().toISOString(); sec.grades.file = f.name; sec.grades.raw = gb.raw || {};
     sec.grades.assignments = gb.assignments;   // whole-gradebook exports replace, so stale columns and index drift can't happen
-    gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}`);
+    const cats = applyCategories(sec);
+    if (cats.ask.length) await askCategories(sec, cats.ask, cats.fit);
+    gradeSnapshot(sec);
+    gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}`);
   }
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
   search = ''; $('#search').value = ''; view = { mode: 'units', unit: null };
@@ -474,7 +472,7 @@ function labDatasets(prep) {
   const add = (group, id, label) => { let g = groups.find(x => x.group === group); if (!g) { g = { group, items: [] }; groups.push(g); } if (!g.items.some(x => x.id === id)) g.items.push({ id, label }); };
   secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden && u.total) add('IXL units (points)', 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')); }));
   add('IXL units (points)', 'unit:__all__', 'All units · skills at goal');
-  secs.forEach(s => { const cats = {}; (s.grades ? s.grades.assignments : []).forEach(a => { cats[a.category] = 1; }); Object.keys(cats).sort().forEach(c => (s.grades.assignments.filter(a => a.category === c)).forEach(a => add(c, 'gb:' + a.name, a.name))); });
+  secs.forEach(s => { const cats = {}; (s.grades ? s.grades.assignments : []).forEach(a => { cats[catOf(s.prep, a.name, a)] = 1; }); Object.keys(cats).sort().forEach(c => (s.grades.assignments.filter(a => catOf(s.prep, a.name, a) === c)).forEach(a => add(c, 'gb:' + a.name, a.name))); });
   state.custom.filter(c => c.prep === prep).forEach(c => add('Our own data', 'custom:' + c.id, c.label));
   secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden) u.idx.forEach(k => { const sk = s.skills[k]; add('IXL skills (SmartScore) — ' + u.short, 'skill:' + skillKey(sk), u.short + ' · ' + sk.name); }); }));
   const list = groups.flatMap(g => g.items);
@@ -709,6 +707,9 @@ function parseGradebook(rows) {
   const skipExact = /^(id|student id|student number|student #|local id|grade|overall|overall grade|letter grade|letter|total|average|avg|percent|percentage|period|section|email|username|absences|tardies|comments?|teacher|course)$/i;
   const skipPattern = /^(semester|sem|quarter|q\d|term|t\d|final|current|overall|cumulative)\b.*\b(total|average|avg|percent|grade|points)$|^grade level$|^gradebook grade$|\bgrade$/i;
   const cols = []; hdr.forEach((v, c) => { if (c === nameCol || !isT(v)) return; const t = v.trim(); if (skipExact.test(t) || skipPattern.test(t)) return; cols.push({ c, name: t }); });
+  // the course grade column (Focus: "Grade" holding "79% C") lets the grading model prove each assignment's category
+  const overallCol = hdr.findIndex((v, c) => c !== nameCol && isT(v) && /^(grade|overall|overall grade|percent|percentage|current grade|gradebook grade)$/i.test(v.trim()));
+  const idCol = hdr.findIndex((v, c) => c !== nameCol && isT(v) && /^(student id|id|student number|student #|local id)$/i.test(v.trim()));
   if (cols.length < 1) return null;
   const isPP = v => isT(v) && /^(points? possible|max(imum)?( points)?|out of|total points|possible)/i.test(v.trim());
   let maxRow = null; for (let i = Math.max(0, h - 3); i < rows.length; i++) { const r = rows[i] || []; if (r.some(isPP)) { maxRow = r; break; } }
@@ -716,27 +717,30 @@ function parseGradebook(rows) {
   const excusedRe = /^(ng|x|ex|exc|e|i|inc|excused|exempt|n\/a|na)$/i, missingRe = /^(m|nhi|\*|—|-|missing|late)$/i;
   const examples = [];
   const rawCells = cols.map(() => []);
-  const students = [], data = cols.map(() => []), unread = cols.map(() => 0), excusedN = cols.map(() => 0), pct = cols.map(() => false), fracMax = cols.map(() => null);
+  const students = [], ids = [], overall = [], data = cols.map(() => []), status = cols.map(() => []), unread = cols.map(() => 0), excusedN = cols.map(() => 0), pct = cols.map(() => false), fracMax = cols.map(() => null);
+  const st = (j, v) => status[j].push(v);
   for (let i = h + 1; i < rows.length; i++) {
     const r = rows[i] || []; const nm = r[nameCol];
     if (!isT(nm) || r.some(isPP)) continue;
     if (/^(class )?(average|mean|median|total)/i.test(nm.trim())) continue;
     const rowVals = cols.map(col => r[col.c]); if (!rowVals.some(v => v != null && String(v).trim() !== '')) continue;   // e.g. an inactive student with no scores
     students.push(nm.trim());
+    ids.push(idCol >= 0 && r[idCol] != null ? String(r[idCol]).trim() : '');
+    { const ov = overallCol >= 0 ? r[overallCol] : null; const m = ov != null && String(ov).match(/^\s*(-?\d+(?:\.\d+)?)\s*%/); overall.push(m ? Number(m[1]) : (typeof ov === 'number' ? ov : null)); }
     cols.forEach((col, j) => {
-      let v = r[col.c]; rawCells[j].push(v == null ? '' : String(v).trim()); if (v == null || String(v).trim() === '') { data[j].push(null); return; }
-      if (typeof v === 'number') { data[j].push(v); return; }
+      let v = r[col.c]; rawCells[j].push(v == null ? '' : String(v).trim()); if (v == null || String(v).trim() === '') { data[j].push(null); st(j, 'blank'); return; }
+      if (typeof v === 'number') { data[j].push(v); st(j, 'score'); return; }
       const t = String(v).trim();
       let m;
-      if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*-\s*-?\d+(?:\.\d+)?\s*%\s*(?:-\s*[A-F][+-]?)?$/i))) { data[j].push(Number(m[1])); return; }   // Focus: "16.5 - 79 % - C"
-      if (/^nhi\b/i.test(t)) { data[j].push(null); return; }                                                                              // Focus: "NHI Not Handed In"
-      if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*%$/))) { pct[j] = true; data[j].push(Number(m[1])); return; }
-      if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/))) { data[j].push(Number(m[1])); fracMax[j] = fracMax[j] == null ? Number(m[2]) : (fracMax[j] === Number(m[2]) ? fracMax[j] : NaN); return; }
-      if (/^-?\d+(\.\d+)?$/.test(t)) { data[j].push(Number(t)); return; }
-      if (/^z$/i.test(t)) { data[j].push(0); return; }
-      if (excusedRe.test(t)) { data[j].push(null); excusedN[j]++; return; }
-      if (missingRe.test(t)) { data[j].push(null); return; }
-      data[j].push(null); unread[j]++; if (examples.length < 3 && !examples.includes(t)) examples.push(t);
+      if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*-\s*-?\d+(?:\.\d+)?\s*%\s*(?:-\s*[A-F][+-]?)?$/i))) { data[j].push(Number(m[1])); st(j, 'score'); return; }   // Focus: "16.5 - 79 % - C"
+      if (/^nhi\b/i.test(t)) { data[j].push(null); st(j, 'missing'); return; }                                                                              // Focus: "NHI Not Handed In"
+      if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*%$/))) { pct[j] = true; data[j].push(Number(m[1])); st(j, 'score'); return; }
+      if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/))) { data[j].push(Number(m[1])); st(j, 'score'); fracMax[j] = fracMax[j] == null ? Number(m[2]) : (fracMax[j] === Number(m[2]) ? fracMax[j] : NaN); return; }
+      if (/^-?\d+(\.\d+)?$/.test(t)) { data[j].push(Number(t)); st(j, 'score'); return; }
+      if (/^z$/i.test(t)) { data[j].push(0); st(j, 'score'); return; }
+      if (excusedRe.test(t)) { data[j].push(null); st(j, 'excused'); excusedN[j]++; return; }
+      if (missingRe.test(t)) { data[j].push(null); st(j, 'missing'); return; }
+      data[j].push(null); st(j, 'unread'); unread[j]++; if (examples.length < 3 && !examples.includes(t)) examples.push(t);
     });
   }
   if (students.length < 2) return null;
@@ -755,14 +759,15 @@ function parseGradebook(rows) {
     }
     if (!max && fracMax[j] != null && !isNaN(fracMax[j])) max = fracMax[j];
     if (pct[j]) max = 100;
+    const categoryFromFile = !!category;
     if (!category) category = /\b(test|exam|assessment|benchmark)\b/i.test(name) ? 'Assessments' : /\bixl\b/i.test(name) ? 'IXL' : /\bquiz\b/i.test(name) ? 'Quizzes' : 'Classwork';
     seen[name] = (seen[name] || 0) + 1; if (seen[name] > 1) name = name + ' (' + seen[name] + ')';
     const vals = data[j]; const missing = vals.filter(v => v == null).length - excusedN[j];
-    return { name, category, max, values: vals, missing, excused: excusedN[j], unread: unread[j], percent: pct[j], assignedOn, due, _col: col };
+    return { name, category, categoryFromFile, max, values: vals, status: status[j], missing, excused: excusedN[j], unread: unread[j], percent: pct[j], assignedOn, due, _col: col };
   }).filter(a => a.values.some(v => v != null));
   if (!assignments.length) return null;
   const raw = {}; assignments.forEach((a, j) => { raw[a.name] = rawCells[cols.findIndex(c => c === a._col)] || []; delete a._col; });
-  return { students, assignments, unread: assignments.reduce((a, x) => a + x.unread, 0), examples, raw };
+  return { students, ids, overall: overall.some(v => v != null) ? overall : null, assignments, unread: assignments.reduce((a, x) => a + x.unread, 0), examples, raw };
 }
 function pickSection(fileName, gb) {
   return new Promise(resolve => {
@@ -840,7 +845,10 @@ function renderBar() {
       <div class="spacer"></div>
       ${hid ? `<button class="pill toggle" id="toggleAll" aria-pressed="${!!state.settings.showAllUnits}">${plural(hid, 'unassigned unit')}</button>` : ''}
       <button class="pill toggle" id="printOwed" title="Printer-friendly page: what each student still owes">Still owed</button>
+      ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <div class="legend"><span>Tap a unit for skill scores</span></div>`;
+  } else if (view.mode === 'grades' && s.grades) {
+    html = renderGradesBar(s);
   } else {
     const u = units.find(u => u.name === view.unit);
     const ex = u.idx.length - u.active.length;
@@ -858,6 +866,9 @@ function renderBar() {
   const ta = $('#toggleAll'); if (ta) ta.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); };
   const hu = $('#hideUnit'); if (hu) hu.onclick = () => { const u = units.find(u => u.name === view.unit); state.assigned[s.prep][u.name] = !u.assigned; save(); render(); toast(`${esc(u.short)} ${!u.assigned ? 'assigned' : 'unassigned'} for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); };
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
+  const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
+  const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
+  const gc = $('#gradesCats'); if (gc) gc.onclick = () => { const t = $('.gasg'); if (t) t.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
   const cv = $('#csvUnit'); if (cv) cv.onclick = () => downloadUnitCSV(s, units.find(u => u.name === view.unit));
   const rcb = $('#rcUnit'); if (rcb) rcb.onclick = () => openReceipt(s, view.unit);
 }
@@ -883,6 +894,7 @@ function renderGrid() {
   const s = state.sections[state.active]; const units = unitsOf(s); const allRows = buildRows(s); const t = s.threshold;
   const rs = rosterState(s);
   if (!rs.count && !s.skipRoster && !s.placeholder && view.mode === 'units') return renderRosterPanel(s);
+  if (view.mode === 'grades') { if (!s.grades) { view = { mode: 'units', unit: null }; return renderGrid(); } return renderGrades(s); }
   const q = norm(search);
   const rows = allRows.map((r, i) => ({ ...r, n: i + 1 })).filter(r => !q || norm(r.display).includes(q) || norm(r.sub).includes(q));
   const wrap = $('#gridwrap');
@@ -1131,6 +1143,7 @@ dd{margin:0}
 <dl>
 <dt>Goal</dt><dd>The SmartScore a skill must reach to earn its point.</dd>
 <dt>Skip</dt><dd>A skill that doesn't count — for the class (tap the skill) or one student (tap their cell).</dd>
+<dt>Grades</dt><dd>After a Focus gradebook is loaded: the real course grade (weighted categories, proved against the Focus Grade column), trends since the last import, sliding students, IXL against assessment scores, and per-student what-ifs — turn in, retake, next assessment — with a printable one-student page. Categories are proved from the Grade column where possible; move any assignment from its row.</dd>
 <dt>Assigned</dt><dd>Units that count toward grades and the Race. Unassigned units are hidden but kept.</dd>
 <dt>Best</dt><dd>A score from an earlier export that was higher than today's. Points once earned are kept.</dd>
 <dt>Copied</dt><dd>A receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</dd>
@@ -1299,10 +1312,10 @@ function openSettings() {
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="saveRace">Save Race</button><button class="pill pale small" id="saveLab">Save Data Lab</button></div>
         ${s.grades ? `<h3 class="mt">Gradebook</h3><p>${plural(s.grades.assignments.length, 'assignment')} · ${plural(s.grades.students.length, 'student')} · imported ${fmtDate(s.grades.importedAt.slice(0, 10))} from ${esc(s.grades.file || 'file')}</p><button class="pill danger small" id="dropGrades">Remove this gradebook</button>` : ''}
         <h3 class="mt">Backup</h3>
-        <p>Rosters, goals, skips, matches, and each student's weekly skill counts (for the race). Not raw scores. Load it on another computer before or after importing exports.</p>
+        <p>Rosters, goals, skips, matches, category weights, each student's weekly skill counts (for the race) and their computed Focus grade per import (for trends). Not raw scores. Load it on another computer before or after importing exports.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load backup</button><input type="file" id="cfgFile" accept=".json" class="hidden"></div>
         <h3 class="mt">This computer</h3>
-        <p>IXL scores, rosters, goals and skips are saved in this browser. A Focus gradebook is kept only while this tab is open — close the tab and it's gone, so re-import it when you want a Focus check. On a shared computer, clear everything when you're done.</p>
+        <p>Everything Tally shows — IXL scores, rosters, goals, skips, and the Focus gradebook with its grade history — is saved in this browser. On a shared computer, clear it when you're done.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="forget">Remove this class</button><button class="pill danger small" id="wipe">Clear all Tally data</button></div>
       </section>
     </div>
@@ -1358,19 +1371,20 @@ function openSettings() {
     } catch (err) { toast('That file is not a Tally course settings file.', true); }
   };
   $('#saveRace').onclick = () => downloadLeaderboard('race'); $('#saveLab').onclick = () => downloadLeaderboard('lab');
-  const dg = $('#dropGrades'); if (dg) dg.onclick = () => { if (!confirm(`Remove the gradebook loaded for ${s.label}?`)) return; delete s.grades; save(); close(); render(); };
+  const dg = $('#dropGrades'); if (dg) dg.onclick = () => { if (!confirm(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.`)) return; delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#exportCfg').onclick = () => {
-    const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays }, assigned: state.assigned, custom: state.custom, sections: {} };
-    for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history }; }
+    const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays }, assigned: state.assigned, custom: state.custom, grading: state.grading, sections: {} };
+    for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [] }; }
     for (const k in state.pendingCfg) if (!cfg.sections[k]) cfg.sections[k] = state.pendingCfg[k];
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = 'tally-backup-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    toast('Backup saved — it contains student names and weekly skill counts, so keep it in your school Drive.', false, 5000);
+    toast('Backup saved — it contains student names, weekly skill counts and computed Focus grades, so keep it in your school Drive.', false, 5000);
   };
   $('#importCfg').onclick = () => $('#cfgFile').click();
   $('#cfgFile').onchange = async e => {
     try { const cfg = JSON.parse(await e.target.files[0].text()); if (!cfg || !cfg.tally || typeof cfg.sections !== 'object') throw 0;
       if (cfg.settings) { if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
       if (cfg.assigned && typeof cfg.assigned === 'object') { state.assigned.acc = Object.assign({}, state.assigned.acc, cfg.assigned.acc || {}); state.assigned.on = Object.assign({}, state.assigned.on, cfg.assigned.on || {}); }
+      if (cfg.grading && typeof cfg.grading === 'object') ['acc', 'on'].forEach(pp => { const g = cfg.grading[pp]; if (g && Array.isArray(g.cats) && g.cats.length) state.grading[pp] = { cats: g.cats.filter(c => c && c.name && isFinite(c.w)).map(c => ({ name: String(c.name), w: Number(c.w) })), map: g.map && typeof g.map === 'object' ? g.map : {}, how: g.how && typeof g.how === 'object' ? g.how : {} }; });
       if (Array.isArray(cfg.custom)) cfg.custom.forEach(c => { if (c && c.id && c.label && !state.custom.some(x => x.id === c.id)) state.custom.push(c); });
       const clean = (c, prev) => ({
         label: typeof c.label === 'string' && c.label.trim() ? c.label.trim() : (prev ? prev.label : undefined),
@@ -1378,7 +1392,7 @@ function openSettings() {
         roster: typeof c.roster === 'string' ? c.roster : '', rosterAt: c.rosterAt || null, skipRoster: !!c.skipRoster,
         excluded: c.excluded && typeof c.excluded === 'object' ? c.excluded : {}, ignored: c.ignored && typeof c.ignored === 'object' ? c.ignored : {},
         aliases: c.aliases && typeof c.aliases === 'object' ? c.aliases : {}, hiddenUnits: c.hiddenUnits && typeof c.hiddenUnits === 'object' ? c.hiddenUnits : {},
-        studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per })) : (prev ? prev.history : [])
+        studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, gradeHistory: Array.isArray(c.gradeHistory) ? c.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : (prev ? prev.gradeHistory : []), history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per })) : (prev ? prev.history : [])
       });
       let applied = 0, held = 0;
       for (const k in cfg.sections) { const c = cfg.sections[k] || {}; if (state.sections[k]) { const cl = clean(c, state.sections[k]); Object.assign(state.sections[k], cl); applied++; } else { const cl = clean(c, null); if (!cl.label) cl.label = k; state.pendingCfg[k] = cl; held++; } }
@@ -1432,7 +1446,7 @@ document.addEventListener('keydown', e => {
   if (!m.classList.contains('hidden')) { (m._cancel || (() => m.classList.add('hidden')))(); return; }
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
 });
-window.__tally = { get state() { return state; }, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, unitColumn, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest };
+window.__tally = { get state() { return state; }, save, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, unitColumn, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest };
 render();
 if (bootError) setTimeout(() => toast('Saved Tally data could not be read and was set aside (kept as a backup in this browser). Re-import your exports.', true, 8000), 300);
 })();

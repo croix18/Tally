@@ -20,7 +20,7 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   const outs=[];
   for (const f of ['fixtures/'+ixl,'fixtures/gb_messy.csv','fixtures/gb_messy.xls']) { const [dl]=await Promise.all([p.waitForEvent('download'), p.setInputFiles('#file', path.resolve(f))]); const dst=path.join(tmp, 'scrubbed_'+path.basename(f)); fs.copyFileSync(await dl.path(), dst); outs.push(dst); await p.waitForTimeout(200); }
   const log=await p.textContent('#log'); check(/IXL Score Grid/.test(log) && (log.match(/Gradebook/g)||[]).length===2,'both file kinds detected');
-  const gbTxt=fs.readFileSync(outs[1],'utf8'); check(!/Olivia|Cruz|Brien|Smith-Jones|Taylor|1000234|olivia\.delacruz/.test(gbTxt) && /Unit 1 Test 100 pts 09\/12/.test(gbTxt) && /17\/20/.test(gbTxt) && /@example\.org/.test(gbTxt),'gradebook CSV: names, IDs, emails replaced; everything else intact');
+  const gbTxt=fs.readFileSync(outs[1],'utf8'); check(!/De La Cruz, Olivia|O'Brien, Seán|Smith-Jones, Mary Ann|Taylor, Ben Jr|1000234|olivia\.delacruz/.test(gbTxt) &&   /* full originals, since a random fake surname can legitimately be "Taylor" */ /Unit 1 Test 100 pts 09\/12/.test(gbTxt) && /17\/20/.test(gbTxt) && /@example\.org/.test(gbTxt),'gradebook CSV: names, IDs, emails replaced; everything else intact');
   const htmlTxt=fs.readFileSync(outs[2],'utf8'); check(!/Olivia|Brien/.test(htmlTxt) && /<table>/.test(htmlTxt) && /Jr\./.test(htmlTxt),'HTML-as-xls scrubbed in place');
   // Tally round trip
   const t=await ctx.newPage(); await t.goto('file://'+path.resolve('Tally.html')); t.on('dialog',d=>d.accept());

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Assemble the shipped single-file pages (no external scripts):
-  Tally.html  = app.html + parser.js + app.js
+  Tally.html  = app.html + parser.js + app.js + grades.js
   Scrub.html  = scrub.src.html + parser.js
 `python3 build.py --test` also keeps the window.__tally debug handle that the
 Playwright suites use; the default build strips it."""
@@ -9,6 +9,9 @@ root = pathlib.Path(__file__).parent
 test = '--test' in sys.argv
 parser = re.sub(r"^if \(typeof module.*$", '', (root / 'parser.js').read_text(), flags=re.M)
 app = (root / 'app.js').read_text()
+grades = (root / 'grades.js').read_text()
+assert '/*__GRADES__*/' in app
+app = app.replace('/*__GRADES__*/', grades)
 # DM Sans (SIL OFL, fonts/LICENSE-DM-Sans.txt) is embedded so the page makes no network request at all.
 woff = base64.b64encode((root / 'fonts' / 'dm-sans-latin.woff2').read_bytes()).decode()
 font = ("@font-face{font-family:'DM Sans';font-style:normal;font-weight:100 1000;font-display:swap;"

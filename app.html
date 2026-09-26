@@ -4,7 +4,47 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tally — IXL unit points for FOCUS</title>
-<style id="tallyFont">/*__FONT__*/</style>
+<style id="tallyFont">/*__FONT__*/
+/* ---- Grades ---- */
+.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:18px}
+.gcards{display:flex;flex-wrap:wrap;gap:12px}
+.gcard{background:var(--white);border-radius:16px;box-shadow:4px 5px 0 var(--shadow);padding:12px 16px;min-width:150px;display:flex;flex-direction:column;gap:2px}
+.gcard small{font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:900}
+.gcard b{font-size:26px;font-weight:900;line-height:1.1}
+.gcard span{font-size:var(--t-s);color:var(--ink-soft)}
+.gcard .up{color:var(--teal)}.gcard .down{color:#B3412B}
+.gcard .letters{display:flex;gap:8px;font-size:15px}.gcard .letters i{font-style:normal;display:flex;flex-direction:column;align-items:center;min-width:26px;border-radius:8px;padding:2px 4px;background:var(--paleturq)}
+.gcard .letters i em{font-style:normal;font-size:18px}.gcard .letters i.D,.gcard .letters i.F{background:var(--sand)}
+.gtwo{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:900px){.gtwo{grid-template-columns:1fr}}
+.gsec{background:var(--white);border-radius:16px;box-shadow:4px 5px 0 var(--shadow);padding:12px 16px 8px}
+.gsec h3{margin:0 0 6px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
+.ghint{font-size:var(--t-s);color:var(--ink-soft);margin:6px 0 4px}
+.gasg select{border:2px solid var(--grid);border-radius:8px;padding:3px 6px;background:var(--white);font:inherit;font-size:var(--t-s)}
+.gasg tr.differ td:nth-child(2){background:var(--coral)}
+.gstu tr{cursor:pointer}.gstu tr:hover td{background:var(--paleturq)}
+.gstu tr.sliding td:first-child{background:var(--coral)}
+.gstu td.down{color:#B3412B;font-weight:900}.gstu td.up{color:var(--teal);font-weight:900}
+.gtag{font-size:var(--t-xs);font-weight:900;letter-spacing:.06em;text-transform:uppercase;background:var(--navy);color:var(--white);border-radius:999px;padding:1px 8px;margin-left:6px}
+.gchip{display:inline-flex;align-items:baseline;gap:3px;font-weight:900;font-size:var(--t-l);padding:2px 10px;border-radius:999px;background:var(--paleturq)}
+.gchip small{font-size:var(--t-xs);letter-spacing:.06em}.gchip.D,.gchip.F{background:var(--sand)}.gchip.F{background:var(--coral)}
+.spark{display:block}.spark path{fill:none;stroke:var(--teal);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.spark circle{fill:var(--navy)}
+.scatter{width:100%;height:auto;max-width:520px}.scatter .gl{stroke:var(--grid);stroke-width:1}.scatter .tl{font-size:11px;fill:var(--ink-soft)}.scatter .al{font-size:11px;fill:var(--teal);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.scatter .pt{fill:var(--turq);stroke:var(--navy);stroke-width:1.5;opacity:.85}
+.stucard h3{margin:14px 0 4px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
+.stucard .hsub{font-size:var(--t-s);font-weight:500;color:var(--ink-soft);margin-left:8px}
+.stuhead{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}.stuhead .gchip{font-size:28px;padding:6px 16px}
+.cats{display:flex;flex-direction:column;gap:6px;min-width:260px;flex:1}
+.catbar{display:grid;grid-template-columns:150px 1fr 48px;gap:8px;align-items:center;font-size:var(--t-s)}
+.catbar .bar{height:10px;background:var(--grid);border-radius:999px;overflow:hidden}.catbar .bar i{display:block;height:100%;background:var(--turq)}
+.catbar b{text-align:right}
+.stuspark small{display:block;font-size:var(--t-xs);color:var(--ink-soft)}
+.arrow{white-space:nowrap}.arrow small{color:var(--teal)}
+.checkTable tr.total td{border-top:2px solid var(--navy)}
+.nextrow{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:var(--t-s)}
+.nextrow input[type=number]{border:2px solid var(--grid);border-radius:8px;padding:4px 6px;font:inherit}
+.nextrow input[type=range]{width:180px;vertical-align:middle}
+</style>
 <style>
 :root{
   --cream:#F8F2E4; --grid:#EADFC6; --sand:#E6D5B8; --shadow:#D8C5A0;
