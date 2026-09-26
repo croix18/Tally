@@ -52,11 +52,15 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   check(clip.split('\n').every(l=>l.includes('\t')),'no-roster copy always includes names');
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150);
   // hidden units + toggle
-  const shownU=await p.locator('th.unit').count(); check(shownU<17,'quiet units hidden: '+shownU+' shown');
-  await p.click('#toggleAll'); await p.waitForTimeout(150); check(await p.locator('th.unit').count()===17,'toggle shows all 17');
-  dialogs=[]; dialogAnswer=false; const zi=await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['1205050-7T1A']; const us=T.unitsOf(s); return us.findIndex(u=>u.hidden && !s.students.some((_,si)=>T.unitColumn && u.active.some(k=>{const v=s.scores[k][si]; return v!=null && v>=s.threshold;}))); }); await p.locator('th.unit .copy').nth(zi).click(); await p.waitForTimeout(200);
+  // every unit is listed; units nobody has started are marked upcoming rather than hidden; "Working in" makes everything up to a unit count
+  check(await p.locator('th.unit').count()===17 && await p.locator('th.unit.upcoming').count()>0,'all 17 units listed, quiet ones marked upcoming: '+await p.locator('th.unit.upcoming').count());
+  await p.selectOption('#curUnit','4'); await p.waitForTimeout(400);
+  const cu=await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['1205050-7T1A']).map(u=>u.num+':'+(u.assigned?'a':u.upcoming?'u':'h')).join(' '));
+  check(/^1:a 2:a 3:a 4:a 5:u/.test(cu) && await p.locator('th.unit.current').count()===1,'Working in Unit 4 → Units 1–4 assigned, 5+ upcoming, current marked: '+cu);
+  await p.selectOption('#curUnit',''); await p.waitForTimeout(300);
+  dialogs=[]; dialogAnswer=false; const zi=await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['1205050-7T1A']; const us=T.unitsOf(s); return us.findIndex(u=>!s.students.some((_,si)=>T.unitColumn && u.active.some(k=>{const v=s.scores[k][si]; return v!=null && v>=s.threshold;}))); }); await p.locator('th.unit .copy').nth(zi).click(); await p.waitForTimeout(200);
   check(dialogs.length===1 && /zeros/.test(dialogs[0]),'all-zero copy asks first');
-  await p.click('#toggleAll'); await p.waitForTimeout(150);
+  // (nothing hidden any more)
   // copy unit 1 toast + clipboard
   await p.click('th.unit .copy'); await p.waitForTimeout(250); const t=await p.textContent('#toast');
   check(/Unit 1 copied — 24 rows in FOCUS order/.test(t) && /\/23/.test(t) && /1 blank row/.test(t),'toast: '+t);

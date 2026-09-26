@@ -12,7 +12,7 @@ IXL Score Grid → one grade per unit in Focus. A single HTML file: no server, n
 
 ## How it counts
 
-One point per skill whose SmartScore reaches the class goal (60 on-level, 67 accelerated; set from the file name, editable). Best score across imports is kept. Skills can be skipped for the whole course (tap the skill) or one student (tap the cell); units can be marked *Not assigned* per course. Copy a unit and paste straight into the Focus column — rows come out in Focus order once a roster is in place (a Focus gradebook export fills it in automatically; you can also paste one).
+One point per skill whose SmartScore reaches the class goal (60 on-level, 67 accelerated; set from the file name, editable). Best score across imports is kept. Skills can be skipped for the whole course (tap the skill) or one student (tap the cell); units can be marked *Not assigned* per course. Pick the unit each course is **working in** (selector on the class bar): every unit up to it counts toward the Race and the Focus check, later units stay listed as *upcoming*, and the first on-level unit is a review unit that never counts (Settings). Copy a unit and paste straight into the Focus column — rows come out in Focus order once a roster is in place (a Focus gradebook export fills it in automatically; you can also paste one).
 
 After a Focus gradebook export is loaded, every mapped unit gets a Focus check badge: ✓, "N up since copy", or "N off", with a corrections list to copy back. Receipts record exactly what was copied and when.
 
