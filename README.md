@@ -1,5 +1,7 @@
 # Tally
 
+New here (or a new Claude session)? Read **`NOTES.md`** first — Croix's setup, the decisions and their reasons, the weekly routine, open items, and how to push from a session.
+
 IXL Score Grid → one grade per unit in Focus. A single HTML file: no server, no sign-in, no network requests at all (the font is embedded), nothing leaves the browser.
 
 - **Tally.html** — the app (built). Open it in any browser; drop IXL Score Grid exports (`.xlsx`/`.csv`) and Focus gradebook exports onto it. `index.html` is the same file so GitHub Pages serves it at the repo root — on a tablet use the Pages address, not the file from a file manager (Android gives a locally opened file a throwaway storage origin, so nothing would persist).

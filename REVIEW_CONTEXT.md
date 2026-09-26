@@ -1,3 +1,5 @@
+> **Historical (26 Sep 2026, morning).** Written for the second review round, before course-wide IXL pools, the Grades view, the Working-in unit and course-wide skips existed. Most items below are done or superseded; see `NOTES.md` for the current state.
+
 # Tally — review context (build of 2026-09-26, after two prior review rounds)
 
 Files: /home/claude/tally/Tally.html is the single-file build. Source split: app.html (markup+CSS), app.js (all UI/logic), parser.js (zip/inflate/xlsx/csv/IXL parsers). Do NOT edit files under /home/claude/tally; copy harnesses to your scratchpad.
