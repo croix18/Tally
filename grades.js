@@ -246,7 +246,7 @@ function openStudentCard(s, i) {
   const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
   const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
   const hist = (s.gradeHistory || []).map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.grade[j] : null; });
-  const m = $('#modal'); m.classList.remove('hidden');
+  const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private'); $('#toast').classList.remove('show');   // a lingering toast can carry other names
   const needLine = mx => { const parts = [[90, 'an A'], [80, 'a B'], [70, 'a C']].map(([t, w]) => { const n = neededOn(s, i, 'Assessments', mx, t); return n == null ? null : `<b>${n}/${mx}</b> for ${w}`; }).filter(Boolean);
     return parts.length ? 'Needs ' + parts.join(' · ') : `No single assessment out of ${mx} can reach a C from here — ${missing.length ? 'the missing work is the lever' : 'it will take more than one'}.`; };
   m.innerHTML = `<div class="panel"><header><h2>${esc(nm)} <span class="hsub">${esc(s.label)} · Focus of ${esc(fmtDate(gb.importedAt.slice(0, 10)))}</span></h2><button id="mClose" aria-label="Close">×</button></header>
@@ -264,7 +264,7 @@ function openStudentCard(s, i) {
       <p class="ghint" id="needLine">${needLine(nextMax)}</p>
       <div class="rp-actions"><button class="pill" id="stuPrint">Print this page</button><button class="pill pale" id="mCancel">Close</button></div>
     </div></div>`;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   const upd = () => { const mx = Math.max(1, Number($('#nextMax').value) || 1); const sl = $('#nextPts'); sl.max = mx; const p = Math.min(mx, Number(sl.value)); $('#nextPtsV').textContent = p; $('#nextOut').innerHTML = arrow(withNext(s, i, 'Assessments', mx, p));
     $('#needLine').innerHTML = needLine(mx); };

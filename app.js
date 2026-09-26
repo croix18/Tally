@@ -795,7 +795,7 @@ function pickSection(fileName, gb) {
       <div class="body one"><p><b>${esc(fileName)}</b><br>${plural(gb.students.length, 'student')} · ${plural(gb.assignments.length, 'assignment')}: ${preview}${gb.unread ? `<br><span class="warnline">${plural(gb.unread, 'cell')} couldn't be read (${esc(gb.examples.map(x => '“' + x + '”').join(', '))}) and will count as no score.</span>` : ''}</p>
       <div class="picks">${state.order.length ? state.order.map(k => `<button class="chip${k === best ? ' on' : ''}" data-sec="${esc(k)}">${esc(state.sections[k].label)}${k === best ? ' <small>· names match</small>' : ''}</button>`).join('') : '<em>Import an IXL export for that class first — a gradebook attaches to a class.</em>'}</div>
       <div class="rp-actions"><button class="pill pale" id="mCancel">Skip this file</button></div></div></div>`;
-    const done = v => { m.classList.add('hidden'); m.innerHTML = ''; resolve(v); };
+    const done = v => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; resolve(v); };
     m._cancel = () => done(null); $('#mClose').onclick = m._cancel; $('#mCancel').onclick = m._cancel; m.onclick = e => { if (e.target === m) done(null); };
     m.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => done(b.dataset.sec));
   });
@@ -1002,7 +1002,7 @@ function openNotOnRoster(s, key) {
       <div class="choice"><b>Withdrawn, moved, or a duplicate IXL account?</b><p>Skip them — they leave the grid, copies, and the race. Undo any time in Settings.</p><button class="pill pale" id="nrSkip">Skip this account</button></div>
       <div class="rp-actions"><button class="pill pale" id="mCancel">Not now</button></div>
     </div></div>`;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   $('#nrSkip').onclick = () => { s.ignored[key] = true; save(); close(); render(); toast(`${esc(shown(ixlDisplay(name)))} skipped for ${esc(s.label)} — undo in Settings.`, false); };
   $('#nrRoster').onclick = () => { close(); openSettings(); const ta = $('#roster'); if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center' }); } };
@@ -1019,7 +1019,7 @@ function openFixer(s, display) {
       <div class="picks">${free.map(x => `<button class="chip ${row && row.ixl === x.i ? 'on' : ''}" data-pick="${esc(x.key)}">${esc(shown(x.name))}${x.dup ? ` <small>#${x.key.split('#')[1] * 1 + 1}</small>` : ''}</button>`).join('') || '<em>No unmatched IXL students left.</em>'}</div>
       <div class="rp-actions"><button class="pill pale" id="unmatch">No IXL account (blank row)</button><button class="pill pale" id="mCancel">Cancel</button></div>
     </div></div>`;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { s.aliases[display] = b.dataset.pick; save(); close(); render(); toast(`${esc(shown(display))} → ${esc(shown(b.dataset.pick.replace(/#\d+$/, '')))}`, false); });
   $('#unmatch').onclick = () => { s.aliases[display] = '#none'; save(); close(); render(); };
@@ -1204,7 +1204,7 @@ function openReceipt(sec, unitName) {
       <table class="checkTable"><thead><tr><th>Student</th><th>Copied</th><th>Now</th><th></th></tr></thead><tbody>${list.map(line).join('')}</tbody></table>
       <div class="rp-actions"><button class="pill" id="rcCopy">Copy ${esc(u.short)} again</button><button class="pill pale" id="mCancel">Close</button></div>
     </div></div>`;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; render(); };
+  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   $('#rcCopy').onclick = () => { close(); copyUnit(sec, u); };
 }
@@ -1267,7 +1267,7 @@ function openFocusCheck(sec, unitName) {
       ${bad.length ? `<table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th></th></tr></thead><tbody>${bad.map(line).join('')}</tbody></table>` : '<p class="ok">Every student matches. Nothing to fix.</p>'}
       <div class="rp-actions">${bad.length ? `<button class="pill" id="copyFix">Copy corrections (${state.settings.copyMode === 'ids' ? 'ID' : 'name'} ⇥ Tally points)</button>` : ''}<button class="pill pale" id="copyCol">Copy the whole column</button><button class="pill pale" id="mCancel">Close</button></div>
     </div></div>`;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; render(); };
+  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   $('#gbMap').onchange = () => { sec.gbUnitMap = sec.gbUnitMap || {}; sec.gbUnitMap[rc.assignment.name] = $('#gbMap').value; save(); close(); if ($('#gbMap') === null && sec.gbUnitMap[rc.assignment.name]) openFocusCheck(sec, sec.gbUnitMap[rc.assignment.name]); };
   const put = async (text, msg) => { let ok = false; try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} toast(ok ? msg : 'Copy failed — clipboard blocked.', !ok); };
@@ -1343,7 +1343,7 @@ function openSettings() {
   let remind = state.settings.remindDays; m.querySelectorAll('[data-remind]').forEach(b => b.onclick = () => { remind = +b.dataset.remind; m.querySelectorAll('[data-remind]').forEach(x => x.classList.toggle('on', x === b)); });
   const rosterEl = $('#roster');
   const dirty = () => rosterEl && rosterEl.value !== s.roster;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; render(); };
+  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
   const cancel = () => { if (dirty() && !confirm('Discard the roster changes you pasted?')) return; close(); };
   m._cancel = cancel;
   $('#mClose').onclick = cancel; $('#mCancel').onclick = cancel;
@@ -1429,7 +1429,7 @@ function openCustomEditor(id, prep) {
       <div id="cLists">${classes.map(x => `<div class="field"><label>${esc(x.label)} — one number per student, any order</label><textarea class="cVals" data-sec="${esc(x.key)}" style="min-height:70px">${(c.values[x.key] || []).join(' ')}</textarea></div>`).join('') || '<p>No classes in this course yet.</p>'}</div>
       <div class="rp-actions"><button class="pill" id="cSave">Save</button><button class="pill pale" id="mCancel">Cancel</button></div>
     </div></div>`;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-cprep]').forEach(b => b.onclick = () => { c.prep = b.dataset.cprep; c.label = $('#cLabel').value; c.unit = $('#cUnit').value; if (!id) { openCustomEditor(null, c.prep); const l = $('#cLabel'); if (l) l.value = c.label; } else openCustomEditor(id); });
   $('#cSave').onclick = () => {

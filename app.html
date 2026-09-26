@@ -240,7 +240,9 @@ body.dragging #drop{border-color:var(--turq);background:rgba(216,246,241,.6)}
 body.dragging::after{content:'Drop IXL exports anywhere';position:fixed;inset:0;background:rgba(23,50,77,.6);color:var(--white);font-weight:900;font-size:clamp(28px,4vw,48px);display:flex;align-items:center;justify-content:center;z-index:100;pointer-events:none}
 
 /* ---- settings card ---- */
-#modal{position:fixed;inset:0;background:rgba(23,50,77,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+#modal{position:fixed;inset:0;background:rgba(23,50,77,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px 16px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+/* one student's card: nothing behind it may be readable (other students' grades), so the backdrop goes near-opaque and heavily blurred */
+#modal.private{background:rgba(248,242,228,.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
 #modal .panel{background:var(--white);border-radius:20px;box-shadow:8px 10px 0 var(--shadow);width:min(940px,94vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
 #modal header{background:var(--navy);color:var(--white);padding:14px 26px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 #modal header h2{font-weight:900;letter-spacing:.08em;text-transform:uppercase;font-size:var(--t-xl)}
