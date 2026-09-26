@@ -429,7 +429,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     Import
   </button>
-  <input type="file" id="file" accept=".xlsx,.csv,.xls,.txt,.tsv,.html,.htm" multiple class="hidden">
+  <input type="file" id="file" multiple class="hidden">   <!-- no accept: some pickers (Android, Drive) grey out files it can't map to a type, and every file is sniffed anyway -->
 </div>
 
 <div id="empty">
