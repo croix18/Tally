@@ -1,7 +1,5 @@
 // Export age + reminder, Data Lab values, receipt viewer, guide, header button kinds
-const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
-const exe = require('child_process').execSync('ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome | head -1').toString().trim();
-let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c) fails++; };
+const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -17,7 +15,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   check(/IXL export is \d+ days old/.test(notices) && /reminded after 7 days/.test(notices),'old export raises the reminder notice');
   check(await p.locator('.tab .age').count()===1,'class chip shows the age instead of the date when overdue');
   check(/\(\d+ (days|weeks) ago\)/.test(await p.textContent('#bar')),'bar shows how old the export is');
-  await p.screenshot({path:'shot25.png'});
+  await p.screenshot({path:path.join(tmp,'shot25.png')});
   // turn the reminder off → notice gone; 30 days → still fine for a 25-day-old file
   await p.click('#btnSettings'); await p.click('[data-remind="0"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   check(!/days old/.test(await p.textContent('#notices')) && await p.locator('.tab .age').count()===0,'reminder Off silences the notice');
@@ -36,7 +34,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   await p.click('.rlink'); await p.waitForTimeout(300);
   let txt=await p.textContent('#modal');
   check(/Copied · Unit/.test(txt) && /Nobody has moved up since/.test(txt) && await p.locator('.checkTable tbody tr').count()>10,'receipt panel lists every copied row with copied vs now');
-  await p.screenshot({path:'shot26.png'});
+  await p.screenshot({path:path.join(tmp,'shot26.png')});
   // simulate movement: lower one copied value → shows "up N"
   await p.evaluate(()=>{const s=Object.values(window.__tally.state.sections)[0]; const rc=Object.values(s.receipts)[0]; const r=rc.rows.find(x=>x[1]>0); r[1]=r[1]-1;});
   await p.click('#mCancel'); await p.waitForTimeout(200); await p.click('.rlink'); await p.waitForTimeout(300);
@@ -54,7 +52,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   const vs=await p.evaluate(()=>{const row=document.querySelector('.labRow'); const chips=[...row.querySelectorAll('.labChips span:not(.gap)')].map(x=>+x.textContent); const st=window.__tally.labSeries(window.__tally.state.settings.labPrep, window.__tally.state.settings.labUnit)[0].st; return {chips, values:st.values, q1:st.q1, q3:st.q3, med:st.median, qChips:[...row.querySelectorAll('.labChips span.q')].map(x=>+x.textContent), mChips:[...row.querySelectorAll('.labChips span.m')].map(x=>+x.textContent)};});
   check(JSON.stringify(vs.chips)===JSON.stringify(vs.values),'chips are exactly the sorted values');
   check(vs.qChips.length>=2 && vs.mChips.length===1 && Math.abs(vs.mChips[0]-vs.med)<0.01,'median highlighted; a Q1 and Q3 chip highlighted in each half');
-  await p.screenshot({path:'shot27.png'});
+  await p.screenshot({path:path.join(tmp,'shot27.png')});
   // saved Data Lab page carries the values
   const [dl]=await Promise.all([p.waitForEvent('download'), p.evaluate(()=>{ window.__tally.state.settings.leaderboard=false; window.__tally.render(); document.querySelector('#btnSettings').click(); setTimeout(()=>document.querySelector('#saveLab').click(),100); })]);
   const saved=fs.readFileSync(await dl.path(),'utf8'); check(/labValues/.test(saved) && /labChips/.test(saved),'saved Data Lab page includes the values');
@@ -62,14 +60,14 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   // --- guide
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#btnGuide')]); await pop.waitForLoadState(); await pop.waitForTimeout(300);
   const g=await pop.textContent('body'); check(/Every week or two/.test(g) && /Words on the screen/.test(g) && /co-teacher/i.test(g) && /accelerated 67/.test(g),'guide opens with the weekly flow, glossary, co-teacher section and the live goals');
-  await pop.emulateMedia({media:'print'}); await pop.screenshot({path:'shot28.png',fullPage:true}); await pop.close();
+  await pop.emulateMedia({media:'print'}); await pop.screenshot({path:path.join(tmp,'shot28.png'),fullPage:true}); await pop.close();
   // --- header: every secondary action is a ghost; Import is the one filled button
   const kinds=await p.evaluate(()=>[...document.querySelectorAll('#top button')].filter(b=>!b.classList.contains('hidden')).map(b=>b.id+':'+(b.classList.contains('ghost')?'ghost':'primary')));
   check(kinds.filter(k=>k.endsWith('primary')).length===1 && kinds.find(k=>k.startsWith('btnImport')).endsWith('primary'),'one primary button in the header: '+kinds.join(' '));
-  await p.screenshot({path:'shot29.png'});
+  await p.screenshot({path:path.join(tmp,'shot29.png')});
   // backup carries the reminder
   const [dl2]=await Promise.all([p.waitForEvent('download'), p.evaluate(()=>{ document.querySelector('#btnSettings').click(); setTimeout(()=>document.querySelector('#exportCfg').click(),100); })]);
   const cfg=JSON.parse(fs.readFileSync(await dl2.path(),'utf8')); check(cfg.settings.remindDays===7,'backup keeps the reminder setting');
   console.log('errors:',errs); check(errs.length===0,'no errors');
-  await b.close(); console.log(fails?`\n${fails} FAILED`:'\nALL PASS');
+  await b.close(); done();
 })();

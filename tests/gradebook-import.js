@@ -1,6 +1,4 @@
-const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
-const exe = require('child_process').execSync('ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome | head -1').toString().trim();
-let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c) fails++; };
+const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
@@ -38,7 +36,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   check(await p.locator('.labDot').count()===0 && (await p.getAttribute('#labDots','aria-pressed'))==='false','gradebook dataset: dots off by default');
   await p.click('#labDots'); await p.waitForTimeout(300); check(await p.locator('.labDot').count()>10,'dots can be turned on'); await p.click('#labDots'); await p.waitForTimeout(200);
   check(/missing/.test(await p.textContent('.labName')) || true,'missing count shown when present');
-  await p.click('#labStats'); await p.waitForTimeout(200); await p.click('#labStats'); await p.waitForTimeout(200); await p.screenshot({path:'shot16.png'});
+  await p.click('#labStats'); await p.waitForTimeout(200); await p.click('#labStats'); await p.waitForTimeout(200); await p.screenshot({path:path.join(tmp,'shot16.png')});
   await p.click('[data-prep="acc"]'); await p.waitForTimeout(300);
   const firstSkill=await p.evaluate(()=>[...document.querySelectorAll('#labUnit option')].find(o=>o.value.startsWith('skill:')).value);
   await p.selectOption('#labUnit', firstSkill); await p.waitForTimeout(400);
@@ -49,9 +47,9 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   const wx2=await p.evaluate(()=>{const ls=[...document.querySelectorAll('.labWhisk')].map(l=>+l.getAttribute('x2')); const outs=[...document.querySelectorAll('.labOut')].map(c=>+c.getAttribute('cx')); return {maxWhisk:Math.max(...ls), outs};});
   check(wx2.outs.length===0 || wx2.outs.some(o=>o>wx2.maxWhisk+0.01),'Tukey toggle: outliers float past the whisker');
   await p.click('#labTukey'); await p.waitForTimeout(300);
-  await p.screenshot({path:'shot17.png'});
+  await p.screenshot({path:path.join(tmp,'shot17.png')});
   await p.reload(); await p.waitForTimeout(500);
   check((await p.evaluate(()=>window.__tally.state.sections['1205050-7T3A'].grades.assignments.length))===5,'gradebook persists');
   console.log('errors:',errs); check(errs.length===0,'no errors');
-  await b.close(); console.log(fails?`\n${fails} FAILED`:'\nALL PASS');
+  await b.close(); done();
 })();

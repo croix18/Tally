@@ -1,6 +1,4 @@
-const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
-const exe = require('child_process').execSync('ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome | head -1').toString().trim();
-let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c) fails++; };
+const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); let dialogAnswer=true; p.on('dialog', d=>dialogAnswer?d.accept():d.dismiss());
@@ -22,7 +20,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   check(d.every(r=>r.poss>0 && r.units>0) && d.filter(r=>r.n.includes('GR7')).every(r=>r.rank>=1),'race data: completion over assigned units');
   await p.click('#btnLb'); await p.waitForTimeout(400); const lbt=await p.textContent('#lb');
   check(/% complete/.test(lbt) && /assigned:/.test(lbt) && /of [\d,]+ skills at goal/.test(lbt),'race shows % complete and the assigned units');
-  await p.screenshot({path:'shot19.png'}); await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(150);
+  await p.screenshot({path:path.join(tmp,'shot19.png')}); await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(150);
   // 2. per-student skip: tap a cell
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await p.click('th.unit .ulink'); await p.waitForTimeout(250);
   const tots=()=>p.evaluate(()=>{const T=window.__tally; const s=T.state.sections['1205050-7T1A']; const u=T.unitsOf(s)[0]; return s.students.map((_,i)=>T.totalFor(s,u,i));}); const before=await tots();
@@ -52,7 +50,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   const txt=await pop.textContent('body');
   check(/Still owed/.test(txt) && /Below goal \(67\)/.test(txt) && /A\. N\./.test(txt) && !/Nguyen/.test(txt),'still-owed page: initials, below-goal lists');
   const bw=await pop.evaluate(()=>{const cs=getComputedStyle(document.body); return cs.color+'|'+cs.backgroundColor;}); check(bw==='rgb(0, 0, 0)|rgb(255, 255, 255)','black on white');
-  await pop.screenshot({path:'shot20.png', fullPage:false}); await pop.close();
+  await pop.screenshot({path:path.join(tmp,'shot20.png'), fullPage:false}); await pop.close();
   dialogAnswer=false; const [pop2]=await Promise.all([ctx.waitForEvent('page'), p.click('#printOwed')]); await pop2.waitForLoadState(); await pop2.waitForTimeout(300);
   check(/Nguyen, Ava/.test(await pop2.textContent('body')),'full names when Cancel'); await pop2.close(); dialogAnswer=true;
   // 5. custom data set
@@ -81,5 +79,5 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   check(bk.custom.length===1 && Object.keys(bk.sections['1205050-7T1A'].studentSkips).length===1 && bk.assigned.on,'backup carries custom sets, student skips, assignment marks');
   await p.reload(); await p.waitForTimeout(500); check((await p.evaluate(()=>Object.keys(window.__tally.state.sections['1205050-7T1A'].studentSkips).length))===1,'student skips persist');
   console.log('errors:',errs); check(errs.length===0,'no errors');
-  await b.close(); console.log(fails?`\n${fails} FAILED`:'\nALL PASS');
+  await b.close(); done();
 })();

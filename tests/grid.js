@@ -1,6 +1,4 @@
-const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
-const exe = require('child_process').execSync('ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome | head -1').toString().trim();
-let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c) fails++; };
+const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}});
   await ctx.grantPermissions(['clipboard-read','clipboard-write']);
@@ -118,10 +116,10 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   // six sections, no page scroll
   const tmps=[]; for(let i=0;i<3;i++){ const src=main[1]; const dst=path.resolve('fixtures','tmp'+i+'_'+path.basename(src).replace('7T3A','7T'+(4+i)+'A')); fs.copyFileSync(src,dst); tmps.push(dst);} await p.setInputFiles('#file',tmps); await p.waitForTimeout(800); tmps.forEach(f=>fs.unlinkSync(f));
   const sh=await p.evaluate(()=>[document.documentElement.scrollHeight, window.innerHeight]); check(sh[0]<=sh[1],'seven sections: no page scroll '+sh);
-  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(200); await p.screenshot({path:'shot9.png'});
-  await p.click('th.unit .ulink'); await p.waitForTimeout(250); await p.screenshot({path:'shot10.png'});
-  await p.click('[data-k="1205050-7T4A"]'); await p.waitForTimeout(250); await p.screenshot({path:'shot11.png'});
+  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(200); await p.screenshot({path:path.join(tmp,'shot9.png')});
+  await p.click('th.unit .ulink'); await p.waitForTimeout(250); await p.screenshot({path:path.join(tmp,'shot10.png')});
+  await p.click('[data-k="1205050-7T4A"]'); await p.waitForTimeout(250); await p.screenshot({path:path.join(tmp,'shot11.png')});
   await p.reload(); await p.waitForTimeout(400); check((await p.evaluate(()=>window.__tally.state.order.length))===7,'persisted after reload');
   console.log('errors:', errs); check(errs.length===0,'no console errors');
-  await b.close(); console.log(fails? `\n${fails} FAILED` : '\nALL PASS');
+  await b.close(); done();
 })();

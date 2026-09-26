@@ -1,6 +1,4 @@
-const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
-const exe = require('child_process').execSync('ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome | head -1').toString().trim();
-let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c) fails++; };
+const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext(); const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('file://'+path.resolve('Scrub.html'));
@@ -20,7 +18,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   // scrub the IXL xlsx fixture and the messy gradebook; then confirm Tally reads them identically (numbers) with no original names
   const ixl=fs.readdirSync('fixtures').find(f=>/^f1473588.*7T1A/.test(f));
   const outs=[];
-  for (const f of ['fixtures/'+ixl,'fixtures/gb_messy.csv','fixtures/gb_messy.xls']) { const [dl]=await Promise.all([p.waitForEvent('download'), p.setInputFiles('#file', path.resolve(f))]); const dst=path.resolve('fixtures', 'scrubbed_'+path.basename(f)); fs.copyFileSync(await dl.path(), dst); outs.push(dst); await p.waitForTimeout(200); }
+  for (const f of ['fixtures/'+ixl,'fixtures/gb_messy.csv','fixtures/gb_messy.xls']) { const [dl]=await Promise.all([p.waitForEvent('download'), p.setInputFiles('#file', path.resolve(f))]); const dst=path.join(tmp, 'scrubbed_'+path.basename(f)); fs.copyFileSync(await dl.path(), dst); outs.push(dst); await p.waitForTimeout(200); }
   const log=await p.textContent('#log'); check(/IXL Score Grid/.test(log) && (log.match(/Gradebook/g)||[]).length===2,'both file kinds detected');
   const gbTxt=fs.readFileSync(outs[1],'utf8'); check(!/Olivia|Cruz|Brien|Smith-Jones|Taylor|1000234|olivia\.delacruz/.test(gbTxt) && /Unit 1 Test 100 pts 09\/12/.test(gbTxt) && /17\/20/.test(gbTxt) && /@example\.org/.test(gbTxt),'gradebook CSV: names, IDs, emails replaced; everything else intact');
   const htmlTxt=fs.readFileSync(outs[2],'utf8'); check(!/Olivia|Brien/.test(htmlTxt) && /<table>/.test(htmlTxt) && /Jr\./.test(htmlTxt),'HTML-as-xls scrubbed in place');
@@ -38,5 +36,5 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   const g=await t.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].grades.assignments.map(a=>[a.name,a.max,a.values]));
   check(g.length===2 && g[0][0]==='Unit 1 Test' && g[0][1]===100 && JSON.stringify(g[1][2])==='[17,0,19,null]','Tally imports the scrubbed HTML gradebook correctly');
   console.log('errors:',errs); check(errs.length===0,'no errors');
-  await b.close(); console.log(fails?`\n${fails} FAILED`:'\nALL PASS');
+  await b.close(); done();
 })();

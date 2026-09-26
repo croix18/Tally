@@ -1,7 +1,6 @@
-const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
-const exe = require('child_process').execSync('ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome | head -1').toString().trim();
-let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c) fails++; };
+const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
 (async()=>{
+  need('real_roster.txt','real_gradebook.csv'); if(!fs.readdirSync('fixtures').some(f=>f.startsWith('real_IXL'))) need('real_IXL*');
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
   await p.goto('file://'+path.resolve('Tally.html'));
@@ -27,16 +26,16 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300);
   await p.selectOption('#labUnit','gb:Unit 1 Assessment'); await p.waitForTimeout(400);
   check(await p.locator('.labRow').count()===1 && /out of 21/.test(await p.textContent('.lbSub')) && /1 excused/.test(await p.textContent('.labName')),'Data Lab plots the real assessment out of 21 with the excused count');
-  await p.click('#labStats'); await p.waitForTimeout(200); await p.screenshot({path:'shot21.png'});
+  await p.click('#labStats'); await p.waitForTimeout(200); await p.screenshot({path:path.join(tmp,'shot21.png')});
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(150);
   // Copy Unit 2 → 17 skills, matches the Focus "Unit 2 IXL 17 Points" assignment
   const u2=await p.evaluate(()=>{const T=window.__tally; const s=Object.values(T.state.sections)[0]; return T.unitsOf(s).find(u=>u.short==='Unit 2').total;});
   check(u2===17,'Tally Unit 2 is out of 17 — same as the Focus "Unit 2 IXL" column');
-  await p.screenshot({path:'shot22.png'});
+  await p.screenshot({path:path.join(tmp,'shot22.png')});
   // run-together surnames (what IXL appears to do with "LOWELL CALDER" and "JARVIS-DUNMORE")
   const rt=await p.evaluate(()=>{const T=window.__tally; const base={skills:[],scores:[],excluded:{},aliases:{},hiddenUnits:{},threshold:60,ignored:{},studentSkips:{}};
     return T.buildRows({...base,students:['CASEY LOWELLCALDER','TATUM JARVISDUNMORE','REMY YORKVANCE'],roster:'LOWELL CALDER, CASEY DE LOS AVERY\nJARVIS-DUNMORE, TATUM\nYORK VANCE, REMY'}).map(x=>x.status+'/'+x.tier);});
   check(rt.every(x=>x==='ok/exact'),'two-word and hyphenated surnames match IXL\'s run-together form exactly');
   console.log('errors:',errs); check(errs.length===0,'no errors');
-  await b.close(); console.log(fails?`\n${fails} FAILED`:'\nALL PASS');
+  await b.close(); done();
 })();

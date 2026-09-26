@@ -1,7 +1,6 @@
-const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
-const exe = require('child_process').execSync('ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome | head -1').toString().trim();
-let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c) fails++; };
+const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
 (async()=>{
+  need('real2_roster.txt','real2_gradebook.csv'); if(!fs.readdirSync('fixtures').some(f=>f.startsWith('real2_IXL'))) need('real2_IXL*');
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
   await p.goto('file://'+path.resolve('Tally.html'));
@@ -20,7 +19,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   const txt=await p.textContent('#modal');
   check(/Focus check · Unit 2/.test(txt) && /17 points/.test(txt) && /out of 17/.test(txt),'check panel shows the pairing');
   const rows=await p.locator('.checkTable tbody tr').count(); check(rows===u2.counts.differ+u2.counts.missing+u2.counts.stale+u2.counts.unmatched,'panel lists only the students needing attention: '+rows);
-  await p.screenshot({path:'shot23.png'});
+  await p.screenshot({path:path.join(tmp,'shot23.png')});
   if (rows) { await p.click('#copyFix'); await p.waitForTimeout(300); const clip=await p.evaluate(()=>navigator.clipboard.readText()); check(clip.split('\n').every(l=>/\t\d+$/.test(l)),'corrections copy is name ⇥ Tally points'); }
   // skip-to-match suggestion: Unit 1 has 23 skills vs 15 Focus points → offer the 8 least-touched skills, apply, points now agree
   await p.click('#mCancel'); await p.waitForTimeout(300);
@@ -31,7 +30,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   console.log(JSON.stringify(u1));
   check(u1.maxOK===true && u1.total===15,'after applying, Tally counts 15 for Unit 1 and the points warning clears');
   check(!/Skip 8 skills/.test(await p.textContent('#modal')),'suggestion disappears once points agree');
-  await p.screenshot({path:'shot24.png'});
+  await p.screenshot({path:path.join(tmp,'shot24.png')});
   // remap: mark the Unit 1 column as "not an IXL unit" → badge disappears
   await p.selectOption('#gbMap',''); await p.waitForTimeout(400);
   check(await p.locator('.fcheck').count()===1,'a column can be unmapped');
@@ -45,5 +44,5 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   console.log(JSON.stringify(st));
   check(st.stale===1 && st.differ===0,'a student who gained since the copy reads as "up since copy", not as an error');
   console.log('errors:',errs); check(errs.length===0,'no errors');
-  await b.close(); console.log(fails?`\n${fails} FAILED`:'\nALL PASS');
+  await b.close(); done();
 })();

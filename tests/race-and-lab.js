@@ -1,6 +1,4 @@
-const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
-const exe = require('child_process').execSync('ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome | head -1').toString().trim();
-let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c) fails++; };
+const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900},hasTouch:true}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
@@ -31,7 +29,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   check((await p.evaluate(()=>window.__tally.state.settings.hideNames))===true,'entering projected mode forces Hide names');
   check(await p.locator('.lbTie').count()===3 && await p.locator('.trophy').count()===1,'tied classes labelled; trophy only for a clear leader in a multi-class league');
   check(await p.locator('#lbDownload').count()===0,'no Save button on the student screen');
-  await p.screenshot({path:'shot12.png'});
+  await p.screenshot({path:path.join(tmp,'shot12.png')});
   // hold to exit: short tap does nothing, long hold exits
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(300); await p.locator('#lbExit').dispatchEvent('pointerup'); await p.waitForTimeout(200);
   check(await p.locator('#lb.hidden').count()===0,'short tap does not exit');
@@ -53,7 +51,7 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   await p.click('#labTukey'); await p.waitForTimeout(300); check(/outliers/i.test(await p.textContent('.labStats')) && /outlier/.test(await p.textContent('.labLegend')),'outliers appear only with the toggle'); await p.click('#labTukey'); await p.waitForTimeout(200);
   await p.click('[data-prep="on"]'); await p.waitForTimeout(300); check(await p.locator('.labRow').count()===4,'on-level lab shows 4 classes');
   await p.selectOption('#labUnit','unit:__all__'); await p.waitForTimeout(300); check(/All units/.test(await p.textContent('.lbSub')),'dataset switch');
-  await p.screenshot({path:'shot14.png'}); await p.selectOption('#labUnit', await p.evaluate(()=>document.querySelector('#labUnit option').value)); await p.waitForTimeout(300); await p.screenshot({path:'shot15.png'});
+  await p.screenshot({path:path.join(tmp,'shot14.png')}); await p.selectOption('#labUnit', await p.evaluate(()=>document.querySelector('#labUnit option').value)); await p.waitForTimeout(300); await p.screenshot({path:path.join(tmp,'shot15.png')});
   const allScale=await p.textContent('.lbSub'); check(!/0–2\d\d/.test(allScale),'all-skills scale from data, not 220: '+allScale.slice(-14));
   await p.click('[data-tab="race"]'); await p.waitForTimeout(200);
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
@@ -65,8 +63,8 @@ let fails=0; const check=(c,msg)=>{ console.log((c?'PASS ':'FAIL ')+msg); if(!c)
   await p.click('#btnSettings'); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#saveRace')]); const fp=await dl.path(); const html=fs.readFileSync(fp,'utf8'); await p.click('#mCancel'); await p.waitForTimeout(200);
   await p.click('#btnLb'); await p.waitForTimeout(300);
   check(/Race/.test(html) && !/Nguyen|Smith|Garcia|localStorage/.test(html) && /The Integers/.test(html),'standalone page has no names, has class names');
-  fs.copyFileSync(fp,'race.html'); const p2=await ctx.newPage(); await p2.goto('file://'+path.resolve('race.html')); await p2.waitForTimeout(1500); await p2.screenshot({path:'shot13.png'}); await p2.close();
+  fs.copyFileSync(fp,path.join(tmp,'race.html')); const p2=await ctx.newPage(); await p2.goto('file://'+path.join(tmp,'race.html')); await p2.waitForTimeout(1500); await p2.screenshot({path:path.join(tmp,'shot13.png')}); await p2.close();
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
   console.log('errors:',errs); check(errs.length===0,'no errors');
-  await b.close(); console.log(fails?`\n${fails} FAILED`:'\nALL PASS');
+  await b.close(); done();
 })();

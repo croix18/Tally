@@ -20,15 +20,18 @@ Student-facing screens (Race and Data Lab) never show names and lock behind a ho
 | `app.html` | markup + CSS |
 | `app.js` | all logic |
 | `parser.js` | zip/inflate/xlsx/csv readers and the IXL grid + file-name parsers |
-| `build.py` | assembles `Tally.html` from the three above |
-| `scrub.html` | the anonymizer (standalone) |
-| `test3.js … test12.js` | Playwright end-to-end tests against `Tally.html` |
+| `scrub.src.html` | the anonymizer's markup, CSS and logic |
+| `build.py` | assembles `Tally.html` (app.html + parser.js + app.js) and `Scrub.html` (scrub.src.html + parser.js) |
+| `tests/` | Playwright end-to-end suites, one file per area, run by `tests/run.js` |
 | `fixtures/` | synthetic IXL/Focus exports and rosters |
 
 ```
-python3 build.py
+python3 build.py      # shipped files (no debug handle)
 npm install
-for t in test3 test4 test5 test6 test7 test8 test9 test10 test11 test12; do node $t.js; done
+npm test              # test build → every suite → shipped build restored
+node tests/run.js grid scrub   # just those suites
 ```
 
-Tests 10 and 11 use scrubbed exports of real classes (`fixtures/real2_*`), which are not committed.
+The shipped `Tally.html` carries no `window.__tally`; `python3 build.py --test` keeps it for the suites (`npm test` does this for you). Suites write screenshots and scrub output to a temp folder, never into the repo.
+
+`real-ixl-and-focus` and `real-focus-check` use scrubbed exports of real classes (`fixtures/real_*`, `fixtures/real2_*`), which are not committed; they skip when those files are absent.

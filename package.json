@@ -1,6 +1,10 @@
 {
-  "dependencies": {
-    "@xmldom/xmldom": "^0.9.12",
+  "private": true,
+  "scripts": {
+    "build": "python3 build.py",
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
     "playwright": "^1.63.0"
   }
 }
