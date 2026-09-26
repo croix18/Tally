@@ -54,7 +54,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   // hidden units + toggle
   const shownU=await p.locator('th.unit').count(); check(shownU<17,'quiet units hidden: '+shownU+' shown');
   await p.click('#toggleAll'); await p.waitForTimeout(150); check(await p.locator('th.unit').count()===17,'toggle shows all 17');
-  dialogs=[]; dialogAnswer=false; await p.locator('th.unit.quiet .copy').first().click(); await p.waitForTimeout(200);
+  dialogs=[]; dialogAnswer=false; const zi=await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['1205050-7T1A']; const us=T.unitsOf(s); return us.findIndex(u=>u.hidden && !s.students.some((_,si)=>T.unitColumn && u.active.some(k=>{const v=s.scores[k][si]; return v!=null && v>=s.threshold;}))); }); await p.locator('th.unit .copy').nth(zi).click(); await p.waitForTimeout(200);
   check(dialogs.length===1 && /zeros/.test(dialogs[0]),'all-zero copy asks first');
   await p.click('#toggleAll'); await p.waitForTimeout(150);
   // copy unit 1 toast + clipboard

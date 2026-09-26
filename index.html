@@ -1238,9 +1238,12 @@ function unitsOf(sec) {
   return [...map.entries()].map(([name, idx]) => {
     const m = name.match(/^Unit\s+(\d+)\s*(.*)$/i);
     const active = idx.filter(k => !sec.excluded[skillKey(sec.skills[k])]);
-    let touched = 0, cells = 0, earned = false;
-    idx.forEach(k => sec.scores[k].forEach(v => { cells++; if (v != null) { touched++; if (v >= t) earned = true; } }));
-    const auto = earned || (cells > 0 && touched / cells >= 0.05);          // looks started
+    // "Looks started": a real share of the class has touched the unit (a quarter of students), not one kid working ahead —
+    // a course-wide export has students on every unit, so a single score at goal must not assign a unit for the whole course.
+    const n = sec.students.length; const seen = new Array(n).fill(false);
+    idx.forEach(k => sec.scores[k].forEach((v, si) => { if (v != null) seen[si] = true; }));
+    const share = n ? seen.filter(Boolean).length / n : 0;
+    const auto = share >= 0.25;
     const num = m ? Number(m[1]) : 0; const skipFirst = (state.settings.skipFirst || {})[sec.prep] || 0;
     const assigned = marks[name] != null ? !!marks[name] : (num > 0 && num <= skipFirst ? false : auto);   // the course's mark wins; then "first N units aren't assigned"; otherwise "looks started"
     return { name, short: m ? 'Unit ' + m[1] : name, title: m ? m[2] : '', idx, active, total: active.length, hidden: !assigned, assigned, marked: marks[name] != null };
@@ -1463,7 +1466,7 @@ function lbMarkup(data, focus) {
         <div class="lbName">${esc(r.name)}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.lead ? ' <span class="lbTie lead">furthest along</span>' : ''}</div>
         <div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div>
         <div class="lbChips">
-          <span class="lbChip">${pct(r.completion)}% complete · ${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skills at goal</span>
+          <span class="lbChip">${pct(r.completion)}% complete · ${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skill-points · ${plural(r.students, 'student')}</span>
           ${r.thrChanged ? `<span class="lbChip">goal changed — fresh start this week</span>` : r.gain != null ? `<span class="lbChip gain">${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}</span>` : `<span class="lbChip">first week in the race</span>`}
         </div>
       </div>
