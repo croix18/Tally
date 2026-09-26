@@ -258,6 +258,7 @@ th.skill .rot{white-space:normal;width:32px;max-height:176px;line-height:1.15;fo
 .picks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
 .chip{background:var(--paleturq);color:var(--navy);border:2px solid var(--turq);border-radius:999px;font-weight:700;font-size:var(--t-m);padding:8px 16px;min-height:40px}
 .chip.on{background:var(--turq);font-weight:900}
+.choice{border:2px solid var(--grid);border-radius:12px;padding:12px 14px;margin:10px 0}.choice p{margin:4px 0 10px}
 .chip small{color:var(--teal);font-weight:900}
 @media (max-width:800px){.rpanel{grid-template-columns:1fr}}
 
@@ -1519,7 +1520,7 @@ function renderNotices() {
   else if (s.allBlank) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>No scores were found in this export</b> — every cell is empty. If IXL shows scores for this class, the file may be in a format Tally doesn't recognize; try the .csv export.</span></div>`;
   if (rs.hasText && !rs.count) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>The pasted roster couldn't be read</b> — no names found. Rows are in IXL order, which is probably not FOCUS order.</span><button data-open="roster">Fix roster</button></div>`;
   else if (!rs.count && s.skipRoster) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>No roster.</b> Rows are sorted by last name; Copy includes names so you can check the order.</span><button data-open="roster">Paste roster</button></div>`;
-  if (ro.length || am.length || io.length) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>Roster mismatch</b> — ${ro.length ? `${ro.length} on the roster but not in IXL${list(ro)}. ` : ''}${am.length ? `${am.length} with two IXL matches${list(am)}. ` : ''}${io.length ? `${plural(io.length, 'IXL account')} not on the roster${list(io)}. ` : ''}Tap a flag to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.</span></div>`;
+  if (ro.length || am.length || io.length) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>Roster mismatch</b> — ${ro.length ? `${ro.length} on the roster but not in IXL${list(ro)}. ` : ''}${am.length ? `${am.length} with two IXL matches${list(am)}. ` : ''}${io.length ? `${plural(io.length, 'IXL account')} not on the roster${list(io)}. ` : ''}${io.length ? 'IXL students not on the roster are left out of copies — tap their flag: re-paste the roster for a new student, skip for one who left. ' : ''}Tap a flag to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.</span></div>`;
   const od = overdue(s); const gbOd = s.grades && state.settings.remindDays && ageDays(s.grades.importedAt) > state.settings.remindDays ? ageDays(s.grades.importedAt) : null;
   if (od || gbOd) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span>${od ? `<b>This IXL export is ${plural(od, 'day')} old</b> (${fmtDate(dataDate(s))}). ` : ''}${gbOd ? `<b>The Focus gradebook is ${plural(gbOd, 'day')} old</b> (${fmtDate(s.grades.importedAt.slice(0, 10))}). ` : ''}You asked to be reminded after ${state.settings.remindDays} days — export ${od && gbOd ? 'fresh copies' : 'a fresh copy'} and import ${od && gbOd ? 'them' : 'it'}.</span><button data-import="1">Import</button></div>`;
   if (rs.count && s.rosterAt && s.date && s.rosterAt.slice(0, 10) < s.date && (Date.now() - new Date(s.rosterAt)) > 21 * 86400000) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>Roster pasted ${fmtDate(s.rosterAt.slice(0, 10))}</b> — older than this export. If anyone enrolled or left since, re-paste it before you copy.</span><button data-open="roster">Re-paste</button></div>`;
@@ -1589,7 +1590,7 @@ function renderGrid() {
   const nameCell = r => `<td class="stu"><div class="stuname">${r.status === 'ok' && r.tier === 'loose' ? `<button class="nm nmbtn" data-fix="${esc(r.display)}" title="Matched loosely to ${esc(r.ixlName)} — tap to change">${esc(shown(r.display))}</button>` : `<span class="nm">${esc(shown(r.display))}</span>`}${
       r.status === 'rosterOnly' ? `<button class="flag" data-fix="${esc(r.display)}">NOT IN IXL — FIX</button>` :
       r.status === 'ambiguous' ? `<button class="flag amb" data-fix="${esc(r.display)}">TWO MATCHES — PICK</button>` :
-      r.status === 'ixlOnly' ? `<button class="flag" data-ignore="${esc(r.key)}">NOT ON ROSTER · SKIP</button>` :
+      r.status === 'ixlOnly' ? `<button class="flag" data-ignore="${esc(r.key)}">NOT ON ROSTER — FIX</button>` :
       (r.sub && !state.settings.hideNames ? `<span class="sub">${esc(r.sub)}</span>` : '')}</div></td>`;
   if (view.mode === 'units') {
     const shownUnits = units.filter(u => !u.hidden || state.settings.showAllUnits);
@@ -1655,15 +1656,29 @@ function renderGrid() {
     const uu = unitsOf(s).find(x => x.name === view.unit); const row = buildRows(s).find(r => r.ixl === si);
     toast(`${s.studentSkips[key] && s.studentSkips[key][kk] ? 'Skipped' : 'Counting'} <b>${esc(sk.name)}</b> for ${esc(shown(row ? row.display : s.students[si]))} · their ${esc(uu.short)} is out of <b>${totalFor(s, uu, si)}</b>`, false, 4000);
   });
-  wrap.querySelectorAll('[data-ignore]').forEach(el => el.onclick = () => {
-    const key = el.dataset.ignore; const name = key.replace(/#\d+$/, '');
-    if (!confirm(`Skip "${name}" for ${s.label}? They'll be left out of the grid, copies, and the race — for a withdrawn or moved student, or a duplicate IXL account. Undo in Settings.`)) return;
-    s.ignored[key] = true; save(); render();
-  });
+  wrap.querySelectorAll('[data-ignore]').forEach(el => el.onclick = () => openNotOnRoster(s, el.dataset.ignore));
   wrap.querySelectorAll('[data-fix]').forEach(el => el.onclick = () => openFixer(s, el.dataset.fix));
 }
 
 /* ---------- match fixer (tap a flag, pick the IXL account) ---------- */
+// An IXL account that isn't on the pasted roster is either a new student (the roster is stale — re-paste it, so they
+// get a row in the copy) or someone who left / a duplicate account (skip). Copies leave them out until one is chosen.
+function openNotOnRoster(s, key) {
+  const name = key.replace(/#\d+$/, '');
+  const m = $('#modal'); m.classList.remove('hidden');
+  m.innerHTML = `<div class="panel narrow">
+    <header><h2>${esc(shown(ixlDisplay(name)))} is in IXL but not on the roster</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one">
+      <p>Their scores show in the grid, but <b>Copy leaves them out</b> until the roster says where their row goes.</p>
+      <div class="choice"><b>New student?</b><p>Re-paste the roster from FOCUS so they get a row in FOCUS order.</p><button class="pill" id="nrRoster">Re-paste roster</button></div>
+      <div class="choice"><b>Withdrawn, moved, or a duplicate IXL account?</b><p>Skip them — they leave the grid, copies, and the race. Undo any time in Settings.</p><button class="pill pale" id="nrSkip">Skip this account</button></div>
+      <div class="rp-actions"><button class="pill pale" id="mCancel">Not now</button></div>
+    </div></div>`;
+  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  $('#nrSkip').onclick = () => { s.ignored[key] = true; save(); close(); render(); toast(`${esc(shown(ixlDisplay(name)))} skipped for ${esc(s.label)} — undo in Settings.`, false); };
+  $('#nrRoster').onclick = () => { close(); openSettings(); const ta = $('#roster'); if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center' }); } };
+}
 function openFixer(s, display) {
   const rows = buildRows(s); const row = rows.find(r => r.display === display);
   const usedIdx = new Set(rows.filter(r => r.status === 'ok' && r.ixl != null && r.display !== display).map(r => r.ixl));
@@ -1714,9 +1729,9 @@ async function copyUnit(sec, unit) {
   let ok = false;
   try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
   if (!ok) { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { ok = document.execCommand('copy'); } catch (e) {} ta.remove(); }
-  const blanks = rowsAll.filter(r => r.ixl == null).length;
+  const blanks = rowsAll.filter(r => r.ixl == null).length; const leftOut = buildRows(sec).filter(r => r.status === 'ixlOnly').length;
   if (ok) { sec.receipts[unit.name] = { at: new Date().toISOString(), exportDate: sec.date, goal: sec.threshold, outOf: unit.total, skipped: unit.idx.filter(k => !unit.active.includes(k)).map(k => sec.skills[k].name), rows: rowsAll.map(r => [r.display, r.ixl == null ? null : points(sec, unit, r.ixl), r.ixl == null ? null : totalFor(sec, unit, r.ixl)]) }; save(); if (view.mode === 'units') { const sl = $('#gridwrap').scrollLeft; renderGrid(); $('#gridwrap').scrollLeft = sl; } }
-  if (ok) toast(`<b>${esc(unit.short)}</b> copied — ${plural(lines.length, 'row')}${rs.count ? ' in FOCUS order' : ' with names (no roster, so order is by last name)'} · FOCUS title: <b>IXL ${esc(unit.short)} · ${fmtDate(sec.date) || 'today'} · /${unit.total}</b>${blanks ? ` · ${plural(blanks, 'blank row')} (not in IXL)` : ''}${modified ? ` · <b>${plural(modified, 'student')} on a modified list</b> — set their max by hand in FOCUS` : ''}`, false, modified ? 7000 : 4500);
+  if (ok) toast(`<b>${esc(unit.short)}</b> copied — ${plural(lines.length, 'row')}${rs.count ? ' in FOCUS order' : ' with names (no roster, so order is by last name)'} · FOCUS title: <b>IXL ${esc(unit.short)} · ${fmtDate(sec.date) || 'today'} · /${unit.total}</b>${blanks ? ` · ${plural(blanks, 'blank row')} (not in IXL)` : ''}${leftOut ? ` · <b>${plural(leftOut, 'IXL student')} not on the roster — left out</b> (tap their flag)` : ''}${modified ? ` · <b>${plural(modified, 'student')} on a modified list</b> — set their max by hand in FOCUS` : ''}`, false, modified ? 7000 : 4500);
   else toast('Copy failed — your browser blocked clipboard access.', true);
 }
 

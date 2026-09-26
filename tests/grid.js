@@ -22,7 +22,12 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   check(await p.locator('table.grid').count()===1,'grid after roster save');
   check(await p.locator('.notice.soft').count()===1 && /Taylor, Ben → Benjamin Taylor/.test(await p.textContent('.notice.soft')),'loose-match notice');
   // ignore flag then un-ignore
-  dialogs=[]; dialogAnswer=true; await p.click('button.flag[data-ignore]'); await p.waitForTimeout(250);
+  // not-on-roster flag opens a new-or-gone chooser; "Re-paste roster" lands in Settings on the roster box; "Skip" ignores
+  await p.click('button.flag[data-ignore]'); await p.waitForTimeout(250);
+  check(/in IXL but not on the roster/.test(await p.textContent('#modal')) && /Copy leaves them out/.test(await p.textContent('#modal')),'flag explains the copy consequence and offers new vs gone');
+  await p.click('#nrRoster'); await p.waitForTimeout(300); check(await p.evaluate(()=>document.activeElement && document.activeElement.id==='roster'),'"Re-paste roster" opens Settings focused on the roster');
+  await p.click('#mCancel'); await p.waitForTimeout(200);
+  await p.click('button.flag[data-ignore]'); await p.waitForTimeout(250); await p.click('#nrSkip'); await p.waitForTimeout(250);
   check(await p.locator('button.flag[data-ignore]').count()===0,'ignored IXL-only student hidden');
   await p.click('#btnSettings'); check(/Skipped IXL accounts/.test(await p.textContent('#matchReport')),'ignored listed in settings');
   await p.click('#matchReport [data-unign]'); await p.waitForTimeout(100); await p.click('#mCancel'); await p.waitForTimeout(150);

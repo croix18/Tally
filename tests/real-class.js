@@ -13,6 +13,9 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   const rep=await p.textContent('#rpReport'); check(/16 of 23 roster names matched/.test(rep),'real roster: 16 exact matches (7 are scrubber artifacts): '+rep.slice(0,45));
   check(!/Matched loosely/.test(rep),'middle names no longer count as loose matches');
   await p.click('#rpSave'); await p.waitForTimeout(400);
+  check(/left out of copies/.test(await p.textContent('#notices')),'roster-mismatch notice says IXL-only students are left out of copies');
+  await p.click('th.unit .copy'); await p.waitForTimeout(300); const ct=await p.textContent('#toast');
+  check(/7 IXL students not on the roster — left out/.test(ct),'copy toast counts the students left out: '+ct.replace(/\s+/g,' ').slice(0,160));
   // Focus gradebook through the picker
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500);
   check(await p.locator('[data-sec]').count()===1,'picker appears for the Focus export');
