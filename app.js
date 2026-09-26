@@ -431,7 +431,7 @@ const LB_CSS = `
 .lbTitle{font-weight:900;font-size:clamp(34px,4.2vw,58px);letter-spacing:.02em;color:var(--navy)}
 .lbSub{font-weight:700;color:var(--teal);font-size:clamp(14px,1.5vw,20px)}
 .lbList{display:flex;flex-direction:column;gap:14px}
-.lbCard{display:grid;grid-template-columns:72px 1fr auto;gap:18px;align-items:center;background:var(--white);border-radius:20px;box-shadow:8px 10px 0 var(--shadow);padding:16px 26px 16px 18px}
+.lbCard{display:grid;grid-template-columns:72px 1fr auto;gap:18px;align-items:center;background:var(--white);border-radius:20px;box-shadow:var(--shadow-2);padding:16px 26px 16px 18px}
 .lbCard.r1{background:var(--turq)} .lbCard.r2{background:var(--paleturq)}
 .lbRank{font-weight:900;font-size:clamp(30px,3.4vw,46px);text-align:center;color:var(--navy)}
 .lbName{font-weight:900;font-size:clamp(22px,2.6vw,36px);line-height:1.1;color:var(--navy);margin-bottom:8px;overflow-wrap:anywhere}
@@ -632,7 +632,7 @@ const LAB_CSS = CHART_CSS + `
 .lgNote{color:var(--teal)}
 .lgBox{background:var(--paleturq);border:2px solid var(--navy)} .lgMed{background:var(--navy);width:4px!important} .lgMean{background:var(--turq);border:2px solid var(--navy);transform:rotate(45deg);width:10px!important;height:10px!important} .lgOut{border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important} .lgDot{background:var(--turq);border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important}
 .labRows{display:flex;flex-direction:column;gap:14px}
-.labRow{background:var(--white);border-radius:20px;box-shadow:8px 10px 0 var(--shadow);padding:10px 22px 6px;display:grid;grid-template-columns:190px 1fr;gap:8px 18px;align-items:center}
+.labRow{background:var(--white);border-radius:20px;box-shadow:var(--shadow-2);padding:10px 22px 6px;display:grid;grid-template-columns:190px 1fr;gap:8px 18px;align-items:center}
 .labRow.thin{opacity:.75}
 .labNotYet{font-weight:700;color:var(--teal);padding:14px 0}
 .labName{font-weight:900;font-size:clamp(18px,2vw,26px);line-height:1.1;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
@@ -720,8 +720,8 @@ function downloadLeaderboard(which) {
   const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, st.lbFocus);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
 <style>${(document.getElementById('tallyFont') || {}).textContent || ''}</style>
-<style>:root{--cream:#F8F2E4;--grid:#EADFC6;--sand:#E6D5B8;--shadow:#D8C5A0;--turq:#40E0D0;--paleturq:#D8F6F1;--teal:#127A85;--navy:#17324D;--white:#fff}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:48px 48px}
+<style>:root{--cream:#F6F5F0;--grid:#E6E4DC;--sand:#EFECE3;--shadow:rgba(22,33,58,.10);--shadow-1:0 1px 2px rgba(22,33,58,.06);--shadow-2:0 1px 2px rgba(22,33,58,.06),0 12px 32px -14px rgba(22,33,58,.22);--turq:#2DD4BF;--paleturq:#DDF4F0;--teal:#0F766E;--navy:#16213A;--coral:#FBDAD2;--bad:#D9442F;--white:#fff;--ink-soft:#66708A;--r:16px}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream)}
 ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = (lab ? 'Data-Lab-' : 'IXL-Race-') + (data.map(r => r.date).filter(Boolean).sort().pop() || new Date().toISOString().slice(0, 10)) + '.html'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast(lab ? 'Saved the Data Lab page — no names; it does contain each class\'s values.' : 'Saved the Race page — class totals only, no names.', false, 4500, true);
@@ -927,6 +927,7 @@ function render() {
   $('#btnDetails').classList.toggle('hidden', !has);
   $('#btnDetails').setAttribute('aria-pressed', String(!!state.settings.details));
   document.body.classList.toggle('details', !!state.settings.details);
+  document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && view.mode === 'grades');
   if (!has) return;
   if (!state.sections[state.active]) state.active = state.order[0];
   renderTabs();
@@ -988,7 +989,7 @@ function renderBar() {
       <span class="det"><button class="pill toggle" id="printOwed" title="Printer-friendly page: what each student still owes">Still owed</button></span>
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are listed as upcoming">Working in <select id="curUnit"><option value="">— pick —</option>${units.filter(u => u.num > 0).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
-      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More">⋯</button><div class="menu hidden" id="moreMenu"><button id="mStillOwed">Still owed (print)</button>${hid && !state.settings.onlyCurrent[s.prep] ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}<button id="mDetails">${state.settings.details ? 'Calm view' : 'Details view'}</button></div></div>
+      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More">⋯</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button>${hid && !state.settings.onlyCurrent[s.prep] ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}<button id="mDetails">${state.settings.details ? 'Calm view' : 'Details view'}</button></div></div>
       <div class="legend det"><span>Tap a unit for skill scores</span></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
@@ -1011,7 +1012,7 @@ function renderBar() {
   const hu = $('#hideUnit'); if (hu) hu.onclick = () => { const u = units.find(u => u.name === view.unit); state.assigned[s.prep][u.name] = !u.assigned; save(); render(); toast(`${esc(u.short)} ${!u.assigned ? 'assigned' : 'unassigned'} for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); };
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
   const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu'); mb.onclick = e => { e.stopPropagation(); menu.classList.toggle('hidden'); mb.setAttribute('aria-expanded', String(!menu.classList.contains('hidden'))); }; document.addEventListener('click', () => { const mm = $('#moreMenu'); if (mm) mm.classList.add('hidden'); }, { once: true });
-    const so = $('#mStillOwed'); if (so) so.onclick = () => openStillOwed(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; const md = $('#mDetails'); if (md) md.onclick = () => { state.settings.details = !state.settings.details; save(); render(); }; }
+    const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const so = $('#mStillOwed'); if (so) so.onclick = () => openStillOwed(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; const md = $('#mDetails'); if (md) md.onclick = () => { state.settings.details = !state.settings.details; save(); render(); }; }
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
   const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count; later units are upcoming.` : 'No current unit — units count once a quarter of the class has started them.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);

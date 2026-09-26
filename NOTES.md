@@ -59,6 +59,8 @@ per-section-file era and many items in them are now done).
   dismisses toasts; the shipped build has no `window.__tally` (test build keeps it); DM Sans is embedded so
   the page makes no network requests.
 - **Command center** (26 Sep, evening): opens on an Overview of all classes; calm grid with a Details toggle (`settings.details`); Data Lab "Show as" graph types (`settings.labKind`, `labBin`); charts in `charts.js` use the validated categorical order for class-vs-class and the house teal for single series; each class has one fixed colour (`classColor`, by period) that follows it through tabs, Overview cards, Race cards, Data Lab rows and every chart; letter grades use one teal ramp with F in coral. See `COMMAND_CENTER.md`.
+- **What changed digest** (home.js `digestFor` / `openDigest`): per class, from the two histories — IXL total and per-student gain, share moved up, biggest movers, drops, units everyone finished, new/gone students; Focus average change, missing change, sliding/climbing, letter changes, newly missing / turned in, new assignments. From the Overview card and the class ⋯ menu; printable; private backdrop.
+- **Visual system** (26 Sep, evening): paper-and-ink — warm paper `#F6F5F0`, no graph-paper grid, white cards on hairlines with soft shadows, ink `#16213A`, accent teal `#0F766E` / bright `#2DD4BF`, warning wash `#FBDAD2` with ink `#D9442F`. Old token names kept (`--cream`, `--turq`, …) with new values so every rule resolves. Overview and Grades float on the paper (`body.home`, `body.grades`).
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 
