@@ -1,0 +1,10 @@
+node_modules/
+*.png
+dbg*.js
+STRINGS.txt
+deckhand.css
+race.html
+# scrubbed exports of real classes stay local (add them yourself if you want tests 10–11 to run from a fresh clone)
+fixtures/real_*
+fixtures/real2_*
+fixtures/tmp_*

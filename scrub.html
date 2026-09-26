@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scrub — anonymize exports for testing</title>
+<style>
+:root{--cream:#F8F2E4;--grid:#EADFC6;--sand:#E6D5B8;--shadow:#D8C5A0;--turq:#40E0D0;--paleturq:#D8F6F1;--teal:#127A85;--navy:#17324D;--coral:#FF7F6A;--white:#fff}
+*{box-sizing:border-box}
+body{margin:0;font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:48px 48px;min-height:100vh;padding:28px}
+h1{font-weight:900;font-size:34px;margin:0 0 4px}
+h1 span{color:var(--teal);font-size:16px;font-weight:700;margin-left:12px}
+p{margin:0 0 12px;line-height:1.5}
+.card{background:var(--white);border-radius:20px;box-shadow:8px 10px 0 var(--shadow);padding:22px 26px;max-width:860px;margin:18px 0}
+#drop{border:3px dashed var(--turq);border-radius:16px;padding:40px;text-align:center;font-weight:700;font-size:18px;background:var(--paleturq);cursor:pointer}
+#drop.over{background:var(--turq)}
+.pill{background:var(--turq);color:var(--navy);border:none;font:inherit;font-weight:700;font-size:14px;padding:9px 18px;border-radius:999px;cursor:pointer;margin:6px 8px 0 0}
+.pill.pale{background:var(--paleturq)}
+.pill.danger{background:var(--white);border:2px solid var(--coral)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px}
+th,td{border-bottom:1px solid var(--grid);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+code{background:var(--cream);padding:1px 5px;border-radius:5px}
+.ok{color:var(--teal);font-weight:900}
+.warn{background:var(--coral);color:var(--navy);padding:8px 12px;border-radius:12px;font-weight:700;margin:8px 0}
+.hidden{display:none}
+small{color:var(--teal);font-weight:700}
+</style>
+</head>
+<body>
+<h1>Scrub<span>anonymize exports before sharing them for testing</span></h1>
+<div class="card">
+  <p><b>What it does.</b> Drop an IXL Score Grid export (.xlsx or .csv) or a FOCUS gradebook export (.xls, .csv, .html) and it replaces every student name and ID with a made-up one, keeping the file otherwise byte-for-byte the same shape: same columns, same rows, same scores, and the same <em>form</em> of each name (word count, commas, hyphens, apostrophes, middle names, Jr.). The same real student gets the same fake name in every file you scrub in this session, so an IXL file and a FOCUS file still line up.</p>
+  <p><b>Nothing leaves this page.</b> There is no network code in this file. The real-to-fake key can be downloaded for your own reference; don't send it.</p>
+  <div id="drop">Drop files here, or tap to choose</div>
+  <input type="file" id="file" multiple class="hidden">
+  <div id="log"></div>
+</div>
+<div class="card hidden" id="keyCard">
+  <p><b>Key</b> (stays with you): <span id="keyCount"></span></p>
+  <button class="pill pale" id="dlKey">Download key (for you only)</button>
+  <button class="pill danger" id="clearKey">Forget key</button>
+</div>
+
+<script>
+/*__PARSER__*/
+</script>
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  const FIRST = ['Avery','Blake','Casey','Dakota','Ellis','Finley','Harper','Jordan','Kai','Logan','Morgan','Parker','Quinn','Reese','Rowan','Sage','Skyler','Taylor','Emerson','Hayden','Marlow','Nico','Oakley','Peyton','Remy','Sutton','Tatum','Wren','Zion','Arden','Bellamy','Cameron','Devin','Everly','Flynn','Greer','Indigo','Jules','Kendall','Lennox','Micah','Noor','Phoenix','Rory','Shiloh','Toby','Val','Winter','Yael','Zane'];
+  const LAST = ['Abbott','Barlow','Calder','Dunmore','Easton','Fairley','Garland','Hollis','Ingram','Jarvis','Kellen','Lowell','Marsh','Norwood','Oakes','Pryor','Quill','Rhodes','Sutter','Thorne','Underhill','Vance','Whitlock','Yardley','Zeller','Ashby','Brightwater','Cobb','Dorsey','Elkins','Fenwick','Granger','Hale','Iverson','Jessup','Kirby','Lattimer','Mercer','Nash','Orme','Pell','Ramsey','Stoddard','Tolliver','Upton','Voss','Wexler','York','Zink'];
+  const KEEP = /^(jr|sr|ii|iii|iv|v|de|la|del|las|los|van|von|der|den|di|da|dos|das|du|le|el|al|bin|ibn|san|santa|st|mc|mac|ter|ten|op|het|y|e)$/i;
+  let key = {}; try { key = JSON.parse(sessionStorage.getItem('scrub.key') || '{}'); } catch (e) {}
+  let used = new Set(Object.values(key));
+  const saveKey = () => { try { sessionStorage.setItem('scrub.key', JSON.stringify(key)); } catch (e) {} showKey(); };
+  function showKey() { const n = Object.keys(key).length; $('#keyCard').classList.toggle('hidden', !n); $('#keyCount').textContent = n + ' real → fake mappings'; }
+  const cap = (fake, real) => real === real.toUpperCase() && real.length > 1 ? fake.toUpperCase() : real[0] === real[0].toLowerCase() ? fake.toLowerCase() : fake;
+  let ctr = 0;
+  function fakeToken(real, role) {
+    const k = role + ':' + real.toLowerCase();
+    if (key[k]) return cap(key[k], real);
+    const pool = role === 'last' ? LAST : FIRST;
+    let f; do { f = pool[(ctr++ * 7 + Math.floor(Math.random() * pool.length)) % pool.length]; if (used.size >= pool.length) f += (ctr % 90 + 10); } while (used.has(f) && used.size < pool.length * 2);
+    used.add(f); key[k] = f; return cap(f, real);
+  }
+  // Replace the alphabetic runs of a name while preserving separators, particles, suffixes, and initials.
+  function scrubName(name) {
+    // "Last, First M" → everything before the comma is surname; "First M Last" → the final token is surname
+    const segs = name.split(/(,\s*)/);
+    const hasComma = segs.length > 1;
+    return segs.map((seg, si) => {
+      if (si % 2 === 1) return seg;
+      const parts = seg.split(/(\s+)/); const words = parts.filter((p, i) => i % 2 === 0 && p !== '');
+      let lastIdx = words.length - 1; while (lastIdx > 0 && KEEP.test(words[lastIdx].replace(/[.,]/g, ''))) lastIdx--;   // skip Jr., III
+      let wi = 0;
+      return parts.map((p, i) => {
+        if (i % 2 === 1 || p === '') return p;
+        const w = wi++;
+        const role = hasComma ? (si === 0 ? 'last' : 'first') : (w >= 1 && w <= lastIdx ? 'last' : 'first');
+        return p.split(/([-'’.])/).map((x, j) => {
+          if (j % 2 === 1 || x === '') return x;
+          if (KEEP.test(x)) return x;
+          if (/^[A-Za-z]$/.test(x)) return /['’]/.test(p) ? x : fakeToken(x, 'initial')[0];
+          if (!/[A-Za-z\u00C0-\u024F]/.test(x)) return x;
+          return fakeToken(x, role);
+        }).join('');
+      }).join('');
+    }).join('');
+  }
+  function fakeId(real) { const k = 'id:' + real; if (!key[k]) { let h = 0; for (const c of real) h = (h * 31 + c.charCodeAt(0)) >>> 0; key[k] = String(100000 + (h % 900000)).padStart(real.length, '1').slice(-Math.max(real.length, 6)); } return key[k]; }
+  function fakeEmail(real) { const k = 'email:' + real.toLowerCase(); if (!key[k]) key[k] = 'student' + (Object.keys(key).length + 1) + '@example.org'; return key[k]; }
+
+  // ---- detect which cells are names / ids in a grid ----
+  function detect(rows) {
+    const isT = v => typeof v === 'string' && v.trim() !== '';
+    const targets = new Map();   // real string -> replacement
+    let kind = '';
+    let h = rows.findIndex(r => (r || []).some(v => isT(v) && /skill name/i.test(v)));
+    if (h >= 0) {
+      kind = 'IXL Score Grid'; const hdr = rows[h];
+      const cId = hdr.findIndex(v => isT(v) && /skill id/i.test(v)), cSkill = hdr.findIndex(v => isT(v) && /skill name/i.test(v));
+      for (let c = Math.max(cId, cSkill) + 1; c < hdr.length; c++) if (isT(hdr[c])) targets.set(hdr[c], scrubName(hdr[c].trim()));
+      return { kind, targets, note: `${targets.size} student columns in the header row` };
+    }
+    // gradebook: find a name-ish column
+    const looksName = v => isT(v) && /^[A-Za-zÀ-ɏ][^\d]*,\s*[A-Za-zÀ-ɏ]/.test(v.trim());
+    let nameCol = -1, start = 0;
+    for (let i = 0; i < Math.min(rows.length, 40); i++) { const r = rows[i] || []; const nc = r.findIndex(v => isT(v) && /^(student|students|student name|name|full name|last, first|last name)\b/i.test(v.trim()) && !/\b(id|number|#)\b/i.test(v)); if (nc >= 0) { nameCol = nc; start = i + 1; break; } }
+    if (nameCol < 0) { for (let i = 0; i < Math.min(rows.length, 40); i++) { const r = rows[i] || []; const nc = r.findIndex(looksName); if (nc >= 0) { nameCol = nc; start = i; break; } } }
+    if (nameCol < 0) return { kind: 'unknown', targets, note: 'No name column found — nothing scrubbed.' };
+    kind = 'Gradebook';
+    // also id columns and email columns anywhere
+    const idCols = new Set(), emailCols = new Set();
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i] || []; const nm = r[nameCol];
+      if (isT(nm) && !/^(points? possible|max|out of|class average|average|mean|median|total)/i.test(nm)) targets.set(nm, scrubName(nm.trim()));
+      r.forEach((v, c) => { if (c === nameCol) return; if (isT(v) && /^\d{5,}$/.test(v.trim())) idCols.add(c); if (isT(v) && /@/.test(v)) emailCols.add(c); if (typeof v === 'number' && Number.isInteger(v) && v >= 10000 && String(v).length >= 5 && i === start) idCols.add(c); });
+    }
+    for (let i = 0; i < rows.length; i++) { const r = rows[i] || []; idCols.forEach(c => { const v = r[c]; if (v != null && /^\d{5,}$/.test(String(v).trim())) targets.set(String(v).trim(), fakeId(String(v).trim())); }); emailCols.forEach(c => { const v = r[c]; if (isT(v) && /@/.test(v)) targets.set(v.trim(), fakeEmail(v.trim())); }); }
+    return { kind, targets, note: `${[...targets.keys()].filter(k => !/^\d+$/.test(k) && !/@/.test(k)).length} names, ${[...targets.keys()].filter(k => /^\d+$/.test(k)).length} IDs, ${[...targets.keys()].filter(k => /@/.test(k)).length} emails` };
+  }
+  const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const xmlEsc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  function replaceInText(text, targets, mode) {
+    // longest first so "Doe, Jane Marie" is replaced before "Doe, Jane"
+    const keys = [...targets.keys()].sort((a, b) => b.length - a.length);
+    for (const real of keys) {
+      const fake = targets.get(real);
+      const forms = mode === 'xml' ? [[xmlEsc(real), xmlEsc(fake)], [real, fake]] : mode === 'html' ? [[real.replace(/&/g, '&amp;'), fake.replace(/&/g, '&amp;')], [real, fake]] : [[real, fake]];
+      for (const [r, f] of forms) text = text.split(r).join(f);
+    }
+    return text;
+  }
+
+  // ---- minimal zip writer (stored, CRC32) so an .xlsx comes back as an .xlsx ----
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  function writeZip(entries) {   // [{name, data:Uint8Array}]
+    const enc = new TextEncoder(); const parts = []; const central = []; let off = 0;
+    const u16 = n => [n & 255, (n >> 8) & 255], u32 = n => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
+    for (const e of entries) {
+      const name = enc.encode(e.name), crc = crc32(e.data);
+      const local = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(crc), ...u32(e.data.length), ...u32(e.data.length), ...u16(name.length), ...u16(0), ...name]);
+      parts.push(local, e.data);
+      central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(crc), ...u32(e.data.length), ...u32(e.data.length), ...u16(name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off), ...name]));
+      off += local.length + e.data.length;
+    }
+    const cdStart = off; let cdLen = 0; central.forEach(c => cdLen += c.length);
+    const eocd = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(entries.length), ...u16(entries.length), ...u32(cdLen), ...u32(cdStart), ...u16(0)]);
+    const total = off + cdLen + eocd.length; const out = new Uint8Array(total); let p = 0;
+    for (const x of [...parts, ...central, eocd]) { out.set(x, p); p += x.length; }
+    return out;
+  }
+
+  async function scrubFile(f) {
+    const buf = await f.arrayBuffer(); const u8 = new Uint8Array(buf);
+    const isZip = u8[0] === 0x50 && u8[1] === 0x4B;
+    if (u8[0] === 0xD0 && u8[1] === 0xCF) throw new Error('Binary .xls — open it in Excel or Sheets and save as .xlsx or .csv first.');
+    let rows, out, name = f.name.replace(/(\.[^.]+)$/, '-scrubbed$1');
+    if (isZip) {
+      rows = xlsxToRows(buf); const det = detect(rows);
+      const zip = readZip(buf); const enc = new TextEncoder();
+      const entries = zip.names.map(n => { const data = zip.read(n); if (/\.xml$/i.test(n) && (/sharedStrings/.test(n) || /worksheets\//.test(n))) { const t = new TextDecoder().decode(data); return { name: n, data: enc.encode(replaceInText(t, det.targets, 'xml')) }; } return { name: n, data }; });
+      out = new Blob([writeZip(entries)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      return { det, out, name };
+    }
+    let text; if ((u8[0] === 0xFF && u8[1] === 0xFE) || (u8[0] === 0xFE && u8[1] === 0xFF)) text = new TextDecoder(u8[0] === 0xFF ? 'utf-16le' : 'utf-16be').decode(u8); else text = new TextDecoder().decode(u8);
+    const bom = text.charCodeAt(0) === 0xFEFF; if (bom) text = text.slice(1);
+    const head = text.slice(0, 512).trim();
+    if (/^</.test(head) && /<table/i.test(text)) {
+      const doc = new DOMParser().parseFromString(text, 'text/html'); rows = [];
+      doc.querySelectorAll('tr').forEach(tr => rows.push([...tr.children].filter(td => /^t[hd]$/i.test(td.tagName)).map(td => { const t = td.textContent.replace(/\s+/g, ' ').trim(); return t === '' ? null : t; })));
+      const det = detect(rows); out = new Blob([(bom ? '﻿' : '') + replaceInText(text, det.targets, 'html')], { type: 'text/html' }); return { det, out, name };
+    }
+    if (/\t/.test(head)) rows = text.split(/\r?\n/).map(l => l.split('\t').map(v => { v = v.replace(/^"|"$/g, '').trim(); return v === '' ? null : v; }));
+    else rows = csvToRows(text);
+    const det = detect(rows); out = new Blob([(bom ? '﻿' : '') + replaceInText(text, det.targets, 'text')], { type: 'text/plain' }); return { det, out, name };
+  }
+  function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1500); }
+  async function handle(files) {
+    for (const f of files) {
+      try {
+        const { det, out, name } = await scrubFile(f);
+        saveKey();
+        const sample = [...det.targets.entries()].filter(([k]) => !/^\d+$/.test(k)).slice(0, 4).map(([k, v]) => `<code>${k.replace(/[A-Za-z]/g, '•')}</code> → <code>${v}</code>`).join(', ');
+        $('#log').insertAdjacentHTML('beforeend', `<table><tr><th>File</th><th>Detected</th><th>Scrubbed</th></tr><tr><td>${f.name}<br><small>saved as ${name}</small></td><td>${det.kind}<br><small>${det.note}</small></td><td>${det.targets.size ? '<span class="ok">✓</span> ' + sample : '<span class="warn">nothing replaced — check the file</span>'}</td></tr></table>`);
+        if (det.targets.size) download(out, name);
+      } catch (e) { $('#log').insertAdjacentHTML('beforeend', `<div class="warn">${f.name}: ${e.message}</div>`); }
+    }
+  }
+  $('#drop').onclick = () => $('#file').click();
+  $('#file').onchange = e => { handle([...e.target.files]); e.target.value = ''; };
+  document.addEventListener('dragover', e => { e.preventDefault(); $('#drop').classList.add('over'); });
+  document.addEventListener('dragleave', () => $('#drop').classList.remove('over'));
+  document.addEventListener('drop', e => { e.preventDefault(); $('#drop').classList.remove('over'); handle([...e.dataTransfer.files]); });
+  $('#dlKey').onclick = () => download(new Blob([JSON.stringify(key, null, 2)], { type: 'application/json' }), 'scrub-key-DO-NOT-SHARE.json');
+  $('#clearKey').onclick = () => { key = {}; used = new Set(); try { sessionStorage.removeItem('scrub.key'); } catch (e) {} showKey(); };
+  showKey();
+  window.__scrub = { scrubName, detect, replaceInText };
+})();
+</script>
+</body>
+</html>
