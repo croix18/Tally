@@ -1,8 +1,8 @@
-const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html'));
+  await p.goto('file://'+path.resolve('Tally.html')); await unskip(p);
   const main=fs.readdirSync('fixtures').filter(f=>/^f1473588/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
   for(const k of ['1205050-7T1A','1205050-7T3A']){ await p.click('[data-k="'+k+'"]'); await p.waitForTimeout(120); await p.click('#rpSkip'); await p.waitForTimeout(120); }

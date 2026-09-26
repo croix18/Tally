@@ -1,10 +1,10 @@
-const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}});
   await ctx.grantPermissions(['clipboard-read','clipboard-write']);
   const p=await ctx.newPage(); const errs=[]; p.on('framenavigated',f=>console.log('NAV',f.url().slice(-30))); p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{ if(m.type()==='error' && !/ERR_TUNNEL|fonts|net::/.test(m.text())) errs.push(m.text()); });
   let dialogs=[], dialogAnswer=true; p.on('dialog', async d=>{ dialogs.push(d.message()); await (dialogAnswer? d.accept(): d.dismiss()); });
-  await p.goto('file://'+path.resolve('Tally.html'));
+  await p.goto('file://'+path.resolve('Tally.html')); await unskip(p);
   check(await p.locator('#btnSettings.hidden').count()===1,'settings hidden on landing');
   const main=fs.readdirSync('fixtures').filter(f=>f.endsWith('.xlsx') && /^f1473588/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);

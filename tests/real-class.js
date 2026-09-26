@@ -1,9 +1,9 @@
 // A real class end to end (scrubbed exports): IXL CSV → roster paste → Focus gradebook → Data Lab.
-const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, unskip } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html'));
+  await p.goto('file://'+path.resolve('Tally.html')); await unskip(p);
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(600);
   const s=await p.evaluate(()=>{const T=window.__tally; const s=Object.values(T.state.sections)[0]; return {label:s.label,thr:s.threshold,n:s.students.length,skills:s.skills.length,scored:s.scores.flat().filter(v=>v!=null).length};});

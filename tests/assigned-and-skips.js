@@ -1,8 +1,8 @@
-const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); let dialogAnswer=true; p.on('dialog', d=>dialogAnswer?d.accept():d.dismiss());
-  await p.goto('file://'+path.resolve('Tally.html'));
+  await p.goto('file://'+path.resolve('Tally.html')); await unskip(p);
   const main=fs.readdirSync('fixtures').filter(f=>/^f1473588/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(500);
   const tmps=[]; { const src=main.find(f=>f.includes('7T3A')); const dst=path.resolve('fixtures','tmp_'+path.basename(src).replace('7T3A','7T4A')); fs.copyFileSync(src,dst); tmps.push(dst);} await p.setInputFiles('#file',tmps); await p.waitForTimeout(500); tmps.forEach(f=>fs.unlinkSync(f));
