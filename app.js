@@ -661,6 +661,8 @@ function renderLeaderboard() {
   let hold; const start = e => { e.preventDefault(); $('#lbExit').classList.add('holding'); hold = setTimeout(() => { state.settings.leaderboard = false; save(); render(); }, 1500); };
   const stop = () => { clearTimeout(hold); const b = $('#lbExit'); if (b) b.classList.remove('holding'); };
   const b = $('#lbExit'); b.onpointerdown = start; b.onpointerup = stop; b.onpointerleave = stop; b.onpointercancel = stop;
+  // A long press on a touch screen otherwise opens the copy/paste or context menu and cancels the pointer — swallow it.
+  b.oncontextmenu = e => e.preventDefault(); b.addEventListener('touchstart', e => e.preventDefault(), { passive: false }); b.onselectstart = e => e.preventDefault();
 }
 function enterProjected() {
   state.settings.hideNames = true;                       // projected mode always starts, and ends, with names hidden

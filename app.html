@@ -317,7 +317,8 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 .lbTools .labSelect{border:2px solid var(--grid);border-radius:999px;padding:8px 12px;background:var(--white);font-weight:700;font-size:13px;max-width:320px;min-height:40px;box-shadow:4px 6px 0 var(--shadow)}
 .lbTools{flex-wrap:wrap;justify-content:flex-end;max-width:92vw;align-items:center}
 .lbTools .pill[aria-pressed="false"]{background:var(--paleturq);color:var(--navy)}
-#lbExit{position:relative;overflow:hidden;opacity:1;background:var(--white);color:var(--navy);border:2px solid var(--navy)}
+#lbExit{position:relative;overflow:hidden;opacity:1;background:var(--white);color:var(--navy);border:2px solid var(--navy);-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
+#lbExit *{pointer-events:none}
 #lbExit .ring{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(23,50,77,.18)}
 #lbExit.holding .ring{width:100%;transition:width 1.5s linear}
 .lbWrap{min-height:100%;display:flex;flex-direction:column;gap:16px;padding:20px 28px 96px;max-width:1500px;margin:0 auto;width:100%}
