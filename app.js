@@ -26,7 +26,7 @@ function load() {
 function migrate() {
   const st = state.settings || {};
   state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
-    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 1, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 2 } };   // review units at the start of each course aren't assigned
+    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 2 } };   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
   state.assigned = state.assigned && typeof state.assigned === 'object' ? state.assigned : {}; state.assigned.acc = state.assigned.acc || {}; state.assigned.on = state.assigned.on || {};
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && c.id && c.label) : [];
@@ -1227,7 +1227,7 @@ dd{margin:0}
 <dt>Goal</dt><dd>The SmartScore a skill must reach to earn its point.</dd>
 <dt>Skip</dt><dd>A skill that doesn't count — for the class (tap the skill) or one student (tap their cell).</dd>
 <dt>Grades</dt><dd>After a Focus gradebook is loaded: the real course grade (weighted categories, proved against the Focus Grade column), trends since the last import, sliding students, IXL against assessment scores, and per-student what-ifs — turn in, retake, next assessment — with a printable one-student page. Categories are proved from the Grade column where possible; move any assignment from its row.</dd>
-<dt>Assigned</dt><dd>Units that count toward grades and the Race. Unassigned units are hidden but kept. By default the first unit of the accelerated course and the first two of on-level aren't assigned (change in Settings); tap a unit's Assigned button to override either way.</dd>
+<dt>Assigned</dt><dd>Units that count toward grades and the Race. Unassigned units are hidden but kept. By default the first two on-level units aren't assigned (change in Settings); tap a unit's Assigned button to override either way.</dd>
 <dt>Best</dt><dd>A score from an earlier export that was higher than today's. Points once earned are kept.</dd>
 <dt>Copied</dt><dd>A receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</dd>
 <dt>Focus ✓ / off</dt><dd>Whether the Focus column matches what Tally counts today.</dd>
@@ -1424,7 +1424,7 @@ function openSettings() {
   if (rosterEl) { rosterEl.oninput = () => { $('#matchReport').innerHTML = matchReport(s, rosterEl.value); wireReport(); }; rosterEl.focus(); }
   $('#mSave').onclick = () => {
     const tv = parseInt($('#thr').value, 10); if (!isNaN(tv) && clampThr(tv) !== s.threshold) { s.threshold = clampThr(tv); snapshot(s); }
-    state.settings.copyMode = copyMode; state.settings.remindDays = remind; state.settings.skipFirst = state.settings.skipFirst || { acc: 1, on: 2 }; state.settings.skipFirst[prep] = skipFirst;
+    state.settings.copyMode = copyMode; state.settings.remindDays = remind; state.settings.skipFirst = state.settings.skipFirst || { acc: 0, on: 2 }; state.settings.skipFirst[prep] = skipFirst;
     s.label = $('#secLabel').value.trim() || s.autoLabel; s.team = ''; s.prep = prep; state.settings.useBest = $('#useBest').checked;
     if (rosterEl && rosterEl.value !== s.roster) { s.roster = rosterEl.value; s.rosterAt = new Date().toISOString(); if (parseRosterText(s.roster).length) s.skipRoster = false; if (s.pool) materialize(s); }
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
@@ -1467,7 +1467,7 @@ function openSettings() {
   $('#importCfg').onclick = () => $('#cfgFile').click();
   $('#cfgFile').onchange = async e => {
     try { const cfg = JSON.parse(await e.target.files[0].text()); if (!cfg || !cfg.tally || typeof cfg.sections !== 'object') throw 0;
-      if (cfg.settings) { if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object') state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 1, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 2 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
+      if (cfg.settings) { if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object') state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 0, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 2 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
       if (cfg.assigned && typeof cfg.assigned === 'object') { state.assigned.acc = Object.assign({}, state.assigned.acc, cfg.assigned.acc || {}); state.assigned.on = Object.assign({}, state.assigned.on, cfg.assigned.on || {}); }
       if (cfg.grading && typeof cfg.grading === 'object') ['acc', 'on'].forEach(pp => { const g = cfg.grading[pp]; if (g && Array.isArray(g.cats) && g.cats.length) state.grading[pp] = { cats: g.cats.filter(c => c && c.name && isFinite(c.w)).map(c => ({ name: String(c.name), w: Number(c.w) })), map: g.map && typeof g.map === 'object' ? g.map : {}, how: g.how && typeof g.how === 'object' ? g.how : {} }; });
       if (Array.isArray(cfg.custom)) cfg.custom.forEach(c => { if (c && c.id && c.label && !state.custom.some(x => x.id === c.id)) state.custom.push(c); });

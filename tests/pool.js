@@ -45,8 +45,8 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   const clip=await p.evaluate(()=>navigator.clipboard.readText()); check(clip.split('\n').length===23,'copy gives 23 rows in Focus order');
   // default: the first accelerated unit and the first two on-level units aren't assigned; Settings changes it per course; a hand mark wins
   const dflt=await p.evaluate(()=>{const T=window.__tally; const u=k=>T.unitsOf(T.state.sections[k]).filter(u=>!u.assigned).map(u=>u.short); return {acc:u('period-1'), on:u('period-2'), race:T.leaderboardData().map(r=>r.key+':'+r.assignedUnits[0]), rc:T.reconcile(T.state.sections['period-1']).map(c=>c.unit.short)};});
-  check(dflt.acc.includes('Unit 1') && !dflt.acc.includes('Unit 2') && dflt.on.includes('Unit 1') && dflt.on.includes('Unit 2') && !dflt.on.includes('Unit 3'),'by default Unit 1 (accelerated) and Units 1–2 (on-level) are not assigned: '+JSON.stringify([dflt.acc,dflt.on]));
-  check(dflt.race.every(x=>!/:Unit 1$/.test(x)) && !dflt.rc.includes('Unit 1'),'unassigned units are out of the Race and the Focus check');
+  check(!dflt.acc.includes('Unit 1') && dflt.on.includes('Unit 1') && dflt.on.includes('Unit 2') && !dflt.on.includes('Unit 3'),'by default Units 1–2 (on-level) are not assigned; accelerated Unit 1 counts: '+JSON.stringify([dflt.acc,dflt.on]));
+  check(dflt.race.some(x=>/^period-2:/.test(x) && !/:Unit 1$/.test(x)),'unassigned units are out of the Race');
   await p.click('[data-k="period-2"]'); await p.waitForTimeout(200); await p.click('#btnSettings'); await p.waitForTimeout(200); await p.click('[data-skip="3"]'); await p.click('#mSave'); await p.waitForTimeout(400);
   check((await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['period-2']).filter(u=>!u.assigned).map(u=>u.short))).includes('Unit 3'),'Settings: "First 3" unassigns Unit 3 for the on-level course');
   await p.evaluate(()=>{ const T=window.__tally; T.state.assigned.on['Unit 2 Probability']=true; T.save(); T.render(); });
