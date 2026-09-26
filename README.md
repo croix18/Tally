@@ -2,7 +2,7 @@
 
 IXL Score Grid → one grade per unit in Focus. A single HTML file: no server, no sign-in, no network requests at all (the font is embedded), nothing leaves the browser.
 
-- **Tally.html** — the app (built). Open it in any browser; drop IXL Score Grid exports (`.xlsx`/`.csv`) and Focus gradebook exports onto it.
+- **Tally.html** — the app (built). Open it in any browser; drop IXL Score Grid exports (`.xlsx`/`.csv`) and Focus gradebook exports onto it. `index.html` is the same file so GitHub Pages serves it at the repo root — on a tablet use the Pages address, not the file from a file manager (Android gives a locally opened file a throwaway storage origin, so nothing would persist).
 - **Scrub.html** — anonymizes exports locally (consistent fake names/IDs) so test data can be shared without student names.
 
 ## How it counts

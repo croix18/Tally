@@ -31,4 +31,5 @@ def build(src, out, **parts):
     print(out, len(html), 'bytes', '(test build)' if test else '')
 
 build('app.html', 'Tally.html', PARSER=parser, APP=app, FONT=font)
+(root / 'index.html').write_bytes((root / 'Tally.html').read_bytes())   # GitHub Pages serves the app at the repo root
 build('scrub.src.html', 'Scrub.html', PARSER=parser, FONT=font)
