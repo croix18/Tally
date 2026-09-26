@@ -65,6 +65,10 @@ body:not(.details) .tab .m{display:none}body:not(.details) .tab{padding:8px 16px
 .hchips{display:flex;gap:6px;flex-wrap:wrap}.hchip{font-size:var(--t-xs);font-weight:900;border-radius:999px;padding:3px 10px;background:var(--paleturq)}.hchip.warn{background:var(--coral)}.hchip.ok{background:var(--paleturq)}.hchip.muted{background:var(--grid);color:var(--ink-soft)}
 .hchip.letters{display:inline-flex;gap:6px;background:transparent;padding:0}.hchip.letters i{font-style:normal;display:inline-flex;gap:3px;align-items:baseline;background:var(--paleturq);border-radius:8px;padding:2px 7px}.hchip.letters i em{font-style:normal;font-weight:900}.hchip.letters i.D,.hchip.letters i.F{background:var(--sand)}
 .hatt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.hatt li button{width:100%;text-align:left;background:var(--paleturq);border:none;border-radius:10px;padding:8px 12px;font:inherit;color:var(--navy);cursor:pointer;font-size:var(--t-s)}.hatt li.warn button{background:var(--coral)}
+
+/* ---- class colour: --cc follows the class everywhere (after the Overview rules so it wins) ---- */
+.tab{border-left:6px solid var(--cc,transparent)!important}.hcard{border-top:6px solid var(--cc,var(--grid))!important}
+.lbCard{border-left:8px solid var(--cc,transparent)}.labRow{border-left:8px solid var(--cc,transparent)}
 </style>
 <style>
 :root{
@@ -1108,6 +1112,10 @@ function openWeights(sec) {
    order, always direct-labeled; thin marks; <title> tooltips; text in ink; status colours never used for series. */
 const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#008300'];
 const seriesColor = i => SERIES[i % SERIES.length];
+// Letter grades are ordered, so they get one hue light→dark (A darkest) with F in the coral status colour.
+const LETTER_COLORS = { A: '#0F5F6B', B: '#1F8F93', C: '#5FBFB5', D: '#B9E5DF', F: '#FF7F6A' };
+// One colour per class, fixed by period when known (1st = slot 1, …) else by position, so every screen agrees.
+function classColor(sec) { const i = sec && Number.isInteger(sec.period) ? sec.period - 1 : Math.max(0, state.order.indexOf(sec ? sec.key : '')); return seriesColor(i); }
 const fmtV = v => v == null ? '—' : (Math.round(v * 10) / 10).toString();
 const niceMax = (v, step) => { if (!(v > 0)) return step || 10; const s = step || (v > 200 ? 50 : v > 100 ? 20 : v > 40 ? 10 : v > 10 ? 5 : 1); return Math.ceil(v / s) * s; };
 
@@ -1142,7 +1150,7 @@ function chartLines(labels, series, o) {
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'line chart')}">`;
   const ticks = 4; for (let i = 0; i <= ticks; i++) { const v = lo + (hi - lo) * i / ticks; s += `<line x1="${l}" y1="${Y(v)}" x2="${w - r}" y2="${Y(v)}" class="gl"/><text x="${l - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; }
   labels.forEach((lb, i) => { s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle" class="tl">${esc(lb)}</text>`; });
-  series.forEach((sr, j) => { const c = series.length === 1 ? 'var(--teal)' : seriesColor(j); let d = '', last = null, pen = false;
+  series.forEach((sr, j) => { const c = sr.color || (series.length === 1 ? 'var(--teal)' : seriesColor(j)); let d = '', last = null, pen = false;
     sr.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; pen = true; last = [i, v]; });
     s += `<path d="${d}" class="ln" style="stroke:${c}"/>`;
     sr.values.forEach((v, i) => { if (v != null) s += `<circle cx="${X(i)}" cy="${Y(v)}" r="4" style="fill:${c}"><title>${esc(sr.name)} · ${esc(labels[i])}: ${o.pct ? Math.round(v) + '%' : fmtV(v)}</title></circle>`; });
@@ -1245,7 +1253,7 @@ function renderHome() {
   const card = s => { const r = byKey.get(s.key); const g = gradeSummary(s); const att = attentionItems(s); const warn = att.filter(a => a.level === 'warn').length;
     const checks = s.grades ? reconcile(s) : []; const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK).length;
     const focusChip = !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? '<span class="hchip muted">no IXL columns in Focus</span>' : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : '<span class="hchip ok">Focus ✓</span>';
-    return `<button class="hcard ${warn ? 'warn' : ''}" data-go="${esc(s.key)}">
+    return `<button class="hcard ${warn ? 'warn' : ''}" data-go="${esc(s.key)}" style="--cc:${classColor(s)}">
       <div class="hhead"><b>${esc(s.label)}</b><small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small></div>
       <div class="hnums">
         <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b><span>${r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : 'first import'}</span></div>
@@ -1259,11 +1267,11 @@ function renderHome() {
   const attList = att.length ? `<ul class="hatt">${att.map(a => `<li class="${a.level}"><button data-go="${esc(a.sec.key)}" data-where="${a.go}"><b>${esc(a.sec.label)}</b> — ${esc(a.text)}</button></li>`).join('')}</ul>` : '<p class="ghint">Nothing needs attention.</p>';
   // charts
   const withHist = secs.filter(s => (s.gradeHistory || []).length); const dates = [...new Set(withHist.flatMap(s => s.gradeHistory.map(h => h.date)))].sort();
-  const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, values: dates.map(d => { const h = s.gradeHistory.find(h => h.date === d); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
-  const ixlBars = race.length ? chartBars(race.map(r => ({ label: r.label, value: r.completion * 100, hint: `${r.done} of ${r.possible} skill-points` })), { pct: true, max: 100, labelW: 180, aria: 'IXL assigned work at goal by class' }) : '';
-  const missLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, values: dates.map(d => { const h = s.gradeHistory.find(h => h.date === d); return h ? h.missing.reduce((a, b) => a + b, 0) : null; }) })), { min: 0, h: 220, aria: 'missing assignments by import' }) : '';
+  const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.find(h => h.date === d); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
+  const ixlBars = race.length ? chartBars(race.map(r => ({ label: r.label, value: r.completion * 100, color: classColor(state.sections[r.key]), hint: `${r.done} of ${r.possible} skill-points` })), { pct: true, max: 100, labelW: 180, aria: 'IXL assigned work at goal by class' }) : '';
+  const missLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.find(h => h.date === d); return h ? h.missing.reduce((a, b) => a + b, 0) : null; }) })), { min: 0, h: 220, aria: 'missing assignments by import' }) : '';
   const lettersRows = secs.filter(s => s.grades).map(s => { const g = gradeSummary(s); return { label: s.label, parts: g.letters }; });
-  const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: { A: '#1baf7a', B: '#2a78d6', C: '#eda100', D: '#eb6834', F: '#e87ba4' }, labelW: 180, aria: 'letter grades by class' }) : '';
+  const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, labelW: 180, aria: 'letter grades by class' }) : '';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''}</span><div class="spacer"></div><div class="legend"><span>Tap a class to open it</span></div>`;
   $('#bar').classList.remove('detail');
@@ -1673,7 +1681,7 @@ function lbMarkup(data, focus) {
     if (rest < 3) return `<span class="lbWord">nearly all</span><small>moved up</small>`;
     return `${pct(r.active)}<small>% moved up</small>`;
   };
-  const card = (r, showTrophy) => `<div class="lbCard r${Math.min(r.rank, 3)}">
+  const card = (r, showTrophy) => `<div class="lbCard r${Math.min(r.rank, 3)}" style="--cc:${classColor(state.sections[r.key])}">
       <div class="lbRank">${showTrophy ? '<svg class="trophy" viewBox="0 0 24 24" aria-label="first place"><path d="M7 3h10v3a5 5 0 0 1-10 0V3z"/><path d="M17 5h3v2a4 4 0 0 1-4 4M7 5H4v2a4 4 0 0 0 4 4"/><path d="M12 11v4M8 21h8M9 21v-3h6v3"/></svg>' : r.rank}</div>
       <div class="lbMain">
         <div class="lbName">${esc(r.name)}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.lead ? ' <span class="lbTie lead">furthest along</span>' : ''}</div>
@@ -1699,6 +1707,7 @@ function lbMarkup(data, focus) {
     <div class="lbLeagues ${multi ? 'two' : ''}">${leagues.map(league).join('')}</div>`;
 }
 const LB_CSS = `
+.lbCard{border-left:8px solid var(--cc,transparent)}.labRow{border-left:8px solid var(--cc,transparent)}
 .lbWrap{min-height:100%;display:flex;flex-direction:column;gap:16px;padding:20px 28px 96px;max-width:1500px;margin:0 auto;width:100%}
 .lbHead{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
 .lbTitle{font-weight:900;font-size:clamp(34px,4.2vw,58px);letter-spacing:.02em;color:var(--navy)}
@@ -1856,7 +1865,7 @@ function labPlot(kind, x, scale, id, o) {
   if (kind === 'bar') return chartFreq(vals, max);
   if (kind === 'circle') {
     if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: 'var(--teal)' }, { label: 'Below goal', value: below, color: '#E6D5B8' }, { label: 'Not started', value: x.missing, color: '#D8C5A0' }]); }
-    if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, value: b[k], color: ['#1baf7a', '#2a78d6', '#eda100', '#eb6834', '#e87ba4'][i] }))); }
+    if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, value: b[k], color: LETTER_COLORS[k] }))); }
     const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1; const rng = i => `${Math.ceil(m * i / 4)}–${Math.floor(m * (i + 1) / 4) - (i < 3 ? (Number.isInteger(m / 4) ? 1 : 0) : 0)}`;
     return chartCircle([0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${i === 3 ? Math.ceil(m * 3 / 4) + '–' + m : rng(i)} of ${m})`, value: q[i], color: ['#D8C5A0', '#E6D5B8', '#40E0D0', '#127A85'][i] })));
   }
@@ -1873,8 +1882,8 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const series = seriesAll.filter(x => x.st.n >= MIN_N), thin = seriesAll.filter(x => x.st.n < MIN_N);
   if (kind === 'line') {   // every class on one chart — the comparison is the point
     const asOfL = secs.map(s => s.date).filter(Boolean).sort().pop(); let body = '';
-    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = Object.values(h.per); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300 }); }
-    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, aria: 'class average on this assignment by import' }); }
+    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = Object.values(h.per); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300 }); }
+    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, aria: 'class average on this assignment by import' }); }
     else body = '<div class="labNotYet">A line graph needs data over time — pick <b>All units · skills at goal</b> or a Focus assignment.</div>';
     return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(list.find(d => d.id === unitName).label)} · class average by import · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOfL ? ' · ' + fmtDate(asOfL) : ''}</div></div>
       <div class="labLegend"><span class="lgNote">Line graph · one line per class · class average by import date</span></div><div class="labRows"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
@@ -1884,7 +1893,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const unitLabel = seriesAll.length ? seriesAll[0].unit : 'points';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
-  const row = x => `<div class="labRow">
+  const row = x => `<div class="labRow" style="--cc:${classColor(x.sec)}">
       <div class="labName">${esc(x.name)}<small><b>n = ${x.st.n}</b>${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused ? ` · ${x.excused} excused` : ''}</small></div>
       <div class="labPlot">${labPlot(kind, x, scale, unitName, { stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1, bin: state.settings.labBin })}</div>
       ${valuesOn ? valuesMarkup(x.st, tukey) : ''}
@@ -1893,7 +1902,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
         ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1))}${cell('MAD', x.st.mad.toFixed(1))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)} — too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''}
     </div>`;
-  const thinRow = x => `<div class="labRow thin"><div class="labName">${esc(x.name)}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
+  const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labName">${esc(x.name)}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
   return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(ds.label)} · ${esc(unitLabel)} per student · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
     ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${esc(LAB_KINDS.find(k => k[0] === kind)[1])} · one row per class · ${kind === 'hist' ? 'bars count students in each range' : kind === 'dots' ? 'one dot per student' : kind === 'stem' ? 'each leaf is one student' : kind === 'bar' ? 'bar height = how many students got that value' : kind === 'circle' ? 'share of the class in each slice' : 'class average by import date'}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">whiskers stop at the last value inside 1.5 × IQR</span>' : '<span class="lgNote">whiskers: minimum to maximum</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
     <div class="labRows">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
@@ -2211,7 +2220,7 @@ function renderTabs() {
   $('#tabs').innerHTML = state.order.map(k => {
     const s = state.sections[k]; const warn = sectionWarn(s);
     const active = k === state.active && view.mode !== 'home';
-    return `<button class="tab ${active ? 'active' : ''} ${warn ? 'warn' : ''}" role="tab" aria-selected="${active}" data-k="${esc(k)}">
+    return `<button class="tab ${active ? 'active' : ''} ${warn ? 'warn' : ''}" role="tab" aria-selected="${active}" data-k="${esc(k)}" style="--cc:${classColor(s)}">
       <span class="n">${esc(s.label)}</span>
       <span class="m"><span class="badge">Goal ${s.threshold}</span> ${plural(s.students.length, 'student')} · <span title="IXL export of ${esc(fmtDate(dataDate(s)))}">${overdue(s) ? `<span class="age">${ageText(dataDate(s))}</span>` : (fmtDate(dataDate(s)) || '')}</span></span>${warn ? '<span class="hidden">needs attention</span>' : ''}
     </button>`;

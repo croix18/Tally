@@ -65,6 +65,10 @@ body:not(.details) .tab .m{display:none}body:not(.details) .tab{padding:8px 16px
 .hchips{display:flex;gap:6px;flex-wrap:wrap}.hchip{font-size:var(--t-xs);font-weight:900;border-radius:999px;padding:3px 10px;background:var(--paleturq)}.hchip.warn{background:var(--coral)}.hchip.ok{background:var(--paleturq)}.hchip.muted{background:var(--grid);color:var(--ink-soft)}
 .hchip.letters{display:inline-flex;gap:6px;background:transparent;padding:0}.hchip.letters i{font-style:normal;display:inline-flex;gap:3px;align-items:baseline;background:var(--paleturq);border-radius:8px;padding:2px 7px}.hchip.letters i em{font-style:normal;font-weight:900}.hchip.letters i.D,.hchip.letters i.F{background:var(--sand)}
 .hatt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.hatt li button{width:100%;text-align:left;background:var(--paleturq);border:none;border-radius:10px;padding:8px 12px;font:inherit;color:var(--navy);cursor:pointer;font-size:var(--t-s)}.hatt li.warn button{background:var(--coral)}
+
+/* ---- class colour: --cc follows the class everywhere (after the Overview rules so it wins) ---- */
+.tab{border-left:6px solid var(--cc,transparent)!important}.hcard{border-top:6px solid var(--cc,var(--grid))!important}
+.lbCard{border-left:8px solid var(--cc,transparent)}.labRow{border-left:8px solid var(--cc,transparent)}
 </style>
 <style>
 :root{

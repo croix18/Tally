@@ -3,6 +3,10 @@
    order, always direct-labeled; thin marks; <title> tooltips; text in ink; status colours never used for series. */
 const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#008300'];
 const seriesColor = i => SERIES[i % SERIES.length];
+// Letter grades are ordered, so they get one hue light→dark (A darkest) with F in the coral status colour.
+const LETTER_COLORS = { A: '#0F5F6B', B: '#1F8F93', C: '#5FBFB5', D: '#B9E5DF', F: '#FF7F6A' };
+// One colour per class, fixed by period when known (1st = slot 1, …) else by position, so every screen agrees.
+function classColor(sec) { const i = sec && Number.isInteger(sec.period) ? sec.period - 1 : Math.max(0, state.order.indexOf(sec ? sec.key : '')); return seriesColor(i); }
 const fmtV = v => v == null ? '—' : (Math.round(v * 10) / 10).toString();
 const niceMax = (v, step) => { if (!(v > 0)) return step || 10; const s = step || (v > 200 ? 50 : v > 100 ? 20 : v > 40 ? 10 : v > 10 ? 5 : 1); return Math.ceil(v / s) * s; };
 
@@ -37,7 +41,7 @@ function chartLines(labels, series, o) {
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'line chart')}">`;
   const ticks = 4; for (let i = 0; i <= ticks; i++) { const v = lo + (hi - lo) * i / ticks; s += `<line x1="${l}" y1="${Y(v)}" x2="${w - r}" y2="${Y(v)}" class="gl"/><text x="${l - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; }
   labels.forEach((lb, i) => { s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle" class="tl">${esc(lb)}</text>`; });
-  series.forEach((sr, j) => { const c = series.length === 1 ? 'var(--teal)' : seriesColor(j); let d = '', last = null, pen = false;
+  series.forEach((sr, j) => { const c = sr.color || (series.length === 1 ? 'var(--teal)' : seriesColor(j)); let d = '', last = null, pen = false;
     sr.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; pen = true; last = [i, v]; });
     s += `<path d="${d}" class="ln" style="stroke:${c}"/>`;
     sr.values.forEach((v, i) => { if (v != null) s += `<circle cx="${X(i)}" cy="${Y(v)}" r="4" style="fill:${c}"><title>${esc(sr.name)} · ${esc(labels[i])}: ${o.pct ? Math.round(v) + '%' : fmtV(v)}</title></circle>`; });
