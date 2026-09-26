@@ -172,7 +172,7 @@ th.unit .copy{background:var(--paleturq);border:2px solid var(--turq);border-rad
 th.unit .copy:hover{background:var(--turq)}
 th.unit .copy:disabled{opacity:.4;cursor:default}
 th.unit .copy svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-th.unit.quiet,td.pts.quiet{opacity:.45}
+th.unit.quiet .ulink .t,th.unit.quiet .ulink .s,th.unit.quiet .usub,td.pts.quiet .v,td.pts.quiet{color:var(--ink-soft)}th.unit.quiet .ulink .t{text-decoration-color:var(--grid)}td.pts.quiet .v{font-weight:500}   /* no opacity: a translucent sticky header lets the rows beneath show through */
 th.unit.upcoming .usub{color:var(--ink-soft)}th.unit.upcoming .ulink .t{color:var(--ink-soft)}th.unit.current .ulink .t{text-decoration-color:var(--turq);text-decoration-thickness:4px}
 .curUnit{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:var(--t-s);color:var(--white)}.curUnit select{border:2px solid var(--turq);border-radius:999px;padding:4px 10px;background:var(--white);color:var(--navy);font:inherit;font-weight:700}
 td.pts{text-align:center;padding:0 8px;cursor:pointer}
@@ -1099,13 +1099,14 @@ function load() {
 function migrate() {
   const st = state.settings || {};
   state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
-    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 },
+    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null } };   // the unit each course is working in: everything up to it is assigned, later units are listed as upcoming   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
   state.assigned = state.assigned && typeof state.assigned === 'object' ? state.assigned : {}; state.assigned.acc = state.assigned.acc || {}; state.assigned.on = state.assigned.on || {};
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && c.id && c.label) : [];
   state.grading = state.grading && typeof state.grading === 'object' ? state.grading : {};
   state.pools = state.pools && typeof state.pools === 'object' ? state.pools : {};
+  if (!state.settings.skipFirstV2) { state.settings.skipFirst = { acc: 0, on: 1 }; state.settings.skipFirstV2 = true; }   // one-time: the earlier default hid on-level Unit 2 too
   // Skill skips are course-wide: state.skips[prep] is the one object every class of that course reads as sec.excluded.
   state.skips = state.skips && typeof state.skips === 'object' ? state.skips : {}; state.skips.acc = state.skips.acc || {}; state.skips.on = state.skips.on || {};
   state.settings.copyMode = ['points', 'names', 'ids'].includes(state.settings.copyMode) ? state.settings.copyMode : (state.settings.copyNames ? 'names' : 'points');
@@ -2009,7 +2010,8 @@ function renderBar() {
     const hid = units.filter(u => u.hidden).length;
     html = `<h2>${esc(s.label)}</h2><span class="meta">${units.length} units · ${s.skills.length} skills · ${plural(s.students.length, 'student')} · one point per skill at goal (<b>${t}</b>) · IXL export of ${fmtDate(dataDate(s)) || '?'}${dataDate(s) ? ` (${ageText(dataDate(s))})` : ''}</span>
       <div class="spacer"></div>
-      ${hid ? `<button class="pill toggle" id="toggleAll" aria-pressed="${!!state.settings.showAllUnits}">${plural(hid, 'unassigned unit')}</button>` : ''}
+      ${(() => { const cu = units.find(u => u.current); return cu ? `<button class="pill toggle" id="onlyCur" aria-pressed="${!!state.settings.onlyCurrent[s.prep]}" title="Show only the unit this course is working in">${state.settings.onlyCurrent[s.prep] ? 'Just ' + esc(cu.short) : 'Just ' + esc(cu.short)}</button>` : ''; })()}
+      ${hid && !state.settings.onlyCurrent[s.prep] ? `<button class="pill toggle" id="toggleAll" aria-pressed="${!!state.settings.showAllUnits}">${plural(hid, 'unassigned unit')}</button>` : ''}
       <button class="pill toggle" id="printOwed" title="Printer-friendly page: what each student still owes">Still owed</button>
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are listed as upcoming">Working in <select id="curUnit"><option value="">— pick —</option>${units.filter(u => u.num > 0).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
@@ -2031,6 +2033,7 @@ function renderBar() {
   const back = $('#back'); if (back) back.onclick = () => { view = { mode: 'units', unit: null }; render(); };
   const cu = $('#copyUnit'); if (cu) cu.onclick = () => copyUnit(s, units.find(u => u.name === view.unit));
   const ta = $('#toggleAll'); if (ta) ta.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); };
+  const oc = $('#onlyCur'); if (oc) oc.onclick = () => { state.settings.onlyCurrent[s.prep] = !state.settings.onlyCurrent[s.prep]; save(); render(); };
   const hu = $('#hideUnit'); if (hu) hu.onclick = () => { const u = units.find(u => u.name === view.unit); state.assigned[s.prep][u.name] = !u.assigned; save(); render(); toast(`${esc(u.short)} ${!u.assigned ? 'assigned' : 'unassigned'} for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); };
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
@@ -2072,7 +2075,8 @@ function renderGrid() {
       r.status === 'ixlOnly' ? `<button class="flag" data-ignore="${esc(r.key)}">NOT ON ROSTER — FIX</button>` :
       (r.sub && !state.settings.hideNames ? `<span class="sub">${esc(r.sub)}</span>` : '')}</div></td>`;
   if (view.mode === 'units') {
-    const shownUnits = units.filter(u => !u.hidden || state.settings.showAllUnits);
+    const onlyCur = state.settings.onlyCurrent[s.prep] && units.some(u => u.current);
+    const shownUnits = onlyCur ? units.filter(u => u.current) : units.filter(u => !u.hidden || state.settings.showAllUnits);
     const checks = reconcile(s);
     let h = `<table class="grid"><thead><tr><th class="idx" scope="col">#</th><th class="stu" scope="col">Student</th>`;
     shownUnits.forEach(u => { const ui = units.indexOf(u); h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="usub">${u.upcoming ? 'upcoming · ' : u.current ? 'now · ' : ''}out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span>${s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}${(() => { const rc = checks.find(x => x.unit.name === u.name); if (!rc) return ''; const bad = rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1); return `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : 'Focus ✓'}</button>`; })()}<button class="copy" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></th>`; });
