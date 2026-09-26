@@ -1403,7 +1403,7 @@ function load() {
 function migrate() {
   const st = state.settings || {};
   state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
-    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line'].includes(st.labKind) ? st.labKind : 'box', labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
+    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line'].includes(st.labKind) ? st.labKind : 'box', labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null } };   // the unit each course is working in: everything up to it is assigned, later units are listed as upcoming   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
   state.assigned = state.assigned && typeof state.assigned === 'object' ? state.assigned : {}; state.assigned.acc = state.assigned.acc || {}; state.assigned.on = state.assigned.on || {};
@@ -1901,12 +1901,15 @@ function labSeries(prep, id) {
     else if (id.startsWith('custom:')) { const c = state.custom.find(c => c.id === id.slice(7)); const vv = c && c.values[s.key]; if (!vv || !vv.length) return null; vals = vv.slice(); max = Math.max(...vv, 1); unit = c.unit || 'value'; }
     else if (id.startsWith('gb:')) { const a = s.grades && s.grades.assignments.find(a => a.name === id.slice(3)); if (!a) return null; vals = a.values; missing = a.missing; excused = a.excused || 0; max = a.max || Math.max(...vals.filter(v => v != null), 1); unit = a.percent ? 'percent' : a.max ? 'points out of ' + a.max : 'score'; }
     else return null;
+    let pct = false;
+    if (state.settings.labPct && max > 0 && unit !== 'SmartScore') { vals = vals.map(v => v == null ? null : Math.round(v / max * 100)); unit = '% of ' + unit; max = 100; pct = true; }   // percent of the maximum, whole numbers
     const st = stats(vals) || { n: 0 };
-    return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: id.split(':')[0], values: vals, thr: s.threshold, sec: s };
+    return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: id.split(':')[0], values: vals, thr: s.threshold, sec: s, pct };
   }).filter(Boolean);
 }
 const fmtN = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
 function boxSVG(st, scale, w, o) {
+  const U = o.pct ? '%' : '';
   // horizontal box plot above an optional dot plot, on a shared scale
   const L = 14, R = 30, X = v => L + (w - L - R) * (scale ? v / scale : 0);
   const counts = {}; st.values.forEach(v => counts[v] = (counts[v] || 0) + 1);
@@ -1925,22 +1928,22 @@ function boxSVG(st, scale, w, o) {
   const wLo = o.tukey ? st.wLo : st.min, wHi = o.tukey ? st.wHi : st.max;
   h += `<line x1="${X(wLo)}" y1="${mid}" x2="${X(st.q1)}" y2="${mid}" class="labWhisk"/><line x1="${X(st.q3)}" y1="${mid}" x2="${X(wHi)}" y2="${mid}" class="labWhisk"/>`;
   h += `<line x1="${X(wLo)}" y1="${boxY + 6}" x2="${X(wLo)}" y2="${boxY + bh - 6}" class="labWhisk"/><line x1="${X(wHi)}" y1="${boxY + 6}" x2="${X(wHi)}" y2="${boxY + bh - 6}" class="labWhisk"/>`;
-  h += `<rect x="${X(st.q1)}" y="${boxY}" width="${Math.max(X(st.q3) - X(st.q1), 2)}" height="${bh}" rx="4" class="labBox"><title>Q1 ${fmtN(st.q1)} · median ${fmtN(st.median)} · Q3 ${fmtN(st.q3)} · IQR ${fmtN(st.iqr)}</title></rect>`;
-  h += `<line x1="${X(st.median)}" y1="${boxY}" x2="${X(st.median)}" y2="${boxY + bh}" class="labMed"><title>Median ${fmtN(st.median)}</title></line>`;
+  h += `<rect x="${X(st.q1)}" y="${boxY}" width="${Math.max(X(st.q3) - X(st.q1), 2)}" height="${bh}" rx="4" class="labBox"><title>Q1 ${fmtN(st.q1)}${U} · median ${fmtN(st.median)}${U} · Q3 ${fmtN(st.q3)}${U} · IQR ${fmtN(st.iqr)}${U}</title></rect>`;
+  h += `<line x1="${X(st.median)}" y1="${boxY}" x2="${X(st.median)}" y2="${boxY + bh}" class="labMed"><title>Median ${fmtN(st.median)}${U}</title></line>`;
   if (o.mean) h += `<line x1="${X(st.mean)}" y1="${mid}" x2="${X(st.mean)}" y2="${axisY - 12}" class="labMeanLine"/><g transform="translate(${X(st.mean)},${mid}) rotate(45)"><rect x="-6" y="-6" width="12" height="12" class="labMean"><title>Mean ${st.mean.toFixed(1)}</title></rect></g>`;
-  if (o.tukey) st.outliers.forEach(o2 => { h += `<circle cx="${X(o2)}" cy="${mid}" r="6" class="labOut"><title>Outlier ${fmtN(o2)}</title></circle>`; });
+  if (o.tukey) st.outliers.forEach(o2 => { h += `<circle cx="${X(o2)}" cy="${mid}" r="6" class="labOut"><title>Outlier ${fmtN(o2)}${U}</title></circle>`; });
   if (o.dots) Object.entries(counts).forEach(([v, c]) => { for (let i = 0; i < c; i++) h += `<circle cx="${X(+v)}" cy="${dotBase - i * rowH}" r="${r}" class="labDot"><title>${fmtN(+v)} · ${c} student${c > 1 ? 's' : ''}</title></circle>`; });
-  if (o.stats) h += `<text x="${X(st.median)}" y="${boxY - 7}" class="labLbl mid">median ${fmtN(st.median)}</text><text x="${X(st.q1) - 4}" y="${boxY + bh + 15}" class="labLbl end">Q1 ${fmtN(st.q1)}</text><text x="${X(st.q3) + 4}" y="${boxY + bh + 15}" class="labLbl">Q3 ${fmtN(st.q3)}</text>`;
+  if (o.stats) h += `<text x="${X(st.median)}" y="${boxY - 7}" class="labLbl mid">median ${fmtN(st.median)}${U}</text><text x="${X(st.q1) - 4}" y="${boxY + bh + 15}" class="labLbl end">Q1 ${fmtN(st.q1)}${U}</text><text x="${X(st.q3) + 4}" y="${boxY + bh + 15}" class="labLbl">Q3 ${fmtN(st.q3)}${U}</text>`;
   return h + `</svg>`;
 }
 const MIN_N = 5;
 // The sorted values, split the way students find quartiles by hand: lower half · (middle value) · upper half,
 // with the median of each half highlighted. Outliers get a ring when the outlier rule is on.
-function valuesMarkup(st, tukey) {
+function valuesMarkup(st, tukey, pct) {
   const v = st.values, n = v.length, half = Math.floor(n / 2);
   const lower = v.slice(0, half), mid = n % 2 ? [v[half]] : [], upper = v.slice(n % 2 ? half + 1 : half);
   const medIdx = a => { const m = a.length; return m % 2 ? [(m - 1) / 2] : [m / 2 - 1, m / 2]; };
-  const chip = (x, cls) => `<span class="${cls}${tukey && st.outliers.includes(x) ? ' out' : ''}">${fmtN(x)}</span>`;
+  const chip = (x, cls) => `<span class="${cls}${tukey && st.outliers.includes(x) ? ' out' : ''}">${fmtN(x)}${pct ? '%' : ''}</span>`;
   const group = (arr, cls, label) => arr.length ? `<div class="labHalf"><div class="labChips">${arr.map((x, i) => chip(x, medIdx(arr).includes(i) ? 'q' : '')).join('')}</div><small>${label}</small></div>` : '';
   return `<div class="labValues">
     ${group(lower, 'q', `lower half · median = Q1 = ${fmtN(st.q1)}`)}
@@ -1958,7 +1961,8 @@ function labPlot(kind, x, scale, id, o) {
   if (kind === 'circle') {
     if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: 'var(--teal)' }, { label: 'Below goal', value: below, color: '#E6D5B8' }, { label: 'Not started', value: x.missing, color: '#D8C5A0' }]); }
     if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, value: b[k], color: LETTER_COLORS[k] }))); }
-    const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1; const rng = i => `${Math.ceil(m * i / 4)}–${Math.floor(m * (i + 1) / 4) - (i < 3 ? (Number.isInteger(m / 4) ? 1 : 0) : 0)}`;
+    const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1;
+    if (x.pct) return chartCircle([0, 1, 2, 3].map(i => ({ label: ['Under 25%', '25–49%', '50–74%', '75–100%'][i], value: q[i], color: ['#D8C5A0', '#E6D5B8', '#40E0D0', '#127A85'][i] }))); const rng = i => `${Math.ceil(m * i / 4)}–${Math.floor(m * (i + 1) / 4) - (i < 3 ? (Number.isInteger(m / 4) ? 1 : 0) : 0)}`;
     return chartCircle([0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${i === 3 ? Math.ceil(m * 3 / 4) + '–' + m : rng(i)} of ${m})`, value: q[i], color: ['#D8C5A0', '#E6D5B8', '#40E0D0', '#127A85'][i] })));
   }
   return boxSVG(x.st, scale, 800, o);
@@ -1985,17 +1989,17 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const unitLabel = seriesAll.length ? seriesAll[0].unit : 'points';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
-  const row = x => `<div class="labRow" style="--cc:${classColor(x.sec)}">
+  const row = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return `<div class="labRow" style="--cc:${classColor(x.sec)}">
       <div class="labName">${esc(x.name)}<small><b>n = ${x.st.n}</b>${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused ? ` · ${x.excused} excused` : ''}</small></div>
-      <div class="labPlot">${labPlot(kind, x, scale, unitName, { stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1, bin: state.settings.labBin })}</div>
-      ${valuesOn ? valuesMarkup(x.st, tukey) : ''}
+      <div class="labPlot">${labPlot(kind, x, scale, unitName, { stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1, bin: state.settings.labBin, pct: x.pct })}</div>
+      ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
       ${statsLevel > 0 ? `<div class="labStats">
-        ${cell('min', fmtN(x.st.min))}${cell('Q1', fmtN(x.st.q1))}${cell('median', fmtN(x.st.median))}${cell('Q3', fmtN(x.st.q3))}${cell('max', fmtN(x.st.max))}${cell('range', fmtN(x.st.range))}${cell('IQR', fmtN(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fmtN).join(', ') : 'none')}
-        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1))}${cell('MAD', x.st.mad.toFixed(1))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)} — too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
+        ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
+        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)} — too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''}
-    </div>`;
+    </div>`; };
   const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labName">${esc(x.name)}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
-  return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(ds.label)} · ${esc(unitLabel)} per student · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
+  return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(ds.label)} · ${esc(unitLabel)} per student${seriesAll[0] && seriesAll[0].pct ? ' (rounded to whole percents)' : ''} · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
     ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${esc(LAB_KINDS.find(k => k[0] === kind)[1])} · one row per class · ${kind === 'hist' ? 'bars count students in each range' : kind === 'dots' ? 'one dot per student' : kind === 'stem' ? 'each leaf is one student' : kind === 'bar' ? 'bar height = how many students got that value' : kind === 'circle' ? 'share of the class in each slice' : 'class average by import date'}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">whiskers stop at the last value inside 1.5 × IQR</span>' : '<span class="lgNote">whiskers: minimum to maximum</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
     <div class="labRows">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
     ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">Stats are hidden — read the plots first. Which class has the higher median? The bigger spread?</div>' : ''}`;
@@ -2061,6 +2065,7 @@ function renderLeaderboard() {
        ${st.labKind === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${[1, 2, 5, 10].map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
        <button class="pill small" id="labStats" aria-pressed="${st.labStats > 0}">${revealLabel}</button>
        ${st.labKind === 'box' ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
+       <div class="seg small" id="labPct" title="Show each student's score as points or as a percent of the maximum"><button data-pct="0" class="${st.labPct ? '' : 'on'}">Points</button><button data-pct="1" class="${st.labPct ? 'on' : ''}">%</button></div>
        <button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>
        ${st.labKind === 'box' ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`
     : (hasBoth ? `<div class="seg lbFocus">${[['both', 'Both'], ['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-focus="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '');
@@ -2071,6 +2076,7 @@ function renderLeaderboard() {
   el.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { st.labPrep = b.dataset.prep; st.labUnit = ''; save(); renderLeaderboard(); });
   const sel = $('#labUnit'); if (sel) sel.onchange = () => { st.labUnit = sel.value; save(); renderLeaderboard(); };
   const lk = $('#labKind'); if (lk) lk.onchange = () => { st.labKind = lk.value; save(); renderLeaderboard(); };
+  el.querySelectorAll('[data-pct]').forEach(b => b.onclick = () => { st.labPct = b.dataset.pct === '1'; save(); renderLeaderboard(); });
   const lb = $('#labBin'); if (lb) lb.onchange = () => { st.labBin = Number(lb.value); save(); renderLeaderboard(); };
   const ls = $('#labStats'); if (ls) ls.onclick = () => { st.labStats = (st.labStats + 1) % 3; save(); renderLeaderboard(); };
   const ld = $('#labDots'); if (ld) ld.onclick = () => { st.labDots[st.labUnit] = !dotsOn; save(); renderLeaderboard(); };
