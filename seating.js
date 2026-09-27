@@ -47,15 +47,21 @@ function splitDisplay(display) { const m = String(display).match(/^([^,]+),\s*(.
 const rankPct = (vals, v) => { const xs = vals.filter(x => x != null); if (v == null || xs.length < 2) return null; const below = xs.filter(x => x < v).length, eq = xs.filter(x => x === v).length; return Math.round((below + eq / 2) / xs.length * 100); };
 // Roster rows (Focus names) → seating students, with live standing: the mean of the FAST percentile and the class
 // percentile ranks of the Focus grade and IXL completion, whichever of the three exist.
+// What "standing" is built from: the blend (default), or one source on its own. FAST is a state percentile; the others are class percentile ranks.
+const SEAT_BASES = [['blend', 'Blend', 'FAST percentile + Focus grade rank + IXL rank, whichever exist'], ['fast', 'FAST only', 'the FAST PM3 percentile from the Seating Chart backup'], ['grade', 'Focus grade', 'rank in the class by current course grade'], ['tests', 'Assessments', 'rank by average on tests and quizzes — IXL columns left out'], ['ixl', 'IXL progress', 'rank by share of assigned IXL skills at goal']];
+const seatBasis = () => SEAT_BASES.some(b => b[0] === state.seatBasis) ? state.seatBasis : 'blend';
 function seatStudents(sec) {
   const rows = buildRows(sec).filter(r => r.status !== 'ixlOnly'); const gb = sec.grades; const gbIdx = gb ? new Map(gb.students.map((n, i) => [n, i])) : null;
+  const testsBy = gb ? new Map(ixlVsTests(sec).map(x => [x.i, x.tests])) : null; const basis = seatBasis();
   const units = unitsOf(sec).filter(u => u.assigned && u.total); const t = sec.threshold;
   const base = rows.map(r => { const info = seatInfoOf(sec, r.display); const gi = gbIdx && gbIdx.has(r.display) ? gbIdx.get(r.display) : null; const g = gi != null ? computeGrade(sec, gi) : null;
     let ixl = null; if (r.ixl != null && units.length) { let d = 0, p = 0; units.forEach(u => { p += totalFor(sec, u, r.ixl); d += points(sec, u, r.ixl); }); ixl = p ? d / p * 100 : null; }
-    return { ...splitDisplay(r.display), id: r.display, display: r.display, sid: r.id || '', ixl: r.ixl, gi, grade: g ? g.pct : null, ixlPct: ixl, info }; });
-  const grades = base.map(s => s.grade), ixls = base.map(s => s.ixlPct);
-  return base.map(s => { const i = s.info; const parts = [i.pct, rankPct(grades, s.grade), rankPct(ixls, s.ixlPct)].filter(v => v != null); const standing = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
-    return { ...s, nick: i.nick || '', shownLast: i.shownLast || '', behavior: i.behavior || 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: i.plan || '', accom: i.accom || '', apart: (i.apart || []).slice(), together: (i.together || []).slice(), notes: i.notes || '', photo: i.photo || null, level: i.level || null, pct: i.pct, standing, gradeRank: rankPct(grades, s.grade), ixlRank: rankPct(ixls, s.ixlPct) }; });
+    return { ...splitDisplay(r.display), id: r.display, display: r.display, sid: r.id || '', ixl: r.ixl, gi, grade: g ? g.pct : null, tests: gi != null && testsBy ? (testsBy.get(gi) ?? null) : null, ixlPct: ixl, info }; });
+  const grades = base.map(s => s.grade), ixls = base.map(s => s.ixlPct), tests = base.map(s => s.tests);
+  return base.map(s => { const i = s.info; const gr = rankPct(grades, s.grade), ir = rankPct(ixls, s.ixlPct), tr = rankPct(tests, s.tests);
+    const parts = basis === 'fast' ? [i.pct] : basis === 'grade' ? [gr] : basis === 'tests' ? [tr] : basis === 'ixl' ? [ir] : [i.pct, gr, ir];
+    const have = parts.filter(v => v != null); const standing = have.length ? Math.round(have.reduce((a, b) => a + b, 0) / have.length) : null;
+    return { ...s, nick: i.nick || '', shownLast: i.shownLast || '', behavior: i.behavior || 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: i.plan || '', accom: i.accom || '', apart: (i.apart || []).slice(), together: (i.together || []).slice(), notes: i.notes || '', photo: i.photo || null, level: i.level || null, pct: i.pct, standing, gradeRank: gr, ixlRank: ir, testsRank: tr }; });
 }
 let seatPlain = false;   // set while printing: the teacher asked for the page, so names and photos print
 const seatHidden = () => state.settings.hideNames && !seatPlain;
@@ -66,7 +72,13 @@ const standingOf = s => s.standing == null ? 50 : s.standing;
 const lowStanding = s => standingOf(s) < 25 || s.level === 1;
 const allowedDepth = s => { const p = standingOf(s); return p < 25 ? 0.5 : p < 50 ? 0.75 : 1; };
 // Standing is relative to the class: the FAST state percentile averaged with the class percentile ranks of the Focus grade and IXL completion.
-const standingText = s => { const bits = []; if (s.pct != null) bits.push(`FAST ${s.pct}th pct${s.level ? ' (L' + s.level + ')' : ''}`); if (s.grade != null) bits.push(`Focus ${Math.round(s.grade)}% (rank ${s.gradeRank} in class)`); if (s.ixlPct != null) bits.push(`IXL ${Math.round(s.ixlPct)}% (rank ${s.ixlRank})`); return bits.length ? bits.join(' · ') + ` → standing ${standingOf(s)}` : 'no scores yet — treated as mid-level'; };
+const standingText = s => { const b = seatBasis(); const bits = [];
+  if (s.pct != null && (b === 'blend' || b === 'fast')) bits.push(`FAST ${s.pct}th pct${s.level ? ' (L' + s.level + ')' : ''}`);
+  if (s.grade != null && (b === 'blend' || b === 'grade')) bits.push(`Focus ${Math.round(s.grade)}% (rank ${s.gradeRank} in class)`);
+  if (s.tests != null && b === 'tests') bits.push(`assessments ${Math.round(s.tests)}% (rank ${s.testsRank} in class)`);
+  if (s.ixlPct != null && (b === 'blend' || b === 'ixl')) bits.push(`IXL ${Math.round(s.ixlPct)}% (rank ${s.ixlRank})`);
+  const name = SEAT_BASES.find(x => x[0] === b)[1];
+  return bits.length ? bits.join(' · ') + ` → standing ${standingOf(s)}` : `no ${b === 'blend' ? 'scores' : name + ' data'} yet — treated as mid-level`; };
 
 /* ---- geometry ---- */
 function deskNumbers() {
@@ -114,7 +126,7 @@ const shuffleArr = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i-
 function randomAsg(M, rnd) { const a = [...Array(M.m).keys()]; const r = rnd || Math.random; for (let i = a.length - 1; i > 0; i--) { const j = 0 | r() * (i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, M.n); }
 const seededRnd = seed => { let x = (seed >>> 0) || 1; return () => { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return ((x >>> 0) % 1e6) / 1e6; }; };
 let seatBase = { key: '', v: 0 };
-function seatBaseline(sec, M, G) { if (!M.m || !M.n || M.n > M.m) return 0; const key = sec.key + '|' + JSON.stringify(state.seatWeights || {}) + '|' + M.n + '|' + M.m; if (seatBase.key === key) return seatBase.v; const rnd = seededRnd(M.n * 7919 + M.m * 104729 + 17); let b = 0; for (let k = 0; k < 40; k++) b += totalScore(M, G, randomAsg(M, rnd)).soft; b /= 40; seatBase = { key, v: b }; return b; }   // the same 40 random seatings every time, so the fit is stable between renders
+function seatBaseline(sec, M, G) { if (!M.m || !M.n || M.n > M.m) return 0; const key = sec.key + '|' + seatBasis() + '|' + JSON.stringify(state.seatWeights || {}) + '|' + M.n + '|' + M.m; if (seatBase.key === key) return seatBase.v; const rnd = seededRnd(M.n * 7919 + M.m * 104729 + 17); let b = 0; for (let k = 0; k < 40; k++) b += totalScore(M, G, randomAsg(M, rnd)).soft; b /= 40; seatBase = { key, v: b }; return b; }   // the same 40 random seatings every time, so the fit is stable between renders
 function seatsFromAsg(asg, stu, G) { const seats = {}; asg.forEach((d, i) => seats[G.ds[d].id] = stu[i].id); return seats; }
 function asgFromSeats(seats, stu, G) { const di = {}; G.ds.forEach((d, i) => di[d.id] = i); const at = {}; for (const [d, sid] of Object.entries(seats)) if (di[d] != null) at[sid] = di[d]; return stu.map(s => at[s.id] ?? -1); }
 function scoreSeats(sec, seats, stu, G, M) {
@@ -328,7 +340,7 @@ function renderSeating(s) {
   side += `<h3 class="seatH">Students <small>${stu.length}</small></h3>${stu.length > 8 ? `<input class="txt seatSearch" id="seatSearch" placeholder="Find a student…" aria-label="Find a student" autocomplete="off">` : ''}${noScore ? `<p class="ghint">${plural(noScore, 'student')} with no scores yet — treated as mid-level for placement.</p>` : ''}<div class="seatList">${stu.map((x, i) => `<div class="seatStu" data-n="${esc(norm(x.display + ' ' + seatName(x)))}"><button class="seatOpen" data-sheet="${i}" aria-label="Edit ${esc(seatName(x))}"><span class="ph">${x.photo && !H ? `<img src="${x.photo}" alt="">` : esc(((x.first[0] || '') + (x.last[0] || '')).toUpperCase())}</span><span class="col"><span class="nm">${esc(seatName(x))}</span><span class="tags">${x.standing != null ? `<i class="st" title="${esc(standingText(x))}">${x.standing}</i>` : ''}${H ? '' : `${x.plan ? `<i class="plan">${esc(x.plan)}</i>` : ''}${x.nearTeacher ? '<i>Near</i>' : ''}${x.apart.length ? `<i class="apart">${x.apart.length} apart</i>` : ''}${x.together.length ? `<i class="near">${x.together.length} near</i>` : ''}`}</span></span></button>${H ? '' : `<span class="quick"><span class="seg tiny" role="group" aria-label="Behavior">${['low', 'medium', 'high'].map(b => `<button data-qb="${i}|${b}" class="${x.behavior === b ? (b === 'high' ? 'on hot' : 'on') : ''}" aria-pressed="${x.behavior === b}" title="${b} behavior">${b[0].toUpperCase()}</button>`).join('')}</span><button class="ft ${x.front ? 'on' : ''}" data-qf="${i}" aria-pressed="${!!x.front}" title="Needs a front seat">F</button></span>`}</div>`).join('')}</div>`;
   if (departed.length) side += `<details class="departed"><summary>Not on the roster <small>${departed.length}</small></summary><p class="ghint">Kept 45 days in case they return, then forgotten. Photos, flags and notes go with them.</p>${departed.map((d, i) => `<div class="seatStu gone"><span class="ph">${d.photo && !H ? `<img src="${d.photo}" alt="">` : '·'}</span><span class="nm">${esc(H ? mask(d.id) : d.id)}</span><span class="tags"><i>since ${esc(fmtDate(d.gone))}</i></span><button class="pill pale small" data-forget="${i}">Forget</button></div>`).join('')}<button class="pill pale small" id="forgetAll">Forget all ${departed.length}</button></details>`;
   const hint = w ? (seatSel ? '<b>Tap another desk</b> to swap or move · tap the same desk to cancel' : seatPending ? '<b>Tap an empty desk</b> to seat them' : 'Tap a student on the chart to see why they\u2019re there, lock them, or move them') : (nd ? 'Generate seating, or seat by hand; tap a student in the list to set flags first.' : '');
-  wrap.innerHTML = `<div class="seat"><aside class="seatSide">${side}</aside><section class="seatMain"><p class="ghint seatHint">${hint}</p><div class="chart-stage">${svgChart(s, w ? w.seats : {}, stu, G, 'screen', w)}</div><div class="seatLegend">${H ? '<span>Names off — initials only</span>' : `<span><b class="planTag">H</b> high behavior</span><span>FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')}</span><span><b class="planTag">ESE</b>/<b class="planTag">504</b> plan</span>`}<span>🔒 locked</span><span>number = standing (FAST · Focus · IXL, relative to the class)</span></div></section></div>`;
+  wrap.innerHTML = `<div class="seat"><aside class="seatSide">${side}</aside><section class="seatMain"><p class="ghint seatHint">${hint}</p><div class="chart-stage">${svgChart(s, w ? w.seats : {}, stu, G, 'screen', w)}</div><div class="seatLegend">${H ? '<span>Names off — initials only</span>' : `<span><b class="planTag">H</b> high behavior</span><span>FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')}</span><span><b class="planTag">ESE</b>/<b class="planTag">504</b> plan</span>`}<span>🔒 locked</span><span>number = standing by <b>${esc(SEAT_BASES.find(b => b[0] === seatBasis())[1])}</b>${seatBasis() === 'blend' ? ' (FAST · Focus · IXL, relative to the class)' : ' (relative to the class)'}</span></div></section></div>`;
   bindSeating(s, wrap, w, stu, G, departed);
 }
 function movePanelHTML(s, w, stu, G) {
@@ -378,13 +390,15 @@ function bindSeating(s, wrap, w, stu, G, departed) {
 function openSeatWeights(sec) {
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel narrow"><header><h2>Seating priorities</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one">
+    <div class="field"><label>Place by <small>(what "standing" means — lower standing is pulled toward the front and kept from pairing up)</small></label><div class="seg small wrap" id="seatBasisSeg">${SEAT_BASES.map(b => `<button data-basis="${b[0]}" class="${seatBasis() === b[0] ? 'on' : ''}" title="${esc(b[2])}">${b[1]}</button>`).join('')}</div><p class="ghint" id="basisHint">${esc(SEAT_BASES.find(b => b[0] === seatBasis())[2])}</p></div>
     <p class="ghint">Keep-apart links are always hard rules. Changes apply the next time you generate.</p>
     ${SEAT_FACTORS.map(f => `<div class="wt"><label>${esc(f.label)}<small>${esc(f.desc)}</small></label><input type="range" min="0" max="10" step="1" value="${seatW(f.k)}" data-w="${f.k}"><b>${seatW(f.k)}</b></div>`).join('')}
     <div class="rp-actions"><button class="pill" id="mCancel">Done</button><button class="pill pale" id="wReset">Reset to defaults</button></div></div></div>`;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; save(); };
+  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; save(); render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-w]').forEach(r => r.oninput = () => { state.seatWeights = state.seatWeights || {}; state.seatWeights[r.dataset.w] = +r.value; r.nextElementSibling.textContent = r.value; });
-  $('#wReset').onclick = () => { state.seatWeights = {}; close(); openSeatWeights(sec); };
+  m.querySelectorAll('[data-basis]').forEach(b => b.onclick = () => { state.seatBasis = b.dataset.basis; seatBase = { key: '', v: 0 }; m.querySelectorAll('[data-basis]').forEach(z => z.classList.toggle('on', z === b)); $('#basisHint').textContent = SEAT_BASES.find(x => x[0] === b.dataset.basis)[2]; });
+  $('#wReset').onclick = () => { state.seatWeights = {}; state.seatBasis = 'blend'; close(); openSeatWeights(sec); };
 }
 /* ---- student sheet ---- */
 function openSeatSheet(sec, display) {

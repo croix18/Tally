@@ -178,6 +178,15 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   // (1b) print header carries the room name and course
   const [pop3]=await Promise.all([ctx.waitForEvent('page'), (async()=>{ await p.click('#seatPrint'); await p.waitForTimeout(200); await p.click('[data-pm="teacher"]'); })()]); await pop3.waitForLoadState(); await pop3.waitForTimeout(300);
   const h3=await pop3.textContent('body'); check(/Room WHM07 100/.test(h3) && /Accelerated 7th Grade Math/.test(h3) && /high behavior/.test(h3),'teacher print header has course, room and a legend'); await pop3.close();
+  // 12. "Place by": standing follows the chosen source
+  const bases=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const out={}; for (const b of ['blend','fast','grade','tests','ixl']) { T.state.seatBasis=b; const st=T.seatStudents(s); out[b]=st.slice(0,6).map(x=>x.standing); out[b+'_txt']=T.seatStudents(s)[0]; } T.state.seatBasis='blend'; return out; }, K);
+  const st0=bases.grade_txt; const ex=bases.ixl_txt;
+  check(bases.grade.join()!==bases.ixl.join() && bases.grade.every((v,i)=>v===null||v===st0.gradeRank||i>0) && bases.ixl[0]===ex.ixlRank,'Focus grade and IXL progress give different standings, each equal to that source\'s class rank: grade='+bases.grade.join(',')+' ixl='+bases.ixl.join(','));
+  check(bases.tests.some(v=>v!=null) && bases.tests[0]===bases.tests_txt.testsRank,'Assessments basis ranks by test/quiz average (IXL columns left out)');
+  await p.click('#seatWeights'); await p.waitForTimeout(200); check(await p.locator('[data-basis]').count()===5,'Priorities offers the five Place-by choices');
+  await p.click('[data-basis="ixl"]'); await p.click('#mCancel'); await p.waitForTimeout(400);
+  check(/standing by IXL progress/.test(await p.textContent('.seatLegend')) && (await p.evaluate(()=>window.__tally.state.seatBasis))==='ixl','picking IXL progress re-renders with the new basis in the legend and persists');
+  await p.evaluate(()=>{ window.__tally.state.seatBasis='blend'; window.__tally.save(); });
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();
 })();
