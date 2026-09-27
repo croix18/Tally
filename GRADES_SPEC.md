@@ -2,7 +2,7 @@
 
 Written 2026-09-26 before building. Tally already holds each class's IXL scores and (per import) its Focus
 gradebook. This adds a teacher-facing **Grades** view per class: the real course grade, trends across imports,
-what-ifs for one student, a printable per-student summary, and the one thing a gradebook alone can't show —
+what-ifs for one student, a printable one-page student report, and the one thing a gradebook alone can't show —
 whether IXL work is paying off on assessments.
 
 ## 1. The grade formula (verified)
@@ -78,7 +78,12 @@ What-ifs, each rendered as "→ 84 (B)":
 - **Next assessment**: points possible (defaults to the most common assessment size) and a score slider →
   resulting grade; plus "needs ≥ N/P for a B, ≥ M/P for an A" computed exactly.
 - **IXL**: for each IXL column below full, "at N/N →".
-Print button opens a print window with the card only (dated, class name, no other students).
+Print button opens the **student report**: one printed page — the grade with its category lines, "what would move
+the grade" (each missing assignment turned in, all of it, IXL columns at full, all of it plus IXL, and what the next
+assessment needs), then "IXL still owed" (per assigned unit: points, skills below goal with their SmartScore, skills
+not started), and the formula footer. Dated, class named, no other students. The class ⋯ menu's **Student reports
+(print)** prints the same page for everyone or only students who owe something (missing work or IXL below goal),
+one page each — full names, since these go home. `studentReportSection` / `printStudentReports` in `grades.js`.
 
 ### 4.3 Category asker (modal, at import)
 Listed assignments with a radio per category and the guess selected; Apply. Skip keeps the guesses.

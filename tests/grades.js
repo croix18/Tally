@@ -57,7 +57,7 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   check(/Missing work/.test(card) && /Retakes/.test(card) && /Next assessment/.test(card) && /→ \d+/.test(card),'card has missing, retakes, next-assessment what-ifs');
   await p.fill('#nextMax','50'); await p.waitForTimeout(150); check((await p.getAttribute('#nextPts','max'))==='50','next-assessment slider follows points possible');
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#stuPrint')]); await pop.waitForLoadState(); await pop.waitForTimeout(300); const ptxt=await pop.evaluate(()=>document.body.innerText);
-  check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /Missing work/.test(ptxt) && /weighted Assessments 70%/.test(ptxt),'print page: one student, formula stated'); await pop.close();
+  check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /What would move the grade/i.test(ptxt) && /weighted Assessments 70%/.test(ptxt),'print page: one student, formula stated'); await pop.close();
   await p.click('#mCancel'); await p.waitForTimeout(200);
   check(!(await p.evaluate(()=>document.getElementById('modal').classList.contains('private'))),'private backdrop cleared on close');
   // hidden names mask the overview and the card

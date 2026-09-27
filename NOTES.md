@@ -86,6 +86,8 @@ per-section-file era and many items in them are now done).
   clipboard works, "Add to Home screen" gives an icon. Only Croix can do this (API writes are refused).
 - **Rotate the fine-grained PAT** that was pasted into chat on 26 Sep once pushing is done.
 - First week of history: Race movement, trends, "since last import" and sliding need a second import.
+- **Student report** (27 Sep): one page per student — Focus grade, what would move it, IXL still owed — from the
+  student card's Print or the class ⋯ menu (everyone / only those who owe). See `GRADES_SPEC.md` §4.2.
 - Not yet built: plain-language parent version of the student report; Race naming pass; a way to mark a
   student's modified assignment list once for every unit (per-student skips are per cell today).
 - Known rough edges: a student in two classes of the same course can't be — pools carve each name into one

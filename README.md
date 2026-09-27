@@ -24,6 +24,8 @@ After a Focus gradebook export is loaded, every mapped unit gets a Focus check b
 
 **Grades** (teacher-only, per class, once a gradebook is loaded) computes the real Focus course grade — weighted categories on points earned over points possible, NHI as zero, NG left out — and proves each assignment's category against the export's Grade column (see `GRADES_SPEC.md`; the fit reproduces the column exactly for the scrubbed real class). It shows class average and letter counts, missing work, students sliding since the previous import, an assignments table with each one's effect on the class average and a category selector, an IXL-vs-assessments scatter with r, and a class-average trend across imports. Tapping a student opens what-ifs — turn in each missing item, retake each assessment at 70/80/90/100, a next-assessment slider with the exact score needed for an A/B/C — and a printable one-student summary for conferences. Weights are editable per prep.
 
+**Student reports** (class ⋯ menu, or the Print button on a student card) print one page per student: the Focus grade, what would move it (missing work turned in, IXL finished, what the next assessment needs) and the IXL skills still owed by unit — for the student and the people at home.
+
 Student-facing screens (Race and Data Lab) never show names and lock behind a hold-to-exit button. The Race ranks classes by the share of students who moved up since the league's shared baseline import (average gain breaks ties), so a class that starts behind can win and one student can't swing it; the furthest-along class is tagged. In the Data Lab, an IQR of 0 or 1 switches the 1.5 × IQR outlier rule off with a note.
 
 ## Source

@@ -268,7 +268,7 @@ function openStudentCard(s, i) {
       <h3>Next assessment</h3>
       <div class="nextrow"><label>out of <input type="number" id="nextMax" value="${nextMax}" min="1" max="500" style="width:70px"></label><label>score <input type="range" id="nextPts" min="0" max="${nextMax}" step="0.5" value="${Math.round(nextMax * 0.8)}"> <b id="nextPtsV">${Math.round(nextMax * 0.8)}</b></label><span id="nextOut">${arrow(withNext(s, i, 'Assessments', nextMax, Math.round(nextMax * 0.8)))}</span></div>
       <p class="ghint" id="needLine">${needLine(nextMax)}</p>
-      <div class="rp-actions"><button class="pill" id="stuPrint">Print this page</button><button class="pill pale" id="mCancel">Close</button></div>
+      <div class="rp-actions"><button class="pill" id="stuPrint">Print report</button><button class="pill pale" id="mCancel">Close</button></div>
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
@@ -278,22 +278,70 @@ function openStudentCard(s, i) {
   $('#stuPrint').onclick = () => printStudentCard(s, i);
 }
 
-function printStudentCard(s, i) {
-  const gb = s.grades; const g = gradingFor(s.prep); const name = gb.students[i]; const r = computeGrade(s, i); if (!r) return;
+/* ---------- Student report: one page per student — the Focus grade, what would move it, and the IXL still owed ----------
+   Printed from the student card (one student) or the class ⋯ menu (everyone, or only students who owe something).
+   Always full names: this page is for the student and the people at home. */
+const REPORT_CSS = `@page{margin:.6in}body{font-family:Georgia,'Times New Roman',serif;color:#000;background:#fff;margin:0;font-size:11pt;line-height:1.35}
+.rep{padding:18px 24px 24px;break-after:page;page-break-after:always}.rep:last-child{break-after:auto;page-break-after:auto}
+h1,h2,h3,.meta,th,.big,.grid small{font-family:Arial,Helvetica,sans-serif}h1{font-size:17pt;margin:0}h2{font-size:11.5pt;margin:16px 0 4px;border-bottom:1.5px solid #000;padding-bottom:2px;text-transform:uppercase;letter-spacing:.06em}
+.meta{font-size:9.5pt;color:#333;margin:2px 0 10px}.top{display:flex;gap:24px;align-items:flex-start}.big{font-size:30pt;font-weight:bold;line-height:1;margin:2px 0 4px;white-space:nowrap}.big small{font-size:14pt;margin-left:6px}
+table{border-collapse:collapse;width:100%}td,th{padding:3px 6px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd;font-size:10.5pt}th{font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;color:#333}
+.r{text-align:right;white-space:nowrap}.nhi{font-weight:bold}.cats td{border-bottom:none;padding:1px 6px}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+.u{margin:4px 0 6px}.uh{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt;display:flex;justify-content:space-between}.uh b{font-weight:bold}.l{margin:1px 0 0 12px;font-size:10pt}.l span{font-weight:bold}.l.done{font-style:italic}
+.foot{font-size:8.5pt;color:#444;margin-top:14px;border-top:1px solid #999;padding-top:6px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff;font-family:Arial,sans-serif}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
+function studentReportSection(s, i, ixlRow) {
+  const gb = s.grades; const g = gradingFor(s.prep); const name = gb.students[i]; const r = computeGrade(s, i);
   const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing'); const allIn = {}; missing.forEach(a => allIn[a.name] = a.max);
-  const byCat = g.cats.map(c => ({ c, list: gb.assignments.filter(a => catOf(s.prep, a.name) === c.name).sort((x, y) => dueKey(x.due).localeCompare(dueKey(y.due))) }));
-  const cellTxt = a => { const st = a.status ? a.status[i] : null; return st === 'missing' ? 'Not handed in' : st === 'excused' ? 'Excused' : st === 'score' ? `${a.values[i]} / ${a.max}` : '—'; };
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(name)} — grade summary</title>
-<style>@page{margin:.7in}body{font-family:Georgia,'Times New Roman',serif;color:#000;background:#fff;margin:24px;font-size:11.5pt;line-height:1.4}h1,h2,.meta,th{font-family:Arial,Helvetica,sans-serif}h1{font-size:17pt;margin:0}h2{font-size:12pt;margin:18px 0 4px;border-bottom:1px solid #999;padding-bottom:2px}.meta{font-size:9.5pt;color:#333;margin:2px 0 14px}.big{font-size:26pt;font-weight:bold;margin:6px 0}table{border-collapse:collapse;width:100%}td,th{padding:3px 6px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd;font-size:10.5pt}th{font-size:9pt;text-transform:uppercase;letter-spacing:.05em}.r{text-align:right}.nhi{font-weight:bold}.foot{font-size:9pt;color:#444;margin-top:18px}</style></head><body>
-<h1>${esc(name)}</h1><div class="meta">${esc(s.label)} · Focus gradebook as of ${esc(fmtDate(gb.importedAt.slice(0, 10)))} · printed ${new Date().toLocaleDateString()}</div>
-<div class="big">${r.rounded}% &nbsp;${r.letter}</div>
-<table><thead><tr><th>Category</th><th class="r">Weight</th><th class="r">Earned / possible</th><th class="r">Average</th></tr></thead><tbody>${g.cats.map(c => { const x = r.cats[c.name]; return `<tr><td>${esc(c.name)}</td><td class="r">${c.w}%</td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table>
-${missing.length ? `<h2>Missing work</h2><table><tbody>${missing.map(a => `<tr><td class="nhi">${esc(a.name)}</td><td>${a.max} pts${a.due ? ' · due ' + esc(a.due) : ''}</td><td class="r">if turned in → ${computeGrade(s, i, { [a.name]: a.max }).rounded}%</td></tr>`).join('')}${missing.length > 1 ? `<tr><td><b>All of it turned in</b></td><td></td><td class="r"><b>→ ${computeGrade(s, i, allIn).rounded}%</b></td></tr>` : ''}</tbody></table>` : '<h2>Missing work</h2><p>Nothing missing.</p>'}
-${byCat.map(x => x.list.length ? `<h2>${esc(x.c.name)}</h2><table><tbody>${x.list.map(a => `<tr><td>${esc(a.name)}</td><td>${a.due ? 'due ' + esc(a.due) : ''}</td><td class="r ${a.status && a.status[i] === 'missing' ? 'nhi' : ''}">${cellTxt(a)}</td></tr>`).join('')}</tbody></table>` : '').join('')}
-<div class="foot">Course grade = each category's points earned ÷ points possible, weighted ${g.cats.map(c => `${esc(c.name)} ${c.w}%`).join(' · ')}. Work not handed in counts as zero; excused work is left out. Figures come from the Focus gradebook export named above; Focus is the record of grade.</div>
-</body></html>`;
-  const w = window.open('', '_blank'); if (!w) { toast('Pop-up blocked — allow pop-ups for this page to print.', true); return; }
-  w.document.write(html); w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 300);
+  const ixlCols = gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && (a.values[i] == null || a.values[i] < a.max));
+  const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
+  const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
+  const cur = r ? r.rounded : null;
+  const need = r ? [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur < t).map(([t, w]) => { const n = neededOn(s, i, 'Assessments', nextMax, t); return n == null ? null : `${n}/${nextMax} for ${w}`; }).filter(Boolean) : [];
+  const keep = r && cur >= 70 ? (() => { const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : 70; const n = neededOn(s, i, 'Assessments', nextMax, floor); return n == null ? null : `${n === 0 ? 'even a 0' : n + '/' + nextMax} keeps the ${floor === 90 ? 'A' : floor === 80 ? 'B' : 'C'}`; })() : null;
+  const arrow = x => x && x.rounded != null ? `→ ${x.rounded}% ${x.letter}` : '';
+  // IXL still owed, from the class's IXL grid via the roster match
+  const units = unitsOf(s).filter(u => u.assigned && u.total); const t = s.threshold; let ixl = '';
+  if (ixlRow && ixlRow.ixl != null) {
+    const per = units.map(u => { const own = activeFor(s, u, ixlRow.ixl); const p = points(s, u, ixlRow.ixl);
+      const below = own.filter(k => { const v = eff(s, k, ixlRow.ixl); return v != null && v < t; }).map(k => `${s.skills[k].name} (${eff(s, k, ixlRow.ixl)})`);
+      const notStarted = own.filter(k => eff(s, k, ixlRow.ixl) == null).map(k => s.skills[k].name);
+      return `<div class="u"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}</span><b>${p} / ${own.length}</b></div>${below.length ? `<div class="l"><span>Below goal (${t}):</span> ${esc(below.join(' · '))}</div>` : ''}${notStarted.length ? `<div class="l"><span>Not started:</span> ${esc(notStarted.join(' · '))}</div>` : ''}${!below.length && !notStarted.length ? `<div class="l done">All ${own.length} skills at goal</div>` : ''}</div>`; }).join('');
+    ixl = `<h2>IXL still owed <span style="text-transform:none;letter-spacing:0;font-weight:normal">· export of ${esc(fmtDate(dataDate(s)) || '?')} · goal SmartScore ${t}</span></h2>${per || '<p>No units assigned yet.</p>'}`;
+  } else if (s.students.length) ixl = `<h2>IXL still owed</h2><p>Not matched to an IXL account — check the roster in Tally.</p>`;
+  const moves = [
+    ...missing.map(a => `<tr><td class="nhi">${esc(a.name)}</td><td>${a.max} pts${a.due ? ' · due ' + esc(a.due) : ''}</td><td class="r">turned in ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
+    missing.length > 1 ? `<tr><td><b>All missing work turned in</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
+    ...ixlCols.map(a => `<tr><td>${esc(a.name)}</td><td>now ${a.status[i] === 'missing' ? 'NHI' : a.values[i] + '/' + a.max}</td><td class="r">at ${a.max}/${a.max} ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
+    (missing.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work turned in and IXL finished</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, both))}</b></td></tr>`; })() : '',
+    (need.length || keep) ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${[...need, keep].filter(Boolean).join(' · ')}</td></tr>` : r && cur < 70 ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">No single assessment reaches a C from here — ${missing.length || ixlCols.length ? 'the work above is the lever' : 'it will take more than one'}.</td></tr>` : ''].filter(Boolean).join('');
+  return `<section class="rep"><h1>${esc(name)}</h1><div class="meta">${esc(s.label)} · Focus gradebook as of ${esc(fmtDate(gb.importedAt.slice(0, 10)))} · printed ${new Date().toLocaleDateString()}</div>
+    <div class="top"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>
+      <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>
+    <h2>What would move the grade</h2>${moves ? `<table><tbody>${moves}</tbody></table>` : '<p>Nothing missing and every assessment at full marks — keep going.</p>'}
+    ${ixl}
+    <div class="foot">Course grade = each category's points earned ÷ points possible, weighted ${g.cats.map(c => `${esc(c.name)} ${c.w}%`).join(' · ')}. Work not handed in counts as zero; excused work is left out. IXL: one point per skill at or above the goal SmartScore. Figures come from the exports named above; Focus is the record of grade.</div></section>`;
+}
+function printStudentReports(s, indices, title) {
+  const rows = gbRows(s);
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = title.replace(/[^\w-]+/g, '_') + '.html'; a.click(); toast('Pop-ups are blocked, so the page was saved as a file instead.', false, 5000); return; }
+  w.document.open(); w.document.write(html); w.document.close(); if (indices.length === 1) setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 300);
+}
+function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.students[i]} — report`); }
+// Class-level chooser: everyone, or only students with something owed (missing work or IXL below goal).
+function openStudentReports(s) {
+  const gb = s.grades; if (!gb) { toast('Import this class\'s Focus gradebook first — the report needs the grade.', true); return; }
+  const rows = gbRows(s); const units = unitsOf(s).filter(u => u.assigned && u.total);
+  const owes = gb.students.map((_, i) => { const miss = gb.assignments.some(a => a.status && a.status[i] === 'missing'); const r = rows[i]; const ixl = r && r.ixl != null && units.some(u => points(s, u, r.ixl) < totalFor(s, u, r.ixl)); return miss || ixl; });
+  const n = owes.filter(Boolean).length;
+  const m = $('#modal'); m.classList.remove('hidden');
+  m.innerHTML = `<div class="panel narrow"><header><h2>Student reports · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one"><p>One page per student: the Focus grade, what would move it, and the IXL still owed. Full names — these go home.</p>
+      <div class="rp-actions col"><button class="pill" data-rep="all">Everyone <small>${plural(gb.students.length, 'page')}</small></button><button class="pill pale" data-rep="owes" ${n ? '' : 'disabled'}>Only students who owe something <small>${plural(n, 'page')}</small></button></div></div></div>`;
+  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  m.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => { const idx = gb.students.map((_, i) => i).filter(i => b.dataset.rep === 'all' || owes[i]); close(); printStudentReports(s, idx, `Student reports — ${s.label}`); });
 }
 
 // Asked at import for new assignments the Focus fit couldn't prove.
