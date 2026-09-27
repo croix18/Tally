@@ -4,7 +4,8 @@ const LS_KEY = 'tally.v1';
 const DEFAULT_THR = { on: 60, acc: 67 };
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+const coarse = () => window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches;   // the tablet and the panel: no auto-focus (it raises the keyboard), bigger targets
+const plural = (n, w) => n + ' ' + (n === 1 ? w : w + (/s$/.test(w) ? 'es' : 's'));
 
 let state = null;
 /*__GRADES__*/   // grades.js is spliced in here by build.py (same closure, so it shares state and helpers)
@@ -42,15 +43,17 @@ function migrate() {
   state.settings.copyMode = ['points', 'names', 'ids'].includes(state.settings.copyMode) ? state.settings.copyMode : (state.settings.copyNames ? 'names' : 'points');
   for (const k in state.sections) {
     const s = state.sections[k];
+    if (!s || typeof s !== 'object' || !Array.isArray(s.students) || !Array.isArray(s.skills) || !Array.isArray(s.scores)) { delete state.sections[k]; continue; }
     if (typeof s.label !== 'string') s.label = s.autoLabel || k;
-    if (!s || !Array.isArray(s.students) || !Array.isArray(s.skills) || !Array.isArray(s.scores)) { delete state.sections[k]; continue; }
+    // A gradebook is only usable whole: assignments with values/status arrays of the students' length.
+    if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) delete s.grades; else gb.assignments.forEach(a => { a.missing = Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); }
     s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
     if (s.hiddenUnits && Object.keys(s.hiddenUnits).length) { for (const u in s.hiddenUnits) if (state.assigned[s.prep || 'on'][u] == null) state.assigned[s.prep || 'on'][u] = !s.hiddenUnits[u]; s.hiddenUnits = {}; }
     s.aliases = s.aliases || {}; s.hiddenUnits = s.hiddenUnits || {};
     s.gradeHistory = Array.isArray(s.gradeHistory) ? s.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : [];
     // snapshots once carried per-student mastered/touched arrays that nothing reads; keep only the aggregate fields
-    s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
+    s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
     { const course = state.skips[s.prep === 'acc' ? 'acc' : 'on']; if (s.excluded && s.excluded !== course) Object.keys(s.excluded).forEach(key => { if (s.excluded[key]) course[key] = true; }); s.excluded = course; }   // older saves kept skips per class
     if (s.threshold == null) s.threshold = s.accelerated ? (st.thrAcc || DEFAULT_THR.acc) : (st.thrOn || DEFAULT_THR.on);
     s.threshold = clampThr(s.threshold);
@@ -272,7 +275,7 @@ async function importFiles(files) {
       delete state.pendingCfg[meta.key];
       if (!state.order.includes(meta.key)) state.order.push(meta.key);
       state.active = meta.key; ok.push(state.sections[meta.key]);
-    } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); }
+    } catch (e) { fails.push(esc(f.name) + ': ' + esc(e.message)); console.error(e); }
   }
   for (const { f, gb } of deferred) {
     let target = await pickSection(f.name, gb);
@@ -305,22 +308,43 @@ async function importFiles(files) {
 }
 
 /* ---------- history snapshots (aggregates only: per-skill counts + per-student totals) ---------- */
-function activeIdx(sec) { const out = []; sec.skills.forEach((sk, k) => { if (!sec.excluded[skillKey(sk)]) out.push(k); }); return out; }
 // The students a class is measured on: roster-matched students when a roster exists, otherwise everyone in IXL minus ignored.
 function population(sec) {
   const list = ixlList(sec); const ign = sec.ignored || {};
   if (rosterState(sec).count) { const ok = new Set(buildRows(sec).filter(r => r.status === 'ok' && r.ixl != null).map(r => r.ixl)); return list.filter(x => ok.has(x.i)); }
   return list.filter(x => !ign[x.key]);
 }
+// Counted skills of the units that are assigned right now (the basis every "at goal" total is measured on).
+function assignedIdx(sec) { const out = []; unitsOf(sec).forEach(u => { if (u.assigned) out.push(...u.active); }); return out; }
+// A snapshot keeps, per student: `per` = skills at goal in the assigned units (their own list, after per-student skips),
+// and `pu` = the same per unit for EVERY unit, so movement can be read on whatever units are assigned later; `ua` = how
+// many skills each unit counted, so a skip made between two snapshots is detected instead of read as a drop.
+// Snapshots are re-taken whenever the basis changes (skips, goal), so the newest one always reflects the grid.
 function snapshot(sec) {
   if (sec.placeholder) return;
-  const t = sec.threshold, per = {}; const list = ixlList(sec); const act = activeIdx(sec);
+  const t = sec.threshold, per = {}, pu = {}, ua = {}; const list = ixlList(sec); const units = unitsOf(sec);
   list.forEach(x => per[x.key] = 0);
-  act.forEach(k => sec.scores[k].forEach((v0, si) => { const v = eff(sec, k, si); if (v != null && v >= t) per[list[si].key]++; }));
-  const snap = { date: sec.date || sec.importedAt.slice(0, 10), at: sec.importedAt, thr: t, students: sec.students.length, per };
-  sec.history = (sec.history || []).filter(h => h.date !== snap.date).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per }));
+  units.forEach(u => { const m = {}; ua[u.name] = u.active.length; list.forEach((x, si) => { let n = 0; activeFor(sec, u, si).forEach(k => { const v = eff(sec, k, si); if (v != null && v >= t) n++; }); m[x.key] = n; if (u.assigned) per[x.key] += n; }); pu[u.name] = m; });
+  const snap = { date: sec.date || sec.importedAt.slice(0, 10), at: sec.importedAt, thr: t, students: sec.students.length, per, pu, ua };
+  sec.history = (sec.history || []).filter(h => h.date !== snap.date).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua }));
   sec.history.push(snap); sec.history.sort((a, b) => a.date.localeCompare(b.date));
   if (sec.history.length > 60) sec.history = sec.history.slice(-60);
+}
+// Every class of a course shares skips, so a skip re-snapshots all of them.
+function resnapshotPrep(prep) { state.order.map(k => state.sections[k]).forEach(s => { if (s.prep === prep && !s.placeholder) snapshot(s); }); }
+// Movement between two snapshots on the units assigned NOW. Returns per-student deltas for students in both, or a reason
+// they can't be compared: 'thr' (goal changed), 'basis' (a unit's counted skills changed, or an older snapshot without
+// per-unit counts). Reading both snapshots on today's assigned units means advancing "Working in" never resets the race.
+// A snapshot's per-student totals on the units assigned now (older snapshots without per-unit counts fall back to their own total).
+function snapTotals(sec, h) { if (!h.pu) return Object.values(h.per); const units = unitsOf(sec).filter(u => u.assigned); return Object.keys(h.per).map(key => units.reduce((a, u) => a + ((h.pu[u.name] || {})[key] || 0), 0)); }
+function movement(sec, cur, prev) {
+  if (!cur || !prev) return null;
+  if (prev.thr !== cur.thr) return { reason: 'thr' };
+  const units = unitsOf(sec).filter(u => u.assigned);
+  if (!prev.pu || !cur.pu || units.some(u => !prev.pu[u.name] || !cur.pu[u.name] || (prev.ua || {})[u.name] !== (cur.ua || {})[u.name])) return { reason: 'basis' };
+  const deltas = {};
+  Object.keys(cur.per).forEach(key => { if (prev.per[key] == null) return; let now = 0, before = 0; units.forEach(u => { now += cur.pu[u.name][key] || 0; before += prev.pu[u.name][key] || 0; }); deltas[key] = { d: now - before, now }; });
+  return { reason: null, deltas };
 }
 // "Assigned" is defined once per prep: the union of units no class in that prep has hidden.
 function assignedUnitsForPrep(prep) {
@@ -346,17 +370,16 @@ function leaderboardData() {
     const aUnits = units.filter(u => assignedByPrep[s.prep].has(u.name));
     let done = 0, possible = 0;
     aUnits.forEach(u => list.forEach(x => { const own = activeFor(s, u, x.i); possible += own.length; own.forEach(kk => { const v = eff(s, kk, x.i); if (v != null && v >= t) done++; }); }));
-    const totalNow = {}; list.forEach(x => totalNow[x.key] = 0);
-    let masteredAll = 0; activeIdx(s).forEach(kk => list.forEach(x => { const v = eff(s, kk, x.i); if (v != null && v >= t) { masteredAll++; totalNow[x.key]++; } }));
+    const masteredAll = done;   // skills at goal on the assigned units (the same basis as "% complete")
     const cur = s.history[s.history.length - 1];
     const prev = cur && baseline[s.prep] ? s.history.filter(h => h.date <= baseline[s.prep] && h.date < cur.date).pop() : null;
-    let gain = null, active = null, movers = 0, measured = 0, thrChanged = false;
-    if (prev) {
-      if (prev.thr !== cur.thr) thrChanged = true;
-      else { let g = 0, a = 0, m = 0; list.forEach(x => { const before = prev.per[x.key]; if (before == null) return; m++; const d = totalNow[x.key] - before; g += d; if (d > 0) a++; }); if (m) { gain = g / m; active = a / m; movers = a; measured = m; } }
-    }
+    let gain = null, active = null, movers = 0, measured = 0, thrChanged = false, basisChanged = false;
+    const mv = movement(s, cur, prev);
+    if (mv && mv.reason === 'thr') thrChanged = true;
+    else if (mv && mv.reason === 'basis') basisChanged = true;
+    else if (mv) { let g = 0, a = 0, m = 0; list.forEach(x => { const e = mv.deltas[x.key]; if (!e) return; m++; g += e.d; if (e.d > 0) a++; }); if (m) { gain = g / m; active = a / m; movers = a; measured = m; } }
     out.push({ key: k, prep: s.prep, name: s.label, label: s.label, students: n, assignedUnits: aUnits.map(u => u.short), assignedSkills: aUnits.reduce((a, u) => a + u.active.length, 0), done, possible, doneEach: done / n,
-      completion: possible ? done / possible : 0, masteredAll, gain, active, movers, measured, thrChanged, prevDate: prev ? prev.date : null, date: s.date });
+      completion: possible ? done / possible : 0, masteredAll, gain, active, movers, measured, thrChanged, basisChanged, prevDate: prev ? prev.date : null, date: s.date });
   }
   // The race is MOVEMENT: the share of the class that reached at least one more skill since the league's baseline,
   // with average skills gained as the tiebreak and completion after that. Reaching the goal and stopping earns nothing
@@ -396,7 +419,7 @@ function lbMarkup(data, focus) {
     if (r.active == null) return `${pct(r.completion)}<small>% complete</small>`;
     const rest = r.measured - r.movers;
     if (r.active === 1) return `100<small>% moved up</small>`;
-    if (rest < 3) return `<span class="lbWord">nearly all</span><small>moved up</small>`;
+    if (rest < 3 && r.movers > 0) return `<span class="lbWord">nearly all</span><small>moved up</small>`;
     return `${pct(r.active)}<small>% moved up</small>`;
   };
   const card = (r, showTrophy) => `<div class="lbCard r${Math.min(r.rank, 3)}" style="--cc:${classColor(state.sections[r.key])}">
@@ -406,7 +429,7 @@ function lbMarkup(data, focus) {
         <div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div>
         <div class="lbChips">
           <span class="lbChip">${pct(r.completion)}% complete · ${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skill-points · ${plural(r.students, 'student')}</span>
-          ${r.thrChanged ? `<span class="lbChip">goal changed — fresh start this week</span>` : r.gain != null ? `<span class="lbChip gain">${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}</span>` : `<span class="lbChip">first week in the race</span>`}
+          ${r.thrChanged ? `<span class="lbChip">goal changed — fresh start this week</span>` : r.basisChanged ? `<span class="lbChip">skills counted changed — fresh start this week</span>` : r.gain != null ? `<span class="lbChip gain">${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}</span>` : `<span class="lbChip">first week in the race</span>`}
         </div>
       </div>
       <div class="lbPct">${headline(r)}</div>
@@ -432,10 +455,10 @@ const LB_CSS = `
 .lbSub{font-weight:700;color:var(--teal);font-size:clamp(14px,1.5vw,20px)}
 .lbList{display:flex;flex-direction:column;gap:14px}
 .lbCard{display:grid;grid-template-columns:72px 1fr auto;gap:18px;align-items:center;background:var(--white);border-radius:20px;box-shadow:var(--shadow-2);padding:16px 26px 16px 18px}
-.lbCard.r1{background:var(--turq)} .lbCard.r2{background:var(--paleturq)}
+.lbCard.r1{background:var(--white);box-shadow:0 0 0 3px var(--turq),var(--shadow-2)} .lbCard.r2{background:var(--paleturq)}
 .lbRank{font-weight:900;font-size:clamp(30px,3.4vw,46px);text-align:center;color:var(--navy)}
 .lbName{font-weight:900;font-size:clamp(22px,2.6vw,36px);line-height:1.1;color:var(--navy);margin-bottom:8px;overflow-wrap:anywhere}
-.lbBarWrap{height:16px;border-radius:999px;background:rgba(23,50,77,.12);overflow:hidden}
+.lbBarWrap{height:16px;border-radius:999px;background:rgba(22,33,58,.12);overflow:hidden}
 .lbCard.r1 .lbBarWrap{background:rgba(255,255,255,.55)}
 .lbBar{height:100%;width:0;border-radius:999px;background:var(--navy);animation:lbGrow 1.2s cubic-bezier(.2,.8,.2,1) forwards}
 @keyframes lbGrow{to{width:var(--w)}}
@@ -487,16 +510,20 @@ function stats(vals) {
   const bunched = iqr <= 1;
   const outliers = bunched ? [] : v.filter(x => x < lo || x > hi); const inside = bunched ? v : v.filter(x => x >= lo && x <= hi);
   const wLo = inside.length ? inside[0] : v[0], wHi = inside.length ? inside[inside.length - 1] : v[n - 1];
-  // shape is described from the picture (tail lengths, ceiling, gaps), not declared from mean vs median
+  // shape: the mean-vs-median rule first, then pile-ups and gaps read from the picture
   const counts = {}; v.forEach(x => counts[x] = (counts[x] || 0) + 1);
   const modeCount = Math.max(...Object.values(counts)); const modes = Object.keys(counts).filter(k => counts[k] === modeCount).map(Number);
   const range = v[n - 1] - v[0]; const lTail = q1 - v[0], rTail = v[n - 1] - q3;
   const parts = [];
   if (range === 0) parts.push('every value is the same');
   else {
-    if (rTail > 1.5 * lTail + 0.5) parts.push('longer tail to the right (skewed right)');
-    else if (lTail > 1.5 * rTail + 0.5) parts.push('longer tail to the left (skewed left)');
-    else parts.push('tails about even (roughly symmetric)');
+    // Shape follows the rule 7th graders learn — mean above the median → skewed right, below → skewed left, about the
+    // same → roughly symmetric — with the tails as the picture clue, and an honest note when the two disagree.
+    const tail = rTail > 1.5 * lTail + 0.5 ? 'right' : lTail > 1.5 * rTail + 0.5 ? 'left' : 'even';
+    const diff = mean - median; const tol = Math.max(0.25, range * 0.04);
+    const rule = Math.abs(diff) <= tol ? 'even' : diff > 0 ? 'right' : 'left';
+    if (rule === 'even') parts.push(tail === 'even' ? 'roughly symmetric (mean ≈ median, tails about even)' : `roughly symmetric by the rule (mean ≈ median), though the ${tail} tail is longer`);
+    else parts.push(`skewed ${rule} (mean ${rule === 'right' ? 'above' : 'below'} median${tail === rule ? `, longer tail to the ${rule}` : tail === 'even' ? '; tails look about even' : `; the picture's longer tail is to the ${tail}`})`);
     if (modeCount / n >= 0.4 && modes.length === 1) parts.push(modes[0] === v[n - 1] ? 'a pile-up at the top' : modes[0] === v[0] ? 'a pile-up at the bottom' : 'a big cluster at ' + modes[0]);
     let gap = 0, gapAt = null; for (let i = 1; i < n; i++) { const g = v[i] - v[i - 1]; if (g > gap) { gap = g; gapAt = [v[i - 1], v[i]]; } }
     if (gap >= Math.max(range * 0.25, 2) && v.filter(x => x <= gapAt[0]).length >= 2 && v.filter(x => x >= gapAt[1]).length >= 2) parts.push('a gap between ' + gapAt[0] + ' and ' + gapAt[1] + ' (two clusters)');
@@ -509,7 +536,7 @@ function labDatasets(prep) {
   const groups = [];
   const add = (group, id, label) => { let g = groups.find(x => x.group === group); if (!g) { g = { group, items: [] }; groups.push(g); } if (!g.items.some(x => x.id === id)) g.items.push({ id, label }); };
   secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden && u.total) add('IXL units (points)', 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')); }));
-  add('IXL units (points)', 'unit:__all__', 'All units · skills at goal');
+  add('IXL units (points)', 'unit:__all__', 'All assigned units · skills at goal');
   secs.forEach(s => { const cats = {}; (s.grades ? s.grades.assignments : []).forEach(a => { cats[catOf(s.prep, a.name, a)] = 1; }); Object.keys(cats).sort().forEach(c => (s.grades.assignments.filter(a => catOf(s.prep, a.name, a) === c)).forEach(a => add(c, 'gb:' + a.name, a.name))); });
   state.custom.filter(c => c.prep === prep).forEach(c => add('Our own data', 'custom:' + c.id, c.label));
   secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden) u.idx.forEach(k => { const sk = s.skills[k]; add('IXL skills (SmartScore) — ' + u.short, 'skill:' + skillKey(sk), u.short + ' · ' + sk.name); }); }));
@@ -519,9 +546,9 @@ function labDatasets(prep) {
 function labSeries(prep, id) {
   const { secs } = labDatasets(prep);
   return secs.map(s => {
-    const list = population(s); const act = activeIdx(s);
+    const list = population(s); const aUnits = unitsOf(s).filter(u => u.assigned);
     let vals, max, missing = 0, excused = 0, unit = 'points';
-    if (id === 'unit:__all__') { vals = list.map(x => { let m = 0; act.forEach(k => { const v = eff(s, k, x.i); if (v != null && v >= s.threshold) m++; }); return m; }); max = act.length; unit = 'skills at goal'; }
+    if (id === 'unit:__all__') { vals = list.map(x => aUnits.reduce((m, u) => m + points(s, u, x.i), 0)); max = aUnits.reduce((m, u) => m + u.total, 0); unit = 'skills at goal'; }
     else if (id.startsWith('unit:')) { const u = unitsOf(s).find(u => u.name === id.slice(5)); if (!u) return null; vals = list.map(x => points(s, u, x.i)); max = u.total; }
     else if (id.startsWith('skill:')) { const k = s.skills.findIndex(sk => skillKey(sk) === id.slice(6)); if (k < 0) return null; vals = list.map(x => eff(s, k, x.i)); missing = vals.filter(v => v == null).length; max = 100; unit = 'SmartScore'; }
     else if (id.startsWith('custom:')) { const c = state.custom.find(c => c.id === id.slice(7)); const vv = c && c.values[s.key]; if (!vv || !vv.length) return null; vals = vv.slice(); max = Math.max(...vv, 1); unit = c.unit || 'value'; }
@@ -580,16 +607,19 @@ function valuesMarkup(st, tukey, pct) {
 // One class's plot in the chosen form. Box plots keep their own drawing (whiskers, outliers, dots); the rest use charts.js.
 function labPlot(kind, x, scale, id, o) {
   const vals = x.values.filter(v => v != null); const max = Math.max(scale, 1);
+  if (x.kind === 'gb' && !['box', 'hist', 'circle', 'line'].includes(kind)) return `<div class="labNotYet">Focus scores are shown as a box plot, histogram, circle graph or line graph only.</div>`;
   if (kind === 'dots') return chartDots(vals, max);
   if (kind === 'hist') return chartHist(vals, max, o.bin || 0);
   if (kind === 'stem') return chartStem(vals, max);
   if (kind === 'bar') return chartFreq(vals, max);
   if (kind === 'circle') {
-    if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: 'var(--teal)' }, { label: 'Below goal', value: below, color: '#E6D5B8' }, { label: 'Not started', value: x.missing, color: '#D8C5A0' }]); }
+    if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', value: x.missing, color: 'var(--grid)' }]); }
     if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, value: b[k], color: LETTER_COLORS[k] }))); }
     const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1;
-    if (x.pct) return chartCircle([0, 1, 2, 3].map(i => ({ label: ['Under 25%', '25–49%', '50–74%', '75–100%'][i], value: q[i], color: ['#D8C5A0', '#E6D5B8', '#40E0D0', '#127A85'][i] }))); const rng = i => `${Math.ceil(m * i / 4)}–${Math.floor(m * (i + 1) / 4) - (i < 3 ? (Number.isInteger(m / 4) ? 1 : 0) : 0)}`;
-    return chartCircle([0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${i === 3 ? Math.ceil(m * 3 / 4) + '–' + m : rng(i)} of ${m})`, value: q[i], color: ['#D8C5A0', '#E6D5B8', '#40E0D0', '#127A85'][i] })));
+    if (x.pct) return chartCircle([0, 1, 2, 3].map(i => ({ label: ['Under 25%', '25–49%', '50–74%', '75–100%'][i], value: q[i], color: QUARTER_COLORS[i] })));
+    // Quarter i holds whole-number scores from ceil(m·i/4) up to the next quarter's start, so no score sits in two ranges.
+    const edge = i => Math.ceil(m * i / 4); const rng = i => { const lo = edge(i), hi = i === 3 ? m : edge(i + 1) - 1; return hi < lo ? 'no whole score' : lo === hi ? `${lo}` : `${lo}–${hi}`; };
+    return chartCircle([0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${rng(i)} of ${m})`, value: q[i], color: QUARTER_COLORS[i] })));
   }
   return boxSVG(x.st, scale, 800, o);
 }
@@ -604,8 +634,8 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const series = seriesAll.filter(x => x.st.n >= MIN_N), thin = seriesAll.filter(x => x.st.n < MIN_N);
   if (kind === 'line') {   // every class on one chart — the comparison is the point
     const asOfL = secs.map(s => s.date).filter(Boolean).sort().pop(); let body = '';
-    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = Object.values(h.per); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300 }); }
-    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, aria: 'class average on this assignment by import' }); }
+    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = snapTotals(x.sec, h); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300, w: 900, labelW: 200 }); }
+    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
     else body = '<div class="labNotYet">A line graph needs data over time — pick <b>All units · skills at goal</b> or a Focus assignment.</div>';
     return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(list.find(d => d.id === unitName).label)} · class average by import · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOfL ? ' · ' + fmtDate(asOfL) : ''}</div></div>
       <div class="labLegend"><span class="lgNote">Line graph · one line per class · class average by import date</span></div><div class="labRows"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
@@ -668,6 +698,9 @@ const LAB_CSS = CHART_CSS + `
 .labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:900}
 .labChips span.m.gap{background:var(--white);color:var(--navy);border-style:dashed}
 .labChips span.out{box-shadow:0 0 0 2px var(--coral)}
+.labPlot .chart{max-height:min(32vh,260px)} .labRow.one .labPlot .chart{max-height:min(70vh,520px)}
+.labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
+.lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:999px;padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}
 `;
 function dotsDefault(id) { return !(id || '').startsWith('gb:'); }
@@ -681,18 +714,19 @@ function renderLeaderboard() {
   if (lab && !hasBoth && data.length) st.labPrep = data[0].prep;
   const { list, groups } = labDatasets(st.labPrep);
   if (lab && list.length && !list.some(d => d.id === st.labUnit)) st.labUnit = list[0].id;
-  const dotsOn = st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit);
+  if (lab && (st.labUnit || '').startsWith('gb:') && !['box', 'hist', 'circle', 'line'].includes(st.labKind)) st.labKind = 'box';
+  const dotsOn = (st.labUnit || '').startsWith('gb:') ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
   const tabs = `<div class="seg lbTabs"><button data-tab="race" class="${!lab ? 'on' : ''}">Race</button><button data-tab="lab" class="${lab ? 'on' : ''}">Data Lab</button></div>`;
   const revealLabel = st.labStats === 0 ? 'Show stats' : st.labStats === 1 ? 'Show more' : 'Hide stats';
   const controls = lab
     ? `${hasBoth ? `<div class="seg lbFocus">${[['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-prep="${k}" class="${st.labPrep === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
        <select id="labUnit" class="labSelect" aria-label="Data set">${groups.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label)}</option>`).join('')}</optgroup>`).join('')}</select>
-       <select id="labKind" class="labSelect" aria-label="Show as">${LAB_KINDS.map(([k, n]) => `<option value="${k}" ${st.labKind === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+       <select id="labKind" class="labSelect" aria-label="Show as">${LAB_KINDS.filter(([k]) => !(st.labUnit || '').startsWith('gb:') || ['box', 'hist', 'circle', 'line'].includes(k)).map(([k, n]) => `<option value="${k}" ${st.labKind === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
        ${st.labKind === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${[1, 2, 5, 10].map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
        <button class="pill small" id="labStats" aria-pressed="${st.labStats > 0}">${revealLabel}</button>
-       ${st.labKind === 'box' ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
+       ${st.labKind === 'box' && !(st.labUnit || '').startsWith('gb:') ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
        <div class="seg small" id="labPct" title="Show each student's score as points or as a percent of the maximum"><button data-pct="0" class="${st.labPct ? '' : 'on'}">Points</button><button data-pct="1" class="${st.labPct ? 'on' : ''}">%</button></div>
-       <button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>
+       ${(st.labUnit || '').startsWith('gb:') ? '' : `<button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>`}
        ${st.labKind === 'box' ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`
     : (hasBoth ? `<div class="seg lbFocus">${[['both', 'Both'], ['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-focus="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '');
   el.innerHTML = `<div class="lbWrap">${lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, f)}</div>
@@ -708,7 +742,7 @@ function renderLeaderboard() {
   const ld = $('#labDots'); if (ld) ld.onclick = () => { st.labDots[st.labUnit] = !dotsOn; save(); renderLeaderboard(); };
   const lv = $('#labValues'); if (lv) lv.onclick = () => { st.labValues = !st.labValues; save(); renderLeaderboard(); };
   const lt = $('#labTukey'); if (lt) lt.onclick = () => { st.labTukey = !st.labTukey; save(); renderLeaderboard(); };
-  let hold; const start = e => { e.preventDefault(); $('#lbExit').classList.add('holding'); hold = setTimeout(() => { state.settings.leaderboard = false; save(); render(); }, 1500); };
+  let hold; const start = e => { e.preventDefault(); $('#lbExit').classList.add('holding'); hold = setTimeout(() => { state.settings.leaderboard = false; view = { mode: 'home', unit: null }; noticesOpen = false; save(); render(); }, 1500); };   // always land on the Overview: it carries no student names
   const stop = () => { clearTimeout(hold); const b = $('#lbExit'); if (b) b.classList.remove('holding'); };
   const b = $('#lbExit'); b.onpointerdown = start; b.onpointerup = stop; b.onpointerleave = stop; b.onpointercancel = stop;
   // A long press on a touch screen otherwise opens the copy/paste or context menu and cancels the pointer — swallow it.
@@ -722,7 +756,7 @@ function enterProjected() {
 }
 function downloadLeaderboard(which) {
   const data = leaderboardData(); const st = state.settings; const lab = which === 'lab';
-  const dotsOn = st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit);
+  const dotsOn = (st.labUnit || '').startsWith('gb:') ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
   const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, st.lbFocus);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
 <style>${(document.getElementById('tallyFont') || {}).textContent || ''}</style>
@@ -797,7 +831,7 @@ function parseGradebook(rows) {
     const r = rows[i] || []; const nm = r[nameCol];
     if (!isT(nm) || r.some(isPP)) continue;
     if (/^(class )?(average|mean|median|total)/i.test(nm.trim())) continue;
-    const rowVals = cols.map(col => r[col.c]); if (!rowVals.some(v => v != null && String(v).trim() !== '')) continue;   // e.g. an inactive student with no scores
+    if (/\((inactive|withdrawn|dropped|transferred)\)\s*$/i.test(nm)) continue;   // a marked-inactive row leaves; a student with nothing entered yet stays (no grade until something is scored)
     students.push(nm.trim());
     ids.push(idCol >= 0 && r[idCol] != null ? String(r[idCol]).trim() : '');
     { const ov = overallCol >= 0 ? r[overallCol] : null; const m = ov != null && String(ov).match(/^\s*(-?\d+(?:\.\d+)?)\s*%/); overall.push(m ? Number(m[1]) : (typeof ov === 'number' ? ov : null)); }
@@ -838,7 +872,7 @@ function parseGradebook(rows) {
     seen[name] = (seen[name] || 0) + 1; if (seen[name] > 1) name = name + ' (' + seen[name] + ')';
     const vals = data[j]; const missing = vals.filter(v => v == null).length - excusedN[j];
     return { name, category, categoryFromFile, max, values: vals, status: status[j], missing, excused: excusedN[j], unread: unread[j], percent: pct[j], assignedOn, due, _col: col };
-  }).filter(a => a.values.some(v => v != null));
+  }).filter(a => a.values.some(v => v != null) || a.status.some(x => x === 'missing'));   // an all-NHI column still counts as zeros in Focus; only a column nobody has anything in is dropped
   if (!assignments.length) return null;
   const raw = {}; assignments.forEach((a, j) => { raw[a.name] = rawCells[cols.findIndex(c => c === a._col)] || []; delete a._col; });
   return { students, ids, overall: overall.some(v => v != null) ? overall : null, assignments, unread: assignments.reduce((a, x) => a + x.unread, 0), examples, raw };
@@ -851,18 +885,20 @@ const PERIOD_ORD = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n
 function materialize(sec) {
   const pool = state.pools[sec.prep];
   if (!pool) { sec.students = sec.students || []; sec.skills = sec.skills || []; sec.scores = sec.scores || []; sec.awaitingPool = true; return; }
-  const tmp = { ...sec, students: pool.students, skills: pool.skills, scores: pool.scores, _keys: null, ignored: {} };
-  const rows = buildRows(tmp).filter(r => r.status === 'ok' && r.ixl != null);
-  const idx = rows.map(r => r.ixl);
+  // No roster means no students — never the whole course (an emptied roster once handed a class all 91 pool students).
+  const idx = rosterState(sec).count ? poolIdx(sec) : [];
   sec.students = idx.map(i => pool.students[i]); sec.skills = pool.skills; sec.scores = pool.scores.map(row => idx.map(i => row[i]));
   sec.date = pool.date; sec.file = pool.file; sec.importedAt = pool.importedAt; sec.awaitingPool = false; sec.placeholder = false; sec.allBlank = !sec.scores.some(r => r.some(v => v != null));
   sec._keys = null; mergeBest(sec); snapshot(sec);
 }
 // The pool students a class could still claim: everyone in the course not already matched by another class of the same prep.
+// Returns pool ixlList entries (with their pool keys, so two students who share a name stay distinct).
+function poolRows(sec) { const pool = state.pools[sec.prep]; if (!pool) return []; const tmp = { ...sec, students: pool.students, skills: pool.skills, scores: pool.scores, _keys: null, ignored: {} }; return buildRows(tmp).filter(r => r.status === 'ok' && r.ixl != null); }
+function poolIdx(sec) { return poolRows(sec).map(r => r.ixl); }
 function poolLeftovers(sec) {
   const pool = state.pools[sec.prep]; if (!pool) return [];
-  const taken = new Set(); state.order.map(k => state.sections[k]).filter(x => x !== sec && x.pool && x.prep === sec.prep).forEach(x => x.students.forEach(n => taken.add(n)));
-  return pool.students.filter(n => !taken.has(n));
+  const taken = new Set(); state.order.map(k => state.sections[k]).filter(x => x !== sec && x.pool && x.prep === sec.prep).forEach(x => poolIdx(x).forEach(i => taken.add(i)));
+  return ixlList(pool).filter(x => !taken.has(x.i));
 }
 function askNewClass(fileName, gb) {
   return new Promise(resolve => {
@@ -872,13 +908,15 @@ function askNewClass(fileName, gb) {
       <div class="body one"><p><b>${esc(fileName)}</b> · ${plural(gb.students.length, 'student')}. Which period is this, and which course?</p>
         <div class="field"><label>Period</label><div class="seg" id="ncPeriod">${[1, 2, 3, 4, 5, 6, 7].map(n => `<button data-p="${n}" ${used.has(n) ? 'disabled title="already a class"' : ''}>${n}</button>`).join('')}</div></div>
         <div class="field"><label>Course</label><div class="seg" id="ncPrep"><button data-prep="acc">Accelerated</button><button data-prep="on">On-level</button></div></div>
-        <p class="ghint">The class's IXL grid comes from the course-wide IXL export${state.pools.acc || state.pools.on ? '' : ' — import one for each course when you have it'}.</p>
+        <p class="ghint">The class's IXL grid comes from the course-wide IXL export${state.pools.acc || state.pools.on ? '' : ' — import one for each course when you have it'}.</p><p class="ghint warnline" id="ncWarn" hidden></p>
         <div class="rp-actions"><button class="pill" id="ncMake" disabled>Make the class</button><button class="pill pale" id="mCancel">Skip this file</button></div></div></div>`;
     const done = v => { m.classList.add('hidden'); m.innerHTML = ''; resolve(v); };
     m._cancel = () => done(null); $('#mClose').onclick = m._cancel; $('#mCancel').onclick = m._cancel; m.onclick = e => { if (e.target === m) done(null); };
     let period = null, prep = null; const arm = () => { $('#ncMake').disabled = !(period && prep); };
     m.querySelectorAll('#ncPeriod button').forEach(b => b.onclick = () => { period = Number(b.dataset.p); m.querySelectorAll('#ncPeriod button').forEach(x => x.classList.toggle('on', x === b)); arm(); });
-    m.querySelectorAll('#ncPrep button').forEach(b => b.onclick = () => { prep = b.dataset.prep; m.querySelectorAll('#ncPrep button').forEach(x => x.classList.toggle('on', x === b)); arm(); });
+    // A student is in one class per course: say so when this gradebook's names already sit in another class of that course.
+    const overlap = pr => { const mine = new Set(gb.students.map(n => norm(n))); return state.order.map(k => state.sections[k]).filter(x => x.prep === pr && !x.placeholder).map(x => ({ x, n: parseRosterText(x.roster).filter(r => mine.has(norm(r.display))).length })).filter(o => o.n); };
+    m.querySelectorAll('#ncPrep button').forEach(b => b.onclick = () => { prep = b.dataset.prep; m.querySelectorAll('#ncPrep button').forEach(x => x.classList.toggle('on', x === b)); const ov = overlap(prep); const w = $('#ncWarn'); w.hidden = !ov.length; w.textContent = ov.length ? `${ov.map(o => `${o.n} of these students ${o.n === 1 ? 'is' : 'are'} already in ${o.x.label}`).join('; ')} — a student can be in only one class per course, so they'd move to this one.` : ''; arm(); });
     $('#ncMake').onclick = () => {
       const key = 'period-' + period; const label = `${PERIOD_ORD(period)} Period · ${prep === 'acc' ? 'Accelerated' : 'On-level'}`;
       state.sections[key] = { key, label, autoLabel: label, period, pool: true, accelerated: prep === 'acc', prep, threshold: prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on,
@@ -961,6 +999,7 @@ function renderNotices() {
   else if (s.allBlank) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>No scores were found in this export</b> — every cell is empty. If IXL shows scores for this class, the file may be in a format Tally doesn't recognize; try the .csv export.</span></div>`;
   if (rs.hasText && !rs.count) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>The pasted roster couldn't be read</b> — no names found. Rows are in IXL order, which is probably not FOCUS order.</span><button data-open="roster">Fix roster</button></div>`;
   else if (!rs.count && s.skipRoster) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>No roster.</b> Rows are sorted by last name; Copy includes names so you can check the order.</span><button data-open="roster">Paste roster</button></div>`;
+  if (s.pool && !s.awaitingPool && !rosterState(s).count) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>No roster, so no students.</b> Import this period's Focus gradebook or paste the roster in Settings; Tally picks the class out of the course-wide IXL export by name.</span><button data-import="1">Import</button></div>`;
   if (s.pool && s.awaitingPool) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>Waiting for the ${s.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export.</b> This class was made from its Focus gradebook; import the course-wide IXL Score Grid and its ${plural(parseRosterText(s.roster).length, 'student')} will be matched from it.</span><button data-import="1">Import</button></div>`;
   const rvg = rosterVsGradebook(s);
   if (rvg) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>The Focus gradebook's class list differs from the pasted roster</b> — ${rvg.added.length ? `${plural(rvg.added.length, 'student')} in the gradebook but not on the roster${list(rvg.added.map(d => ({ display: d })))}` : ''}${rvg.added.length && rvg.gone.length ? '; ' : ''}${rvg.gone.length ? `${plural(rvg.gone.length, 'student')} on the roster but not in the gradebook${list(rvg.gone.map(d => ({ display: d })))}` : ''}.</span><button data-gbroster="1">Use the gradebook's list</button></div>`;
@@ -1017,7 +1056,12 @@ function renderBar() {
   const oc = $('#onlyCur'); if (oc) oc.onclick = () => { state.settings.onlyCurrent[s.prep] = !state.settings.onlyCurrent[s.prep]; save(); render(); };
   const hu = $('#hideUnit'); if (hu) hu.onclick = () => { const u = units.find(u => u.name === view.unit); state.assigned[s.prep][u.name] = !u.assigned; save(); render(); toast(`${esc(u.short)} ${!u.assigned ? 'assigned' : 'unassigned'} for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); };
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
-  const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu'); mb.onclick = e => { e.stopPropagation(); menu.classList.toggle('hidden'); mb.setAttribute('aria-expanded', String(!menu.classList.contains('hidden'))); }; document.addEventListener('click', () => { const mm = $('#moreMenu'); if (mm) mm.classList.add('hidden'); }, { once: true });
+  const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu');
+    // An invisible overlay swallows the tap that dismisses the menu (on the panel "outside" is a student's cell); Escape closes and returns focus.
+    const closeMenu = () => { menu.classList.add('hidden'); mb.setAttribute('aria-expanded', 'false'); const ov = $('#menuOverlay'); if (ov) ov.remove(); document.removeEventListener('keydown', onKey, true); };
+    const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(); mb.focus(); } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const items = [...menu.querySelectorAll('button')]; const i = items.indexOf(document.activeElement); e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); } else if (e.key === 'Tab') { setTimeout(() => { if (!menu.contains(document.activeElement)) closeMenu(); }, 0); } };
+    mb.onclick = e => { e.stopPropagation(); if (!menu.classList.contains('hidden')) { closeMenu(); return; } menu.classList.remove('hidden'); mb.setAttribute('aria-expanded', 'true'); const ov = document.createElement('div'); ov.id = 'menuOverlay'; ov.onclick = ev => { ev.stopPropagation(); closeMenu(); }; document.body.appendChild(ov); document.addEventListener('keydown', onKey, true); const first = menu.querySelector('button'); if (first) first.focus(); };
+    menu.querySelectorAll('button').forEach(b => b.addEventListener('click', closeMenu));
     const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const so = $('#mStillOwed'); if (so) so.onclick = () => openStillOwed(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; const md = $('#mDetails'); if (md) md.onclick = () => { state.settings.details = !state.settings.details; save(); render(); }; }
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
   const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count; later units are upcoming.` : 'No current unit — units count once a quarter of the class has started them.', false, 5000); };
@@ -1040,7 +1084,7 @@ function renderRosterPanel(s) {
   </div>`;
   const ta = $('#rpText');
   ta.oninput = () => { $('#rpReport').innerHTML = matchReport(s, ta.value); };
-  if (!state.settings.hideNames) ta.focus();
+  if (!state.settings.hideNames && !coarse()) ta.focus();
   $('#rpSave').onclick = () => { const txt = ta.value; if (!parseRosterText(txt).length) { toast("Couldn't read any names in that paste.", true); return; } s.roster = txt; s.rosterAt = new Date().toISOString(); s.skipRoster = false; if (s.pool) materialize(s); save(); render(); toast('Roster saved', false); };
   $('#rpSkip').onclick = () => { s.skipRoster = true; save(); render(); };
 }
@@ -1052,7 +1096,7 @@ function renderGrid() {
   const q = norm(search);
   const rows = allRows.map((r, i) => ({ ...r, n: i + 1 })).filter(r => !q || norm(r.display).includes(q) || norm(r.sub).includes(q));
   const wrap = $('#gridwrap');
-  const nameCell = r => `<td class="stu"><div class="stuname">${r.status === 'ok' && r.tier === 'loose' ? `<button class="nm nmbtn" data-fix="${esc(r.display)}" title="Matched loosely to ${esc(r.ixlName)} — tap to change">${esc(shown(r.display))}</button>` : `<span class="nm">${esc(shown(r.display))}</span>`}${
+  const nameCell = r => `<td class="stu"><div class="stuname">${r.status === 'ok' && r.tier === 'loose' ? `<button class="nm nmbtn" data-fix="${esc(r.display)}" title="Matched loosely to ${esc(shown(r.ixlName))} — tap to change">${esc(shown(r.display))}</button>` : `<span class="nm">${esc(shown(r.display))}</span>`}${
       r.status === 'rosterOnly' ? `<button class="flag" data-fix="${esc(r.display)}">NOT IN IXL — FIX</button>` :
       r.status === 'ambiguous' ? `<button class="flag amb" data-fix="${esc(r.display)}">TWO MATCHES — PICK</button>` :
       r.status === 'ixlOnly' ? `<button class="flag" data-ignore="${esc(r.key)}">NOT ON ROSTER — FIX</button>` :
@@ -1062,7 +1106,7 @@ function renderGrid() {
     const shownUnits = onlyCur ? units.filter(u => u.current) : units.filter(u => !u.hidden || state.settings.showAllUnits);
     const checks = reconcile(s);
     let h = `<table class="grid"><thead><tr><th class="idx" scope="col">#</th><th class="stu" scope="col">Student</th>`;
-    shownUnits.forEach(u => { const ui = units.indexOf(u); h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="usub">${u.upcoming ? 'upcoming · ' : u.current ? 'now · ' : ''}out of ${u.total}<span class="det">${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span></span>${s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}${(() => { const rc = checks.find(x => x.unit.name === u.name); if (!rc) return ''; const bad = rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1); return `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : 'Focus ✓'}</button>`; })()}<button class="copy" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></th>`; });
+    shownUnits.forEach(u => { const ui = units.indexOf(u); h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="usub">${u.upcoming ? 'upcoming · ' : u.current ? 'now · ' : ''}out of ${u.total}<span class="det">${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span></span>${s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}${(() => { const rc = checks.find(x => x.unit.name === u.name); if (!rc) return ''; const bad = rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1); return `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : 'Focus ✓'}</button>`; })()}<button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${shownUnits.length + 1}">No students match “${esc(search)}”.</td></tr>`;
     rows.forEach(r => {
@@ -1071,7 +1115,7 @@ function renderGrid() {
         const ui = units.indexOf(u);
         if (r.ixl == null) { h += `<td class="pts na ${u.hidden ? 'quiet' : ''}">—</td>`; return; }
         const p = points(s, u, r.ixl); const tot = totalFor(s, u, r.ixl);
-        h += `<td class="pts ${p === tot && tot ? 'full' : p === 0 ? 'zero' : ''} ${u.hidden ? 'quiet' : ''} ${tot !== u.total ? 'own' : ''}" data-u="${ui}"><span class="v">${p}<small>/${tot}</small></span></td>`;
+        h += `<td class="pts ${p === tot && tot ? 'full' : p === 0 ? 'zero' : ''} ${u.hidden ? 'quiet' : ''} ${tot !== u.total ? 'own' : ''}" data-u="${ui}" tabindex="0" role="button" aria-label="${esc(u.short)}: ${p} of ${tot} — open"><span class="v">${p}<small>/${tot}</small></span></td>`;
       });
       h += `</tr>`;
     });
@@ -1079,7 +1123,7 @@ function renderGrid() {
     shownUnits.forEach(u => { let sum = 0, n = 0; allRows.forEach(r => { if (r.ixl != null) { sum += points(s, u, r.ixl); n++; } }); h += `<td>${n ? (sum / n).toFixed(1) : '—'}</td>`; });
     h += `</tr></tfoot></table>`;
     wrap.innerHTML = h;
-    wrap.querySelectorAll('[data-u]').forEach(el => el.onclick = () => { view = { mode: 'unit', unit: units[+el.dataset.u].name }; render(); wrap.scrollTop = 0; });
+    wrap.querySelectorAll('[data-u]').forEach(el => { el.onclick = () => { view = { mode: 'unit', unit: units[+el.dataset.u].name }; render(); wrap.scrollTop = 0; }; if (el.tagName === 'TD') el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }; });
     wrap.querySelectorAll('[data-c]').forEach(el => el.onclick = (e) => { e.stopPropagation(); copyUnit(s, units[+el.dataset.c]); });
     wrap.querySelectorAll('[data-fc]').forEach(el => el.onclick = (e) => { e.stopPropagation(); openFocusCheck(s, el.dataset.fc); });
     wrap.querySelectorAll('[data-rc]').forEach(el => el.onclick = (e) => { e.stopPropagation(); openReceipt(s, el.dataset.rc); });
@@ -1097,7 +1141,7 @@ function renderGrid() {
       if (r.ixl == null) { h += `<td class="ptsd">—</td>` + u.idx.map(() => `<td class="sc none">—</td>`).join('') + `</tr>`; return; }
       const tot = totalFor(s, u, r.ixl); h += `<td class="ptsd">${points(s, u, r.ixl)}${tot !== u.total ? `<small>/${tot}</small>` : ''}</td>`;
       const mySkips = s.studentSkips[ixlKeyAt(s, r.ixl)] || {};
-      u.idx.forEach(k => { const cur = s.scores[k][r.ixl]; const v = eff(s, k, r.ixl); const kk = skillKey(s.skills[k]); const off = s.excluded[kk] ? ' off' : mySkips[kk] ? ' off own' : ''; const dc = ` data-cell="${k}|${r.ixl}"`; const hist = v != null && v !== cur ? ' best' : ''; const tt = hist ? ` title="Best score ${v} from an earlier export; now ${cur == null ? 'blank' : cur}"` : ''; if (v == null) h += `<td class="sc none${off}"${dc}>·</td>`; else if (v >= t) h += `<td class="sc pass${off}${hist}"${tt}${dc}>${v}</td>`; else h += `<td class="sc low${off}${hist}"${tt}${dc}>${v}</td>`; });
+      u.idx.forEach(k => { const cur = s.scores[k][r.ixl]; const v = eff(s, k, r.ixl); const kk = skillKey(s.skills[k]); const off = s.excluded[kk] ? ' off' : mySkips[kk] ? ' off own' : ''; const dc = ` data-cell="${k}|${r.ixl}" tabindex="0" role="button" aria-label="${esc(s.skills[k].name)}: ${v == null ? 'not started' : v} — ${mySkips[kk] ? 'counting again' : 'skip for this student'}"`; const hist = v != null && v !== cur ? ' best' : ''; const tt = hist ? ` title="Best score ${v} from an earlier export; now ${cur == null ? 'blank' : cur}"` : ''; if (v == null) h += `<td class="sc none${off}"${dc}>·</td>`; else if (v >= t) h += `<td class="sc pass${off}${hist}"${tt}${dc}>${v}</td>`; else h += `<td class="sc low${off}${hist}"${tt}${dc}>${v}</td>`; });
       h += `</tr>`;
     });
     h += `</tbody><tfoot><tr><td class="idx"></td><td class="stu">% of class at goal</td><td class="ptsd"></td>`;
@@ -1107,20 +1151,22 @@ function renderGrid() {
     wrap.querySelectorAll('[data-x]').forEach(el => el.onclick = () => {
       const sk = s.skills[+el.dataset.x]; const key = skillKey(sk);
       if (s.excluded[key]) delete s.excluded[key]; else s.excluded[key] = true;
-      save(); const st = wrap.scrollLeft; render(); $('#gridwrap').scrollLeft = st;
+      resnapshotPrep(s.prep); save(); const st = wrap.scrollLeft; render(); $('#gridwrap').scrollLeft = st;
       const uu = unitsOf(s).find(x => x.name === view.unit);
       toast(`${s.excluded[key] ? 'Skipped' : 'Counting'} <b>${esc(sk.name)}</b> for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class · ${esc(uu.short)} is now out of <b>${uu.total}</b>`, false);
     });
   }
+  wrap.querySelectorAll('[data-cell]').forEach(el => { el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }; });
   wrap.querySelectorAll('[data-cell]').forEach(el => el.onclick = () => {
     const [k, si] = el.dataset.cell.split('|').map(Number); const sk = s.skills[k]; const kk = skillKey(sk);
     if (s.excluded[kk]) { toast('That skill is skipped for the whole course.', false); return; }
     const key = ixlKeyAt(s, si); s.studentSkips[key] = s.studentSkips[key] || {};
     if (s.studentSkips[key][kk]) delete s.studentSkips[key][kk]; else s.studentSkips[key][kk] = true;
     if (!Object.keys(s.studentSkips[key]).length) delete s.studentSkips[key];
-    save(); const st = wrap.scrollLeft; render(); $('#gridwrap').scrollLeft = st;
+    snapshot(s); save(); const st = wrap.scrollLeft; render(); $('#gridwrap').scrollLeft = st;
     const uu = unitsOf(s).find(x => x.name === view.unit); const row = buildRows(s).find(r => r.ixl === si);
-    toast(`${s.studentSkips[key] && s.studentSkips[key][kk] ? 'Skipped' : 'Counting'} <b>${esc(sk.name)}</b> for ${esc(shown(row ? row.display : s.students[si]))} · their ${esc(uu.short)} is out of <b>${totalFor(s, uu, si)}</b>`, false, 4000);
+    toast(`${s.studentSkips[key] && s.studentSkips[key][kk] ? 'Skipped' : 'Counting'} <b>${esc(sk.name)}</b> for ${esc(shown(row ? row.display : s.students[si]))} · their ${esc(uu.short)} is out of <b>${totalFor(s, uu, si)}</b> <button class="tundo" id="undoCell">Undo</button>`, false, 6000);
+    const un = $('#undoCell'); if (un) un.onclick = () => { s.studentSkips[key] = s.studentSkips[key] || {}; if (s.studentSkips[key][kk]) delete s.studentSkips[key][kk]; else s.studentSkips[key][kk] = true; if (!Object.keys(s.studentSkips[key]).length) delete s.studentSkips[key]; snapshot(s); save(); render(); toast('Undone', false, 1500); };
   });
   wrap.querySelectorAll('[data-ignore]').forEach(el => el.onclick = () => openNotOnRoster(s, el.dataset.ignore));
   wrap.querySelectorAll('[data-fix]').forEach(el => el.onclick = () => openFixer(s, el.dataset.fix));
@@ -1149,18 +1195,21 @@ function openFixer(s, display) {
   const rows = buildRows(s); const row = rows.find(r => r.display === display);
   const usedIdx = new Set(rows.filter(r => r.status === 'ok' && r.ixl != null && r.display !== display).map(r => r.ixl));
   let free = ixlList(s).filter(x => !s.ignored[x.key] && !usedIdx.has(x.i));
-  if (s.pool) { const have = new Set(s.students); free = free.concat(poolLeftovers(s).filter(n => !have.has(n)).map(n => ({ name: n, key: '@pool:' + n, i: -1, dup: false }))); }
+  // A pool class matches against the course-wide pool, so its choices are pool entries under their pool keys (a section-local
+  // key like "Name#0" could point at the other student of that name once the class has only one of them).
+  let cur = row && row.ixl != null ? row.ixl : null;
+  if (s.pool && state.pools[s.prep]) { const pr = poolRows(s); const mine = pr.find(r => r.display === display); const others = new Set(pr.filter(r => r.display !== display).map(r => r.ixl)); cur = mine ? mine.ixl : null; free = poolLeftovers(s).filter(x => !others.has(x.i)).map(x => ({ name: x.name, key: '@pool:' + x.key, i: x.i, dup: x.dup, pkey: x.key })); }
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel narrow">
     <header><h2>Match ${esc(shown(display))}</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one">
       <p>${row && row.ixl != null ? `Currently matched to <b>${esc(shown(row.ixlName))}</b>. ` : ''}Pick the IXL account for this student, or leave them unmatched (a blank row is copied for them).</p>
-      <div class="picks">${free.map(x => `<button class="chip ${row && row.ixl === x.i ? 'on' : ''}" data-pick="${esc(x.key)}">${esc(shown(x.name))}${x.dup ? ` <small>#${x.key.split('#')[1] * 1 + 1}</small>` : ''}</button>`).join('') || '<em>No unmatched IXL students left.</em>'}</div>
+      <div class="picks">${free.map(x => `<button class="chip ${cur != null && cur === x.i ? 'on' : ''}" data-pick="${esc(x.key)}">${esc(shown(x.name))}${x.dup ? ` <small>#${(x.pkey || x.key).split('#')[1] * 1 + 1}</small>` : ''}</button>`).join('') || '<em>No unmatched IXL students left.</em>'}</div>
       <div class="rp-actions"><button class="pill pale" id="unmatch">No IXL account (blank row)</button><button class="pill pale" id="mCancel">Cancel</button></div>
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  m.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { const pick = b.dataset.pick; s.aliases[display] = pick.startsWith('@pool:') ? pick.slice(6) + '#0' : pick; if (s.pool) materialize(s); save(); close(); render(); toast(`${esc(shown(display))} → ${esc(shown(pick.replace(/^@pool:/, '').replace(/#\d+$/, '')))}`, false); });
+  m.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { const pick = b.dataset.pick; s.aliases[display] = pick.startsWith('@pool:') ? pick.slice(6) : pick; if (s.pool) materialize(s); save(); close(); render(); toast(`${esc(shown(display))} → ${esc(shown(pick.replace(/^@pool:/, '').replace(/#\d+$/, '')))}`, false); });
   $('#unmatch').onclick = () => { s.aliases[display] = '#none'; if (s.pool) materialize(s); save(); close(); render(); };
 }
 
@@ -1190,7 +1239,7 @@ function legacyCopy(text) {
 }
 // When nothing can reach the clipboard (a file opened from a file manager on Android, say), show the column to copy by hand.
 function showCopyBox(text, title) {
-  const m = $('#modal'); m.classList.remove('hidden');
+  const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private');
   m.innerHTML = `<div class="panel narrow"><header><h2>Copy by hand</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one"><p>This browser wouldn't let Tally write to the clipboard (it happens when the file is opened from a file manager instead of a web address). Tap <b>Select all</b>, then copy, and paste into the Focus column <b>${esc(title)}</b>.</p>
       <textarea id="copyBox" readonly style="width:100%;min-height:220px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px">${esc(text)}</textarea>
@@ -1214,17 +1263,33 @@ async function copyUnit(sec, unit) {
   if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} }
   const blanks = rowsAll.filter(r => r.ixl == null).length; const leftOut = buildRows(sec).filter(r => r.status === 'ixlOnly').length;
   if (ok) { sec.receipts[unit.name] = { at: new Date().toISOString(), exportDate: sec.date, goal: sec.threshold, outOf: unit.total, skipped: unit.idx.filter(k => !unit.active.includes(k)).map(k => sec.skills[k].name), rows: rowsAll.map(r => [r.display, r.ixl == null ? null : points(sec, unit, r.ixl), r.ixl == null ? null : totalFor(sec, unit, r.ixl)]) }; save(); if (view.mode === 'units') { const sl = $('#gridwrap').scrollLeft; renderGrid(); $('#gridwrap').scrollLeft = sl; } }
-  if (ok) toast(`<b>${esc(unit.short)}</b> copied — ${plural(lines.length, 'row')}${rs.count ? ' in FOCUS order' : ' with names (no roster, so order is by last name)'} · FOCUS title: <b>IXL ${esc(unit.short)} · ${fmtDate(sec.date) || 'today'} · /${unit.total}</b>${blanks ? ` · ${plural(blanks, 'blank row')} (not in IXL)` : ''}${leftOut ? ` · <b>${plural(leftOut, 'IXL student')} not on the roster — left out</b> (tap their flag)` : ''}${modified ? ` · <b>${plural(modified, 'student')} on a modified list</b> — set their max by hand in FOCUS` : ''}`, false, modified ? 7000 : 4500);
+  if (ok) toast(`<b>${esc(unit.short)}</b> copied — ${plural(lines.length, 'row')}${rs.count ? ' in FOCUS order' : ' with names (no roster, so order is by last name)'} · FOCUS title: <b>IXL ${esc(unit.short)} · ${fmtDate(sec.date) || 'today'} · /${unit.total}</b>${blanks ? ` · ${plural(blanks, 'blank row')} (not in IXL)` : ''}${leftOut ? ` · <b>${plural(leftOut, 'IXL student')} not on the roster — left out</b> (tap their flag)` : ''}${modified ? ` · <b>${plural(modified, 'student')} on a modified list</b> — set their max by hand in FOCUS` : ''}`, false, (modified || blanks || leftOut) ? 10000 : 6000);   // carries the title to type and who was left out, so it stays long enough to read twice
   else showCopyBox(text, `IXL ${unit.short} · ${fmtDate(sec.date) || 'today'} · /${unit.total}`);
 }
 
 /* ---------- Still owed: a printer-friendly, black-and-white page per class ---------- */
 function openStillOwed(sec) {
-  const initials = confirm('Print with initials instead of names?\n\nOK = initials (safe to hand to students)\nCancel = full names (for you or a co-teacher)');
-  const rows = buildRows(sec).filter(r => r.status === 'ok' && r.ixl != null);
+  // Three ways out, each honest about who can see it: slips to hand out (a page per student, full names), one list
+  // with initials (safe to post or project), one list with names (for the teacher or a co-teacher).
+  const m = $('#modal'); m.classList.remove('hidden');
+  m.innerHTML = `<div class="panel narrow"><header><h2>Still owed · ${esc(sec.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one"><p>What each student still owes in the assigned units, in black and white.</p>
+      <div class="rp-actions col">
+        <button class="pill" data-owed="slips">Slips to hand out <small>one page per student · full names</small></button>
+        <button class="pill pale" data-owed="initials">One list, initials <small>safe to post or project</small></button>
+        <button class="pill pale" data-owed="names">One list, full names <small>for you or a co-teacher</small></button>
+      </div></div></div>`;
+  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  m.querySelectorAll('[data-owed]').forEach(b => b.onclick = () => { const mode = b.dataset.owed; close(); printStillOwed(sec, mode); });
+}
+function printStillOwed(sec, mode) {
+  const initials = mode === 'initials', slips = mode === 'slips';
+  const all = buildRows(sec).filter(r => r.status !== 'ixlOnly'); const rows = all.filter(r => r.status === 'ok' && r.ixl != null);
   const units = unitsOf(sec).filter(u => u.assigned && u.total); const t = sec.threshold;
   const nm = r => initials ? mask(r.display) : r.display;
   const block = r => {
+    if (r.ixl == null) return `<section class="stu"><h2>${esc(nm(r))}</h2><div class="l">Not matched to an IXL account — check the roster in Tally (${r.status === 'ambiguous' ? 'two IXL names fit' : 'no IXL name fits'}).</div></section>`;
     const per = units.map(u => {
       const own = activeFor(sec, u, r.ixl); const p = points(sec, u, r.ixl);
       const below = own.filter(k => { const v = eff(sec, k, r.ixl); return v != null && v < t; }).map(k => `${sec.skills[k].name} (${eff(sec, k, r.ixl)})`);
@@ -1242,7 +1307,7 @@ function openStillOwed(sec) {
 body{font-family:Georgia,'Times New Roman',serif;color:#000;background:#fff;margin:24px;font-size:11.5pt;line-height:1.35}
 h1{font-size:16pt;margin:0 0 2px;font-family:Arial,Helvetica,sans-serif}
 .meta{font-size:9.5pt;margin:0 0 14px;font-family:Arial,Helvetica,sans-serif}
-.stu{border-top:1.5px solid #000;padding:6px 0 8px;break-inside:avoid;page-break-inside:avoid}
+.stu{border-top:1.5px solid #000;padding:6px 0 8px;break-inside:avoid;page-break-inside:avoid}${slips ? '.stu{break-before:page;page-break-before:always;border-top:none;padding-top:0}.stu:first-of-type{break-before:auto;page-break-before:auto}' : ''}
 .stu h2{font-size:13pt;margin:0 0 4px;font-family:Arial,Helvetica,sans-serif}
 .u{margin:2px 0 4px 10px}
 .uh{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt}
@@ -1256,8 +1321,8 @@ h1{font-size:16pt;margin:0 0 2px;font-family:Arial,Helvetica,sans-serif}
 </style></head><body>
 <div class="bar"><button onclick="window.print()">Print</button></div>
 <h1>Still owed · ${esc(sec.label)}</h1>
-<p class="meta">IXL export of ${fmtDate(sec.date) || '?'} · goal SmartScore ${t} · one point per skill · ${plural(rows.length, 'student')} · ${units.length ? 'assigned: ' + esc(units.map(u => u.short).join(', ')) : 'no units assigned'}${initials ? ' · initials' : ''}</p>
-${rows.map(block).join('')}
+<p class="meta">IXL export of ${fmtDate(sec.date) || '?'} · goal SmartScore ${t} · one point per skill · ${plural(rows.length, 'student')}${all.length > rows.length ? ` (${all.length - rows.length} not matched to IXL)` : ''} · ${units.length ? 'assigned: ' + esc(units.map(u => u.short).join(', ')) : 'no units assigned'}${initials ? ' · initials' : ''}${slips ? ' · one page per student' : ''}</p>
+${all.map(block).join('')}
 </body></html>`;
   const w = window.open('', '_blank');
   if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `Still-owed_${sec.label.replace(/[^\w-]+/g, '_')}.html`; a.click(); toast('Pop-ups are blocked, so the page was saved as a file instead.', false, 5000); return; }
@@ -1433,7 +1498,7 @@ function openFocusCheck(sec, unitName) {
   const sc = $('#skipCand'); if (sc) {
     const count = () => { const n = m.querySelectorAll('[data-sk]:checked').length; const left = rc.unit.total - n; $('#skipCount').innerHTML = `${plural(n, 'skill')} ticked → ${esc(rc.unit.short)} out of <b>${left}</b>${left === rc.assignment.max ? ' — matches Focus' : ` (Focus: ${rc.assignment.max})`}`; };
     m.querySelectorAll('[data-sk]').forEach(cb => cb.onchange = count); count();
-    sc.onclick = () => { const ks = [...m.querySelectorAll('[data-sk]:checked')].map(cb => Number(cb.dataset.sk)); ks.forEach(k => { sec.excluded[skillKey(sec.skills[k])] = true; }); save(); toast(`Skipped ${plural(ks.length, 'skill')} in ${esc(rc.unit.short)} for every ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); openFocusCheck(sec, unitName); };
+    sc.onclick = () => { const ks = [...m.querySelectorAll('[data-sk]:checked')].map(cb => Number(cb.dataset.sk)); ks.forEach(k => { sec.excluded[skillKey(sec.skills[k])] = true; }); resnapshotPrep(sec.prep); save(); toast(`Skipped ${plural(ks.length, 'skill')} in ${esc(rc.unit.short)} for every ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); openFocusCheck(sec, unitName); };
   }
   const cf = $('#copyFix'); if (cf) cf.onclick = () => { const lines = bad.filter(r => r.tally != null).map(r => (state.settings.copyMode === 'ids' ? (r.id || '') : r.display) + '\t' + r.tally); put(lines.join('\n'), `Copied ${plural(lines.length, 'correction')} for ${esc(rc.unit.short)}`); };
   $('#copyCol').onclick = () => copyUnit(sec, rc.unit);
@@ -1518,12 +1583,17 @@ function openSettings() {
     m.querySelectorAll('[data-unign]').forEach(b => b.onclick = () => { delete s.ignored[b.dataset.unign]; save(); $('#matchReport').innerHTML = matchReport(s, rosterEl ? rosterEl.value : s.roster); wireReport(); });
   };
   wireReport();
-  if (rosterEl) { rosterEl.oninput = () => { $('#matchReport').innerHTML = matchReport(s, rosterEl.value); wireReport(); }; rosterEl.focus(); }
+  if (rosterEl) { rosterEl.oninput = () => { $('#matchReport').innerHTML = matchReport(s, rosterEl.value); wireReport(); }; if (!coarse()) rosterEl.focus(); }
   $('#mSave').onclick = () => {
     const tv = parseInt($('#thr').value, 10); if (!isNaN(tv) && clampThr(tv) !== s.threshold) { s.threshold = clampThr(tv); snapshot(s); }
     state.settings.copyMode = copyMode; state.settings.remindDays = remind; state.settings.skipFirst = state.settings.skipFirst || { acc: 0, on: 1 }; state.settings.skipFirst[prep] = skipFirst;
-    s.label = $('#secLabel').value.trim() || s.autoLabel; s.team = ''; s.prep = prep; s.excluded = state.skips[prep]; state.settings.useBest = $('#useBest').checked;
-    if (rosterEl && rosterEl.value !== s.roster) { s.roster = rosterEl.value; s.rosterAt = new Date().toISOString(); if (parseRosterText(s.roster).length) s.skipRoster = false; if (s.pool) materialize(s); }
+    const prepChanged = prep !== s.prep;
+    s.label = $('#secLabel').value.trim() || s.autoLabel; s.team = ''; s.prep = prep; s.accelerated = prep === 'acc'; s.excluded = state.skips[prep]; state.settings.useBest = $('#useBest').checked;
+    if (prepChanged) { if (s.pool) { s.autoLabel = `${PERIOD_ORD(s.period)} Period · ${prep === 'acc' ? 'Accelerated' : 'On-level'}`; if ($('#secLabel').value.trim() === '' || /Period · (Accelerated|On-level)$/.test(s.label)) s.label = s.autoLabel; } if (!$('#thr').value.trim() || clampThr($('#thr').value) === (prep === 'acc' ? DEFAULT_THR.on : DEFAULT_THR.acc)) { s.threshold = prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on; } }
+    const rosterChanged = !!rosterEl && rosterEl.value !== s.roster;
+    if (rosterChanged) { s.roster = rosterEl.value; s.rosterAt = new Date().toISOString(); if (parseRosterText(s.roster).length) s.skipRoster = false; }
+    if (s.pool && (prepChanged || rosterChanged)) materialize(s);   // a pool class carved from the other course's export needs its skills, scores and goal from that pool
+    else if (prepChanged) snapshot(s);
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     save(); close(); render(); toast('Saved', false);
   };
@@ -1531,7 +1601,7 @@ function openSettings() {
   $('#wipe').onclick = () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
     if (!confirm(`Clear everything Tally has saved in this browser — ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? Save a backup first if you want the rosters back.`)) return;
-    localStorage.removeItem(LS_KEY); try { sessionStorage.removeItem(GB_KEY); } catch (e) {} location.reload();
+    localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); try { sessionStorage.removeItem(GB_KEY); } catch (e) {} location.reload();
   };
   $('#addCustom').onclick = () => { close(); openCustomEditor(null, s.prep); };
   m.querySelectorAll('[data-editc]').forEach(b => b.onclick = () => { close(); openCustomEditor(b.dataset.editc); });
@@ -1555,7 +1625,7 @@ function openSettings() {
   $('#saveRace').onclick = () => downloadLeaderboard('race'); $('#saveLab').onclick = () => downloadLeaderboard('lab');
   const dg = $('#dropGrades'); if (dg) dg.onclick = () => { if (!confirm(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.`)) return; delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#exportCfg').onclick = () => {
-    const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays, skipFirst: state.settings.skipFirst, currentUnit: state.settings.currentUnit }, assigned: state.assigned, custom: state.custom, grading: state.grading, sections: {} };
+    const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays, skipFirst: state.settings.skipFirst, skipFirstV2: true, currentUnit: state.settings.currentUnit }, assigned: state.assigned, custom: state.custom, grading: state.grading, sections: {} };
     for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [] }; }
     for (const k in state.pendingCfg) if (!cfg.sections[k]) cfg.sections[k] = state.pendingCfg[k];
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = 'tally-backup-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -1564,7 +1634,7 @@ function openSettings() {
   $('#importCfg').onclick = () => $('#cfgFile').click();
   $('#cfgFile').onchange = async e => {
     try { const cfg = JSON.parse(await e.target.files[0].text()); if (!cfg || !cfg.tally || typeof cfg.sections !== 'object') throw 0;
-      if (cfg.settings) { if (cfg.settings.currentUnit && typeof cfg.settings.currentUnit === 'object') state.settings.currentUnit = { acc: Number.isInteger(cfg.settings.currentUnit.acc) ? cfg.settings.currentUnit.acc : null, on: Number.isInteger(cfg.settings.currentUnit.on) ? cfg.settings.currentUnit.on : null }; if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object') state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 0, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 1 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
+      if (cfg.settings) { if (cfg.settings.currentUnit && typeof cfg.settings.currentUnit === 'object') state.settings.currentUnit = { acc: Number.isInteger(cfg.settings.currentUnit.acc) ? cfg.settings.currentUnit.acc : null, on: Number.isInteger(cfg.settings.currentUnit.on) ? cfg.settings.currentUnit.on : null }; if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object' && cfg.settings.skipFirstV2) state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 0, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 1 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
       if (cfg.assigned && typeof cfg.assigned === 'object') { state.assigned.acc = Object.assign({}, state.assigned.acc, cfg.assigned.acc || {}); state.assigned.on = Object.assign({}, state.assigned.on, cfg.assigned.on || {}); }
       if (cfg.grading && typeof cfg.grading === 'object') ['acc', 'on'].forEach(pp => { const g = cfg.grading[pp]; if (g && Array.isArray(g.cats) && g.cats.length) state.grading[pp] = { cats: g.cats.filter(c => c && c.name && isFinite(c.w)).map(c => ({ name: String(c.name), w: Number(c.w) })), map: g.map && typeof g.map === 'object' ? g.map : {}, how: g.how && typeof g.how === 'object' ? g.how : {} }; });
       if (Array.isArray(cfg.custom)) cfg.custom.forEach(c => { if (c && c.id && c.label && !state.custom.some(x => x.id === c.id)) state.custom.push(c); });
@@ -1574,7 +1644,7 @@ function openSettings() {
         roster: typeof c.roster === 'string' ? c.roster : '', rosterAt: c.rosterAt || null, skipRoster: !!c.skipRoster,
         excluded: c.excluded && typeof c.excluded === 'object' ? c.excluded : {}, ignored: c.ignored && typeof c.ignored === 'object' ? c.ignored : {},
         aliases: c.aliases && typeof c.aliases === 'object' ? c.aliases : {}, hiddenUnits: c.hiddenUnits && typeof c.hiddenUnits === 'object' ? c.hiddenUnits : {},
-        studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, gradeHistory: Array.isArray(c.gradeHistory) ? c.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : (prev ? prev.gradeHistory : []), history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per })) : (prev ? prev.history : [])
+        studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, gradeHistory: Array.isArray(c.gradeHistory) ? c.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : (prev ? prev.gradeHistory : []), history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })) : (prev ? prev.history : [])
       });
       let applied = 0, held = 0;
       for (const k in cfg.sections) { const c = cfg.sections[k] || {}; if (state.sections[k]) { const cl = clean(c, state.sections[k]); Object.assign(state.sections[k], cl); applied++; } else { const cl = clean(c, null); if (!cl.label) cl.label = k; state.pendingCfg[k] = cl; held++; } }
@@ -1606,6 +1676,7 @@ function openCustomEditor(id, prep) {
 
 /* ---------- toast ---------- */
 let toastT;
+// A toast can be tapped away (it sits over the grid's bottom-right cells); buttons inside it keep their own handlers.
 function toast(html, err, ms, fromLb) { if (document.body.classList.contains('lbMode') && !fromLb) return; const t = $('#toast'); t.innerHTML = html; t.classList.toggle('err', !!err); t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || (err ? 6000 : 3200)); }
 
 /* ---------- wiring ---------- */
@@ -1624,13 +1695,26 @@ document.addEventListener('dragenter', e => { e.preventDefault(); if (document.b
 document.addEventListener('dragleave', e => { e.preventDefault(); if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (document.body.classList.contains('lbMode')) return; const fs = [...e.dataTransfer.files].filter(f => /\.(xlsx|csv|xls|txt|tsv|html?)$/i.test(f.name)); if (fs.length) importFiles(fs); else toast('Drop an IXL Score Grid or a gradebook export (.xlsx, .csv, .xls).', true); });
+// Every dialog goes through #modal, so one observer gives them all the same manners: focus moves into the panel on
+// open (to the panel itself — never an input, which would raise the tablet's keyboard), Tab stays inside, the dialog is
+// named by its own heading, and focus goes back to whatever opened it on close.
+const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+let modalOpener = null, modalOpenerId = null, lastOutside = null;
+document.addEventListener('focusin', e => { if (!e.target.closest('#modal')) lastOutside = e.target; });   // the observer runs after the opener may have focused an input, so remember the last focus outside the dialog
+new MutationObserver(() => {
+  const m = $('#modal'); const open = !m.classList.contains('hidden');
+  if (open && !m._open) { m._open = true; modalOpener = lastOutside; modalOpenerId = modalOpener && modalOpener.id; setTimeout(() => { if (m.classList.contains('hidden')) return; const panel = m.querySelector('.panel'); if (!panel) return; const h = panel.querySelector('header h2'); if (h) { h.id = h.id || 'mTitle'; m.setAttribute('aria-labelledby', h.id); m.removeAttribute('aria-label'); } panel.tabIndex = -1; panel.focus({ preventScroll: true }); }, 0); }
+  else if (!open && m._open) { m._open = false; const el = modalOpener, id = modalOpenerId; modalOpener = null; setTimeout(() => { const target = el && el.isConnected ? el : (id ? $('#' + id) : null); if (target && !target.closest('#modal')) { try { target.focus({ preventScroll: true }); } catch (e) {} } }, 0); }   // the close usually re-renders, so fall back to the opener's id
+}).observe($('#modal'), { attributes: true, attributeFilter: ['class'] });
 document.addEventListener('keydown', e => {
+  const m = $('#modal'); const open = !m.classList.contains('hidden');
+  if (e.key === 'Tab' && open) { const items = [...m.querySelectorAll(FOCUSABLE)].filter(el => el.offsetParent !== null); if (!items.length) return; const i = items.indexOf(document.activeElement); if (e.shiftKey && (i <= 0)) { e.preventDefault(); items[items.length - 1].focus(); } else if (!e.shiftKey && (i === -1 || i === items.length - 1)) { e.preventDefault(); items[0].focus(); } return; }
   if (e.key !== 'Escape') return;
-  const m = $('#modal');
-  if (!m.classList.contains('hidden')) { (m._cancel || (() => m.classList.add('hidden')))(); return; }
+  if (open) { (m._cancel || (() => m.classList.add('hidden')))(); return; }
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
 });
-window.__tally = { get state() { return state; }, save, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, unitColumn, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest };
+window.__tally = { get state() { return state; }, save, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, unitColumn, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx };
+$('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 render();
 if (bootError) setTimeout(() => toast('Saved Tally data could not be read and was set aside (kept as a backup in this browser). Re-import your exports.', true, 8000), 300);
 })();

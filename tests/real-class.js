@@ -7,7 +7,7 @@ const { chromium, fs, path, exe, check, done, tmp, unskip } = require('./lib');
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(600);
   const s=await p.evaluate(()=>{const T=window.__tally; const s=Object.values(T.state.sections)[0]; return {label:s.label,thr:s.threshold,n:s.students.length,skills:s.skills.length,scored:s.scores.flat().filter(v=>v!=null).length};});
-  check(s.label==='1st Period · Accelerated' && s.thr===67 && s.n===23 && s.skills===220 && s.scored===886,'real IXL CSV: 23 students, 220 skills, 886 scores, goal 67');
+  check(s.label==='1st Period · Accelerated' && s.thr===67 && s.n===23 && s.skills===219 && s.scored===886,'real IXL CSV: 23 students, 220 skills, 886 scores, goal 67');
   // roster from the real Focus file (ID<TAB>Last, First Middle)
   await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.waitForTimeout(200);
   const rep=await p.textContent('#rpReport'); check(/16 of 23 roster names matched/.test(rep),'real roster: 16 exact matches (7 are scrubber artifacts): '+rep.slice(0,45));

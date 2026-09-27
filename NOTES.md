@@ -6,7 +6,7 @@ Claude session pushes to this repo. `README.md` says what Tally does; `GRADES_SP
 `REVIEW_CONTEXT.md` and `ROUND2_FINDINGS.md` are the two earlier review rounds (historical — they describe the
 per-section-file era and many items in them are now done).
 
-## Croix's setup (as of 26 Sep 2026)
+## Croix's setup (as of 27 Sep 2026)
 
 - Windy Hill Middle School (Lake County, FL). Five periods: **1st and 3rd accelerated** (MA.7 + MA.8),
   **2nd, 4th, 5th on-level** (MA.7). About 91 students in all (23 / 20 accelerated, 13 / 16 / 19 on-level).
@@ -61,6 +61,12 @@ per-section-file era and many items in them are now done).
 - **Command center** (26 Sep, evening): opens on an Overview of all classes; calm grid with a Details toggle (`settings.details`); Data Lab "Show as" graph types (`settings.labKind`, `labBin`); charts in `charts.js` use the validated categorical order for class-vs-class and the house teal for single series; each class has one fixed colour (`classColor`, by period) that follows it through tabs, Overview cards, Race cards, Data Lab rows and every chart; letter grades use one teal ramp with F in coral. See `COMMAND_CENTER.md`.
 - **What changed digest** (home.js `digestFor` / `openDigest`): per class, from the two histories — IXL total and per-student gain, share moved up, biggest movers, drops, units everyone finished, new/gone students; Focus average change, missing change, sliding/climbing, letter changes, newly missing / turned in, new assignments. From the Overview card and the class ⋯ menu; printable; private backdrop.
 - **Visual system** (26 Sep, evening): paper-and-ink — warm paper `#F6F5F0`, no graph-paper grid, white cards on hairlines with soft shadows, ink `#16213A`, accent teal `#0F766E` / bright `#2DD4BF`, warning wash `#FBDAD2` with ink `#D9442F`. Old token names kept (`--cream`, `--turq`, …) with new values so every rule resolves. Overview and Grades float on the paper (`body.home`, `body.grades`).
+- **Round 3 hardening** (27 Sep): four reviewers (`review/`, ranked in `ROUND3_FINDINGS.md`) → every P0/P1 fixed.
+  Snapshots carry per-unit counts so movement is read on today's assigned units (`movement()`, `snapTotals()`);
+  skips re-snapshot; class average = mean of rounded grades; `neededOn` on the half-point grid; fixer uses pool
+  keys; empty roster → empty class; old backups can't drag `skipFirst` back; one focus manager for `#modal`;
+  ⋯ menu overlay; 44 px touch targets under `(pointer:coarse)`; Still-owed chooser (slips / initials / names)
+  with unmatched students listed; histogram/circle/stem/line-label fixes; shape sentence by the mean-vs-median rule.
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 
@@ -80,10 +86,8 @@ per-section-file era and many items in them are now done).
   clipboard works, "Add to Home screen" gives an icon. Only Croix can do this (API writes are refused).
 - **Rotate the fine-grained PAT** that was pasted into chat on 26 Sep once pushing is done.
 - First week of history: Race movement, trends, "since last import" and sliding need a second import.
-- Not yet built (ideas Croix hasn't green-lit): one-page student report folding the Grades card and the IXL
-  "still owed" list together; plain-language parent version of it; Data Lab panel fit at 900 px tall on the
-  Promethean (three classes with stats overflow); Race naming pass; a way to mark a student's modified
-  assignment list once for every unit (per-student skips are per cell today).
+- Not yet built: plain-language parent version of the student report; Race naming pass; a way to mark a
+  student's modified assignment list once for every unit (per-student skips are per cell today).
 - Known rough edges: a student in two classes of the same course can't be — pools carve each name into one
   class; the IXL-only "not on roster" flag for a pool class means the name matched no roster line anywhere;
   the calm grid is still a dense table (Just Unit N is the relief); category asker fires for every new

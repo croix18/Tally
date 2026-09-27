@@ -256,8 +256,12 @@ function parseIxlGrid(rows) {
     if (!isText(name)) continue;
     if (isText(r[cUnit])) lastUnit = String(r[cUnit]).trim();
     if (cLesson >= 0 && isText(r[cLesson])) lastLesson = String(r[cLesson]).trim();
-    skills.push({ unit: lastUnit || '(no unit)', lesson: lastLesson, name: String(name).trim(), id: cId >= 0 && r[cId] != null ? String(r[cId]).trim() : '' });
-    scores.push(students.map(s => asScore(r[s.col])));
+    const sk = { unit: lastUnit || '(no unit)', lesson: lastLesson, name: String(name).trim(), id: cId >= 0 && r[cId] != null ? String(r[cId]).trim() : '' };
+    const row = students.map(s => asScore(r[s.col]));
+    // IXL lists a skill again when two lessons in one unit share it; it is one skill, so keep one row (best score of the two).
+    const dup = sk.id ? skills.findIndex(x => x.unit === sk.unit && x.id === sk.id) : -1;
+    if (dup >= 0) { scores[dup] = scores[dup].map((v, j) => v == null ? row[j] : row[j] == null ? v : Math.max(v, row[j])); continue; }
+    skills.push(sk); scores.push(row);
   }
   return { students: students.map(s => s.name), skills, scores };
 }

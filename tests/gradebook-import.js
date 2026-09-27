@@ -33,8 +33,9 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   check(groups.some(g=>/Assessments/.test(g[0]) && g[1]===3) && groups.some(g=>/IXL skills/.test(g[0])),'dropdown has assessment, classwork, and per-skill groups');
   await p.selectOption('#labUnit','gb:Unit 1 Test'); await p.waitForTimeout(400);
   check(await p.locator('.labRow').count()===1 && /out of 100/.test(await p.textContent('.lbSub')),'assessment dataset plots the one on-level class that has it');
-  check(await p.locator('.labDot').count()===0 && (await p.getAttribute('#labDots','aria-pressed'))==='false','gradebook dataset: dots off by default');
-  await p.click('#labDots'); await p.waitForTimeout(300); check(await p.locator('.labDot').count()>10,'dots can be turned on'); await p.click('#labDots'); await p.waitForTimeout(200);
+  check(await p.locator('.labDot').count()===0 && await p.locator('#labDots').count()===0 && await p.locator('#labValues').count()===0,'gradebook dataset: no dots, no Dots or Values controls (individual scores never project)');
+  check((await p.locator('#labKind option').allTextContents()).join()==='Box plot,Histogram,Circle graph,Line graph','gradebook dataset: only aggregate graph types offered');
+  await p.click('#labStats'); await p.waitForTimeout(200); const gst=await p.textContent('.labStats'); check(/median/.test(gst) && !/\bmin\b/i.test(gst) && !/\bmax\b/i.test(gst),'gradebook stats: quartiles only, no min/max: '+gst.replace(/\s+/g,' ').slice(0,80)); await p.click('#labStats'); await p.click('#labStats'); await p.waitForTimeout(200);
   check(/missing/.test(await p.textContent('.labName')) || true,'missing count shown when present');
   await p.click('#labStats'); await p.waitForTimeout(200); await p.click('#labStats'); await p.waitForTimeout(200); await p.screenshot({path:path.join(tmp,'shot16.png')});
   await p.click('[data-prep="acc"]'); await p.waitForTimeout(300);

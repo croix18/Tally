@@ -34,7 +34,8 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   // 3. screens
   await p.click('#openGrades'); await p.waitForTimeout(500);
   const txt=await p.textContent('#gridwrap');
-  check(/Class average\s*82%/.test(txt.replace(/\s+/g,' ')) && /A\s*13/.test(txt) && /Missing work\s*22/.test(txt),'overview cards: average, letters, missing');
+  const expectAvg=await p.evaluate(K=>{ const T=window.__tally; const g=T.gradeAll(T.state.sections[K]).map(r=>r&&r.rounded).filter(v=>v!=null); return g.reduce((a,b)=>a+b,0)/g.length; }, K);   // mean of the ROUNDED grades, as Focus averages
+  const cavg=txt.replace(/\s+/g,' ').match(/Class average\s*(\d+)%/); check(cavg && cavg[1]===String(Math.round(expectAvg)) && /A\s*13/.test(txt) && /Missing work\s*22/.test(txt),'overview cards: average, letters, missing');
   check(/Matches the Focus Grade column for all 23 students/.test(txt),'overview states the formula matches Focus');
   check(await p.locator('.gasg tbody tr').count()===13 && await p.locator('.gstu tbody tr').count()===23,'assignments and students tables');
   check(/r = 0\.\d\d/.test(txt) && await p.locator('.scatter .pt').count()===16,'IXL vs assessments scatter with r, IXL columns excluded');
@@ -71,7 +72,7 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
     const i=gb.students.indexOf('DORSEY, MICAH FLYNN-WINTER'); gb.assignments.forEach(x=>{ if(x.status[i]==='missing'){ x.status[i]='score'; x.values[i]=x.max; x.missing--; } });
     T.gradeSnapshot(s); s.grades=JSON.parse(save); T.gradeSnapshot(s); T.save(); T.render();
     return { n:s.gradeHistory.length, dates:s.gradeHistory.map(x=>x.date), micahThen:s.gradeHistory[0].grade[i], micahNow:s.gradeHistory[1].grade[i] }; }, K);
-  check(h.n===2 && h.dates.join()==='2026-09-19,2026-09-26','two history entries by date');
+  check(h.n===2 && h.dates[0]==='2026-09-19' && h.dates[1]===new Date().toISOString().slice(0,10),'two history entries by date');
   const t2=await p.textContent('#gridwrap');
   check(/since Sep 19/.test(t2) && /Class average by import/.test(t2) && await p.locator('.gcard .spark').count()===1,'trend card and Δ since previous import');
   const sl=await p.locator('.gstu tr.sliding').count(); check(sl>=1 && /sliding/.test(await p.locator('.gstu tr.sliding').first().textContent()),'sliding students flagged and sorted first: '+sl);

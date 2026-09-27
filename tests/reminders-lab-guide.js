@@ -8,6 +8,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   // --- reminder: an export from 2026-09-01 is old; default reminder is 7 days
   const old=fs.readdirSync('fixtures').filter(f=>f.startsWith('old_')).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', old); await p.waitForTimeout(500); await p.click('#rpSkip'); await p.waitForTimeout(300);
+  await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['1205050-7T1A']; const d=new Date(); d.setDate(d.getDate()-25); s.date=d.toISOString().slice(0,10); T.save(); T.render(); });   // pin the export's age at 25 days so the 7/30-day checks hold on any calendar day
   const age=await p.evaluate(()=>window.__tally.ageDays('2026-09-01'));
   check(age>=20,'ageDays counts calendar days: '+age);
   check(await p.evaluate(()=>window.__tally.ageText(new Date().toISOString().slice(0,10)))==='today','ageText: today');
@@ -25,6 +26,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   // a fresh export replaces it → notice gone
   const main=fs.readdirSync('fixtures').filter(f=>/^f1473588.*7T1A/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
+  await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['1205050-7T1A']; s.date=new Date().toISOString().slice(0,10); T.save(); T.render(); });   // the fixture is dated 25 Sep; treat it as today's so the check outlives the calendar
   check(!/days old/.test(await p.textContent('#notices')),'importing a fresh export clears the reminder');
   // the notice's Import button opens the picker
   // --- receipt viewer

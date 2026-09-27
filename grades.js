@@ -104,8 +104,9 @@ function neededOn(sec, i, cat, max, target) {
   const c = base.cats[cat] || { earned: 0, possible: 0, w: (g.cats.find(x => x.name === cat) || {}).w || 0 };
   const grade = pts => { let tw = 0, tot = 0; for (const k in base.cats) { const x = base.cats[k]; const e = k === cat ? x.earned + pts : x.earned, p = k === cat ? x.possible + max : x.possible; if (p > 0) { tw += x.w; tot += x.w * e / p * 100; } } if (!(cat in base.cats) && c.w) { tw += c.w; tot += c.w * pts / max * 100; } return tw ? tot / tw : null; };
   if (Math.round(grade(max)) < target) return null;
-  let lo = 0, hi = max; while (hi - lo > 0.5) { const m = (lo + hi) / 2; if (Math.round(grade(m)) >= target) hi = m; else lo = m; }
-  return Math.ceil(hi * 2) / 2;
+  // Scores are entered in half points, so walk the half-point grid (0 first — a student already above the line needs nothing).
+  for (let pts = 0; pts <= max; pts += 0.5) if (Math.round(grade(pts)) >= target) return pts;
+  return max;
 }
 // Grade after a new assignment in `cat` worth `max` scored `pts`.
 function withNext(sec, i, cat, max, pts) {
@@ -145,7 +146,8 @@ function ixlVsTests(sec) {
 function classAverage(sec, mapOverride, dropName) {
   const gb = sec.grades; if (!gb) return null;
   let over = null; if (dropName) { over = {}; over[dropName] = null; }
-  const gs = gb.students.map((_, i) => computeGrade(sec, i, over, mapOverride)).map(r => r && r.pct).filter(v => v != null);
+  // Mean of the ROUNDED grades — the number Focus shows in its Average row, and the one every screen and the digest use.
+  const gs = gb.students.map((_, i) => computeGrade(sec, i, over, mapOverride)).map(r => r && r.rounded).filter(v => v != null);
   return gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null;
 }
 
@@ -205,7 +207,8 @@ function renderGrades(s) {
     .sort((x, y) => dueKey(y.a.due).localeCompare(dueKey(x.a.due)) || x.a.name.localeCompare(y.a.name));
   const catRows = g.cats.map(c => { const list = asg.filter(x => x.cat === c.name); const gs = grades.map(r => r.cats[c.name] && r.cats[c.name].pct).filter(v => v != null); return { c, n: list.length, avg: gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null }; });
   const pts = ixl.filter(x => x.ixl != null && x.tests != null).map(x => ({ ...x, label: H ? mask(x.name) : x.name })); const rr = pts.length >= 8 ? pearson(pts.map(x => x.ixl), pts.map(x => x.tests)) : null;
-  const rWord = rr == null ? '' : Math.abs(rr) < 0.2 ? 'no real relationship between IXL work and assessment scores here yet' : (rr > 0 ? 'students doing more IXL score higher on assessments' : 'students doing more IXL score lower on assessments') + (Math.abs(rr) < 0.4 ? ' — a weak link' : Math.abs(rr) < 0.6 ? ' — a moderate link' : ' — a strong link');
+  // No direction claim below |r| = 0.3, and a small class is a hint, not a finding.
+  const rWord = rr == null ? '' : (Math.abs(rr) < 0.3 ? 'no clear relationship between IXL work and assessment scores here' : (Math.abs(rr) < 0.5 ? 'a weak tendency for ' : Math.abs(rr) < 0.7 ? 'a moderate tendency for ' : 'a strong tendency for ') + (rr > 0 ? 'students doing more IXL to score higher on assessments' : 'students doing more IXL to score lower on assessments')) + (pts.length < 20 ? ` (${pts.length} students — treat as a hint, not proof)` : '');
   const hist = (s.gradeHistory || []); const trend = hist.length >= 2 ? hist.map(h => { const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) : null;
   const unverified = !gb.overall ? `<div class="notice info"><span>ⓘ</span><span>This export has no Grade column, so assignment categories are name-based guesses — check them under <b>Categories</b>.</span></div>` : (fit && !fit.exact ? `<div class="notice"><span>⚠︎</span><span><b>Tally's grades don't all match Focus</b> (off by ${fit.err} points in total across ${fit.n} students). A category or weight is probably wrong — open <b>Categories</b>.</span></div>` : '');
   const cell = (v, cls) => `<td class="${cls || ''}">${v}</td>`;
@@ -247,8 +250,11 @@ function openStudentCard(s, i) {
   const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
   const hist = (s.gradeHistory || []).map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.grade[j] : null; });
   const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private'); $('#toast').classList.remove('show');   // a lingering toast can carry other names
-  const needLine = mx => { const parts = [[90, 'an A'], [80, 'a B'], [70, 'a C']].map(([t, w]) => { const n = neededOn(s, i, 'Assessments', mx, t); return n == null ? null : `<b>${n}/${mx}</b> for ${w}`; }).filter(Boolean);
-    return parts.length ? 'Needs ' + parts.join(' · ') : `No single assessment out of ${mx} can reach a C from here — ${missing.length ? 'the missing work is the lever' : 'it will take more than one'}.`; };
+  // Only letters ABOVE the current one are targets; a 0 means any score keeps the letter, which reads as "even a 0 keeps".
+  const needLine = mx => { const cur = r.rounded; const parts = [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur == null || cur < t).map(([t, w]) => { const n = neededOn(s, i, 'Assessments', mx, t); return n == null ? null : `<b>${n}/${mx}</b> for ${w}`; }).filter(Boolean);
+    const keep = cur != null && cur >= 70 ? (() => { const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : 70; const n = neededOn(s, i, 'Assessments', mx, floor); return n == null ? null : `${n === 0 ? 'even a 0' : `<b>${n}/${mx}</b>`} keeps ${floor === 90 ? 'the A' : floor === 80 ? 'the B' : 'the C'}`; })() : null;
+    const all = [...parts, keep].filter(Boolean);
+    return all.length ? 'Next assessment: ' + all.join(' · ') : `No single assessment out of ${mx} can reach a C from here — ${missing.length ? 'the missing work is the lever' : 'it will take more than one'}.`; };
   m.innerHTML = `<div class="panel"><header><h2>${esc(nm)} <span class="hsub">${esc(s.label)} · Focus of ${esc(fmtDate(gb.importedAt.slice(0, 10)))}</span></h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one stucard">
       <div class="stuhead">${gradeChip(r)}<div class="cats">${g.cats.map(c => { const x = r.cats[c.name]; return `<div class="catbar"><span>${esc(c.name)} <small>${c.w}%</small></span><div class="bar"><i style="width:${x && x.pct != null ? Math.max(0, Math.min(100, x.pct)) : 0}%"></i></div><b>${x && x.pct != null ? pct1(x.pct) : '—'}</b></div>`; }).join('')}</div>

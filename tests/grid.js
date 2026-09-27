@@ -47,7 +47,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   await p.fill('#search','zzzz'); await p.waitForTimeout(150); check(await p.locator('tr.nomatch').count()===1,'no-match row');
   await p.click('[data-k="1205050-7T3A"]'); await p.waitForTimeout(150); check((await p.inputValue('#search'))==='','search cleared on tab switch');
   // copy without roster on 7T3A -> names included
-  await p.click('#rpSkip'); await p.waitForTimeout(200); check(await p.locator('.notice.info').count()===1,'skip roster shows info notice');
+  await p.click('#rpSkip'); await p.waitForTimeout(200); check(/No roster\./.test(await p.textContent('#notices')),'skip roster shows info notice');
   await p.click('th.unit .copy'); await p.waitForTimeout(250); let clip=await p.evaluate(()=>navigator.clipboard.readText());
   check(clip.split('\n').every(l=>l.includes('\t')),'no-roster copy always includes names');
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150);

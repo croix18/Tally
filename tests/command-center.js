@@ -23,12 +23,14 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('.nfold:not(.hidden) .notice').count()>=1,'tapping the status line expands the notices');
   check(await p.locator('#printOwed').isHidden() && await p.locator('#moreBtn').count()===1,'secondary controls live behind the ⋯ menu');
   await p.click('#moreBtn'); await p.waitForTimeout(200); check(await p.locator('#moreMenu:not(.hidden) #mStillOwed').count()===1,'menu opens with Still owed');
+  await p.mouse.click(600, 700); await p.waitForTimeout(200); check(await p.locator('#moreMenu.hidden').count()===1 && await p.locator('body.details').count()===0 && await p.locator('#menuOverlay').count()===0,'a tap outside only dismisses the menu (nothing underneath fires)');
+  await p.click('#moreBtn'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(100); check(await p.locator('#moreMenu.hidden').count()===1 && await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='moreBtn','Escape closes the menu and returns focus to ⋯');
   await p.click('#btnDetails'); await p.waitForTimeout(400);
   check(await p.locator('#printOwed').isVisible() && await p.locator('#nToggle').count()===0 && await p.locator('.notice').count()>=1,'Details view restores the full notices and controls');
   await p.click('#btnDetails'); await p.waitForTimeout(300); check(await p.locator('#nToggle').count()===1,'and Calm folds them again');
   await p.click('#btnHome'); await p.waitForTimeout(300); check(await p.locator('#gridwrap .home').count()===1,'Overview button returns home');
   // --- What changed digest (fabricate last week for the first class)
-  await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections[T.state.order[0]]; const cur=s.history[s.history.length-1]; const per={}; Object.keys(cur.per).forEach((k,i)=>per[k]=Math.max(0,cur.per[k]-(i%3===0?3:i%3===1?1:0))); s.history=[{...cur,date:'2026-09-19',per},cur];
+  await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections[T.state.order[0]]; const cur=s.history[s.history.length-1]; const per={}; const pu=JSON.parse(JSON.stringify(cur.pu)); Object.keys(cur.per).forEach((k,i)=>{ let d=Math.min(cur.per[k], i%3===0?3:i%3===1?1:0); per[k]=cur.per[k]-d; for(const u in pu){ const take=Math.min(d,pu[u][k]||0); pu[u][k]-=take; d-=take; } }); s.history=[{...cur,date:'2026-09-19',per,pu},cur];
     const gc=s.gradeHistory[s.gradeHistory.length-1]; s.gradeHistory=[{...gc,date:'2026-09-19',grade:gc.grade.map((g,i)=>g==null?g:Math.min(100,g+(i%4===0?6:i%4===1?-4:0))),missing:gc.missing.map((m,i)=>i%5===0?Math.max(0,m-1):m),assignments:gc.assignments.slice(0,3)},gc]; T.save(); T.render(); });
   await p.click('#btnHome'); await p.waitForTimeout(400); await p.click('[data-digest]'); await p.waitForTimeout(400);
   const dg=(await p.textContent('#modal')).replace(/\s+/g,' ');

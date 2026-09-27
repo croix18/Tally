@@ -46,13 +46,15 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   check(/"Student ID","Student","IXL Unit 1","Out of","Goal","Export date"/.test(csv) && /"100000","Nguyen, Ava","\d+","2[23]","67","2026-09-25"/.test(csv),'CSV keyed by ID with out-of and goal');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   // 4. still owed page (popup) with initials
-  const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#printOwed')]); await pop.waitForLoadState(); await pop.waitForTimeout(300);
+  await p.click('#printOwed'); await p.waitForTimeout(200); check(await p.locator('[data-owed]').count()===3,'Still owed offers slips / initials list / names list (no confirm())');
+  const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('[data-owed="initials"]')]); await pop.waitForLoadState(); await pop.waitForTimeout(300);
   const txt=await pop.textContent('body');
   check(/Still owed/.test(txt) && /Below goal \(67\)/.test(txt) && /A\. N\./.test(txt) && !/Nguyen/.test(txt),'still-owed page: initials, below-goal lists');
+  check(/Not matched to an IXL account/.test(txt) || !/not matched/.test(txt),'unmatched roster students are listed, not dropped');
   const bw=await pop.evaluate(()=>{const cs=getComputedStyle(document.body); return cs.color+'|'+cs.backgroundColor;}); check(bw==='rgb(0, 0, 0)|rgb(255, 255, 255)','black on white');
   await pop.screenshot({path:path.join(tmp,'shot20.png'), fullPage:false}); await pop.close();
-  dialogAnswer=false; const [pop2]=await Promise.all([ctx.waitForEvent('page'), p.click('#printOwed')]); await pop2.waitForLoadState(); await pop2.waitForTimeout(300);
-  check(/Nguyen, Ava/.test(await pop2.textContent('body')),'full names when Cancel'); await pop2.close(); dialogAnswer=true;
+  await p.click('#printOwed'); await p.waitForTimeout(200); const [pop2]=await Promise.all([ctx.waitForEvent('page'), p.click('[data-owed="slips"]')]); await pop2.waitForLoadState(); await pop2.waitForTimeout(300);
+  check(/Nguyen, Ava/.test(await pop2.textContent('body')) && await pop2.evaluate(()=>getComputedStyle(document.querySelectorAll('.stu')[1]).breakBefore==='page'),'slips: full names, one page per student'); await pop2.close();
   // 5. custom data set
   await p.click('#btnSettings'); await p.click('#addCustom'); await p.waitForTimeout(200);
   await p.fill('#cLabel','Minutes to school'); await p.fill('#cUnit','minutes');

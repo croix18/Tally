@@ -4,7 +4,11 @@
 const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#008300'];
 const seriesColor = i => SERIES[i % SERIES.length];
 // Letter grades are ordered, so they get one hue light→dark (A darkest) with F in the coral status colour.
-const LETTER_COLORS = { A: '#0F5F6B', B: '#1F8F93', C: '#5FBFB5', D: '#B9E5DF', F: '#FF7F6A' };
+const LETTER_COLORS = { A: '#0F5F6B', B: '#1F8F93', C: '#5FBFB5', D: '#B9E5DF', F: '#D9442F' };
+// Which letter segments are dark enough for white text; the light C/D/F-wash ones take ink.
+const LETTER_DARK = ['A', 'B', 'F'];
+// Ordered quarters (least → most) on the same ramp, for circle graphs of "how much of the unit".
+const QUARTER_COLORS = ['#DDF4F0', '#B9E5DF', '#5FBFB5', '#0F5F6B'];
 // One colour per class, fixed by period when known (1st = slot 1, …) else by position, so every screen agrees.
 function classColor(sec) { const i = sec && Number.isInteger(sec.period) ? sec.period - 1 : Math.max(0, state.order.indexOf(sec ? sec.key : '')); return seriesColor(i); }
 const fmtV = v => v == null ? '—' : (Math.round(v * 10) / 10).toString();
@@ -28,24 +32,32 @@ function chartStacked(rows, keys, o) {
   const X = v => lw + (v / max) * (w - lw - 20);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'stacked bar chart')}">`;
   rows.forEach((r, i) => { const y = 8 + i * rowH; let x = 0; s += `<text x="${lw - 10}" y="${y + 15}" text-anchor="end" class="lbl">${esc(r.label)}</text>`;
-    keys.forEach((k, j) => { const v = r.parts[k] || 0; if (!v) return; s += `<rect x="${X(x) + (x ? 1 : 0)}" y="${y + 3}" width="${Math.max(X(x + v) - X(x) - (x ? 1 : 0), 0)}" height="16" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}"><title>${esc(r.label)} · ${esc(k)}: ${v}</title></rect>${v / max > 0.06 ? `<text x="${(X(x) + X(x + v)) / 2}" y="${y + 15}" text-anchor="middle" class="inv">${v}</text>` : ''}`; x += v; }); });
+    keys.forEach((k, j) => { const v = r.parts[k] || 0; if (!v) return; s += `<rect x="${X(x) + (x ? 1 : 0)}" y="${y + 3}" width="${Math.max(X(x + v) - X(x) - (x ? 1 : 0), 0)}" height="16" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}"><title>${esc(r.label)} · ${esc(k)}: ${v}</title></rect>${v / max > 0.06 ? `<text x="${(X(x) + X(x + v)) / 2}" y="${y + 15}" text-anchor="middle" class="${(o.dark || []).includes(k) ? 'inv' : 'val'}">${v}</text>` : ''}`; x += v; }); });
   s += `<g class="legend">${keys.map((k, j) => `<rect x="${lw + j * 80}" y="${h - 20}" width="12" height="12" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}"/><text x="${lw + j * 80 + 16}" y="${h - 10}" class="tl">${esc(k)}</text>`).join('')}</g>`;
   return s + '</svg>';
 }
 // Line chart over labelled x steps: series [{ name, values: [y|null] }], labels [x]. Direct labels at the line ends + legend.
 function chartLines(labels, series, o) {
-  o = o || {}; const w = o.w || 640, h = o.h || 220, l = 44, r = 150, t = 12, b = 30;
+  o = o || {}; const w = o.w || 640, h = o.h || 220, l = 44, r = o.labelW || 170, t = 12, b = 30;
   const ys = series.flatMap(x => x.values).filter(v => v != null); if (!ys.length) return '<div class="lbEmpty">Nothing to plot yet.</div>';
   const lo = o.min != null ? o.min : Math.max(0, Math.floor(Math.min(...ys) / 10) * 10 - 10), hi = o.max != null ? o.max : niceMax(Math.max(...ys), 10);
   const X = i => l + (labels.length > 1 ? i / (labels.length - 1) : 0.5) * (w - l - r), Y = v => h - b - (v - lo) / (hi - lo || 1) * (h - t - b);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'line chart')}">`;
   const ticks = 4; for (let i = 0; i <= ticks; i++) { const v = lo + (hi - lo) * i / ticks; s += `<line x1="${l}" y1="${Y(v)}" x2="${w - r}" y2="${Y(v)}" class="gl"/><text x="${l - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; }
   labels.forEach((lb, i) => { s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle" class="tl">${esc(lb)}</text>`; });
+  const ends = [];
   series.forEach((sr, j) => { const c = sr.color || (series.length === 1 ? 'var(--teal)' : seriesColor(j)); let d = '', last = null, pen = false;
     sr.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; pen = true; last = [i, v]; });
     s += `<path d="${d}" class="ln" style="stroke:${c}"/>`;
     sr.values.forEach((v, i) => { if (v != null) s += `<circle cx="${X(i)}" cy="${Y(v)}" r="4" style="fill:${c}"><title>${esc(sr.name)} · ${esc(labels[i])}: ${o.pct ? Math.round(v) + '%' : fmtV(v)}</title></circle>`; });
-    if (last) s += `<text x="${X(last[0]) + 8}" y="${Y(last[1]) + 4}" class="lbl">${esc(sr.name)} <tspan class="val">${o.pct ? Math.round(last[1]) + '%' : fmtV(last[1])}</tspan></text>`; });
+    if (last) ends.push({ x: X(last[0]), y: Y(last[1]), want: Y(last[1]), name: sr.name, v: last[1], c }); });
+  // Direct labels at the line ends, nudged apart so two classes that finish close together stay readable.
+  ends.sort((a, b) => a.want - b.want); const gap = 15;
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < gap) ends[i].y = ends[i - 1].y + gap;
+  const over = ends.length ? ends[ends.length - 1].y - (h - b - 2) : 0; if (over > 0) { for (let i = ends.length - 1; i >= 0; i--) { ends[i].y -= over; if (i && ends[i].y - ends[i - 1].y >= gap) break; } }
+  ends.forEach(e => { const lbl = esc(e.name) + ' '; const val = o.pct ? Math.round(e.v) + '%' : fmtV(e.v);
+    if (Math.abs(e.y - e.want) > 2) s += `<line x1="${e.x + 5}" y1="${e.want}" x2="${w - r + 6}" y2="${e.y}" class="gl" style="stroke:${e.c};opacity:.6"/>`;
+    s += `<text x="${w - r + 8}" y="${e.y + 4}" class="lbl">${lbl}<tspan class="val">${val}</tspan></text>`; });
   return s + '</svg>';
 }
 // Dot plot on a 0..max axis; stacks dots at equal values (shrinks radius when tall).
@@ -62,21 +74,23 @@ function chartDots(values, max, o) {
 // Histogram with a bin size; bars touch (histograms do), 1px surface gap for legibility.
 function chartHist(values, max, bin, o) {
   o = o || {}; const w = o.w || 800, h = 200, v = values.filter(x => x != null); bin = bin || (max > 40 ? 10 : max > 10 ? 5 : 1);
-  const nb = Math.max(1, Math.ceil((max + 0.0001) / bin)); const c = new Array(nb).fill(0); v.forEach(x => c[Math.min(nb - 1, Math.floor(x / bin))]++);
+  // Bins are [lo, hi) with the top bin closed at max, so 100 with bins of 10 gives ten bins, not an empty 100–110.
+  const nb = Math.max(1, Math.ceil(max / bin - 1e-9)); const c = new Array(nb).fill(0); v.forEach(x => c[Math.max(0, Math.min(nb - 1, Math.floor(x / bin)))]++);
+  const ints = v.every(x => Number.isInteger(x)); const range = (lo, hi, last) => !ints ? `${lo}–${hi}` : bin === 1 ? `${lo}` : last ? `${lo}–${Math.max(lo, Math.round(max))}` : `${lo}–${hi - 1}`;
   const top = niceMax(Math.max(...c, 1), c.length && Math.max(...c) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Y = n => h - 30 - n / top * (h - 50);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="histogram">`;
   for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
-  c.forEach((n, i) => { const lo = i * bin, hi = Math.min(max, (i + 1) * bin); s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--teal)"><title>${lo}–${hi}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
-  s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${Math.max(max, nb * bin)}</text>`;
+  c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--teal)"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
+  s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${nb * bin}</text>`;
   return s + '</svg>';
 }
-// Stem-and-leaf as a table (stems of 10 for 0–100 data, of 1 for small ranges).
+// Stem-and-leaf as a table: stems are always tens, leaves ones (the form students learn), so 0–23 data reads 0 | 3 5 8 / 1 | 0 2 / 2 | 1.
 function chartStem(values, max) {
   const v = values.filter(x => x != null).map(x => Math.round(x)).sort((a, b) => a - b); if (!v.length) return '';
-  const unit = max > 30 ? 10 : 1; const stems = {}; v.forEach(x => { const st = Math.floor(x / unit); (stems[st] = stems[st] || []).push(unit === 10 ? x % 10 : x); });
-  const lo = Math.floor(v[0] / unit), hi = Math.floor(v[v.length - 1] / unit); let rows = '';
-  for (let st = lo; st <= hi; st++) rows += `<tr><th>${unit === 10 ? st : st}</th><td>${(stems[st] || []).map(l => unit === 10 ? l : '•').join(' ')}</td></tr>`;
-  return `<table class="stem"><tbody>${rows}</tbody></table><p class="ghint">${unit === 10 ? 'Stem = tens, leaf = ones: 6 | 3 5 means 63 and 65.' : 'Stem = the value, each • is one student.'}</p>`;
+  const stems = {}; v.forEach(x => { const st = Math.floor(x / 10); (stems[st] = stems[st] || []).push(x % 10); });
+  const lo = Math.min(0, Math.floor(v[0] / 10)), hi = Math.max(Math.floor(v[v.length - 1] / 10), Math.floor((max || 0) / 10)); let rows = '';
+  for (let st = lo; st <= hi; st++) rows += `<tr><th>${st}</th><td>${(stems[st] || []).join(' ')}</td></tr>`;
+  return `<table class="stem"><tbody>${rows}</tbody></table><p class="ghint">Stem = tens, leaf = ones: 1 | 3 5 means 13 and 15.</p>`;
 }
 // Bar graph of how many students at each value (0..max); a bar per value.
 function chartFreq(values, max, o) {
@@ -103,10 +117,11 @@ function chartCircle(parts, o) {
 }
 const CHART_CSS = `
 .chart{width:100%;height:auto;display:block}.chart .gl{stroke:var(--grid);stroke-width:1}.chart .ax{stroke:var(--navy);stroke-width:1.5}
-.chart .tl{font-size:11px;fill:var(--ink-soft)}.chart .lbl{font-size:12.5px;font-weight:700;fill:var(--navy)}.chart .val{font-size:11.5px;font-weight:900;fill:var(--navy)}.chart .inv{font-size:11px;font-weight:900;fill:#fff}
+.chart .tl{font-size:12px;fill:var(--ink-soft)}.chart .lbl{font-size:13px;font-weight:700;fill:var(--navy)}.chart .val{font-size:12px;font-weight:900;fill:var(--navy)}.chart .inv{font-size:12px;font-weight:900;fill:#fff}
+#lb .chart .tl{font-size:14px}#lb .chart .lbl{font-size:15px}#lb .chart .val{font-size:14px}#lb .chart .inv{font-size:14px}
 .chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--teal);stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
 .stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
-.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}
+.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}#lb .chart.circle{max-width:680px}
 `;
 // The app page gets the chart styles at boot; the standalone Race/Lab export includes CHART_CSS through LAB_CSS.
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: CHART_CSS }));

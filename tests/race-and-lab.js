@@ -35,6 +35,8 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   check(await p.locator('#lb.hidden').count()===0,'short tap does not exit');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
   check(await p.locator('#lb.hidden').count()===1,'hold exits');
+  check(await p.locator('body.home').count()===1,'exit lands on the Overview, not the last teacher view');
+  await p.click('#tabs .tab'); await p.waitForTimeout(300);
   check(/^[A-Z]\. [A-Z]\.$/.test((await p.textContent('tbody td.stu .nm')).trim()),'after exit the grid shows initials, not names');
   await p.click('#btnHide'); await p.waitForTimeout(150);
   await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-focus="on"]'); await p.waitForTimeout(300);
@@ -47,10 +49,10 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   check(await p.locator('.labOut').count()===0 && !/outlier/.test(await p.textContent('.labLegend')),'no outlier circles or legend in min–max mode');
   const labTxt=await p.textContent('#lb'); check(!/Nguyen|Smith|Garcia/.test(labTxt),'no names in data lab');
   await p.click('#labStats'); await p.waitForTimeout(300); check(await p.locator('.labStats').count()>=1 && /median/.test(await p.textContent('.labStats')) && /mode/i.test(await p.textContent('.labStats')) && !/mean/i.test(await p.textContent('.labStats')) && await p.locator('.labMean').count()===0,'reveal step 1: five-number summary + mode, no mean diamond yet');
-  await p.click('#labStats'); await p.waitForTimeout(300); check(/mean/i.test(await p.textContent('.labStats')) && /shape/i.test(await p.textContent('.labStats')) && await p.locator('.labMean').count()>0 && !/mean (above|below) median/.test(await p.textContent('.labStats')),'reveal step 2: mean diamond appears, shape described from the picture');
+  await p.click('#labStats'); await p.waitForTimeout(300); check(/mean/i.test(await p.textContent('.labStats')) && /shape/i.test(await p.textContent('.labStats')) && await p.locator('.labMean').count()>0 && /(mean (above|below|≈) median)/.test(await p.textContent('.labStats')),'reveal step 2: mean diamond appears, shape stated by the mean-vs-median rule');
   await p.click('#labTukey'); await p.waitForTimeout(300); check(/outliers/i.test(await p.textContent('.labStats')) && /outlier/.test(await p.textContent('.labLegend')),'outliers appear only with the toggle'); await p.click('#labTukey'); await p.waitForTimeout(200);
   await p.click('[data-prep="on"]'); await p.waitForTimeout(300); check(await p.locator('.labRow').count()===4,'on-level lab shows 4 classes');
-  await p.selectOption('#labUnit','unit:__all__'); await p.waitForTimeout(300); check(/All units/.test(await p.textContent('.lbSub')),'dataset switch');
+  await p.selectOption('#labUnit','unit:__all__'); await p.waitForTimeout(300); check(/assigned units/.test(await p.textContent('.lbSub')),'dataset switch');
   await p.screenshot({path:path.join(tmp,'shot14.png')}); await p.selectOption('#labUnit', await p.evaluate(()=>document.querySelector('#labUnit option').value)); await p.waitForTimeout(300); await p.screenshot({path:path.join(tmp,'shot15.png')});
   const allScale=await p.textContent('.lbSub'); check(!/0–2\d\d/.test(allScale),'all-skills scale from data, not 220: '+allScale.slice(-14));
   await p.click('[data-tab="race"]'); await p.waitForTimeout(200);
@@ -70,7 +72,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   // 7T3A: snapshots 09-10 → 09-25, half the class up one skill. 7T4A: 09-01, 09-22, 09-25; all but one student up since 09-01.
   // The on-level baseline is the earliest "previous" date (09-10), so 7T4A must be measured from its 09-01 snapshot, not 09-22.
   const mv=await p.evaluate(()=>{ const T=window.__tally; const S=T.state.sections;
-    const mk=(s,date,f)=>{ const cur=s.history[s.history.length-1]; const per={}; Object.keys(cur.per).forEach((k,i)=>per[k]=Math.max(0,cur.per[k]-f(i))); return {date,at:cur.at,thr:cur.thr,students:cur.students,per}; };
+    const mk=(s,date,f)=>{ const cur=s.history[s.history.length-1]; const per={}; const pu=JSON.parse(JSON.stringify(cur.pu)); Object.keys(cur.per).forEach((k,i)=>{ let d=Math.min(cur.per[k],f(i)); per[k]=cur.per[k]-d; for(const u in pu){ const take=Math.min(d,pu[u][k]||0); pu[u][k]-=take; d-=take; } }); return {date,at:cur.at,thr:cur.thr,students:cur.students,per,pu,ua:cur.ua}; };
     const a=S['1205050-7T3A'], b=S['1205050-7T4A'];
     a.history=[mk(a,'2026-09-10',i=>i%2?1:0), a.history[a.history.length-1]];
     const n=Object.keys(b.history[b.history.length-1].per).length;
