@@ -80,9 +80,14 @@ per-section-file era and many items in them are now done).
   clipboard works, "Add to Home screen" gives an icon. Only Croix can do this (API writes are refused).
 - **Rotate the fine-grained PAT** that was pasted into chat on 26 Sep once pushing is done.
 - First week of history: Race movement, trends, "since last import" and sliding need a second import.
-- Not yet built (ideas Croix hasn't green-lit): weekly "what changed" digest per class; one-page student
-  report folding the Grades card and IXL "still owed" together; plain-language parent version; Data Lab
-  panel fit at 900 px tall; Race naming pass.
+- Not yet built (ideas Croix hasn't green-lit): one-page student report folding the Grades card and the IXL
+  "still owed" list together; plain-language parent version of it; Data Lab panel fit at 900 px tall on the
+  Promethean (three classes with stats overflow); Race naming pass; a way to mark a student's modified
+  assignment list once for every unit (per-student skips are per cell today).
+- Known rough edges: a student in two classes of the same course can't be — pools carve each name into one
+  class; the IXL-only "not on roster" flag for a pool class means the name matched no roster line anywhere;
+  the calm grid is still a dense table (Just Unit N is the relief); category asker fires for every new
+  assignment when a gradebook has no Grade column.
 - `Scrub.html` still exposes `window.__scrub` (test-only data, left on purpose).
 
 ## Working on the code
