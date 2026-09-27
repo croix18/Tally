@@ -71,6 +71,11 @@ per-section-file era and many items in them are now done).
   `SEATING_SPEC.md`) — one shared room, solver, moves with consequences, prints. v8 stays the yearly importer of
   photos + FAST: drop its JSON backup on Tally. Placement uses a live "standing" (FAST pct blended with the class
   percentile ranks of the Focus grade and IXL completion). Decision: no pdf.js in Tally (would quadruple the file).
+- **Round 4 hardening** (27 Sep, late): four reviewers on Seating (`review/round4-*.md`, `ROUND4_FINDINGS.md`) →
+  every P0/P1 fixed: fit no longer collapses on save, options/selection are per class, zero desks can't crash,
+  leaving mid-solve aborts it, ghosts of departed students are freed, per-section re-import keeps
+  grades/seating, Names off hides every seating detail, imports are coerced (ids, numbers, data-URL photos
+  only), save() reports quota failures, Seat by hand, honest fit caption, standing shows its ranks.
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 

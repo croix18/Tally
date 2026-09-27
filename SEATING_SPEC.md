@@ -51,6 +51,12 @@ remapped to Tally names within the same class. The room comes in only if Tally's
 comes in only if the class has none and the desk ids exist. Weights merge. Unmatched names are listed in the toast.
 The Tally backup (Settings) carries room, weights, saved charts and seatInfo.
 
+## Round 4 (27 Sep, late)
+See `ROUND4_FINDINGS.md`. Notables: `buildModel(sec, stu, G, withFresh)` — the fresh-partners term only when
+generating; `seatCandsBy`/`seatUiFor` keep options and selection per class; `pruneSeats` frees seats of students
+no longer on the roster; `cleanSeatInfo`/`cleanId`/`numOr` coerce everything from imports and backups; prints
+ignore the Names toggle (`seatPlain`); "Seat by hand" when there is no chart or more students than desks.
+
 ## Not carried over / open
 - The pdf.js Class List import (photos + FAST come via the JSON backup instead).
 - v8's per-period rename/delete (Tally classes are managed in Settings).

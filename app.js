@@ -53,7 +53,7 @@ function migrate() {
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
     if (s.hiddenUnits && Object.keys(s.hiddenUnits).length) { for (const u in s.hiddenUnits) if (state.assigned[s.prep || 'on'][u] == null) state.assigned[s.prep || 'on'][u] = !s.hiddenUnits[u]; s.hiddenUnits = {}; }
     s.aliases = s.aliases || {}; s.hiddenUnits = s.hiddenUnits || {};
-    s.seatInfo = s.seatInfo && typeof s.seatInfo === 'object' ? s.seatInfo : {}; if (s.seating && (typeof s.seating !== 'object' || !s.seating.seats || typeof s.seating.seats !== 'object')) delete s.seating;
+    s.seatInfo = s.seatInfo && typeof s.seatInfo === 'object' ? s.seatInfo : {}; for (const k in s.seatInfo) s.seatInfo[k] = cleanSeatInfo(s.seatInfo[k]); if (s.seating && (typeof s.seating !== 'object' || !s.seating.seats || typeof s.seating.seats !== 'object')) delete s.seating;
     s.gradeHistory = Array.isArray(s.gradeHistory) ? s.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : [];
     // snapshots once carried per-student mastered/touched arrays that nothing reads; keep only the aggregate fields
     s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
@@ -68,7 +68,7 @@ function migrate() {
   for (const k in state.sections) if (!state.order.includes(k)) state.order.push(k);
 }
 function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (fallback != null ? fallback : DEFAULT_THR.on) : Math.max(1, Math.min(100, n)); }
-function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { toast('Could not save to this browser (storage blocked). Your data stays until you close the tab.', true); } }
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); return true; } catch (e) { toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
 function norm(s) {
@@ -228,7 +228,7 @@ async function importFiles(files) {
         if (obj && obj.tally) { fails.push(esc(f.name) + ': that is a Tally backup — load it from Settings → Load backup'); continue; }
         if (!looksLikeSeatingBackup(obj)) { fails.push(esc(f.name) + ': not a Seating Chart backup'); continue; }
         const r = await importSeatingBackup(obj); save();
-        toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
+        toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).map(n => shown(n)).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
         render(); continue;
       }
       const rows = await fileToRows(f);
@@ -279,6 +279,7 @@ async function importFiles(files) {
         roster: keep.roster || '', rosterAt: keep.rosterAt || null, skipRoster: !!keep.skipRoster,
         excluded: state.skips[keep.prep || (meta.accelerated ? 'acc' : 'on')], ignored: keep.ignored || {}, aliases: keep.aliases || {}, hiddenUnits: {}, studentSkips: keep.studentSkips || {},
         history: keep.history || [], team: keep.team || '', prep: keep.prep || (meta.accelerated ? 'acc' : 'on'),
+        grades: keep.grades, gradeHistory: keep.gradeHistory || [], seating: keep.seating, seatInfo: keep.seatInfo || {}, period: keep.period,   // the weekly re-import must not drop what the gradebook, the seating chart and the backup put here
         placeholder, allBlank
       };
       snapshot(state.sections[meta.key]);
@@ -933,6 +934,7 @@ function askNewClass(fileName, gb) {
       state.sections[key] = { key, label, autoLabel: label, period, pool: true, accelerated: prep === 'acc', prep, threshold: prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on,
         date: null, file: '', importedAt: new Date().toISOString(), students: [], skills: [], scores: [], roster: '', rosterAt: null, skipRoster: false,
         excluded: state.skips[prep], ignored: {}, aliases: {}, hiddenUnits: {}, studentSkips: {}, history: [], team: '', placeholder: false, allBlank: false, best: null, receipts: {}, _keys: null };
+      const held = state.pendingCfg[key]; if (held) { const s0 = state.sections[key]; ['threshold', 'roster', 'rosterAt', 'skipRoster', 'ignored', 'aliases', 'studentSkips', 'history', 'gradeHistory', 'seating', 'seatInfo'].forEach(f => { if (held[f] != null) s0[f] = held[f]; }); if (held.label) s0.label = held.label; delete state.pendingCfg[key]; }   // a backup loaded before the class existed
       if (!state.order.includes(key)) state.order.push(key); state.active = key;
       done(key);
     };
@@ -981,6 +983,7 @@ function render() {
   $('#btnHome').setAttribute('aria-pressed', String(view.mode === 'home'));
   $('#btnDetails').classList.toggle('hidden', !has);
   $('#btnDetails').setAttribute('aria-pressed', String(!!state.settings.details));
+  if (seatSolving && !(view.mode === 'seating')) seatAbort();
   document.body.classList.toggle('details', !!state.settings.details);
   document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && view.mode === 'grades'); document.body.classList.toggle('seating', has && view.mode === 'seating');
   if (!has) return;
@@ -1616,7 +1619,7 @@ function openSettings() {
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     save(); close(); render(); toast('Saved', false);
   };
-  $('#forget').onclick = () => { if (!confirm(`Remove ${s.label} from Tally? Its roster and exclusions go too.`)) return; delete state.sections[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
+  $('#forget').onclick = () => { if (!confirm(`Remove ${s.label} from Tally? Its roster and exclusions go too.`)) return; delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#wipe').onclick = () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
     if (!confirm(`Clear everything Tally has saved in this browser — ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? Save a backup first if you want the rosters back.`)) return;
@@ -1732,6 +1735,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Tab' && open) { const items = [...m.querySelectorAll(FOCUSABLE)].filter(el => el.offsetParent !== null); if (!items.length) return; const i = items.indexOf(document.activeElement); if (e.shiftKey && (i <= 0)) { e.preventDefault(); items[items.length - 1].focus(); } else if (!e.shiftKey && (i === -1 || i === items.length - 1)) { e.preventDefault(); items[0].focus(); } return; }
   if (e.key !== 'Escape') return;
   if (open) { (m._cancel || (() => m.classList.add('hidden')))(); return; }
+  if (view.mode === 'seating' && (seatSel || seatPending)) { seatSel = null; seatPending = null; seatHover = null; render(); return; }
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
 });
 window.__tally = { get state() { return state; }, save, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, unitColumn, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };

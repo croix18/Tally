@@ -467,7 +467,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 @media (max-width:1000px){.seat{grid-template-columns:1fr}}
 .seatSide{display:flex;flex-direction:column;gap:10px;min-width:0}.seatMain{min-width:0;position:sticky;top:0}
 .seatHint{margin:0 0 6px}.chart-stage{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:8px;box-shadow:var(--shadow-1)}
-.chart-stage .chartSvg{max-height:min(74vh,720px);margin:0 auto}.cdesk{cursor:pointer}
+.chart-stage .chartSvg{max-height:max(320px,calc(100vh - 300px));margin:0 auto}.cdesk{cursor:pointer}
 .pill.big{min-height:52px;font-size:var(--t-l);justify-content:center}
 .prog{height:6px;border-radius:999px;background:var(--sand);overflow:hidden}.prog i{display:block;height:100%;width:0;background:var(--teal);transition:width .2s}
 .cand{display:flex;gap:6px;flex-wrap:wrap}.cand button{flex:1;min-width:110px;border:2px solid var(--grid);background:var(--white);border-radius:12px;padding:8px 10px;font:inherit;font-weight:800;color:var(--navy);cursor:pointer;text-align:left;min-height:44px}.cand button small{display:block;font-weight:600;color:var(--ink-soft);font-size:var(--t-xs)}.cand button.on{border-color:var(--teal);background:var(--paleturq)}
@@ -488,17 +488,18 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 .chip.rel{background:var(--white);border-color:var(--grid);color:var(--navy)}.chip.apart{background:var(--coral);border-color:var(--bad);color:var(--bad)}.chip.near{background:var(--paleturq);border-color:var(--teal);color:var(--teal)}
 .linkbtn{background:none;border:none;font:inherit;font-weight:800;color:var(--teal);text-decoration:underline;cursor:pointer;padding:0}
 .wt{display:grid;grid-template-columns:1fr 140px 28px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--grid)}.wt label{font-weight:700}.wt label small{display:block;font-weight:500;color:var(--ink-soft);font-size:var(--t-xs)}.wt b{text-align:right;font-variant-numeric:tabular-nums}
+.txt{border:2px solid var(--grid);border-radius:10px;padding:8px 10px;font:inherit;width:100%;background:var(--white);color:var(--navy)}textarea.txt{font-family:inherit;resize:vertical}.seg button.on.hot{background:var(--bad);color:var(--white)}input[type=range]{accent-color:var(--teal)}
 .chk{display:flex;gap:10px;align-items:center;font-weight:600;padding:8px 0}.chk input{width:20px;height:20px;accent-color:var(--teal)}
 /* room editor */
 .room{padding:12px 16px 20px;display:flex;flex-direction:column;gap:10px}.room .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .mini{width:70px;border:1px solid var(--grid);border-radius:8px;padding:6px 8px;font:inherit;font-weight:700}
 .selbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:var(--paleturq);border-radius:12px;padding:6px 10px}.selbar .nudge{display:inline-flex;gap:2px;margin-left:6px}
 .ib{min-width:36px;min-height:36px;border:1px solid var(--grid);background:var(--white);border-radius:8px;font:inherit;font-weight:800;cursor:pointer;color:var(--navy);padding:0 8px}.ib.danger{background:var(--coral);color:var(--bad);border-color:transparent}
-.stage{position:relative;background:var(--white);border:1px solid var(--grid);border-radius:var(--r);box-shadow:var(--shadow-1);overflow:hidden;touch-action:none}.stage svg{width:100%;height:min(70vh,640px);display:block}
+.stage{position:relative;background:var(--white);border:1px solid var(--grid);border-radius:var(--r);box-shadow:var(--shadow-1);overflow:hidden;touch-action:none}.stage svg{width:100%;height:max(320px,calc(100vh - 340px));display:block}
 .zoomctl{position:absolute;right:10px;bottom:10px;display:flex;gap:4px}
 .g-desk,.g-teacher,.g-door{cursor:grab}.g-desk.sel .cdesk-r,.g-teacher.sel .tdesk,.g-door.sel .door{stroke:#0F766E;stroke-width:3.5}
 .tpls{display:flex;flex-direction:column;gap:8px}.tpl{display:flex;gap:12px;align-items:center;background:var(--white);border:2px solid var(--grid);border-radius:12px;padding:8px 12px;font:inherit;color:var(--navy);cursor:pointer;text-align:left;min-height:60px}.tpl:hover{border-color:var(--teal)}.tpl span b{display:block}.tpl span small{color:var(--ink-soft)}.tplPrev{width:100px;height:68px;flex:none}
-@media (max-width:1000px){.seatMain{position:static}.seatList{max-height:none}}
+@media (max-width:1000px){.seatMain{position:static;order:-1}.seatList{max-height:none}.chart-stage .chartSvg{max-height:60vh}}
 
 /* ---- touch: every everyday control reaches 44px on the tablet and panel; the laptop keeps its compact sizes ---- */
 @media (hover:none),(pointer:coarse){
@@ -510,6 +511,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   .gasg select,.gstu td button,.gstu td .nm{min-height:44px}
   #search{min-height:44px}
   .more .menu button{min-height:48px}
+  .ib{min-width:44px;min-height:44px}.mini{min-height:44px}.notice button{min-height:44px}.seatSide summary{min-height:44px;display:flex;align-items:center}.chip.rel{min-height:44px}
 }
 </style>
 </head>
@@ -1530,12 +1532,24 @@ const DESK = 70, SEAT_HARD = 1000, PARTNER_D = DESK + 18, NEIGHBOR_D = DESK * 2.
 const seatUid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
 const snap10 = v => Math.round(v / 10) * 10;
 const titleCase = s => String(s || '').toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (m, p, c) => p + c.toUpperCase());
+const PHOTO_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+const cleanId = id => { const t = String(id == null ? '' : id).replace(/[^\w-]/g, '').slice(0, 24); return t || seatUid(); };
+const numOr = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
+// Every seatInfo record is coerced on load, restore and import: nothing but plain strings, small numbers and a
+// bounded JPEG/PNG data URL ever reaches the page (values are also escaped where they are rendered).
+function cleanSeatInfo(i) {
+  i = i && typeof i === 'object' ? i : {}; const str = v => typeof v === 'string' ? v.slice(0, 2000) : ''; const arr = v => Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 200) : [];
+  const level = Number.isInteger(+i.level) && +i.level >= 1 && +i.level <= 5 ? +i.level : null;
+  return { nick: str(i.nick).slice(0, 40), behavior: ['low', 'medium', 'high'].includes(i.behavior) ? i.behavior : 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: ['', 'ESE', '504', 'ESE+504'].includes(i.plan) ? i.plan : '', accom: str(i.accom), apart: arr(i.apart), together: arr(i.together), notes: str(i.notes), photo: typeof i.photo === 'string' && i.photo.length <= 20000 && PHOTO_RE.test(i.photo) ? i.photo : null, level, pct: i.pct == null ? null : numOr(i.pct, null, 0, 100), scale: i.scale == null ? null : numOr(i.scale, null, 0, 2000) };
+}
 function freshRoom() { return { w: 900, h: 600, front: 'top', desks: [], teacher: { x: 740, y: 500, w: 130, h: 64 }, door: { x: 20, y: 560 } }; }
 function roomOK() {
   const r = state.room; if (!r || typeof r !== 'object' || !Array.isArray(r.desks)) { state.room = freshRoom(); return state.room; }
   r.w = Math.max(400, +r.w || 900); r.h = Math.max(300, +r.h || 600); r.front = ['top', 'right', 'bottom', 'left'].includes(r.front) ? r.front : 'top';
-  r.desks = r.desks.filter(d => d && d.id).map(d => ({ id: String(d.id), x: +d.x || 0, y: +d.y || 0, r: +d.r || 0 }));
-  if (r.teacher && typeof r.teacher !== 'object') r.teacher = null; if (r.door && typeof r.door !== 'object') r.door = null;
+  const seen = new Set(); r.desks = r.desks.filter(d => d && typeof d === 'object').map(d => { let id = cleanId(d.id); while (seen.has(id)) id = seatUid(); seen.add(id); return { id, x: numOr(d.x, 0, 0, 5000), y: numOr(d.y, 0, 0, 5000), r: numOr(d.r, 0, -360, 360) }; });
+  r.teacher = r.teacher && typeof r.teacher === 'object' ? { x: numOr(r.teacher.x, 0, 0, 5000), y: numOr(r.teacher.y, 0, 0, 5000), w: numOr(r.teacher.w, 130, 20, 600), h: numOr(r.teacher.h, 64, 20, 600) } : null;
+  r.door = r.door && typeof r.door === 'object' ? { x: numOr(r.door.x, 0, 0, 5000), y: numOr(r.door.y, 0, 0, 5000) } : null;
+  const w = state.seatWeights; if (w && typeof w === 'object') for (const k in w) w[k] = numOr(w[k], SEAT_FACTORS.find(f => f.k === k) ? SEAT_FACTORS.find(f => f.k === k).def : 0, 0, 10);
   return r;
 }
 const SEAT_FACTORS = [
@@ -1548,10 +1562,10 @@ const SEAT_FACTORS = [
   { k: 'fresh', label: 'New partners', desc: 'Avoid repeating partners from the saved chart', def: 3 },
   { k: 'fill', label: 'Fill from the front', desc: 'Leave empty desks at the back of the room', def: 2 },
 ];
-function seatW(k) { const w = state.seatWeights || {}; const f = SEAT_FACTORS.find(f => f.k === k); return w[k] == null ? f.def : +w[k]; }
+function seatW(k) { const w = state.seatWeights || {}; const f = SEAT_FACTORS.find(f => f.k === k); return w[k] == null ? f.def : numOr(w[k], f.def, 0, 10); }
 
 /* ---- students of a class, for seating ---- */
-function seatInfoOf(sec, display) { sec.seatInfo = sec.seatInfo || {}; return sec.seatInfo[display] = sec.seatInfo[display] || { nick: '', behavior: 'low', front: false, nearTeacher: false, plan: '', accom: '', apart: [], together: [], notes: '', photo: null, level: null, pct: null, scale: null }; }
+function seatInfoOf(sec, display) { sec.seatInfo = sec.seatInfo || {}; return sec.seatInfo[display] = sec.seatInfo[display] || cleanSeatInfo(null); }
 function splitDisplay(display) { const m = String(display).match(/^([^,]+),\s*(.*)$/); if (m) { const p = m[2].trim().split(/\s+/); return { last: m[1].trim(), first: p[0] || '', middle: p.slice(1).join(' ') }; } const t = String(display).trim().split(/\s+/); return { first: t[0] || '', last: t.slice(1).join(' '), middle: '' }; }
 const rankPct = (vals, v) => { const xs = vals.filter(x => x != null); if (v == null || xs.length < 2) return null; const below = xs.filter(x => x < v).length, eq = xs.filter(x => x === v).length; return Math.round((below + eq / 2) / xs.length * 100); };
 // Roster rows (Focus names) → seating students, with live standing: the mean of the FAST percentile and the class
@@ -1566,12 +1580,15 @@ function seatStudents(sec) {
   return base.map(s => { const i = s.info; const parts = [i.pct, rankPct(grades, s.grade), rankPct(ixls, s.ixlPct)].filter(v => v != null); const standing = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
     return { ...s, nick: i.nick || '', behavior: i.behavior || 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: i.plan || '', accom: i.accom || '', apart: (i.apart || []).slice(), together: (i.together || []).slice(), notes: i.notes || '', photo: i.photo || null, level: i.level || null, pct: i.pct, standing, gradeRank: rankPct(grades, s.grade), ixlRank: rankPct(ixls, s.ixlPct) }; });
 }
-const seatName = s => state.settings.hideNames ? mask(s.display) : (s.nick ? `${s.nick} ${titleCase(s.last)}` : `${titleCase(s.first)} ${titleCase(s.last)}`);
-const seatShort = s => { if (state.settings.hideNames) return mask(s.display); const f = s.nick || titleCase(s.first), l = titleCase(s.last); let t = `${f} ${l[0] || ''}.`; if (t.length > 13) t = f.slice(0, 11) + '…'; return t; };
+let seatPlain = false;   // set while printing: the teacher asked for the page, so names and photos print
+const seatHidden = () => state.settings.hideNames && !seatPlain;
+const seatName = s => seatHidden() ? mask(s.display) : (s.nick ? `${s.nick} ${titleCase(s.last)}` : `${titleCase(s.first)} ${titleCase(s.last)}`);
+const seatShort = s => { if (seatHidden()) return mask(s.display); const f = s.nick || titleCase(s.first), l = titleCase(s.last); let t = `${f} ${l[0] || ''}.`; if (t.length > 13) t = f.slice(0, 11) + '…'; return t; };
 const standingOf = s => s.standing == null ? 50 : s.standing;
 const lowStanding = s => standingOf(s) < 25 || s.level === 1;
 const allowedDepth = s => { const p = standingOf(s); return p < 25 ? 0.5 : p < 50 ? 0.75 : 1; };
-const standingText = s => { const bits = []; if (s.pct != null) bits.push(`FAST ${s.pct}th pct${s.level ? ' (L' + s.level + ')' : ''}`); if (s.grade != null) bits.push(`Focus ${Math.round(s.grade)}%`); if (s.ixlPct != null) bits.push(`IXL ${Math.round(s.ixlPct)}%`); return bits.length ? bits.join(' · ') + ` → standing ${standingOf(s)}` : 'no scores yet — treated as mid-level'; };
+// Standing is relative to the class: the FAST state percentile averaged with the class percentile ranks of the Focus grade and IXL completion.
+const standingText = s => { const bits = []; if (s.pct != null) bits.push(`FAST ${s.pct}th pct${s.level ? ' (L' + s.level + ')' : ''}`); if (s.grade != null) bits.push(`Focus ${Math.round(s.grade)}% (rank ${s.gradeRank} in class)`); if (s.ixlPct != null) bits.push(`IXL ${Math.round(s.ixlPct)}% (rank ${s.ixlRank})`); return bits.length ? bits.join(' · ') + ` → standing ${standingOf(s)}` : 'no scores yet — treated as mid-level'; };
 
 /* ---- geometry ---- */
 function deskNumbers() {
@@ -1597,9 +1614,10 @@ function rowIndex(G) {
 }
 
 /* ---- model + scoring ---- */
-function buildModel(sec, stu, G) {
+// withFresh: penalise partners from the saved chart — only when GENERATING a new one (scoring the saved chart against itself would zero its own fit).
+function buildModel(sec, stu, G, withFresh) {
   const n = stu.length, m = G.ds.length; const U = [], P = [], hard = []; const prevPartners = new Set(); const saved = sec.seating;
-  if (saved && seatW('fresh') > 0) { const inv = {}; for (const [d, sid] of Object.entries(saved.seats || {})) inv[sid] = d; const di = {}; G.ds.forEach((d, i) => di[d.id] = i);
+  if (withFresh && saved && seatW('fresh') > 0) { const inv = {}; for (const [d, sid] of Object.entries(saved.seats || {})) inv[sid] = d; const di = {}; G.ds.forEach((d, i) => di[d.id] = i);
     for (const a of stu) for (const b of stu) { if (a.id >= b.id) continue; const da = di[inv[a.id]], db = di[inv[b.id]]; if (da != null && db != null && G.rel[da][db] === 2) prevPartners.add(a.id + '|' + b.id); } }
   for (let i = 0; i < n; i++) { const s = stu[i]; U.push(new Float64Array(m));
     for (let d = 0; d < m; d++) { let u = 0; const dep = G.depth[d]; if (s.front) u += seatW('front') * dep * 2; if (s.nearTeacher) u += seatW('teacher') * G.tdist[d] * 2; const over = dep - allowedDepth(s); if (over > 0) u += seatW('fast') * over * 3; u += seatW('fill') * dep * 0.5; U[i][d] = u; } }
@@ -1617,14 +1635,14 @@ function totalScore(M, G, asg) { let t = 0, h = 0; for (let i = 0; i < M.n; i++)
 const shuffleArr = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = 0 | Math.random() * (i + 1); [b[i], b[j]] = [b[j], b[i]]; } return b; };
 function randomAsg(M) { return shuffleArr([...Array(M.m).keys()]).slice(0, M.n); }
 let seatBase = { key: '', v: 0 };
-function seatBaseline(sec, M, G) { const key = sec.key + '|' + JSON.stringify(state.seatWeights || {}) + '|' + M.n + '|' + M.m; if (seatBase.key === key) return seatBase.v; let b = 0; for (let k = 0; k < 30; k++) b += totalScore(M, G, randomAsg(M)).soft; b /= 30; seatBase = { key, v: b }; return b; }
+function seatBaseline(sec, M, G) { if (!M.m || !M.n || M.n > M.m) return 0; const key = sec.key + '|' + JSON.stringify(state.seatWeights || {}) + '|' + M.n + '|' + M.m; if (seatBase.key === key) return seatBase.v; let b = 0; for (let k = 0; k < 30; k++) b += totalScore(M, G, randomAsg(M)).soft; b /= 30; seatBase = { key, v: b }; return b; }
 function seatsFromAsg(asg, stu, G) { const seats = {}; asg.forEach((d, i) => seats[G.ds[d].id] = stu[i].id); return seats; }
 function asgFromSeats(seats, stu, G) { const di = {}; G.ds.forEach((d, i) => di[d.id] = i); const at = {}; for (const [d, sid] of Object.entries(seats)) if (di[d] != null) at[sid] = di[d]; return stu.map(s => at[s.id] ?? -1); }
 function scoreSeats(sec, seats, stu, G, M) {
   const asg = asgFromSeats(seats, stu, G); let t = 0, h = 0;
   for (let i = 0; i < M.n; i++) { if (asg[i] < 0) continue; t += M.U[i][asg[i]]; for (let j = i + 1; j < M.n; j++) { if (asg[j] < 0) continue; t += M.P[i][j][G.rel[asg[i]][asg[j]]]; } }
   for (const [i, j] of M.hard) if (asg[i] >= 0 && asg[j] >= 0 && G.rel[asg[i]][asg[j]] > 0) h++;
-  const b = seatBaseline(sec, M, G); const fit = h ? 0 : Math.min(100, b > 0 ? Math.round(100 * Math.max(0, 1 - t / b)) : 100);
+  const b = seatBaseline(sec, M, G); const fit = h ? 0 : Math.min(100, b > 0 ? Math.round(100 * Math.max(0, 1 - t / b)) : (M.m && M.n ? 100 : 0));
   return { fit, soft: t, hard: h };
 }
 const SEAT_WORKER = `
@@ -1671,14 +1689,14 @@ function explainSeats(seats, stu, G) {
     for (const b of stu) { if (a.id >= b.id) continue; const db = at[b.id]; if (db == null) continue; const r = G.rel[da][db]; if (!r) continue; const key = a.id + '|' + b.id; if (seen.has(key)) continue; seen.add(key);
       const where = r === 2 ? 'partners' : 'neighbors';
       if (a.apart.includes(b.id)) issues.push({ t: 'hard', msg: `${nm(a)} & ${nm(b)} are ${where} — keep-apart rule` });
-      else if (a.behavior === 'high' && b.behavior === 'high') issues.push({ t: 'warn', msg: `${nm(a)} & ${nm(b)} are ${where} — both high behavior` });
-      else if (r === 2 && ((a.behavior === 'high' && b.behavior === 'medium') || (b.behavior === 'high' && a.behavior === 'medium'))) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} partners — high + medium behavior` });
-      if (r === 2 && lowStanding(a) && lowStanding(b)) issues.push({ t: 'warn', msg: `${nm(a)} & ${nm(b)} partners — both low standing` }); }
-    for (const tid of a.together) { const b = stu.find(s => s.id === tid); if (!b || a.id > b.id) continue; const db = at[b.id]; if (db != null && !G.rel[da][db]) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} wanted near each other — not near` }); }
+      else if (seatW('behavior') && a.behavior === 'high' && b.behavior === 'high') issues.push({ t: 'warn', msg: `${nm(a)} & ${nm(b)} are ${where} — both high behavior` });
+      else if (seatW('behavior') && r === 2 && ((a.behavior === 'high' && b.behavior === 'medium') || (b.behavior === 'high' && a.behavior === 'medium'))) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} partners — high + medium behavior` });
+      if (seatW('mix') && r === 2 && lowStanding(a) && lowStanding(b)) issues.push({ t: 'warn', msg: `${nm(a)} & ${nm(b)} partners — both low standing` }); }
+    if (seatW('together')) for (const tid of a.together) { const b = stu.find(s => s.id === tid); if (!b || a.id > b.id) continue; const db = at[b.id]; if (db != null && !G.rel[da][db]) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} wanted near each other — not near` }); }
     const dep = G.depth[da];
-    if (a.front && dep > 0.34) issues.push({ t: 'warn', msg: `${nm(a)} needs a front seat — sitting ${dep > 0.67 ? 'in the back' : 'mid-room'}` });
-    if (a.nearTeacher && G.tdist[da] > 0.4) issues.push({ t: 'warn', msg: `${nm(a)} should be near the teacher desk — isn't` });
-    if (!a.front && dep > allowedDepth(a) + 0.05) issues.push({ t: 'info', msg: `${nm(a)} (standing ${standingOf(a)}) is further back than the band suggests` }); }
+    if (seatW('front') && a.front && dep > 0.34) issues.push({ t: 'warn', msg: `${nm(a)} needs a front seat — sitting ${dep > 0.67 ? 'in the back' : 'mid-room'}` });
+    if (seatW('teacher') && a.nearTeacher && G.tdist[da] > 0.4) issues.push({ t: 'warn', msg: `${nm(a)} should be near the teacher desk — isn't` });
+    if (seatW('fast') && !a.front && dep > allowedDepth(a) + 0.05) issues.push({ t: 'info', msg: `${nm(a)} (standing ${standingOf(a)}) is further back than the band suggests` }); }
   const order = { hard: 0, warn: 1, info: 2 }; issues.sort((x, y) => order[x.t] - order[y.t]); return issues;
 }
 function whyHere(sec, work, sid, deskId, stu, G) {
@@ -1690,7 +1708,7 @@ function whyHere(sec, work, sid, deskId, stu, G) {
   else lines.push({ ok: true, msg: 'No scores yet — treated as mid-level' });
   if (s.front) lines.push({ ok: dep <= 0.34, msg: `Front-seat flag${dep <= 0.34 ? ' ✓' : ' — not in the front third'}` });
   if (s.nearTeacher) lines.push({ ok: G.tdist[d] <= 0.4, msg: `Near-teacher flag${G.tdist[d] <= 0.4 ? ' ✓' : ' — far from your desk'}` });
-  if (s.plan) lines.push({ ok: true, msg: `${s.plan}${s.accom ? ': ' + s.accom : ''}`, plan: true });
+  if (s.plan && !seatHidden()) lines.push({ ok: true, msg: `${s.plan}${s.accom ? ': ' + s.accom : ''}`, plan: true });
   const partners = [], neighbors = [];
   for (const o of stu) { if (o.id === s.id || at[o.id] == null) continue; const r = G.rel[d][at[o.id]]; if (r === 2) partners.push(o); else if (r === 1) neighbors.push(o); }
   const tag = o => `${seatName(o)}${o.behavior === 'high' ? ' (H)' : o.behavior === 'medium' ? ' (M)' : ''}${o.level ? ' L' + o.level : ''}`;
@@ -1699,40 +1717,47 @@ function whyHere(sec, work, sid, deskId, stu, G) {
   for (const tid of s.apart) { const o = stu.find(x => x.id === tid); if (!o) continue; const r = at[o.id] == null ? 0 : G.rel[d][at[o.id]]; lines.push({ ok: r === 0, msg: `Keep apart from ${seatName(o)}${r ? ' — TOO CLOSE' : ' ✓'}` }); }
   for (const tid of s.together) { const o = stu.find(x => x.id === tid); if (!o) continue; const r = at[o.id] == null ? 0 : G.rel[d][at[o.id]]; lines.push({ ok: r > 0, msg: `Wants to sit near ${seatName(o)}${r ? ' ✓' : ' — not near'}` }); }
   if (s.behavior === 'high') lines.push({ ok: true, msg: 'High behavior — the solver keeps other H students away' });
-  if (s.notes && !state.settings.hideNames) lines.push({ ok: true, msg: 'Note: ' + s.notes });
+  if (s.notes && !seatHidden()) lines.push({ ok: true, msg: 'Note: ' + s.notes });
   return lines;
 }
 /* ---- working chart per class (unsaved edits live here until Save) ---- */
 const seatWork = {};   // sec.key → { seats, locks, source, dirty, undo, candIdx }
-let seatCands = [], seatSolving = false, seatSel = null, seatHover = null, seatLast = null, seatPending = null, roomSel = null, roomView = null;
+const seatCandsBy = {};   // sec.key → generated options (the panel of one class never shows another's)
+let seatSolving = false, seatGenId = 0, seatUiKey = null, seatSel = null, seatHover = null, seatLast = null, seatPending = null, roomSel = null, roomView = null;
+function seatAbort() { if (seatWorker) { seatWorker.terminate(); seatWorker = null; } seatSolving = false; seatGenId++; }
+// Selection, hover, last move and pending reseat belong to one class; switching classes clears them.
+function seatUiFor(sec) { if (seatUiKey !== sec.key) { seatUiKey = sec.key; seatSel = null; seatHover = null; seatLast = null; seatPending = null; } }
+// Seats held by someone no longer on the roster are freed (a withdrawn or renamed student must not block a desk).
+function pruneSeats(w, stu) { const ok = new Set(stu.map(x => x.id)); let n = 0; for (const d of Object.keys(w.seats)) if (!ok.has(w.seats[d])) { delete w.seats[d]; n++; } for (const k of Object.keys(w.locks || {})) if (!ok.has(k)) delete w.locks[k]; return n; }
 const roomUndo = [];
 function workFor(sec) { if (seatWork[sec.key]) return seatWork[sec.key]; const sv = sec.seating; if (sv && sv.seats) seatWork[sec.key] = { seats: JSON.parse(JSON.stringify(sv.seats)), locks: { ...(sv.locks || {}) }, source: 'saved', dirty: false, undo: [] }; return seatWork[sec.key] || null; }
 function setWork(sec, seats, source) { const prev = seatWork[sec.key]; seatWork[sec.key] = { seats: JSON.parse(JSON.stringify(seats)), locks: { ...((prev && prev.locks) || (sec.seating && sec.seating.locks) || {}) }, source, dirty: false, undo: [] }; seatSel = null; seatLast = null; return seatWork[sec.key]; }
 async function seatGenerate(sec) {
   const stu = seatStudents(sec); const G = geometry(); if (!stu.length || stu.length > G.ds.length) return;
-  seatSolving = true; seatCands = []; seatSel = null; renderSeating(sec);
+  seatSolving = true; seatCandsBy[sec.key] = []; seatSel = null; const myGen = ++seatGenId; renderSeating(sec);
   try {
-    const M = buildModel(sec, stu, G); const fixed = stu.map(() => -1); const w = workFor(sec);
+    const M = buildModel(sec, stu, G, true); const fixed = stu.map(() => -1); const w = workFor(sec);
     if (w) { const di = {}; G.ds.forEach((d, i) => di[d.id] = i); for (const [d, sid] of Object.entries(w.seats)) { const i = stu.findIndex(s => s.id === sid); if (i >= 0 && w.locks[sid] && di[d] != null) fixed[i] = di[d]; } }
     const res = await runSolver(M, G, { fixed, restarts: 5, budgetMs: 1500, onProgress: p => { const b = $('#seatBar'); if (b) b.style.width = Math.round(p * 100) + '%'; } });
-    res.sort((a, b) => a.total - b.total); const out = [], seenKeys = [];
-    for (const r of res) { const key = r.asg.join(','); if (seenKeys.includes(key)) continue; const dup = out.some(o => o.asg.filter((d, i) => d === r.asg[i]).length >= r.asg.length * 0.85); if (dup && out.length) continue; seenKeys.push(key); const seats = seatsFromAsg(r.asg, stu, G); out.push({ asg: r.asg, seats, ...scoreSeats(sec, seats, stu, G, M) }); if (out.length >= 4) break; }
-    seatCands = out; if (out.length) { const nw = setWork(sec, out[0].seats, 'cand'); nw.candIdx = 0; }
-  } catch (e) { console.error(e); toast('Solver error: ' + e.message, true); }
-  seatSolving = false; renderSeating(sec);
+    if (myGen !== seatGenId) return;   // aborted (the teacher left the view) or superseded
+    res.sort((a, b) => a.total - b.total); const out = [], seenKeys = []; const Ms = buildModel(sec, stu, G, false);
+    for (const r of res) { const key = r.asg.join(','); if (seenKeys.includes(key)) continue; const dup = out.some(o => o.asg.filter((d, i) => d === r.asg[i]).length >= r.asg.length * 0.85); if (dup && out.length) continue; seenKeys.push(key); const seats = seatsFromAsg(r.asg, stu, G); out.push({ asg: r.asg, seats, ...scoreSeats(sec, seats, stu, G, Ms) }); if (out.length >= 4) break; }
+    seatCandsBy[sec.key] = out; if (out.length) { const nw = setWork(sec, out[0].seats, 'cand'); nw.candIdx = 0; }
+  } catch (e) { console.error(e); if (myGen === seatGenId) toast('Solver error: ' + e.message, true); }
+  if (myGen !== seatGenId) return;
+  seatSolving = false; if (view.mode === 'seating' && state.active === sec.key && view.sub !== 'room') render();
 }
 function seatMove(sec, w, fromDesk, toDesk, preview) {
   const seats = preview ? JSON.parse(JSON.stringify(w.seats)) : w.seats; const a = seats[fromDesk], b = seats[toDesk]; if (!a && !b) return null;
-  if (!preview) { if (a && w.locks[a]) { toast(`${esc(seatName(seatStudents(sec).find(s => s.id === a) || { display: a, first: '', last: '' }))} is locked — unlock to move.`, true); return null; } if (b && w.locks[b]) { toast('That seat is locked — unlock to move.', true); return null; } }
+  if (!preview) { if ((a && w.locks[a]) || (b && w.locks[b])) { toast('That seat is locked — unlock it to move.', true); return null; } }
   const stu = seatStudents(sec), G = geometry(), M = buildModel(sec, stu, G);
   const before = { issues: explainSeats(seats, stu, G), ...scoreSeats(sec, seats, stu, G, M) };
   if (!preview) { w.undo.push(JSON.stringify(seats)); if (w.undo.length > 50) w.undo.shift(); }
   if (a && b) { seats[fromDesk] = b; seats[toDesk] = a; } else if (a) { seats[toDesk] = a; delete seats[fromDesk]; } else { seats[fromDesk] = b; delete seats[toDesk]; }
   const after = { issues: explainSeats(seats, stu, G), ...scoreSeats(sec, seats, stu, G, M) };
   if (!preview) w.dirty = true;
-  const nm = id => { const s = stu.find(x => x.id === id); return s ? seatName(s) : id; };
   const bm = new Set(before.issues.map(i => i.t + i.msg)), am = new Set(after.issues.map(i => i.t + i.msg));
-  return { what: a && b ? `Swapped ${nm(a)} and ${nm(b)}` : `Moved ${nm(a || b)} to an empty desk`, fitBefore: before.fit, fitAfter: after.fit, hardBefore: before.hard, hardAfter: after.hard, added: after.issues.filter(i => !bm.has(i.t + i.msg)), removed: before.issues.filter(i => !am.has(i.t + i.msg)) };
+  return { a, b, fitBefore: before.fit, fitAfter: after.fit, hardBefore: before.hard, hardAfter: after.hard, added: after.issues.filter(i => !bm.has(i.t + i.msg)), removed: before.issues.filter(i => !am.has(i.t + i.msg)) };
 }
 function deltaHTML(r) {
   const d = r.fitAfter - r.fitBefore, dh = r.hardAfter - r.hardBefore;
@@ -1742,10 +1767,11 @@ function deltaHTML(r) {
   h += `<div class="seatIssues">`; r.added.forEach(i => { h += `<div class="issue ${i.t}">⚠ ${esc(i.msg)}</div>`; }); r.removed.forEach(i => { h += `<div class="issue fixed">✓ Fixed: ${esc(i.msg)}</div>`; }); return h + `</div>`;
 }
 /* ---- the chart SVG (screen and print) ---- */
-const SEAT_LV = ['', '#D9442F', '#E38A2B', '#B59A23', '#1F8F93', '#0F5F6B'];
+const SEAT_LV = ['', '#D9442F', '#E38A2B', '#B59A23', '#1F8F93', '#0F5F6B'];   // FAST level 1 → 5
+const BEH_COLOR = '#16213A';   // high-behavior badge: an ink square with an H, so it can't be confused with a level dot
 function svgChart(sec, seats, stu, G, mode, w) {
   // mode: 'screen' | 'teacher' | 'safe' (student/sub copy: photos and names only)
-  const L = roomOK(), T = 14, f = L.front; const H = state.settings.hideNames; const print = mode !== 'screen'; const safe = mode === 'safe';
+  const L = roomOK(), T = 14, f = L.front; const print = mode !== 'screen'; const safe = mode === 'safe'; const H = !print && seatHidden();
   let h = `<svg viewBox="-2 -2 ${L.w + 4} ${L.h + 4}" class="chartSvg" role="img" aria-label="seating chart">`;
   h += `<rect x="0" y="0" width="${L.w}" height="${L.h}" fill="${print ? '#fff' : '#FBFAF6'}" stroke="#C9C5B8" stroke-width="2" rx="6"/>`;
   const fb = f === 'top' ? [0, 0, L.w, T] : f === 'bottom' ? [0, L.h - T, L.w, T] : f === 'left' ? [0, 0, T, L.h] : [L.w - T, 0, T, L.h];
@@ -1768,10 +1794,10 @@ function svgChart(sec, seats, stu, G, mode, w) {
       h += `<clipPath id="${cid}"><rect x="3" y="3" width="${DESK - 6}" height="${DESK - 20}" rx="6"/></clipPath>`;
       if (showPhoto) h += `<image href="${s.photo}" x="3" y="3" width="${DESK - 6}" height="${DESK - 20}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
       else h += `<rect x="3" y="3" width="${DESK - 6}" height="${DESK - 20}" rx="6" fill="#E9EEF5"/><text x="${DESK / 2}" y="${DESK / 2 - 4}" text-anchor="middle" font-size="16" font-weight="700" fill="#16213A">${esc(initials)}</text>`;
-      h += `<text class="cname" x="${DESK / 2}" y="${DESK - 6}" text-anchor="middle">${esc(seatShort(s))}</text>`;
-      if (s.level) h += `<circle cx="${DESK - 8}" cy="8" r="5" fill="${SEAT_LV[s.level]}" stroke="#fff" stroke-width="1.5"><title>FAST level ${s.level}</title></circle>`;
-      if (s.behavior === 'high') h += `<circle cx="8" cy="8" r="5" fill="#E38A2B" stroke="#fff" stroke-width="1.5"><title>high behavior</title></circle>`;
-      if (s.plan) { const lab = s.plan === 'ESE+504' ? 'E/5' : s.plan; const pw = lab.length * 6 + 6; h += `<rect x="${(DESK - pw) / 2}" y="${DESK - 36}" width="${pw}" height="11" rx="3" fill="#16213A"/><text x="${DESK / 2}" y="${DESK - 27.5}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">${esc(lab)}</text>`; }
+      h += `<text class="cname" x="${DESK / 2}" y="${DESK - 5}" text-anchor="middle">${esc(seatShort(s))}</text>`;
+      if (s.level && !H) h += `<circle cx="${DESK - 8}" cy="8" r="5" fill="${SEAT_LV[s.level]}" stroke="#fff" stroke-width="1.5"><title>FAST level ${s.level}</title></circle>`;
+      if (s.behavior === 'high' && !H) h += `<rect x="3" y="3" width="11" height="11" rx="2.5" fill="${BEH_COLOR}"/><text x="8.5" y="11.5" text-anchor="middle" font-size="8" font-weight="800" fill="#fff">H</text>`;
+      if (s.plan && !H) { const lab = s.plan === 'ESE+504' ? 'E/5' : s.plan; const pw = lab.length * 6 + 6; h += `<rect x="${(DESK - pw) / 2}" y="${DESK - 36}" width="${pw}" height="11" rx="3" fill="#16213A"/><text x="${DESK / 2}" y="${DESK - 27.5}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">${esc(lab)}</text>`; }
       if (locks[sid]) h += `<text x="${DESK - 3}" y="${DESK - 22}" text-anchor="end" font-size="10">🔒</text>`;
     } else h += `<text class="cnum" x="${DESK / 2}" y="${DESK / 2 + 3}" text-anchor="middle">${G.nums[d.id] || ''}</text>`;
     if (isHov) h += `<rect width="${DESK}" height="${DESK}" rx="8" fill="rgba(45,212,191,.25)" stroke="#0F766E" stroke-width="2"/>`;
@@ -1779,7 +1805,7 @@ function svgChart(sec, seats, stu, G, mode, w) {
   });
   return h + `</svg>`;
 }
-const SEAT_SVG_CSS = `.chartSvg{width:100%;height:auto;display:block;font-family:'DM Sans',system-ui,sans-serif}.chartSvg .front{fill:#0F766E}.chartSvg .front-t{font-size:9px;font-weight:800;fill:#fff;letter-spacing:.2em}.chartSvg .tdesk{fill:#DDF4F0;stroke:#0F766E;stroke-width:1.5}.chartSvg .tdesk-t{font-size:10px;font-weight:700;fill:#0F766E}.chartSvg .door{fill:#E6E4DC;stroke:#66708A}.chartSvg .door-t{font-size:7px;font-weight:800;fill:#66708A;letter-spacing:.1em}.chartSvg .cdesk-r{fill:#fff;stroke:#16213A;stroke-width:1.5}.chartSvg .cdesk-r.empty{fill:#F6F5F0;stroke:#C9C5B8;stroke-dasharray:3 2}.chartSvg .cdesk-r.sel{stroke:#0F766E;stroke-width:3.5;fill:#DDF4F0}.chartSvg .cdesk-r.target{stroke:#2DD4BF;stroke-dasharray:3 3}.chartSvg .cname{font-size:8.5px;font-weight:700;fill:#16213A}.chartSvg .cnum{font-size:12px;font-weight:700;fill:#A9AEBB}.chartSvg .cdesk:focus-visible{outline:none}.chartSvg .cdesk:focus-visible .cdesk-r{stroke:#0F766E;stroke-width:3}`;
+const SEAT_SVG_CSS = `.chartSvg{width:100%;height:auto;display:block;font-family:'DM Sans',system-ui,sans-serif}.chartSvg .front{fill:#0F766E}.chartSvg .front-t{font-size:9px;font-weight:800;fill:#fff;letter-spacing:.2em}.chartSvg .tdesk{fill:#DDF4F0;stroke:#0F766E;stroke-width:1.5}.chartSvg .tdesk-t{font-size:10px;font-weight:700;fill:#0F766E}.chartSvg .door{fill:#E6E4DC;stroke:#66708A}.chartSvg .door-t{font-size:7px;font-weight:800;fill:#66708A;letter-spacing:.1em}.chartSvg .cdesk-r{fill:#fff;stroke:#16213A;stroke-width:1.5}.chartSvg .cdesk-r.empty{fill:#F6F5F0;stroke:#C9C5B8;stroke-dasharray:3 2}.chartSvg .cdesk-r.sel{stroke:#0F766E;stroke-width:3.5;fill:#DDF4F0}.chartSvg .cdesk-r.target{stroke:#2DD4BF;stroke-dasharray:3 3}.chartSvg .cdesk-r.hov{fill:#DDF4F0;stroke:#0F766E;stroke-width:2.5;stroke-dasharray:none}.chartSvg .cname{font-size:9.5px;font-weight:700;fill:#16213A}.chartSvg .cnum{font-size:12px;font-weight:700;fill:#A9AEBB}.chartSvg .cdesk:focus-visible{outline:none}.chartSvg .cdesk:focus-visible .cdesk-r{stroke:#0F766E;stroke-width:3}`;
 /* ---- Seating view ---- */
 function renderSeatingBar(s) {
   const room = roomOK(); const sub = view.sub === 'room' ? 'room' : 'chart';
@@ -1789,30 +1815,34 @@ function renderSeatingBar(s) {
     ${sub === 'chart' ? `<button class="pill toggle" id="seatPrint" ${workFor(s) ? '' : 'disabled'}>Print</button><button class="pill toggle" id="seatWeights" title="What the solver weighs">Priorities</button>` : ''}`;
 }
 function renderSeating(s) {
-  const wrap = $('#gridwrap'); wrap.innerHTML = ''; roomOK();
+  const wrap = $('#gridwrap'); wrap.innerHTML = ''; roomOK(); seatUiFor(s); renderBar();
   if (view.sub === 'room') return renderRoom(s);
-  const stu = seatStudents(s), G = geometry(), nd = G.ds.length, w = workFor(s); const H = state.settings.hideNames;
+  const stu = seatStudents(s), G = geometry(), nd = G.ds.length; const H = seatHidden();
+  if (s.seating && s.seating.seats) { const tmp = { seats: s.seating.seats, locks: s.seating.locks || {} }; const freed = pruneSeats(tmp, stu); if (freed) { save(); toast(`${plural(freed, 'seat')} freed — ${freed === 1 ? 'that student is' : 'those students are'} no longer on the roster.`, false, 5000); } }
+  const w = workFor(s); if (w) pruneSeats(w, stu);
+  const seatCands = seatCandsBy[s.key] || [];
   let side = '';
   if (!nd) side += `<div class="notice"><span>⚠︎</span><span><b>No desks yet.</b> Draw your room first — it's shared by every class.</span><button data-sub="room">Room</button></div>`;
   else if (stu.length > nd) side += `<div class="notice"><span>⚠︎</span><span>${stu.length} students but only ${nd} desks — add desks in Room.</span><button data-sub="room">Room</button></div>`;
   if (!stu.length) side += `<div class="notice info"><span>ⓘ</span><span>No students on this class's roster yet.</span></div>`;
   const nLocks = w ? Object.keys(w.locks).filter(k => Object.values(w.seats).includes(k)).length : 0;
   const can = stu.length && nd && stu.length <= nd && !seatSolving;
+  if (w) side += `<div id="seatMove">${movePanelHTML(s, w, stu, G)}</div>`;
   side += `<button class="pill big" id="seatGen" ${can ? '' : 'disabled'}>${seatSolving ? 'Thinking…' : (w ? 'Generate new options' : 'Generate seating')}${nLocks ? ` (keeping ${nLocks} locked)` : ''}</button>`;
+  if (!w && nd && stu.length && !seatSolving) side += `<button class="pill pale" id="seatHand">Seat by hand</button>`;
   if (seatSolving) side += `<div class="prog"><i id="seatBar"></i></div>`;
   if (seatCands.length) side += `<div class="cand">` + seatCands.map((c, i) => `<button class="${w && w.candIdx === i && w.source === 'cand' ? 'on' : ''}" data-cand="${i}">Option ${i + 1}<small>fit ${c.fit}${c.hard ? ' · ' + c.hard + ' hard' : ''}</small></button>`).join('') + `</div>`;
   if (w) {
     const M = buildModel(s, stu, G); const sc = scoreSeats(s, w.seats, stu, G, M); const iss = explainSeats(w.seats, stu, G);
-    side += `<div class="fit"><div class="n ${sc.hard ? 'bad' : sc.fit >= 85 ? 'good' : sc.fit >= 60 ? 'mid' : 'bad'}">${sc.fit}</div><div><b>Fit</b>${w.dirty ? ' <span class="hchip">edited</span>' : w.source === 'saved' ? ' <span class="hchip ok">saved</span>' : ''}<div class="ghint">100 = every priority satisfied · 0 = no better than random${sc.hard ? ` · <b class="ddown">${sc.hard} hard rule${sc.hard > 1 ? 's' : ''} broken</b>` : ''}</div></div></div>`;
+    side += `<div class="fit"><div class="n ${sc.hard ? 'bad' : sc.fit >= 85 ? 'good' : sc.fit >= 60 ? 'mid' : 'bad'}">${sc.fit}</div><div><b>Fit</b>${w.dirty ? ' <span class="hchip">edited</span>' : w.source === 'saved' ? ' <span class="hchip ok">saved</span>' : ''}<div class="ghint">${sc.hard ? `<b class="ddown">${sc.hard} hard rule${sc.hard > 1 ? 's' : ''} broken</b> — fit is 0 until they're fixed` : `${sc.fit}% less priority cost than a random seating (the fill-from-front and standing bands always cost something, so 100 isn't reachable)`}</div></div></div>`;
     side += `<div class="rp-actions"><button class="pill" id="seatSave" ${w.dirty || w.source === 'cand' ? '' : 'disabled'}>Save${w.source === 'saved' ? ' changes' : ' as this class’s chart'}</button><button class="pill pale" id="seatUndo" ${w.undo.length ? '' : 'disabled'}>Undo</button>${w.dirty || w.source === 'cand' ? `<button class="pill pale" id="seatRevert">${s.seating ? 'Back to saved' : 'Discard'}</button>` : ''}${s.seating && !w.dirty && w.source === 'saved' ? `<button class="pill pale danger small" id="seatClear">Clear saved</button>` : ''}</div>`;
-    side += `<div id="seatMove">${movePanelHTML(s, w, stu, G)}</div>`;
     side += `<details ${iss.length && iss.length <= 6 ? 'open' : ''}><summary>${iss.length ? plural(iss.length, 'issue') : 'No issues'}${iss.some(x => x.t === 'hard') ? ` · <b class="ddown">${iss.filter(x => x.t === 'hard').length} hard</b>` : ''}</summary><div class="seatIssues">${iss.length ? iss.map(x => `<div class="issue ${x.t}">${esc(x.msg)}</div>`).join('') : '<div class="issue info">Every priority is satisfied.</div>'}</div></details>`;
     const unseated = stu.filter(x => !Object.values(w.seats).includes(x.id));
-    if (unseated.length) side += `<div class="notice"><span>⚠︎</span><span><b>Not seated:</b> ${unseated.map(x => `<button class="chip" data-unseated="${esc(x.id)}">${esc(seatName(x))}</button>`).join(' ')}</span></div>`;
+    if (unseated.length) side += `<div class="notice"><span>⚠︎</span><span><b>Not seated${stu.length > nd ? ` (${stu.length - nd} more students than desks)` : ''}:</b> ${unseated.map(x => `<button class="chip ${seatPending === x.id ? 'on' : ''}" data-unseated="${stu.indexOf(x)}">${esc(seatName(x))}</button>`).join(' ')}</span></div>`;
   }
-  side += `<h3 class="seatH">Students <small>${stu.length}</small></h3><div class="seatList">${stu.map(x => `<button class="seatStu" data-sheet="${esc(x.id)}"><span class="ph">${x.photo && !H ? `<img src="${x.photo}" alt="">` : esc(((x.first[0] || '') + (x.last[0] || '')).toUpperCase())}</span><span class="nm">${esc(seatName(x))}</span><span class="tags">${x.behavior === 'high' ? '<i class="hot">H</i>' : x.behavior === 'medium' ? '<i>M</i>' : ''}${x.front ? '<i>Front</i>' : ''}${x.nearTeacher ? '<i>Near</i>' : ''}${x.plan ? `<i class="plan">${esc(x.plan)}</i>` : ''}${x.apart.length ? `<i class="apart">${x.apart.length} apart</i>` : ''}${x.together.length ? `<i class="near">${x.together.length} near</i>` : ''}${x.standing != null ? `<i class="st" title="${esc(standingText(x))}">${x.standing}</i>` : ''}</span></button>`).join('')}</div>`;
-  const hint = w ? (seatSel ? '<b>Tap another desk</b> to swap or move · tap the same desk to cancel' : seatPending ? '<b>Tap an empty desk</b> to seat them' : 'Tap a student on the chart to see why they’re there, lock them, or move them') : (nd ? 'Generate seating, or tap a student to set flags first.' : '');
-  wrap.innerHTML = `<div class="seat"><aside class="seatSide">${side}</aside><section class="seatMain"><p class="ghint seatHint">${hint}</p><div class="chart-stage">${svgChart(s, w ? w.seats : {}, stu, G, 'screen', w)}</div><div class="seatLegend"><span><i style="background:#E38A2B"></i> high behavior</span><span>FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')}</span><span><b class="planTag">ESE</b>/<b class="planTag">504</b> plan</span><span>🔒 locked</span><span>number = standing (FAST · Focus · IXL)</span></div></section></div>`;
+  side += `<h3 class="seatH">Students <small>${stu.length}</small></h3><div class="seatList">${stu.map((x, i) => `<button class="seatStu" data-sheet="${i}"><span class="ph">${x.photo && !H ? `<img src="${x.photo}" alt="">` : esc(((x.first[0] || '') + (x.last[0] || '')).toUpperCase())}</span><span class="nm">${esc(seatName(x))}</span><span class="tags">${H ? '' : `${x.behavior === 'high' ? '<i class="hot">H</i>' : x.behavior === 'medium' ? '<i>M</i>' : ''}${x.front ? '<i>Front</i>' : ''}${x.nearTeacher ? '<i>Near</i>' : ''}${x.plan ? `<i class="plan">${esc(x.plan)}</i>` : ''}${x.apart.length ? `<i class="apart">${x.apart.length} apart</i>` : ''}${x.together.length ? `<i class="near">${x.together.length} near</i>` : ''}`}${x.standing != null ? `<i class="st" title="${esc(standingText(x))}">${x.standing}</i>` : ''}</span></button>`).join('')}</div>`;
+  const hint = w ? (seatSel ? '<b>Tap another desk</b> to swap or move · tap the same desk to cancel' : seatPending ? '<b>Tap an empty desk</b> to seat them' : 'Tap a student on the chart to see why they\u2019re there, lock them, or move them') : (nd ? 'Generate seating, or seat by hand; tap a student in the list to set flags first.' : '');
+  wrap.innerHTML = `<div class="seat"><aside class="seatSide">${side}</aside><section class="seatMain"><p class="ghint seatHint">${hint}</p><div class="chart-stage">${svgChart(s, w ? w.seats : {}, stu, G, 'screen', w)}</div><div class="seatLegend">${H ? '<span>Names off — initials only</span>' : `<span><b class="planTag">H</b> high behavior</span><span>FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')}</span><span><b class="planTag">ESE</b>/<b class="planTag">504</b> plan</span>`}<span>🔒 locked</span><span>number = standing (FAST · Focus · IXL, relative to the class)</span></div></section></div>`;
   bindSeating(s, wrap, w, stu, G);
 }
 function movePanelHTML(s, w, stu, G) {
@@ -1820,32 +1850,36 @@ function movePanelHTML(s, w, stu, G) {
   if (seatSel && w) { const sid = w.seats[seatSel], x = stu.find(z => z.id === sid);
     if (x) { const lines = whyHere(s, w, sid, seatSel, stu, G); const H = state.settings.hideNames;
       h += `<div class="seatWhy"><div class="who">${x.photo && !H ? `<img class="ph" src="${x.photo}" alt="">` : ''}<div><b>${esc(seatName(x))}</b><div class="ghint">${esc(H ? '' : x.display)}${x.level ? ' · L' + x.level : ''}${x.standing != null ? ' · standing ' + x.standing : ''}</div></div></div>
-        <div class="rp-actions"><button class="pill small ${w.locks[sid] ? '' : 'pale'}" data-lock="${esc(sid)}">${w.locks[sid] ? '🔒 Locked' : '🔓 Lock seat'}</button><button class="pill pale small" data-unseat="${esc(seatSel)}" ${w.locks[sid] ? 'disabled' : ''}>Unseat</button><button class="pill pale small" data-sheet="${esc(sid)}">Edit</button></div>
+        <div class="rp-actions"><button class="pill small ${w.locks[sid] ? '' : 'pale'}" data-lock="${stu.indexOf(x)}">${w.locks[sid] ? '🔒 Locked' : '🔓 Lock seat'}</button><button class="pill pale small" data-unseat="${esc(seatSel)}" ${w.locks[sid] ? 'disabled' : ''}>Unseat</button><button class="pill pale small" data-sheet="${stu.indexOf(x)}">Edit</button></div>
         ${lines.map(l => `<div class="issue ${l.plan ? 'plan' : l.ok ? 'info' : 'warn'}">${esc(l.msg)}</div>`).join('')}
         ${seatHover && seatHover.rep ? `<div class="ifhere"><b>If dropped here:</b> ${deltaHTML(seatHover.rep)}</div>` : ''}</div>`; } }
-  if (seatLast && !seatSel) h += `<div class="seatWhy"><b>${esc(seatLast.what)}</b> ${deltaHTML(seatLast)}</div>`;
+  const nm = id => { const x = stu.find(z => z.id === id); return x ? seatName(x) : (seatHidden() ? mask(id) : id); };
+  if (seatLast && !seatSel) h += `<div class="seatWhy"><b>${esc(seatLast.a && seatLast.b ? `Swapped ${nm(seatLast.a)} and ${nm(seatLast.b)}` : `Moved ${nm(seatLast.a || seatLast.b)} to an empty desk`)}</b> ${deltaHTML(seatLast)}</div>`;
   return h;
 }
 function bindSeating(s, wrap, w, stu, G) {
   wrap.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { view.sub = b.dataset.sub; render(); });
   const gen = $('#seatGen'); if (gen) gen.onclick = () => seatGenerate(s);
-  wrap.querySelectorAll('[data-cand]').forEach(b => b.onclick = () => { const i = +b.dataset.cand; const nw = setWork(s, seatCands[i].seats, 'cand'); nw.candIdx = i; renderSeating(s); });
-  const sv = $('#seatSave'); if (sv) sv.onclick = () => { s.seating = { seats: JSON.parse(JSON.stringify(w.seats)), locks: { ...w.locks }, savedAt: new Date().toISOString() }; w.dirty = false; w.source = 'saved'; w.undo = []; seatLast = null; seatCands = []; save(); render(); toast(`Seating chart saved for ${esc(s.label)}.`, false); };
+  const seatCands = seatCandsBy[s.key] || [];
+  wrap.querySelectorAll('[data-cand]').forEach(b => b.onclick = () => { const i = +b.dataset.cand; if (!seatCands[i]) return; const nw = setWork(s, seatCands[i].seats, 'cand'); nw.candIdx = i; renderSeating(s); });
+  const hand = $('#seatHand'); if (hand) hand.onclick = () => { setWork(s, {}, 'hand'); renderSeating(s); };
+  const sv = $('#seatSave'); if (sv) sv.onclick = () => { s.seating = { seats: JSON.parse(JSON.stringify(w.seats)), locks: { ...w.locks }, savedAt: new Date().toISOString() }; w.dirty = false; w.source = 'saved'; w.undo = []; seatLast = null; seatCandsBy[s.key] = []; const ok = save(); render(); if (ok) toast(`Seating chart saved for ${esc(s.label)}.`, false); };
   const un = $('#seatUndo'); if (un) un.onclick = () => { if (!w.undo.length) return; w.seats = JSON.parse(w.undo.pop()); w.dirty = true; seatLast = null; seatSel = null; renderSeating(s); };
-  const rv = $('#seatRevert'); if (rv) rv.onclick = () => { seatCands = []; delete seatWork[s.key]; renderSeating(s); };
-  const cl = $('#seatClear'); if (cl) cl.onclick = () => { delete s.seating; delete seatWork[s.key]; seatCands = []; save(); render(); };
-  wrap.querySelectorAll('[data-sheet]').forEach(b => b.onclick = () => openSeatSheet(s, b.dataset.sheet));
-  wrap.querySelectorAll('[data-lock]').forEach(b => b.onclick = () => { const sid = b.dataset.lock; if (w.locks[sid]) delete w.locks[sid]; else w.locks[sid] = true; w.dirty = true; renderSeating(s); });
+  const rv = $('#seatRevert'); if (rv) rv.onclick = () => { seatCandsBy[s.key] = []; delete seatWork[s.key]; renderSeating(s); };
+  const cl = $('#seatClear'); if (cl) cl.onclick = () => seatConfirm('Clear the saved chart?', `${esc(s.label)}'s saved seating chart will be removed. Locks go too.`, 'Clear it', () => { delete s.seating; delete seatWork[s.key]; seatCandsBy[s.key] = []; save(); render(); });
+  wrap.querySelectorAll('[data-sheet]').forEach(b => b.onclick = () => { const x = stu[+b.dataset.sheet]; if (x) openSeatSheet(s, x.id); });
+  wrap.querySelectorAll('[data-lock]').forEach(b => b.onclick = () => { const x = stu[+b.dataset.lock]; if (!x) return; const sid = x.id; if (w.locks[sid]) delete w.locks[sid]; else w.locks[sid] = true; w.dirty = true; renderSeating(s); });
   wrap.querySelectorAll('[data-unseat]').forEach(b => b.onclick = () => { const d = b.dataset.unseat; const sid = w.seats[d]; if (!sid || w.locks[sid]) return; w.undo.push(JSON.stringify(w.seats)); delete w.seats[d]; w.dirty = true; seatSel = null; seatLast = null; renderSeating(s); });
-  wrap.querySelectorAll('[data-unseated]').forEach(b => b.onclick = () => { seatPending = b.dataset.unseated; seatSel = null; renderSeating(s); });
+  wrap.querySelectorAll('[data-unseated]').forEach(b => b.onclick = () => { const x = stu[+b.dataset.unseated]; if (!x) return; seatPending = seatPending === x.id ? null : x.id; seatSel = null; renderSeating(s); });
   wrap.querySelectorAll('.cdesk').forEach(g => {
     const id = g.dataset.desk;
     const act = () => { if (!w) { if (!stu.length) return; return; } if (seatPending) { if (!w.seats[id]) { w.undo.push(JSON.stringify(w.seats)); for (const d of Object.keys(w.seats)) if (w.seats[d] === seatPending) delete w.seats[d]; w.seats[id] = seatPending; w.dirty = true; } seatPending = null; renderSeating(s); return; }
       const sid = w.seats[id]; if (seatSel == null) { if (sid) { seatSel = id; seatHover = null; renderSeating(s); } return; } if (seatSel === id) { seatSel = null; seatHover = null; renderSeating(s); return; }
       const rep = seatMove(s, w, seatSel, id, false); if (rep) { seatLast = rep; seatSel = null; seatHover = null; } renderSeating(s); };
     g.onclick = act; g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(); } };
-    g.onmouseenter = () => { if (!w || seatSel == null || seatSel === id) return; seatHover = { deskId: id, rep: seatMove(s, w, seatSel, id, true) }; const mp = $('#seatMove'); if (mp) mp.innerHTML = movePanelHTML(s, w, stu, G); };
-    g.onmouseleave = () => { if (seatHover) { seatHover = null; const mp = $('#seatMove'); if (mp) mp.innerHTML = movePanelHTML(s, w, stu, G); } };
+    const rect = g.querySelector('.cdesk-r');
+    g.onmouseenter = () => { if (!w || seatSel == null || seatSel === id) return; seatHover = { deskId: id, rep: seatMove(s, w, seatSel, id, true) }; if (rect) rect.classList.add('hov'); const mp = $('#seatMove'); if (mp) mp.innerHTML = movePanelHTML(s, w, stu, G); };
+    g.onmouseleave = () => { if (rect) rect.classList.remove('hov'); if (seatHover) { seatHover = null; const mp = $('#seatMove'); if (mp) mp.innerHTML = movePanelHTML(s, w, stu, G); } };
   });
 }
 /* ---- priorities (weights) ---- */
@@ -1865,29 +1899,29 @@ function openSeatSheet(sec, display) {
   const stu = seatStudents(sec); const x = stu.find(z => z.id === display); if (!x) return; const info = seatInfoOf(sec, display); const H = state.settings.hideNames;
   const others = stu.filter(z => z.id !== display);
   const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private'); $('#toast').classList.remove('show');
-  const list = (field, cls) => others.length ? `<div class="picks">${others.map(o => `<button class="chip rel ${(info[field] || []).includes(o.id) ? cls : ''}" data-rel="${field}|${esc(o.id)}">${esc(seatName(o))}</button>`).join('')}</div>` : '<p class="ghint">No other students.</p>';
+  const list = (field, cls) => others.length ? `<div class="picks">${others.map(o => `<button class="chip rel ${(info[field] || []).includes(o.id) ? cls : ''}" data-rel="${field}|${stu.indexOf(o)}">${esc(seatName(o))}</button>`).join('')}</div>` : '<p class="ghint">No other students.</p>';
   m.innerHTML = `<div class="panel"><header><h2>${esc(seatName(x))} <span class="hsub">${esc(sec.label)} · seating</span></h2><button id="mClose" aria-label="Close">×</button></header><div class="body one stucard">
     <div class="who">${x.photo && !H ? `<img class="ph big" src="${x.photo}" alt="">` : ''}<div><div class="ghint">${esc(H ? '' : x.display)}</div><div><b>Standing:</b> ${esc(standingText(x))}${x.gi != null ? ` · <button class="linkbtn" id="toGrades">Grades card</button>` : ''}</div></div></div>
-    <div class="field"><label>Goes by</label><input id="shNick" value="${esc(info.nick || '')}" placeholder="${esc(titleCase(x.first))}"></div>
+    ${H ? '<p class="warnline">Names are hidden — nickname, plan, accommodations and notes are not shown or editable until Names is on.</p>' : `<div class="field"><label>Goes by</label><input id="shNick" class="txt" value="${esc(info.nick || '')}" placeholder="${esc(titleCase(x.first))}"></div>`}
     <div class="field"><label>Behavior / talkativeness</label><div class="seg small" id="shBeh">${['low', 'medium', 'high'].map(b => `<button data-beh="${b}" class="${info.behavior === b ? (b === 'high' ? 'on hot' : 'on') : ''}">${b[0].toUpperCase() + b.slice(1)}</button>`).join('')}</div></div>
     <div class="field"><label>Seating flags</label><div class="rp-actions"><button class="pill small ${info.front ? '' : 'pale'}" data-flag="front">${info.front ? '✓ ' : ''}Front seat</button><button class="pill small ${info.nearTeacher ? '' : 'pale'}" data-flag="nearTeacher">${info.nearTeacher ? '✓ ' : ''}Near teacher</button></div></div>
-    <div class="field"><label>ESE / 504 plan</label><div class="seg small" id="shPlan">${[['', 'None'], ['ESE', 'ESE (IEP)'], ['504', '504'], ['ESE+504', 'Both']].map(([v, l]) => `<button data-plan="${v}" class="${(info.plan || '') === v ? 'on' : ''}">${l}</button>`).join('')}</div>
-      <textarea id="shAccom" rows="2" style="min-height:64px;height:64px" placeholder="Plan accommodations to keep in view (preferential seating, away from the door, checks for understanding…)">${esc(info.accom || '')}</textarea></div>
+    ${H ? '' : `<div class="field"><label>ESE / 504 plan</label><div class="seg small" id="shPlan">${[['', 'None'], ['ESE', 'ESE (IEP)'], ['504', '504'], ['ESE+504', 'Both']].map(([v, l]) => `<button data-plan="${v}" class="${(info.plan || '') === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <textarea id="shAccom" class="txt" rows="2" style="min-height:64px;height:64px" placeholder="Plan accommodations to keep in view (preferential seating, away from the door, checks for understanding…)">${esc(info.accom || '')}</textarea></div>`}
     <div class="field"><label>Keep apart from <small>(hard rule)</small></label>${list('apart', 'apart')}</div>
     <div class="field"><label>Seat near <small>(preference)</small></label>${list('together', 'near')}</div>
-    <div class="field"><label>Notes</label><textarea id="shNotes" rows="2" style="min-height:64px;height:64px" placeholder="Vision, hearing, anything the chart should respect…">${esc(info.notes || '')}</textarea></div>
+    ${H ? '' : `<div class="field"><label>Notes</label><textarea id="shNotes" class="txt" rows="2" style="min-height:64px;height:64px" placeholder="Vision, hearing, anything the chart should respect…">${esc(info.notes || '')}</textarea></div>`}
     <div class="rp-actions"><button class="pill" id="mCancel">Done</button></div></div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; save(); seatBase = { key: '', v: 0 }; render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  $('#shNick').onchange = e => { info.nick = e.target.value.trim(); };
-  $('#shAccom').onchange = e => { info.accom = e.target.value; }; $('#shNotes').onchange = e => { info.notes = e.target.value; };
+  const nk = $('#shNick'); if (nk) nk.onchange = e => { info.nick = e.target.value.trim().slice(0, 40); };
+  const ac = $('#shAccom'); if (ac) ac.onchange = e => { info.accom = e.target.value.slice(0, 2000); }; const nt = $('#shNotes'); if (nt) nt.onchange = e => { info.notes = e.target.value.slice(0, 2000); };
   m.querySelectorAll('[data-beh]').forEach(b => b.onclick = () => { info.behavior = b.dataset.beh; m.querySelectorAll('[data-beh]').forEach(z => { z.classList.toggle('on', z === b); z.classList.toggle('hot', z === b && b.dataset.beh === 'high'); }); });
   m.querySelectorAll('[data-flag]').forEach(b => b.onclick = () => { info[b.dataset.flag] = !info[b.dataset.flag]; b.classList.toggle('pale', !info[b.dataset.flag]); b.textContent = (info[b.dataset.flag] ? '✓ ' : '') + (b.dataset.flag === 'front' ? 'Front seat' : 'Near teacher'); });
   m.querySelectorAll('[data-plan]').forEach(b => b.onclick = () => { info.plan = b.dataset.plan; m.querySelectorAll('[data-plan]').forEach(z => z.classList.toggle('on', z === b)); });
-  m.querySelectorAll('[data-rel]').forEach(b => b.onclick = () => { const [field, tid] = b.dataset.rel.split('|'); const other = seatInfoOf(sec, tid); const on = (info[field] || []).includes(tid);
+  m.querySelectorAll('[data-rel]').forEach(b => b.onclick = () => { const [field, idx] = b.dataset.rel.split('|'); const o = stu[+idx]; if (!o) return; const tid = o.id; const other = seatInfoOf(sec, tid); const on = (info[field] || []).includes(tid);
     info[field] = on ? info[field].filter(z => z !== tid) : [...(info[field] || []), tid]; other[field] = on ? (other[field] || []).filter(z => z !== display) : [...new Set([...(other[field] || []), display])];
     const oppo = field === 'apart' ? 'together' : 'apart'; if (!on) { info[oppo] = (info[oppo] || []).filter(z => z !== tid); other[oppo] = (other[oppo] || []).filter(z => z !== display); }
-    b.classList.toggle(field === 'apart' ? 'apart' : 'near', !on); if (!on) { const ob = m.querySelector(`[data-rel="${oppo}|${CSS.escape(tid)}"]`); if (ob) ob.classList.remove(oppo === 'apart' ? 'apart' : 'near'); } });
+    b.classList.toggle(field === 'apart' ? 'apart' : 'near', !on); if (!on) { const ob = m.querySelector(`[data-rel="${oppo}|${idx}"]`); if (ob) ob.classList.remove(oppo === 'apart' ? 'apart' : 'near'); } });
   const tg = $('#toGrades'); if (tg) tg.onclick = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; save(); openStudentCard(sec, x.gi); };
 }
 /* ---- print ---- */
@@ -1902,12 +1936,15 @@ function openSeatPrint(sec) {
   m.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => { const all = $('#pmAll').checked; close(); printSeating(sec, b.dataset.pm, all); });
 }
 function printSeating(sec, mode, all) {
-  const G = geometry(); const safe = mode === 'safe';
-  const page = (s, seats) => { const stu = seatStudents(s); return `<section class="pp"><h1>${esc(s.label)}${safe ? '' : ' — seating chart'}</h1><p>${new Date().toLocaleDateString()} · ${Object.keys(seats).length} students${safe ? '' : ' · teacher copy'}</p>${svgChart(s, seats, stu, G, safe ? 'safe' : 'teacher', null)}</section>`; };
+  const G = geometry(); const safe = mode === 'safe'; seatPlain = true;   // the teacher asked for the page: full names and photos, whatever the Names toggle says
+  const legend = safe ? '' : `<p class="lg"><b>H</b> high behavior · FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')} · <b>ESE</b>/<b>504</b> plan · desk number = empty desk</p>`;
+  const page = (s, seats) => { const stu = seatStudents(s); return `<section class="pp"><h1>${esc(s.label)}${safe ? '' : ' — seating chart'}</h1><p>${new Date().toLocaleDateString()} · ${Object.keys(seats).length} students${safe ? '' : ' · teacher copy'}</p>${legend}${svgChart(s, seats, stu, G, safe ? 'safe' : 'teacher', null)}</section>`; };
   let body = '';
-  if (all) { for (const k of state.order) { const s = state.sections[k]; const seats = s.key === sec.key ? workFor(sec).seats : (s.seating && s.seating.seats); if (seats) body += page(s, seats); } }
-  else body += page(sec, workFor(sec).seats);
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Seating — ${esc(sec.label)}</title><style>@page{size:landscape;margin:12mm}body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:16px}h1{font-size:18pt;margin:0 0 2px}p{font-size:10pt;color:#555;margin:0 0 8px}.pp{break-after:page;page-break-after:always}.pp:last-child{break-after:auto;page-break-after:auto}.pp svg{width:100%;height:auto;max-height:165mm}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}${SEAT_SVG_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${body}</body></html>`;
+  try {
+    if (all) { for (const k of state.order) { const s = state.sections[k]; const seats = s.key === sec.key ? workFor(sec).seats : (s.seating && s.seating.seats); if (seats) body += page(s, seats); } }
+    else body += page(sec, workFor(sec).seats);
+  } finally { seatPlain = false; }
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Seating — ${esc(sec.label)}</title><style>@page{size:landscape;margin:12mm}body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:16px}h1{font-size:18pt;margin:0 0 2px}p{font-size:10pt;color:#555;margin:0 0 8px}.pp{break-after:page;page-break-after:always}.pp:last-child{break-after:auto;page-break-after:auto}.pp svg{width:100%;height:auto;max-height:160mm}.lg{font-size:9pt;color:#333}.lg i{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin:0 2px 0 4px}.lg b{background:#16213A;color:#fff;padding:0 4px;border-radius:3px;font-size:8pt}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}${SEAT_SVG_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${body}</body></html>`;
   const win = window.open('', '_blank');
   if (!win) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `Seating_${sec.label.replace(/[^\w-]+/g, '_')}.html`; a.click(); toast('Pop-ups are blocked, so the page was saved as a file instead.', false, 5000); return; }
   win.document.open(); win.document.write(html); win.document.close();
@@ -1937,7 +1974,7 @@ function svgRoom() {
   return h + `</svg>`;
 }
 function renderRoom(s) {
-  const L = roomOK(); const wrap = $('#gridwrap');
+  const L = roomOK(); const wrap = $('#gridwrap'); renderBar();
   let h = `<div class="room"><div class="toolbar"><button class="pill small" id="rmTpl">Templates</button><button class="pill small" id="rmDesk">+ Desk</button><button class="pill small pale" id="rmRow">+ Row…</button><button class="pill small pale" id="rmGrid">Grid…</button>
     <label class="curUnit">Front <select id="rmFront">${['top', 'right', 'bottom', 'left'].map(f => `<option value="${f}" ${L.front === f ? 'selected' : ''}>${f[0].toUpperCase() + f.slice(1)}</option>`).join('')}</select></label>
     <label class="curUnit">Room <input class="mini" type="number" id="rmW" step="50" min="400" value="${L.w}"> × <input class="mini" type="number" id="rmH" step="50" min="300" value="${L.h}"></label>
@@ -1954,13 +1991,13 @@ function bindRoom(s, wrap) {
   $('#rmTpl').onclick = () => openRoomTemplates(s);
   $('#rmDesk').onclick = () => { roomPush(); const p = roomFreeSpot(); const d = { id: seatUid(), x: p.x, y: p.y, r: 0 }; L.desks.push(d); roomSel = { type: 'desk', id: d.id }; rr(); };
   $('#rmRow').onclick = () => seatAsk('Add a row', [['n', 'Desks in the row', 6, 1, 20]], v => { roomPush(); const gap = 10, n = v.n; const rowW = n * DESK + (n - 1) * gap; const x0 = Math.max(20, snap10((L.w - rowW) / 2)); let y = 40; while (y < L.h - DESK && L.desks.some(d => Math.abs(d.y - y) < DESK + gap)) y += DESK + 40; for (let i = 0; i < n; i++) L.desks.push({ id: seatUid(), x: x0 + i * (DESK + gap), y: snap10(y), r: 0 }); roomSel = null; rr(); });
-  $('#rmGrid').onclick = () => seatAsk('Add a grid', [['r', 'Rows (front to back)', 4, 1, 12], ['c', 'Desks per row', 6, 1, 16], ['pairs', 'Group desks in pairs', true], ['replace', 'Remove the desks already there', L.desks.length > 0]], v => { roomPush(); const gap = v.pairs ? 0 : 12, pairGap = 28; const c = v.c, r = v.r; const rowW = v.pairs ? c * DESK + Math.floor((c - 1) / 2) * pairGap : c * DESK + (c - 1) * gap; const x0 = Math.max(20, snap10((L.w - rowW) / 2)); const totalH = r * DESK + (r - 1) * 40; const y0 = Math.max(30, snap10((L.h - totalH) / 2)); const fresh = []; for (let i = 0; i < r; i++) { let x = x0; for (let j = 0; j < c; j++) { fresh.push({ id: seatUid(), x: snap10(x), y: snap10(y0 + i * (DESK + 40)), r: 0 }); x += DESK + (v.pairs ? (j % 2 === 0 ? 0 : pairGap) : gap); } } if (v.replace) { L.desks = fresh; roomDropDesks(new Set(fresh.map(d => d.id))); } else L.desks.push(...fresh); roomSel = null; rr(); });
+  $('#rmGrid').onclick = () => seatAsk('Add a grid', [['r', 'Rows (front to back)', 4, 1, 12], ['c', 'Desks per row', 6, 1, 16], ['pairs', 'Group desks in pairs', true], ['replace', 'Remove the desks already there (unseats everyone in every class)', false]], v => { roomPush(); const gap = v.pairs ? 0 : 12, pairGap = 28; const c = v.c, r = v.r; const rowW = v.pairs ? c * DESK + Math.floor((c - 1) / 2) * pairGap : c * DESK + (c - 1) * gap; const x0 = Math.max(20, snap10((L.w - rowW) / 2)); const totalH = r * DESK + (r - 1) * 40; const y0 = Math.max(30, snap10((L.h - totalH) / 2)); const fresh = []; for (let i = 0; i < r; i++) { let x = x0; for (let j = 0; j < c; j++) { fresh.push({ id: seatUid(), x: snap10(x), y: snap10(y0 + i * (DESK + 40)), r: 0 }); x += DESK + (v.pairs ? (j % 2 === 0 ? 0 : pairGap) : gap); } } if (v.replace) { L.desks = fresh; roomDropDesks(new Set(fresh.map(d => d.id))); } else L.desks.push(...fresh); roomSel = null; rr(); });
   $('#rmFront').onchange = e => { roomPush(); L.front = e.target.value; rr(); };
   $('#rmW').onchange = e => { roomPush(); L.w = Math.max(400, +e.target.value || 900); roomView = null; rr(); }; $('#rmH').onchange = e => { roomPush(); L.h = Math.max(300, +e.target.value || 600); roomView = null; rr(); };
   const rt = $('#rmTeacher'); if (rt) rt.onclick = () => { roomPush(); L.teacher = { x: Math.max(0, L.w - 150), y: Math.max(0, L.h - 90), w: 130, h: 64 }; rr(); };
   const rd = $('#rmDoor'); if (rd) rd.onclick = () => { roomPush(); L.door = { x: 20, y: Math.max(0, L.h - 40) }; rr(); };
   $('#rmUndo').onclick = () => { if (!roomUndo.length) return; state.room = JSON.parse(roomUndo.pop()); roomSel = null; rr(); };
-  $('#rmClear').onclick = () => seatAsk('Clear every desk?', [['ok', 'Saved seating for every class will be cleared too', true]], v => { if (!v.ok) return; roomPush(); L.desks = []; roomDropDesks(new Set()); roomSel = null; rr(); });
+  $('#rmClear').onclick = () => seatConfirm('Clear every desk?', 'Saved seating for every class will be cleared too. Undo in the room editor brings the desks back, not the seats.', 'Clear desks', () => { roomPush(); L.desks = []; roomDropDesks(new Set()); roomSel = null; rr(); });
   const selObj = () => roomSel ? (roomSel.type === 'desk' ? L.desks.find(d => d.id === roomSel.id) : L[roomSel.type]) : null;
   wrap.querySelectorAll('[data-rot]').forEach(b => b.onclick = () => { roomPush(); const o = selObj(); if (!o) return; if (roomSel.type === 'desk') o.r = ((o.r || 0) + +b.dataset.rot + 360) % 360; else [o.w, o.h] = [o.h, o.w]; rr(); });
   wrap.querySelectorAll('[data-nudge]').forEach(b => b.onclick = () => { const o = selObj(); if (!o) return; roomPush(); const [dx, dy] = b.dataset.nudge.split(',').map(Number); const w = roomSel.type === 'desk' ? DESK : roomSel.type === 'teacher' ? o.w : 44, hh = roomSel.type === 'desk' ? DESK : roomSel.type === 'teacher' ? o.h : 14; o.x = Math.max(0, Math.min(L.w - w, o.x + dx)); o.y = Math.max(0, Math.min(L.h - hh, o.y + dy)); rr(); });
@@ -1999,11 +2036,12 @@ function bindStage(s) {
   svg.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); const p = svgPt(svg, e); roomZoom(e.deltaY > 0 ? 1.15 : 0.87, p.x, p.y); }, { passive: false });
 }
 function openRoomTemplates(s) {
-  const L = state.room; const n0 = L.desks.length || 22;
+  const L = state.room; const n0 = Math.max(L.desks.length, seatStudents(s).length, 2);
   const prev = (t, n) => { const ds = t.build(n); let mx = 0, my = 0; ds.forEach(d => { mx = Math.max(mx, d.x + DESK); my = Math.max(my, d.y + DESK); }); return `<svg viewBox="-2 -2 ${mx + 4} ${my + 4}" class="tplPrev" preserveAspectRatio="xMidYMid meet">${ds.map(d => `<rect x="${d.x}" y="${d.y}" width="${DESK}" height="${DESK}" rx="10" fill="#fff" stroke="#16213A" stroke-width="6" transform="rotate(${d.r || 0} ${d.x + DESK / 2} ${d.y + DESK / 2})"/>`).join('')}</svg>`; };
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel narrow"><header><h2>Room templates</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one"><p class="ghint">Replaces the desks in the room. Students in saved charts stay seated by desk number.</p><div class="field"><label>Desks</label><input type="number" id="tplN" min="2" max="60" value="${n0}" style="width:90px"></div>
-    <div class="tpls">${ROOM_TEMPLATES.map(t => `<button class="tpl" data-tpl="${t.k}">${prev(t, n0)}<span><b>${t.name}</b><small>${t.desc}</small></span></button>`).join('')}</div></div></div>`;
+    <div class="tpls" id="tplList">${ROOM_TEMPLATES.map(t => `<button class="tpl" data-tpl="${t.k}">${prev(t, n0)}<span><b>${t.name}</b><small>${t.desc}</small></span></button>`).join('')}</div></div></div>`;
+  $('#tplN').oninput = () => { const n = Math.max(2, Math.min(60, parseInt($('#tplN').value) || n0)); m.querySelectorAll('[data-tpl]').forEach(b => { const t = ROOM_TEMPLATES.find(x => x.k === b.dataset.tpl); b.querySelector('.tplPrev').outerHTML = prev(t, n); }); };
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-tpl]').forEach(b => b.onclick = () => { const t = ROOM_TEMPLATES.find(x => x.k === b.dataset.tpl); const n = Math.max(2, Math.min(60, parseInt($('#tplN').value) || 22)); roomPush();
@@ -2020,6 +2058,16 @@ function seatAsk(title, fields, ok) {
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   $('#askOk').onclick = () => { const v = {}; fields.forEach(f => { const el = m.querySelector(`[data-f="${f[0]}"]`); v[f[0]] = typeof f[2] === 'boolean' ? el.checked : Math.max(f[3], Math.min(f[4], parseInt(el.value, 10) || f[2])); }); close(); ok(v); };
+  const first = m.querySelector('input[type=number]'); if (first && !coarse()) { first.focus(); first.select(); }
+  m.querySelectorAll('input').forEach(i => i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#askOk').click(); } });
+}
+// Yes/no with a named action — for the few destructive things (never confirm()).
+function seatConfirm(title, text, verb, ok) {
+  const m = $('#modal'); m.classList.remove('hidden');
+  m.innerHTML = `<div class="panel narrow"><header><h2>${esc(title)}</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one"><p>${text}</p><div class="rp-actions"><button class="pill danger" id="cfOk">${esc(verb)}</button><button class="pill pale" id="mCancel">Cancel</button></div></div></div>`;
+  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  $('#cfOk').onclick = () => { close(); ok(); };
 }
 /* ---- import of the standalone Seating Chart's JSON backup (photos, FAST scores, flags, room, saved charts) ---- */
 const looksLikeSeatingBackup = o => o && typeof o === 'object' && Array.isArray(o.periods) && Array.isArray(o.students) && o.layout && typeof o.layout === 'object';
@@ -2035,6 +2083,7 @@ function seatingTargetFor(per) {
 }
 async function importSeatingBackup(obj) {
   const out = { matched: 0, unmatched: [], classes: 0, room: false, charts: 0 };
+  obj.students = obj.students.filter(st => st && typeof st === 'object' && typeof st.raw === 'string'); obj.periods = obj.periods.filter(per => per && typeof per === 'object');
   const byPer = {}; obj.students.forEach(st => { (byPer[st.periodId] = byPer[st.periodId] || []).push(st); });
   const idMap = {};   // v8 student id → [sec.key, display]
   for (const per of obj.periods) {
@@ -2042,17 +2091,22 @@ async function importSeatingBackup(obj) {
     const rows = buildRows(sec).filter(r => r.status !== 'ixlOnly'); const byNorm = new Map(rows.map(r => [norm(r.display), r.display])); let hit = 0;
     for (const st of byPer[per.id] || []) {
       const disp = byNorm.get(norm(st.raw)) || byNorm.get(norm(`${st.last}, ${st.first}`)); if (!disp) { out.unmatched.push(st.raw); continue; }
-      const info = seatInfoOf(sec, disp); Object.assign(info, { nick: st.nick || '', behavior: ['low', 'medium', 'high'].includes(st.behavior) ? st.behavior : 'low', front: !!st.front, nearTeacher: !!st.nearTeacher, plan: st.plan || '', accom: st.accom || '', notes: st.notes || '', level: st.level || null, pct: st.pct == null ? null : +st.pct, scale: st.scale == null ? null : +st.scale });
-      if (st.photo) info.photo = await shrinkPhoto(st.photo); idMap[st.id] = [sec.key, disp]; hit++;
+      const info = seatInfoOf(sec, disp); const inc = cleanSeatInfo(st);
+      // FAST scores and photos are what the backup is for — they overwrite. Teacher-entered fields only fill in where Tally has nothing yet.
+      info.level = inc.level; info.pct = inc.pct; info.scale = inc.scale;
+      if (!info.nick) info.nick = inc.nick; if (info.behavior === 'low') info.behavior = inc.behavior; info.front = info.front || inc.front; info.nearTeacher = info.nearTeacher || inc.nearTeacher; if (!info.plan) info.plan = inc.plan; if (!info.accom) info.accom = inc.accom; if (!info.notes) info.notes = inc.notes;
+      if (typeof st.photo === 'string' && /^data:image\//.test(st.photo)) { const ph = await shrinkPhoto(st.photo); if (ph) info.photo = ph; }
+      idMap[st.id] = [sec.key, disp]; hit++;
     }
     if (hit) { out.classes++; out.matched += hit; }
   }
-  for (const st of obj.students) { const me = idMap[st.id]; if (!me) continue; const info = seatInfoOf(state.sections[me[0]], me[1]); info.apart = (st.apart || []).map(id => idMap[id]).filter(x => x && x[0] === me[0]).map(x => x[1]); info.together = (st.together || []).map(id => idMap[id]).filter(x => x && x[0] === me[0]).map(x => x[1]); }
+  const merge = (a, b) => [...new Set([...(a || []), ...b])];
+  for (const st of obj.students) { const me = idMap[st.id]; if (!me) continue; const info = seatInfoOf(state.sections[me[0]], me[1]); const ap = (Array.isArray(st.apart) ? st.apart : []).map(id => idMap[id]).filter(x => x && x[0] === me[0]).map(x => x[1]); const tg = (Array.isArray(st.together) ? st.together : []).map(id => idMap[id]).filter(x => x && x[0] === me[0]).map(x => x[1]); info.apart = merge(info.apart, ap); info.together = merge(info.together, tg).filter(n => !info.apart.includes(n)); }
   const room = roomOK(); const L = obj.layout;
-  if (!room.desks.length && Array.isArray(L.desks) && L.desks.length) { state.room = { w: +L.w || 900, h: +L.h || 600, front: L.front || 'top', desks: L.desks.map(d => ({ id: String(d.id), x: +d.x || 0, y: +d.y || 0, r: +d.r || 0 })), teacher: L.teacher || null, door: L.door || null }; roomOK(); out.room = true; }
+  if (!room.desks.length && Array.isArray(L.desks) && L.desks.length) { state.room = { w: L.w, h: L.h, front: L.front, desks: L.desks.map(d => ({ id: d && d.id, x: d && d.x, y: d && d.y, r: d && d.r })), teacher: L.teacher || null, door: L.door || null }; roomOK(); out.room = true; }
   const deskIds = new Set(state.room.desks.map(d => d.id));
-  for (const per of obj.periods) { const c = (obj.charts || {})[per.id]; const sec = seatingTargetFor(per); if (!c || !c.seats || !sec || sec.seating) continue; const seats = {}; for (const [d, sid] of Object.entries(c.seats)) { const me = idMap[sid]; if (me && me[0] === sec.key && deskIds.has(d)) seats[d] = me[1]; } if (Object.keys(seats).length) { sec.seating = { seats, locks: {}, savedAt: c.savedAt || new Date().toISOString() }; out.charts++; } }
-  if (obj.weights && typeof obj.weights === 'object') state.seatWeights = { ...(state.seatWeights || {}), ...obj.weights };
+  for (const per of obj.periods) { const c = (obj.charts || {})[per.id]; const sec = seatingTargetFor(per); if (!c || !c.seats || !sec || sec.seating) continue; const seats = {}; for (const [d0, sid] of Object.entries(c.seats)) { const d = cleanId(d0); const me = idMap[sid]; if (me && me[0] === sec.key && deskIds.has(d)) seats[d] = me[1]; } if (Object.keys(seats).length) { sec.seating = { seats, locks: {}, savedAt: c.savedAt || new Date().toISOString() }; out.charts++; } }
+  if (obj.weights && typeof obj.weights === 'object') { state.seatWeights = state.seatWeights || {}; SEAT_FACTORS.forEach(f => { if (obj.weights[f.k] != null) state.seatWeights[f.k] = numOr(obj.weights[f.k], f.def, 0, 10); }); }
   seatBase = { key: '', v: 0 }; return out;
 }
 
@@ -2099,7 +2153,7 @@ function migrate() {
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
     if (s.hiddenUnits && Object.keys(s.hiddenUnits).length) { for (const u in s.hiddenUnits) if (state.assigned[s.prep || 'on'][u] == null) state.assigned[s.prep || 'on'][u] = !s.hiddenUnits[u]; s.hiddenUnits = {}; }
     s.aliases = s.aliases || {}; s.hiddenUnits = s.hiddenUnits || {};
-    s.seatInfo = s.seatInfo && typeof s.seatInfo === 'object' ? s.seatInfo : {}; if (s.seating && (typeof s.seating !== 'object' || !s.seating.seats || typeof s.seating.seats !== 'object')) delete s.seating;
+    s.seatInfo = s.seatInfo && typeof s.seatInfo === 'object' ? s.seatInfo : {}; for (const k in s.seatInfo) s.seatInfo[k] = cleanSeatInfo(s.seatInfo[k]); if (s.seating && (typeof s.seating !== 'object' || !s.seating.seats || typeof s.seating.seats !== 'object')) delete s.seating;
     s.gradeHistory = Array.isArray(s.gradeHistory) ? s.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : [];
     // snapshots once carried per-student mastered/touched arrays that nothing reads; keep only the aggregate fields
     s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
@@ -2114,7 +2168,7 @@ function migrate() {
   for (const k in state.sections) if (!state.order.includes(k)) state.order.push(k);
 }
 function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (fallback != null ? fallback : DEFAULT_THR.on) : Math.max(1, Math.min(100, n)); }
-function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { toast('Could not save to this browser (storage blocked). Your data stays until you close the tab.', true); } }
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); return true; } catch (e) { toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
 function norm(s) {
@@ -2274,7 +2328,7 @@ async function importFiles(files) {
         if (obj && obj.tally) { fails.push(esc(f.name) + ': that is a Tally backup — load it from Settings → Load backup'); continue; }
         if (!looksLikeSeatingBackup(obj)) { fails.push(esc(f.name) + ': not a Seating Chart backup'); continue; }
         const r = await importSeatingBackup(obj); save();
-        toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
+        toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).map(n => shown(n)).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
         render(); continue;
       }
       const rows = await fileToRows(f);
@@ -2325,6 +2379,7 @@ async function importFiles(files) {
         roster: keep.roster || '', rosterAt: keep.rosterAt || null, skipRoster: !!keep.skipRoster,
         excluded: state.skips[keep.prep || (meta.accelerated ? 'acc' : 'on')], ignored: keep.ignored || {}, aliases: keep.aliases || {}, hiddenUnits: {}, studentSkips: keep.studentSkips || {},
         history: keep.history || [], team: keep.team || '', prep: keep.prep || (meta.accelerated ? 'acc' : 'on'),
+        grades: keep.grades, gradeHistory: keep.gradeHistory || [], seating: keep.seating, seatInfo: keep.seatInfo || {}, period: keep.period,   // the weekly re-import must not drop what the gradebook, the seating chart and the backup put here
         placeholder, allBlank
       };
       snapshot(state.sections[meta.key]);
@@ -2979,6 +3034,7 @@ function askNewClass(fileName, gb) {
       state.sections[key] = { key, label, autoLabel: label, period, pool: true, accelerated: prep === 'acc', prep, threshold: prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on,
         date: null, file: '', importedAt: new Date().toISOString(), students: [], skills: [], scores: [], roster: '', rosterAt: null, skipRoster: false,
         excluded: state.skips[prep], ignored: {}, aliases: {}, hiddenUnits: {}, studentSkips: {}, history: [], team: '', placeholder: false, allBlank: false, best: null, receipts: {}, _keys: null };
+      const held = state.pendingCfg[key]; if (held) { const s0 = state.sections[key]; ['threshold', 'roster', 'rosterAt', 'skipRoster', 'ignored', 'aliases', 'studentSkips', 'history', 'gradeHistory', 'seating', 'seatInfo'].forEach(f => { if (held[f] != null) s0[f] = held[f]; }); if (held.label) s0.label = held.label; delete state.pendingCfg[key]; }   // a backup loaded before the class existed
       if (!state.order.includes(key)) state.order.push(key); state.active = key;
       done(key);
     };
@@ -3027,6 +3083,7 @@ function render() {
   $('#btnHome').setAttribute('aria-pressed', String(view.mode === 'home'));
   $('#btnDetails').classList.toggle('hidden', !has);
   $('#btnDetails').setAttribute('aria-pressed', String(!!state.settings.details));
+  if (seatSolving && !(view.mode === 'seating')) seatAbort();
   document.body.classList.toggle('details', !!state.settings.details);
   document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && view.mode === 'grades'); document.body.classList.toggle('seating', has && view.mode === 'seating');
   if (!has) return;
@@ -3662,7 +3719,7 @@ function openSettings() {
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     save(); close(); render(); toast('Saved', false);
   };
-  $('#forget').onclick = () => { if (!confirm(`Remove ${s.label} from Tally? Its roster and exclusions go too.`)) return; delete state.sections[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
+  $('#forget').onclick = () => { if (!confirm(`Remove ${s.label} from Tally? Its roster and exclusions go too.`)) return; delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#wipe').onclick = () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
     if (!confirm(`Clear everything Tally has saved in this browser — ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? Save a backup first if you want the rosters back.`)) return;
@@ -3778,6 +3835,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Tab' && open) { const items = [...m.querySelectorAll(FOCUSABLE)].filter(el => el.offsetParent !== null); if (!items.length) return; const i = items.indexOf(document.activeElement); if (e.shiftKey && (i <= 0)) { e.preventDefault(); items[items.length - 1].focus(); } else if (!e.shiftKey && (i === -1 || i === items.length - 1)) { e.preventDefault(); items[0].focus(); } return; }
   if (e.key !== 'Escape') return;
   if (open) { (m._cancel || (() => m.classList.add('hidden')))(); return; }
+  if (view.mode === 'seating' && (seatSel || seatPending)) { seatSel = null; seatPending = null; seatHover = null; render(); return; }
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
 });
 

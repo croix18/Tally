@@ -42,15 +42,16 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   await p.click('#seatUndo'); await p.waitForTimeout(300); check(await p.evaluate(K=>JSON.stringify(window.__tally.seatWork[K].seats), K)===seatsBefore,'undo restores the swap');
   await p.locator('.cdesk').nth(0).click(); await p.waitForTimeout(200); await p.click('[data-lock]'); await p.waitForTimeout(300);
   const locked=await p.evaluate(K=>Object.keys(window.__tally.seatWork[K].locks).length, K); check(locked===1 && (await p.textContent('#seatGen')).includes('keeping 1 locked'),'lock a seat; Generate says it keeps it');
-  await p.click('#seatSave'); await p.waitForTimeout(400);
+  const fitPre=+(await p.textContent('.fit .n')); await p.click('#seatSave'); await p.waitForTimeout(400);
   const saved=await p.evaluate(K=>{ const s=window.__tally.state.sections[K].seating; return s && Object.keys(s.seats).length; }, K); check(saved>=20,'saved chart stored on the class: '+saved);
   await p.reload(); await p.waitForTimeout(700); await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#openSeating'); await p.waitForTimeout(400);
   check(await p.locator('.cdesk .cname').count()>=20 && /saved/.test(await p.textContent('#bar')),'saved chart comes back after a reload');
+  const fitPost=+(await p.textContent('.fit .n')); check(Math.abs(fitPost-fitPre)<=8 && fitPost>0,'saving does not collapse the fit (not scored against itself as previous partners): '+fitPre+' → '+fitPost);
   // 4. student sheet: flags, keep-apart symmetric, exclusive with seat-near
   await p.locator('.seatStu').first().click(); await p.waitForTimeout(300);
   const me=await p.evaluate(K=>window.__tally.seatStudents(window.__tally.state.sections[K])[0].display, K);
   await p.click('[data-beh="high"]'); await p.click('[data-flag="front"]'); await p.locator('[data-rel^="apart|"]').first().click(); await p.waitForTimeout(100);
-  const tid=await p.locator('[data-rel^="apart|"]').first().getAttribute('data-rel'); const other=tid.split('|')[1];
+  const tid=await p.locator('[data-rel^="apart|"]').first().getAttribute('data-rel'); const other=await p.evaluate(([K,i])=>window.__tally.seatStudents(window.__tally.state.sections[K])[i].display, [K,+tid.split('|')[1]]);
   await p.click('#mCancel'); await p.waitForTimeout(400);
   const rel=await p.evaluate(([K,me,other])=>{ const s=window.__tally.state.sections[K]; return { mine:s.seatInfo[me], theirs:s.seatInfo[other] }; }, [K,me,other]);
   check(rel.mine.behavior==='high' && rel.mine.front===true && rel.mine.apart.includes(other) && rel.theirs.apart.includes(me),'sheet saves behavior, flag and a symmetric keep-apart');
@@ -90,6 +91,42 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8'));
   check(cfg.room && cfg.room.desks.length===24 && cfg.seatWeights.behavior===10 && cfg.sections[K].seating && Object.keys(cfg.sections[K].seatInfo).length>=5,'Tally backup carries the room, weights, saved chart and seating info');
   await p.keyboard.press('Escape');
+  // 9. round-4 regressions
+  // fit does not collapse after Save (the saved chart is not scored against itself as "previous partners")
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#openSeating'); await p.waitForTimeout(400);
+  // options belong to one class: period 2 shows none of period 1's
+  await p.click('#seatGen'); await p.waitForFunction(()=>document.querySelectorAll('.cand button').length>0,{timeout:20000}); await p.waitForTimeout(300);
+  await p.click('[data-k="period-2"]'); await p.waitForTimeout(300); await p.click('#openSeating'); await p.waitForTimeout(400);
+  check(await p.locator('.cand button').count()===0 && await p.locator('.seatWhy').count()===0,'switching classes shows no other class\'s options or selection');
+  // Generate then leave: nothing paints over the Overview
+  await p.click('#seatGen'); await p.waitForTimeout(150); await p.click('#btnHome'); await p.waitForTimeout(2200);
+  check(await p.locator('#gridwrap .home').count()===1 && await p.locator('.seat').count()===0,'leaving mid-solve aborts it; the Overview stays');
+  // a withdrawn student is freed from the saved chart, no ghost
+  await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const lines=s.roster.split('\n'); s.roster=lines.slice(1).join('\n'); T.save(); }, K);
+  await p.reload(); await p.waitForTimeout(700); await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#openSeating'); await p.waitForTimeout(500);
+  const ghost=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const names=new Set(T.seatStudents(s).map(x=>x.id)); return Object.values(s.seating.seats).filter(n=>!names.has(n)).length; }, K);
+  check(ghost===0 && /seat freed/.test(await p.textContent('#toast')),'a student who left the roster is unseated with a notice');
+  // clear desks then chart: no throw, chart view still renders
+  await p.click('#seatSub [data-sub="room"]'); await p.waitForTimeout(300); await p.click('#rmClear'); await p.waitForTimeout(200); await p.click('#cfOk'); await p.waitForTimeout(300);
+  await p.click('#seatSub [data-sub="chart"]'); await p.waitForTimeout(300); check(await p.locator('.seat').count()===1 && /No desks yet/.test(await p.textContent('.seatSide')),'zero desks → the chart view renders its notice, no crash');
+  await p.click('#rmUndo').catch(()=>{}); await p.click('#seatSub [data-sub="room"]'); await p.waitForTimeout(200); await p.click('#rmUndo'); await p.waitForTimeout(300);
+  check(await p.evaluate(()=>window.__tally.state.room.desks.length)===24,'room undo brings the desks back');
+  // seat by hand with more students than desks
+  await p.evaluate(()=>{ const T=window.__tally; T.state.room.desks=T.state.room.desks.slice(0,10); T.save(); });
+  await p.click('#seatSub [data-sub="chart"]'); await p.waitForTimeout(300);
+  check(await p.locator('#seatGen').isDisabled() && (await p.locator('#seatHand').count()===1 || await p.locator('[data-unseated]').count()>0),'more students than desks: Generate is off but hand seating is offered');
+  if (await p.locator('#seatHand').count()) { await p.click('#seatHand'); await p.waitForTimeout(300); }
+  await p.evaluate(K=>{ const T=window.__tally; const w=T.seatWork[K]; if (w) { w.seats={}; } T.render(); }, K); await p.waitForTimeout(300);
+  await p.locator('[data-unseated]').first().click(); await p.waitForTimeout(200); await p.locator('.cdesk').first().click(); await p.waitForTimeout(300);
+  check(await p.evaluate(K=>Object.keys(window.__tally.seatWork[K].seats).length, K)===1,'tap a name, tap a desk → seated by hand');
+  // XSS-shaped import values are neutralised
+  const cur0=await p.evaluate(K=>window.__tally.seatStudents(window.__tally.state.sections[K])[0].display, K);
+  const evil={v:1,periods:[{id:'p1',sectionId:'1205050-7T1A',name:'Period 1'}],students:[{id:'e1',periodId:'p1',raw:cur0,last:'x',first:'y',level:'<img src=x onerror=window.__pwn=1>',pct:'1e9',photo:'http://127.0.0.1:9/x.jpg',nick:'<b>bold</b>',behavior:'high'}],layout:{w:'</svg><script>window.__pwn2=1</script>',h:600,front:'top',desks:[{id:'"><img src=x onerror=window.__pwn3=1>',x:'1e9',y:0}]},charts:{},weights:{behavior:'99'}};
+  const ep=path.join(tmp,'evil.json'); fs.writeFileSync(ep, JSON.stringify(evil)); await p.setInputFiles('#file',[ep]); await p.waitForTimeout(800);
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#openSeating'); await p.waitForTimeout(400);
+  const pwn=await p.evaluate(([K,n])=>{ const T=window.__tally; const i=T.state.sections[K].seatInfo; const a=i[n]; return { p1:!!window.__pwn, p2:!!window.__pwn2, p3:!!window.__pwn3, level:a.level, pct:a.pct, photo:a.photo, w:T.state.seatWeights.behavior, ids:T.state.room.desks.every(d=>/^[\w-]+$/.test(d.id)) }; }, [K,cur0]);
+  check(!pwn.p1 && !pwn.p2 && !pwn.p3 && pwn.level===null && pwn.pct===100 && pwn.w===10 && pwn.ids && (pwn.photo==null || /^data:image\/jpeg/.test(pwn.photo)),'malicious backup values are coerced; nothing executes; no http photo stored: '+JSON.stringify({level:pwn.level,pct:pwn.pct,w:pwn.w}));
+  check(!/<b>bold/.test(await p.evaluate(()=>document.querySelector('.seatList').innerHTML)) || /&lt;b&gt;/.test(await p.evaluate(()=>document.querySelector('.seatList').innerHTML)),'nick is escaped on the list');
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();
 })();
