@@ -38,7 +38,8 @@ function chartStacked(rows, keys, o) {
 }
 // Line chart over labelled x steps: series [{ name, values: [y|null] }], labels [x]. Direct labels at the line ends + legend.
 function chartLines(labels, series, o) {
-  o = o || {}; const w = o.w || 640, h = o.h || 220, l = 44, r = o.labelW || 170, t = 12, b = 30;
+  o = o || {}; const w = o.w || 640, h = o.h || 220, l = 44, t = 12, b = 30;
+  const longest = Math.max(0, ...series.map(x => String(x.name).length)) + 6; const r = Math.max(o.labelW || 170, Math.min(w * 0.45, longest * 6.8 + 24));   // room for the longest direct label
   const ys = series.flatMap(x => x.values).filter(v => v != null); if (!ys.length) return '<div class="lbEmpty">Nothing to plot yet.</div>';
   const lo = o.min != null ? o.min : Math.max(0, Math.floor(Math.min(...ys) / 10) * 10 - 10), hi = o.max != null ? o.max : niceMax(Math.max(...ys), 10);
   const X = i => l + (labels.length > 1 ? i / (labels.length - 1) : 0.5) * (w - l - r), Y = v => h - b - (v - lo) / (hi - lo || 1) * (h - t - b);

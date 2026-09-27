@@ -10,7 +10,8 @@ function gradingFor(prep) {
   state.grading = state.grading || {};
   let g = state.grading[prep];
   if (!g || !Array.isArray(g.cats) || !g.cats.length) g = state.grading[prep] = { cats: DEFAULT_CATS.map(c => ({ ...c })), map: {}, how: {} };
-  g.map = g.map || {}; g.how = g.how || {};
+  g.map = g.map && typeof g.map === 'object' && !Array.isArray(g.map) ? g.map : {}; g.how = g.how && typeof g.how === 'object' && !Array.isArray(g.how) ? g.how : {};
+  g.cats = g.cats.filter(c => c && typeof c.name === 'string' && Number.isFinite(+c.w)).map(c => ({ name: c.name, w: +c.w })); if (!g.cats.length) g.cats = DEFAULT_CATS.map(c => ({ ...c }));
   return g;
 }
 // Name-based guess. Croix's categories: whiteboard/participation → Participation; tests, quizzes, IXL, notebook checks,
@@ -96,8 +97,6 @@ function applyCategories(sec) {
 }
 
 /* ---------- what-ifs ---------- */
-// Grade if the named assignments were scored at `frac` of their max (1 = full credit).
-function whatIfScores(sec, i, changes) { return computeGrade(sec, i, changes); }
 // Minimum points out of `max` on a NEW assignment in `cat` to reach `target` percent (rounded), or null if impossible.
 function neededOn(sec, i, cat, max, target) {
   const g = gradingFor(sec.prep); const base = computeGrade(sec, i); if (!base) return null;
@@ -222,12 +221,12 @@ function renderGrades(s) {
       ${trend ? `<div class="gcard"><small>Class average by import</small>${sparkline(trend, 160, 44)}<span>${hist.map(h => esc(fmtDate(h.date))).join(' → ')}</span></div>` : ''}
     </div>
     <div class="gtwo">
-      <section class="gsec"><h3>Categories</h3><table class="checkTable"><thead><tr><th>Category</th><th>Weight</th><th>Assignments</th><th>Class avg</th></tr></thead><tbody>
+      <section class="gsec"><h3>Categories</h3><table class="checkTable"><thead><tr><th>Category</th><th>Weight</th><th>Assignments</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th></tr></thead><tbody>
         ${catRows.map(x => `<tr><td>${esc(x.c.name)}</td><td>${x.c.w}%</td><td>${x.n}</td><td>${pct1(x.avg)}</td></tr>`).join('')}</tbody></table>
         <p class="ghint">Course grade = each category's points earned ÷ points possible, weighted. Missing work counts as 0; excused (NG) is left out.${fit && fit.exact ? ` <b>Matches the Focus Grade column for all ${fit.n} students.</b>` : ''}</p></section>
       <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 ? scatterSVG(pts, 420, 260) + `<p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)} — ${rWord}. Assessment average leaves the IXL columns out so it isn't circular.</p>` : `<p class="ghint">Needs at least 8 students matched to IXL with an assessment on record (${pts.length} so far).</p>`}</section>
     </div>
-    <section class="gsec"><h3>Assignments</h3><table class="checkTable gasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th>Points</th><th>Class avg</th><th>Missing</th><th>Excused</th><th title="Class average now minus the class average without this assignment — negative means it pulls grades down">Effect</th></tr></thead><tbody>
+    <section class="gsec"><h3>Assignments</h3><table class="checkTable gasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th>Points</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th><th>Missing</th><th>Excused</th><th title="Class average now minus the class average without this assignment — negative means it pulls grades down">Effect</th></tr></thead><tbody>
       ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}">${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small title="${x.how === 'fit' ? 'proved by the Focus Grade column' : x.how === 'user' ? 'set by you' : x.how === 'file' ? 'stated in the export' : 'guessed from the name'}">${x.how === 'fit' ? '✓' : x.how === 'user' ? 'edited' : x.how === 'file' ? 'from file' : 'guess'}${x.disagree ? ' · Focus disagrees' : ''}</small></td><td>${esc(x.a.due || '')}</td><td>${x.a.max ?? '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>
     <section class="gsec"><h3>Students</h3><table class="checkTable gstu"><thead><tr><th>Student</th><th>Grade</th><th>Since ${prev ? esc(fmtDate(prev.date)) : 'last import'}</th><th>Missing</th><th>Weakest category</th><th>IXL at goal</th></tr></thead><tbody>
       ${rows.map(x => { const ix = ixlBy.get(x.i); return `<tr class="${x.sliding ? 'sliding' : ''}" data-stu="${x.i}"><td><button class="nm nmbtn">${nm(x.name)}</button>${x.sliding ? ' <span class="gtag">sliding</span>' : ''}</td><td>${gradeChip(x.r)}</td><td class="${x.d != null && x.d < 0 ? 'down' : x.d > 0 ? 'up' : ''}">${x.d == null ? '' : signedPts(x.d)}</td><td>${x.missing || ''}${x.dMissing > 0 ? ` <small>(+${x.dMissing})</small>` : ''}</td><td>${x.weakest ? `${esc(x.weakest)} <small>${pct1(x.r.cats[x.weakest].pct)}</small>` : ''}</td><td>${ix && ix.ixl != null ? pct1(ix.ixl) : '<small>not matched</small>'}</td></tr>`; }).join('')}</tbody></table></section>
@@ -296,7 +295,7 @@ function studentReportSection(s, i, ixlRow) {
   const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
   const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
   const cur = r ? r.rounded : null;
-  const need = r ? [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur < t).map(([t, w]) => { const n = neededOn(s, i, 'Assessments', nextMax, t); return n == null ? null : `${n}/${nextMax} for ${w}`; }).filter(Boolean) : [];
+  const need = r ? [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur < t).map(([t, w]) => { const n = neededOn(s, i, 'Assessments', nextMax, t); return n == null ? `${w} isn't reachable on one assessment` : `${n}/${nextMax} for ${w}`; }) : [];
   const keep = r && cur >= 70 ? (() => { const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : 70; const n = neededOn(s, i, 'Assessments', nextMax, floor); return n == null ? null : `${n === 0 ? 'even a 0' : n + '/' + nextMax} keeps the ${floor === 90 ? 'A' : floor === 80 ? 'B' : 'C'}`; })() : null;
   const arrow = x => x && x.rounded != null ? `→ ${x.rounded}% ${x.letter}` : '';
   // IXL still owed, from the class's IXL grid via the roster match
@@ -307,7 +306,7 @@ function studentReportSection(s, i, ixlRow) {
       const notStarted = own.filter(k => eff(s, k, ixlRow.ixl) == null).map(k => s.skills[k].name);
       return `<div class="u"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}</span><b>${p} / ${own.length}</b></div>${below.length ? `<div class="l"><span>Below goal (${t}):</span> ${esc(below.join(' · '))}</div>` : ''}${notStarted.length ? `<div class="l"><span>Not started:</span> ${esc(notStarted.join(' · '))}</div>` : ''}${!below.length && !notStarted.length ? `<div class="l done">All ${own.length} skills at goal</div>` : ''}</div>`; }).join('');
     ixl = `<h2>IXL still owed <span style="text-transform:none;letter-spacing:0;font-weight:normal">· export of ${esc(fmtDate(dataDate(s)) || '?')} · goal SmartScore ${t}</span></h2>${per || '<p>No units assigned yet.</p>'}`;
-  } else if (s.students.length) ixl = `<h2>IXL still owed</h2><p>Not matched to an IXL account — check the roster in Tally.</p>`;
+  } else if (s.students.length) ixl = `<h2>IXL still owed</h2><p>IXL progress isn't available for this student yet.</p>`;
   const moves = [
     ...missing.map(a => `<tr><td class="nhi">${esc(a.name)}</td><td>${a.max} pts${a.due ? ' · due ' + esc(a.due) : ''}</td><td class="r">turned in ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
     missing.length > 1 ? `<tr><td><b>All missing work turned in</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',

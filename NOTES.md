@@ -79,6 +79,12 @@ per-section-file era and many items in them are now done).
   (28 Sep): keep-by-desk-number templates, room undo with seats, 45-day retention for departed students, list
   search + quick toggles, keyboard room editor, seeded fit baseline, room name on prints, "Shown as" names. **Place by** (Priorities): standing from the blend, FAST only, Focus grade, assessments
   only, or IXL progress. **Partners**: keep lows apart / tutor pairs / similar level.
+- **Round 5** (28 Sep): whole-project debug/harden (`review/round5-*.md`, `ROUND5_FINDINGS.md`) — every P0/P1
+  fixed: projected Data Lab keeps Focus scores aggregate whatever was toggled before; prototype pollution and XSS
+  through backups closed (`SAFE_KEY`); course change with a unit open; save failures no longer masked by success
+  toasts; pool replacement asks when a file is undated or barely overlaps; Overview search; view scroll reset and
+  focus restore in `render()`; Working in never offers review units; percent axes end at 100; CSV formula guard.
+  Open P2s are listed at the end of the findings file.
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 

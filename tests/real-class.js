@@ -28,7 +28,7 @@ const { chromium, fs, path, exe, check, done, tmp, unskip } = require('./lib');
   // Data Lab on a Focus assessment
   await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300);
   await p.selectOption('#labUnit','gb:Unit 1 Assessment'); await p.waitForTimeout(400);
-  check(await p.locator('.labRow').count()===1 && /out of 21/.test(await p.textContent('.lbSub')) && /1 excused/.test(await p.textContent('.labName')),'Data Lab plots the real assessment out of 21 with the excused count');
+  check(await p.locator('.labRow').count()===1 && /out of 21/.test(await p.textContent('.lbSub')) && !/excused/.test(await p.textContent('.labName')),'Data Lab plots the real assessment out of 21 — no excused count on the student screen');
   await p.click('#labStats'); await p.waitForTimeout(200); await p.screenshot({path:path.join(tmp,'shot21.png')});
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(150);
   // Copy Unit 2 → 17 skills, matches the Focus "Unit 2 IXL 17 Points" assignment
