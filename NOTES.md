@@ -67,13 +67,17 @@ per-section-file era and many items in them are now done).
   keys; empty roster → empty class; old backups can't drag `skipFirst` back; one focus manager for `#modal`;
   ⋯ menu overlay; 44 px touch targets under `(pointer:coarse)`; Still-owed chooser (slips / initials / names)
   with unmatched students listed; histogram/circle/stem/line-label fixes; shape sentence by the mean-vs-median rule.
+- **Seating** (27 Sep): the standalone Seating Chart v8 ported into Tally as a class surface (`seating.js`,
+  `SEATING_SPEC.md`) — one shared room, solver, moves with consequences, prints. v8 stays the yearly importer of
+  photos + FAST: drop its JSON backup on Tally. Placement uses a live "standing" (FAST pct blended with the class
+  percentile ranks of the Focus grade and IXL completion). Decision: no pdf.js in Tally (would quadruple the file).
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.
-2. Drop all seven on Tally in any order. Pools refresh their classes; each gradebook lands on its class via
+2. Drop all seven on Tally in any order (and, once a year, the Seating Chart's JSON backup for photos and FAST). Pools refresh their classes; each gradebook lands on its class via
    the name-match suggestion (confirm with a tap). Accept the category asker if it appears.
 3. Check the roster-mismatch notice (new or withdrawn students), then copy each unit into Focus. The Focus
    check badge on each unit says whether Focus agrees.
@@ -98,8 +102,8 @@ per-section-file era and many items in them are now done).
 
 ## Working on the code
 
-- Source: `app.html` (markup + CSS), `parser.js`, `grades.js`, `charts.js`, `home.js`, `app.js` (an IIFE; the
-  three are spliced into it at `/*__GRADES__*/`, `/*__CHARTS__*/`, `/*__HOME__*/` so they share state), `scrub.src.html`. `python3 build.py` writes
+- Source: `app.html` (markup + CSS), `parser.js`, `grades.js`, `charts.js`, `home.js`, `seating.js`, `app.js` (an IIFE; the
+  four are spliced into it at `/*__GRADES__*/`, `/*__CHARTS__*/`, `/*__HOME__*/`, `/*__SEATING__*/` so they share state), `scrub.src.html`. `python3 build.py` writes
   `Tally.html`, `index.html` and `Scrub.html`; `--test` keeps the debug handle.
 - Tests: `npm test` (builds the test build, runs every `tests/*.js`, restores the shipped build). Suites
   write only to a temp dir. Fixtures are synthetic or scrubbed; never commit unscrubbed exports.

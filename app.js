@@ -11,6 +11,7 @@ let state = null;
 /*__GRADES__*/   // grades.js is spliced in here by build.py (same closure, so it shares state and helpers)
 /*__CHARTS__*/   // charts.js too
 /*__HOME__*/     // home.js too
+/*__SEATING__*/  // seating.js too
 let view = { mode: 'home', unit: null };   // opens on the Overview
 let noticesOpen = false;
 let search = '';
@@ -37,6 +38,7 @@ function migrate() {
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && c.id && c.label) : [];
   state.grading = state.grading && typeof state.grading === 'object' ? state.grading : {};
   state.pools = state.pools && typeof state.pools === 'object' ? state.pools : {};
+  roomOK(); state.seatWeights = state.seatWeights && typeof state.seatWeights === 'object' ? state.seatWeights : {};
   if (!state.settings.skipFirstV2) { state.settings.skipFirst = { acc: 0, on: 1 }; state.settings.skipFirstV2 = true; }   // one-time: the earlier default hid on-level Unit 2 too
   // Skill skips are course-wide: state.skips[prep] is the one object every class of that course reads as sec.excluded.
   state.skips = state.skips && typeof state.skips === 'object' ? state.skips : {}; state.skips.acc = state.skips.acc || {}; state.skips.on = state.skips.on || {};
@@ -51,6 +53,7 @@ function migrate() {
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
     if (s.hiddenUnits && Object.keys(s.hiddenUnits).length) { for (const u in s.hiddenUnits) if (state.assigned[s.prep || 'on'][u] == null) state.assigned[s.prep || 'on'][u] = !s.hiddenUnits[u]; s.hiddenUnits = {}; }
     s.aliases = s.aliases || {}; s.hiddenUnits = s.hiddenUnits || {};
+    s.seatInfo = s.seatInfo && typeof s.seatInfo === 'object' ? s.seatInfo : {}; if (s.seating && (typeof s.seating !== 'object' || !s.seating.seats || typeof s.seating.seats !== 'object')) delete s.seating;
     s.gradeHistory = Array.isArray(s.gradeHistory) ? s.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : [];
     // snapshots once carried per-student mastered/touched arrays that nothing reads; keep only the aggregate fields
     s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
@@ -220,6 +223,14 @@ async function importFiles(files) {
   let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [], poolImported = [];
   for (const f of files) {
     try {
+      if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts) — a Tally backup goes through Settings
+        let obj = null; try { obj = JSON.parse(await f.text()); } catch (e) {}
+        if (obj && obj.tally) { fails.push(esc(f.name) + ': that is a Tally backup — load it from Settings → Load backup'); continue; }
+        if (!looksLikeSeatingBackup(obj)) { fails.push(esc(f.name) + ': not a Seating Chart backup'); continue; }
+        const r = await importSeatingBackup(obj); save();
+        toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
+        render(); continue;
+      }
       const rows = await fileToRows(f);
       let g;
       try { g = parseIxlGrid(rows); }
@@ -971,7 +982,7 @@ function render() {
   $('#btnDetails').classList.toggle('hidden', !has);
   $('#btnDetails').setAttribute('aria-pressed', String(!!state.settings.details));
   document.body.classList.toggle('details', !!state.settings.details);
-  document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && view.mode === 'grades');
+  document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && view.mode === 'grades'); document.body.classList.toggle('seating', has && view.mode === 'seating');
   if (!has) return;
   if (!state.sections[state.active]) state.active = state.order[0];
   renderTabs();
@@ -1033,11 +1044,14 @@ function renderBar() {
       ${hid && !state.settings.onlyCurrent[s.prep] ? `<button class="pill toggle" id="toggleAll" aria-pressed="${!!state.settings.showAllUnits}">${plural(hid, 'unassigned unit')}</button>` : ''}
       <span class="det"><button class="pill toggle" id="printOwed" title="Printer-friendly page: what each student still owes">Still owed</button></span>
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
+      <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
       <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are listed as upcoming">Working in <select id="curUnit"><option value="">— pick —</option>${units.filter(u => u.num > 0).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
       <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More">⋯</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid && !state.settings.onlyCurrent[s.prep] ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}<button id="mDetails">${state.settings.details ? 'Calm view' : 'Details view'}</button></div></div>
       <div class="legend det"><span>Tap a unit for skill scores</span></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
+  } else if (view.mode === 'seating') {
+    html = renderSeatingBar(s);
   } else {
     const u = units.find(u => u.name === view.unit);
     const ex = u.idx.length - u.active.length;
@@ -1066,6 +1080,9 @@ function renderBar() {
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
   const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count; later units are upcoming.` : 'No current unit — units count once a quarter of the class has started them.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
+  const os = $('#openSeating'); if (os) os.onclick = () => { view = { mode: 'seating', unit: null, sub: 'chart' }; seatSel = null; seatPending = null; render(); };
+  $('#bar').querySelectorAll('#seatSub [data-sub]').forEach(b => b.onclick = () => { view.sub = b.dataset.sub; seatSel = null; render(); });
+  const sp = $('#seatPrint'); if (sp) sp.onclick = () => openSeatPrint(s); const sw = $('#seatWeights'); if (sw) sw.onclick = () => openSeatWeights(s);
   const gc = $('#gradesCats'); if (gc) gc.onclick = () => { const t = $('.gasg'); if (t) t.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
   const cv = $('#csvUnit'); if (cv) cv.onclick = () => downloadUnitCSV(s, units.find(u => u.name === view.unit));
   const rcb = $('#rcUnit'); if (rcb) rcb.onclick = () => openReceipt(s, view.unit);
@@ -1093,6 +1110,7 @@ function renderGrid() {
   const rs = rosterState(s);
   if (!rs.count && !s.skipRoster && !s.placeholder && view.mode === 'units') return renderRosterPanel(s);
   if (view.mode === 'grades') { if (!s.grades) { view = { mode: 'units', unit: null }; return renderGrid(); } return renderGrades(s); }
+  if (view.mode === 'seating') return renderSeating(s);
   const q = norm(search);
   const rows = allRows.map((r, i) => ({ ...r, n: i + 1 })).filter(r => !q || norm(r.display).includes(q) || norm(r.sub).includes(q));
   const wrap = $('#gridwrap');
@@ -1386,6 +1404,7 @@ dd{margin:0}
 <dt>Best</dt><dd>A score from an earlier export that was higher than today's. Points once earned are kept.</dd>
 <dt>Copied</dt><dd>A receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</dd>
 <dt>Focus ✓ / off</dt><dd>Whether the Focus column matches what Tally counts today.</dd>
+<dt>Seating</dt><dd>Draw the room once (templates, drag, rotate — shared by every class), then generate seating for a class: the solver weighs talkers, front-seat and near-teacher flags, keep-apart (hard) and seat-near links, and each student's standing (FAST percentile if you imported the Seating Chart backup, blended with their live Focus grade and IXL completion). Tap a student to see why they're there, lock them, or tap a second desk to swap — every move reports what it fixes and breaks. Print a teacher copy or a student/sub copy.</dd>
 <dt>Still owed</dt><dd>Printable black-and-white list of what each student is missing, by unit.</dd>
 <dt>Race</dt><dd>Student screen: classes ranked by the share of students who reached at least one more skill since last week (average gain breaks ties), so a class that starts behind can still win and one student can't swing it. The bar shows assigned work at goal. Names never show. Hold the exit button to leave.</dd>
 <dt>Data Lab</dt><dd>Student screen: box plots of any unit, skill, assignment, or class-collected data set — no names.</dd>
@@ -1625,8 +1644,8 @@ function openSettings() {
   $('#saveRace').onclick = () => downloadLeaderboard('race'); $('#saveLab').onclick = () => downloadLeaderboard('lab');
   const dg = $('#dropGrades'); if (dg) dg.onclick = () => { if (!confirm(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.`)) return; delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#exportCfg').onclick = () => {
-    const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays, skipFirst: state.settings.skipFirst, skipFirstV2: true, currentUnit: state.settings.currentUnit }, assigned: state.assigned, custom: state.custom, grading: state.grading, sections: {} };
-    for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [] }; }
+    const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays, skipFirst: state.settings.skipFirst, skipFirstV2: true, currentUnit: state.settings.currentUnit }, assigned: state.assigned, custom: state.custom, grading: state.grading, room: state.room, seatWeights: state.seatWeights, sections: {} };
+    for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [], seating: x.seating || null, seatInfo: x.seatInfo || {} }; }
     for (const k in state.pendingCfg) if (!cfg.sections[k]) cfg.sections[k] = state.pendingCfg[k];
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = 'tally-backup-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     toast('Backup saved — it contains student names, weekly skill counts and computed Focus grades, so keep it in your school Drive.', false, 5000);
@@ -1637,6 +1656,7 @@ function openSettings() {
       if (cfg.settings) { if (cfg.settings.currentUnit && typeof cfg.settings.currentUnit === 'object') state.settings.currentUnit = { acc: Number.isInteger(cfg.settings.currentUnit.acc) ? cfg.settings.currentUnit.acc : null, on: Number.isInteger(cfg.settings.currentUnit.on) ? cfg.settings.currentUnit.on : null }; if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object' && cfg.settings.skipFirstV2) state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 0, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 1 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
       if (cfg.assigned && typeof cfg.assigned === 'object') { state.assigned.acc = Object.assign({}, state.assigned.acc, cfg.assigned.acc || {}); state.assigned.on = Object.assign({}, state.assigned.on, cfg.assigned.on || {}); }
       if (cfg.grading && typeof cfg.grading === 'object') ['acc', 'on'].forEach(pp => { const g = cfg.grading[pp]; if (g && Array.isArray(g.cats) && g.cats.length) state.grading[pp] = { cats: g.cats.filter(c => c && c.name && isFinite(c.w)).map(c => ({ name: String(c.name), w: Number(c.w) })), map: g.map && typeof g.map === 'object' ? g.map : {}, how: g.how && typeof g.how === 'object' ? g.how : {} }; });
+      if (cfg.room && typeof cfg.room === 'object' && Array.isArray(cfg.room.desks)) { state.room = cfg.room; roomOK(); } if (cfg.seatWeights && typeof cfg.seatWeights === 'object') state.seatWeights = cfg.seatWeights;
       if (Array.isArray(cfg.custom)) cfg.custom.forEach(c => { if (c && c.id && c.label && !state.custom.some(x => x.id === c.id)) state.custom.push(c); });
       const clean = (c, prev) => ({
         label: typeof c.label === 'string' && c.label.trim() ? c.label.trim() : (prev ? prev.label : undefined),
@@ -1644,6 +1664,7 @@ function openSettings() {
         roster: typeof c.roster === 'string' ? c.roster : '', rosterAt: c.rosterAt || null, skipRoster: !!c.skipRoster,
         excluded: c.excluded && typeof c.excluded === 'object' ? c.excluded : {}, ignored: c.ignored && typeof c.ignored === 'object' ? c.ignored : {},
         aliases: c.aliases && typeof c.aliases === 'object' ? c.aliases : {}, hiddenUnits: c.hiddenUnits && typeof c.hiddenUnits === 'object' ? c.hiddenUnits : {},
+        seatInfo: c.seatInfo && typeof c.seatInfo === 'object' ? c.seatInfo : (prev ? prev.seatInfo : {}), seating: c.seating && typeof c.seating === 'object' && c.seating.seats ? c.seating : (prev ? prev.seating : undefined),
         studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, gradeHistory: Array.isArray(c.gradeHistory) ? c.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : (prev ? prev.gradeHistory : []), history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })) : (prev ? prev.history : [])
       });
       let applied = 0, held = 0;
@@ -1713,7 +1734,7 @@ document.addEventListener('keydown', e => {
   if (open) { (m._cancel || (() => m.classList.add('hidden')))(); return; }
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
 });
-window.__tally = { get state() { return state; }, save, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, unitColumn, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports };
+window.__tally = { get state() { return state; }, save, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, unitColumn, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 render();
 if (bootError) setTimeout(() => toast('Saved Tally data could not be read and was set aside (kept as a backup in this browser). Re-import your exports.', true, 8000), 300);

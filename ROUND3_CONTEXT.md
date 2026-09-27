@@ -1,6 +1,6 @@
 # Tally — review round 3 context (27 Sep 2026)
 
-Read `NOTES.md` first (Croix's setup, decisions, routine), then `README.md`, `GRADES_SPEC.md`, `COMMAND_CENTER.md`.
+Read `NOTES.md` first (Croix's setup, decisions, routine), then `README.md`, `GRADES_SPEC.md`, `COMMAND_CENTER.md`, `SEATING_SPEC.md`.
 Round 1–2 findings are in `REVIEW_CONTEXT.md` / `ROUND2_FINDINGS.md` (historical; most fixed).
 
 ## Ground rules for reviewers

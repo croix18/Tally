@@ -26,6 +26,8 @@ After a Focus gradebook export is loaded, every mapped unit gets a Focus check b
 
 **Student reports** (class ⋯ menu, or the Print button on a student card) print one page per student: the Focus grade, what would move it (missing work turned in, IXL finished, what the next assessment needs) and the IXL skills still owed by unit — for the student and the people at home.
 
+**Seating** (class bar) draws your room once — templates, drag, rotate, shared by every class — and generates seating charts: talkers apart, front-seat and near-teacher flags, keep-apart (hard) and seat-near links, and each student's standing (FAST percentile from the Seating Chart backup, blended with their live Focus grade and IXL completion) pulled toward the front. Tap a student to see why they're there, lock them, or swap them — every move reports what it fixes and breaks. Print a teacher copy or a student/sub copy. See `SEATING_SPEC.md`.
+
 Student-facing screens (Race and Data Lab) never show names and lock behind a hold-to-exit button. The Race ranks classes by the share of students who moved up since the league's shared baseline import (average gain breaks ties), so a class that starts behind can win and one student can't swing it; the furthest-along class is tagged. In the Data Lab, an IQR of 0 or 1 switches the 1.5 × IQR outlier rule off with a note.
 
 ## Source

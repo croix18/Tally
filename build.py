@@ -11,8 +11,8 @@ parser = re.sub(r"^if \(typeof module.*$", '', (root / 'parser.js').read_text(),
 app = (root / 'app.js').read_text()
 grades = (root / 'grades.js').read_text()
 assert '/*__GRADES__*/' in app and '/*__CHARTS__*/' in app
-assert '/*__HOME__*/' in app
-app = app.replace('/*__GRADES__*/', grades).replace('/*__CHARTS__*/', (root / 'charts.js').read_text()).replace('/*__HOME__*/', (root / 'home.js').read_text())
+assert '/*__HOME__*/' in app and '/*__SEATING__*/' in app
+app = app.replace('/*__GRADES__*/', grades).replace('/*__CHARTS__*/', (root / 'charts.js').read_text()).replace('/*__HOME__*/', (root / 'home.js').read_text()).replace('/*__SEATING__*/', (root / 'seating.js').read_text())
 # DM Sans (SIL OFL, fonts/LICENSE-DM-Sans.txt) is embedded so the page makes no network request at all.
 woff = base64.b64encode((root / 'fonts' / 'dm-sans-latin.woff2').read_bytes()).decode()
 font = ("@font-face{font-family:'DM Sans';font-style:normal;font-weight:100 1000;font-display:swap;"
