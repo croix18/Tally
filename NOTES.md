@@ -78,7 +78,7 @@ per-section-file era and many items in them are now done).
   only), save() reports quota failures, Seat by hand, honest fit caption, standing shows its ranks. The P2s followed
   (28 Sep): keep-by-desk-number templates, room undo with seats, 45-day retention for departed students, list
   search + quick toggles, keyboard room editor, seeded fit baseline, room name on prints, "Shown as" names. **Place by** (Priorities): standing from the blend, FAST only, Focus grade, assessments
-  only, or IXL progress.
+  only, or IXL progress. **Partners**: keep lows apart / tutor pairs / similar level.
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 

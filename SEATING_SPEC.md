@@ -21,6 +21,9 @@ and FAST scores: its JSON backup (⋯ → Export) is dropped on Tally like any o
 **Place by** (Priorities → `state.seatBasis`): `blend` (default), `fast`, `grade` (Focus course grade), `tests`
 (assessment average, IXL columns out — from `ixlVsTests`), `ixl` (share of assigned skills at goal). One source →
 standing is that source's class percentile rank (FAST: the state percentile).
+**Partners** (`state.seatPairs`): `mix` (default — two lows aren't partners), `tutor` (partner cost falls to 0 at a
+50-point standing gap, so strong sits with weak), `similar` (the reverse). The "Partner pairing" weight is spent
+whichever way is chosen (`pairCost`).
 `standing` = mean of whichever exist: the FAST percentile, the class percentile rank of the current Focus grade, and
 the class percentile rank of IXL completion on assigned units. Below 25 (or FAST level 1) counts as low: pulled toward
 the front by the band rule (under 25 → front half, under 50 → front three-quarters), and two lows aren't partners.
