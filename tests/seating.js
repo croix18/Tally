@@ -48,14 +48,14 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   check(await p.locator('.cdesk .cname').count()>=20 && /saved/.test(await p.textContent('#bar')),'saved chart comes back after a reload');
   const fitPost=+(await p.textContent('.fit .n')); check(Math.abs(fitPost-fitPre)<=8 && fitPost>0,'saving does not collapse the fit (not scored against itself as previous partners): '+fitPre+' → '+fitPost);
   // 4. student sheet: flags, keep-apart symmetric, exclusive with seat-near
-  await p.locator('.seatStu').first().click(); await p.waitForTimeout(300);
+  await p.locator('.seatOpen').first().click(); await p.waitForTimeout(300);
   const me=await p.evaluate(K=>window.__tally.seatStudents(window.__tally.state.sections[K])[0].display, K);
   await p.click('[data-beh="high"]'); await p.click('[data-flag="front"]'); await p.locator('[data-rel^="apart|"]').first().click(); await p.waitForTimeout(100);
   const tid=await p.locator('[data-rel^="apart|"]').first().getAttribute('data-rel'); const other=await p.evaluate(([K,i])=>window.__tally.seatStudents(window.__tally.state.sections[K])[i].display, [K,+tid.split('|')[1]]);
   await p.click('#mCancel'); await p.waitForTimeout(400);
   const rel=await p.evaluate(([K,me,other])=>{ const s=window.__tally.state.sections[K]; return { mine:s.seatInfo[me], theirs:s.seatInfo[other] }; }, [K,me,other]);
   check(rel.mine.behavior==='high' && rel.mine.front===true && rel.mine.apart.includes(other) && rel.theirs.apart.includes(me),'sheet saves behavior, flag and a symmetric keep-apart');
-  check(await p.locator('.seatStu').first().locator('i.hot').count()===1,'roster row shows the H tag');
+  check(await p.locator('.seatStu').first().locator('.seg.tiny button.on.hot').count()===1 && await p.locator('.seatStu').first().locator('.ft.on').count()===1,'roster row shows H selected and Front on');
   // 5. Names off masks the chart and the list
   await p.click('#btnHide'); await p.waitForTimeout(400);
   const txt=await p.textContent('#gridwrap'); check(!txt.includes(me.split(',')[0]) && /[A-Z]\. [A-Z]\./.test(txt),'Names off: chart and list show initials only');
@@ -131,11 +131,53 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   const tc=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const st=T.seatStudents(s)[0]; const i=s.seatInfo[st.display]; i.nick='Ricky'; i.shownLast="O'Brien-McCall"; T.save(); T.render(); return T.seatStudents(s)[0]; }, K);
   await p.waitForTimeout(300); const listTxt=await p.locator('.seatStu').first().innerText();
   check(/Ricky O'Brien-McCall/.test(listTxt),'"Shown as" first and last names drive the list: '+listTxt.split('\n')[0]);
-  await p.locator('.seatStu').first().click(); await p.waitForTimeout(300);
+  await p.locator('.seatOpen').first().click(); await p.waitForTimeout(300);
   check(await p.inputValue('#shNick')==='Ricky' && await p.inputValue('#shLast')==="O'Brien-McCall" && /Focus has/.test(await p.textContent('#modal')),'the sheet shows both fields with the Focus original beside them');
   await p.fill('#shLast','Mcdonald'); await p.press('#shLast','Tab'); await p.click('#mCancel'); await p.waitForTimeout(300);
   check(/Ricky Mcdonald/.test(await p.locator('.seatStu').first().innerText()),'editing the shown last name updates the list');
-  const cap=await p.evaluate(()=>{ const T=window.__tally; return null; });
+  // 11. the seven P2s
+  // (1) list: search, one-tap L/M/H and Front, no-scores note
+  await p.fill('#seatSearch','ricky'); await p.waitForTimeout(150); check(await p.locator('.seatStu[data-n]:not([hidden])').count()===1,'search narrows the student list');
+  await p.fill('#seatSearch',''); await p.waitForTimeout(150);
+  await p.locator('.seatStu').nth(2).locator('[data-qb$="|medium"]').click(); await p.waitForTimeout(300);
+  const st3=await p.evaluate(K=>window.__tally.seatStudents(window.__tally.state.sections[K])[2], K); check(st3.behavior==='medium','one-tap M sets behavior on the list');
+  await p.locator('.seatStu').nth(2).locator('.ft').click(); await p.waitForTimeout(300); check((await p.evaluate(K=>window.__tally.seatStudents(window.__tally.state.sections[K])[2].front, K))===true,'one-tap F sets the front flag');
+  // (1b) room name prints on the header
+  await p.click('#seatSub [data-sub="room"]'); await p.waitForTimeout(300); await p.fill('#rmName','WHM07 100'); await p.press('#rmName','Tab'); await p.waitForTimeout(200);
+  // (2) keyboard in the room: focus a desk, Enter selects, arrow nudges, Delete removes, Esc deselects
+  const d0=await p.evaluate(()=>({...window.__tally.state.room.desks[0]}));
+  await p.locator('.g-desk').first().focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(250); check(await p.locator('.selbar').count()===1,'Enter on a focused desk selects it');
+  await p.keyboard.press('ArrowRight'); await p.waitForTimeout(250); const d1=await p.evaluate(()=>({...window.__tally.state.room.desks[0]})); check(d1.x===d0.x+10,'arrow key nudges the selected desk one grid step');
+  const nBefore=await p.evaluate(()=>window.__tally.state.room.desks.length); await p.keyboard.press('Delete'); await p.waitForTimeout(250); check(await p.evaluate(()=>window.__tally.state.room.desks.length)===nBefore-1,'Delete key removes the selected desk');
+  check((await p.locator('.g-desk').first().getAttribute('aria-label')||'').startsWith('Desk '),'desks are labelled buttons');
+  // (4) room undo brings the deleted desk AND its student back
+  await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const seats={}; seats[T.state.room.desks[0].id]=T.seatStudents(s)[0].id; s.seating={seats,locks:{},savedAt:new Date().toISOString()}; T.save(); }, K);
+  await p.locator('.g-desk').first().click(); await p.waitForTimeout(200); await p.click('#rmDel'); await p.waitForTimeout(250);
+  check(await p.evaluate(K=>Object.keys(window.__tally.state.sections[K].seating.seats).length, K)===0,'deleting a seated desk unseats the student');
+  await p.click('#rmUndo'); await p.waitForTimeout(250);
+  check(await p.evaluate(K=>Object.keys(window.__tally.state.sections[K].seating.seats).length, K)===1,'room undo restores the desk with the student in it');
+  // (3) templates keep students by desk number, horseshoe included
+  await p.click('#rmTpl'); await p.waitForTimeout(200); await p.fill('#tplN','12'); await p.click('[data-tpl="pairs"]'); await p.waitForTimeout(400);
+  await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const nums=T.deskNumbers(); const byNum={}; T.state.room.desks.forEach(d=>byNum[nums[d.id]]=d.id); const stu=T.seatStudents(s); s.seating={seats:{[byNum[3]]:stu[0].id,[byNum[7]]:stu[1].id},locks:{},savedAt:new Date().toISOString()}; T.save(); }, K);
+  await p.click('#rmTpl'); await p.waitForTimeout(200); await p.fill('#tplN','12'); await p.click('[data-tpl="ushape"]'); await p.waitForTimeout(400);
+  const kept=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const nums=T.deskNumbers(); const stu=T.seatStudents(s); const inv={}; for (const [d,n] of Object.entries(s.seating.seats)) inv[n]=nums[d]; return [inv[stu[0].id], inv[stu[1].id]]; }, K);
+  check(kept[0]===3 && kept[1]===7,'switching to the horseshoe keeps each student at the same desk NUMBER: '+kept.join(','));
+  await p.click('#rmTpl'); await p.waitForTimeout(200); await p.fill('#tplN','4'); await p.click('[data-tpl="rows"]'); await p.waitForTimeout(500);
+  check(/unseated/.test(await p.textContent('#toast')),'a smaller template says who got unseated');
+  // (6) fit is stable across renders
+  await p.click('#rmTpl'); await p.waitForTimeout(200); await p.fill('#tplN','24'); await p.click('[data-tpl="pairs"]'); await p.waitForTimeout(400);
+  await p.click('#seatSub [data-sub="chart"]'); await p.waitForTimeout(300); await p.click('#seatGen'); await p.waitForFunction(()=>document.querySelectorAll('.cand button').length>0,{timeout:20000}); await p.waitForTimeout(300);
+  const f1=await p.textContent('.fit .n'); await p.evaluate(()=>window.__tally.render()); await p.waitForTimeout(300); await p.evaluate(()=>window.__tally.render()); await p.waitForTimeout(300); const f2=await p.textContent('.fit .n');
+  check(f1===f2,'fit does not drift between renders: '+f1+' / '+f2);
+  // (5) retention: a departed student's info is stamped, listed, forgettable
+  await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; s.seatInfo['GONE, ZED']={...s.seatInfo[Object.keys(s.seatInfo)[0]], gone:undefined}; s.seatInfo['OLD, ZED']={...s.seatInfo[Object.keys(s.seatInfo)[0]], gone:'2026-01-01'}; T.save(); T.render(); }, K); await p.waitForTimeout(300);
+  const ret=await p.evaluate(K=>{ const i=window.__tally.state.sections[K].seatInfo; return { stamped:i['GONE, ZED'] && i['GONE, ZED'].gone, old:!!i['OLD, ZED'] }; }, K);
+  check(ret.stamped===new Date().toISOString().slice(0,10) && !ret.old,'a vanished student is stamped today; one gone 45+ days is dropped');
+  await p.click('.departed summary'); await p.waitForTimeout(150); check(/GONE, ZED/.test(await p.textContent('.departed')),'departed students are listed under Not on the roster');
+  await p.locator('.seatStu.gone').filter({hasText:'GONE, ZED'}).locator('[data-forget]').click(); await p.waitForTimeout(300); check(!(await p.evaluate(K=>'GONE, ZED' in window.__tally.state.sections[K].seatInfo, K)),'Forget removes them now');
+  // (1b) print header carries the room name and course
+  const [pop3]=await Promise.all([ctx.waitForEvent('page'), (async()=>{ await p.click('#seatPrint'); await p.waitForTimeout(200); await p.click('[data-pm="teacher"]'); })()]); await pop3.waitForLoadState(); await pop3.waitForTimeout(300);
+  const h3=await pop3.textContent('body'); check(/Room WHM07 100/.test(h3) && /Accelerated 7th Grade Math/.test(h3) && /high behavior/.test(h3),'teacher print header has course, room and a legend'); await pop3.close();
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();
 })();

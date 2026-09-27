@@ -16,7 +16,7 @@ const numOr = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n)
 function cleanSeatInfo(i) {
   i = i && typeof i === 'object' ? i : {}; const str = v => typeof v === 'string' ? v.slice(0, 2000) : ''; const arr = v => Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 200) : [];
   const level = Number.isInteger(+i.level) && +i.level >= 1 && +i.level <= 5 ? +i.level : null;
-  return { nick: str(i.nick).slice(0, 40), shownLast: str(i.shownLast).slice(0, 40), behavior: ['low', 'medium', 'high'].includes(i.behavior) ? i.behavior : 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: ['', 'ESE', '504', 'ESE+504'].includes(i.plan) ? i.plan : '', accom: str(i.accom), apart: arr(i.apart), together: arr(i.together), notes: str(i.notes), photo: typeof i.photo === 'string' && i.photo.length <= 20000 && PHOTO_RE.test(i.photo) ? i.photo : null, level, pct: i.pct == null ? null : numOr(i.pct, null, 0, 100), scale: i.scale == null ? null : numOr(i.scale, null, 0, 2000) };
+  return { gone: typeof i.gone === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.gone) ? i.gone : undefined, nick: str(i.nick).slice(0, 40), shownLast: str(i.shownLast).slice(0, 40), behavior: ['low', 'medium', 'high'].includes(i.behavior) ? i.behavior : 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: ['', 'ESE', '504', 'ESE+504'].includes(i.plan) ? i.plan : '', accom: str(i.accom), apart: arr(i.apart), together: arr(i.together), notes: str(i.notes), photo: typeof i.photo === 'string' && i.photo.length <= 20000 && PHOTO_RE.test(i.photo) ? i.photo : null, level, pct: i.pct == null ? null : numOr(i.pct, null, 0, 100), scale: i.scale == null ? null : numOr(i.scale, null, 0, 2000) };
 }
 function freshRoom() { return { w: 900, h: 600, front: 'top', desks: [], teacher: { x: 740, y: 500, w: 130, h: 64 }, door: { x: 20, y: 560 } }; }
 function roomOK() {
@@ -24,6 +24,7 @@ function roomOK() {
   r.w = Math.max(400, +r.w || 900); r.h = Math.max(300, +r.h || 600); r.front = ['top', 'right', 'bottom', 'left'].includes(r.front) ? r.front : 'top';
   const seen = new Set(); r.desks = r.desks.filter(d => d && typeof d === 'object').map(d => { let id = cleanId(d.id); while (seen.has(id)) id = seatUid(); seen.add(id); return { id, x: numOr(d.x, 0, 0, 5000), y: numOr(d.y, 0, 0, 5000), r: numOr(d.r, 0, -360, 360) }; });
   r.teacher = r.teacher && typeof r.teacher === 'object' ? { x: numOr(r.teacher.x, 0, 0, 5000), y: numOr(r.teacher.y, 0, 0, 5000), w: numOr(r.teacher.w, 130, 20, 600), h: numOr(r.teacher.h, 64, 20, 600) } : null;
+  r.name = typeof r.name === 'string' ? r.name.slice(0, 24) : '';
   r.door = r.door && typeof r.door === 'object' ? { x: numOr(r.door.x, 0, 0, 5000), y: numOr(r.door.y, 0, 0, 5000) } : null;
   const w = state.seatWeights; if (w && typeof w === 'object') for (const k in w) w[k] = numOr(w[k], SEAT_FACTORS.find(f => f.k === k) ? SEAT_FACTORS.find(f => f.k === k).def : 0, 0, 10);
   return r;
@@ -110,9 +111,10 @@ function buildModel(sec, stu, G, withFresh) {
 }
 function totalScore(M, G, asg) { let t = 0, h = 0; for (let i = 0; i < M.n; i++) { t += M.U[i][asg[i]]; for (let j = i + 1; j < M.n; j++) t += M.P[i][j][G.rel[asg[i]][asg[j]]]; } for (const [i, j] of M.hard) if (G.rel[asg[i]][asg[j]] > 0) h++; return { soft: t, hard: h, total: t + h * SEAT_HARD }; }
 const shuffleArr = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = 0 | Math.random() * (i + 1); [b[i], b[j]] = [b[j], b[i]]; } return b; };
-function randomAsg(M) { return shuffleArr([...Array(M.m).keys()]).slice(0, M.n); }
+function randomAsg(M, rnd) { const a = [...Array(M.m).keys()]; const r = rnd || Math.random; for (let i = a.length - 1; i > 0; i--) { const j = 0 | r() * (i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, M.n); }
+const seededRnd = seed => { let x = (seed >>> 0) || 1; return () => { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return ((x >>> 0) % 1e6) / 1e6; }; };
 let seatBase = { key: '', v: 0 };
-function seatBaseline(sec, M, G) { if (!M.m || !M.n || M.n > M.m) return 0; const key = sec.key + '|' + JSON.stringify(state.seatWeights || {}) + '|' + M.n + '|' + M.m; if (seatBase.key === key) return seatBase.v; let b = 0; for (let k = 0; k < 30; k++) b += totalScore(M, G, randomAsg(M)).soft; b /= 30; seatBase = { key, v: b }; return b; }
+function seatBaseline(sec, M, G) { if (!M.m || !M.n || M.n > M.m) return 0; const key = sec.key + '|' + JSON.stringify(state.seatWeights || {}) + '|' + M.n + '|' + M.m; if (seatBase.key === key) return seatBase.v; const rnd = seededRnd(M.n * 7919 + M.m * 104729 + 17); let b = 0; for (let k = 0; k < 40; k++) b += totalScore(M, G, randomAsg(M, rnd)).soft; b /= 40; seatBase = { key, v: b }; return b; }   // the same 40 random seatings every time, so the fit is stable between renders
 function seatsFromAsg(asg, stu, G) { const seats = {}; asg.forEach((d, i) => seats[G.ds[d].id] = stu[i].id); return seats; }
 function asgFromSeats(seats, stu, G) { const di = {}; G.ds.forEach((d, i) => di[d.id] = i); const at = {}; for (const [d, sid] of Object.entries(seats)) if (di[d] != null) at[sid] = di[d]; return stu.map(s => at[s.id] ?? -1); }
 function scoreSeats(sec, seats, stu, G, M) {
@@ -200,12 +202,12 @@ function whyHere(sec, work, sid, deskId, stu, G) {
 /* ---- working chart per class (unsaved edits live here until Save) ---- */
 const seatWork = {};   // sec.key → { seats, locks, source, dirty, undo, candIdx }
 const seatCandsBy = {};   // sec.key → generated options (the panel of one class never shows another's)
-let seatSolving = false, seatGenId = 0, seatUiKey = null, seatSel = null, seatHover = null, seatLast = null, seatPending = null, roomSel = null, roomView = null;
+let seatQuery = '', seatSolving = false, seatGenId = 0, seatUiKey = null, seatSel = null, seatHover = null, seatLast = null, seatPending = null, roomSel = null, roomView = null;
 function seatAbort() { if (seatWorker) { seatWorker.terminate(); seatWorker = null; } seatSolving = false; seatGenId++; }
 // Selection, hover, last move and pending reseat belong to one class; switching classes clears them.
 function seatUiFor(sec) { if (seatUiKey !== sec.key) { seatUiKey = sec.key; seatSel = null; seatHover = null; seatLast = null; seatPending = null; } }
 // Seats held by someone no longer on the roster are freed (a withdrawn or renamed student must not block a desk).
-function pruneSeats(w, stu) { const ok = new Set(stu.map(x => x.id)); let n = 0; for (const d of Object.keys(w.seats)) if (!ok.has(w.seats[d])) { delete w.seats[d]; n++; } for (const k of Object.keys(w.locks || {})) if (!ok.has(k)) delete w.locks[k]; return n; }
+function pruneSeats(w, stu) { const ok = new Set(stu.map(x => x.id)); const desks = new Set(roomOK().desks.map(d => d.id)); let n = 0; for (const d of Object.keys(w.seats)) { if (!desks.has(d)) { delete w.seats[d]; continue; } if (!ok.has(w.seats[d])) { delete w.seats[d]; n++; } } for (const k of Object.keys(w.locks || {})) if (!ok.has(k)) delete w.locks[k]; return n; }
 const roomUndo = [];
 function workFor(sec) { if (seatWork[sec.key]) return seatWork[sec.key]; const sv = sec.seating; if (sv && sv.seats) seatWork[sec.key] = { seats: JSON.parse(JSON.stringify(sv.seats)), locks: { ...(sv.locks || {}) }, source: 'saved', dirty: false, undo: [] }; return seatWork[sec.key] || null; }
 function setWork(sec, seats, source) { const prev = seatWork[sec.key]; seatWork[sec.key] = { seats: JSON.parse(JSON.stringify(seats)), locks: { ...((prev && prev.locks) || (sec.seating && sec.seating.locks) || {}) }, source, dirty: false, undo: [] }; seatSel = null; seatLast = null; return seatWork[sec.key]; }
@@ -268,10 +270,11 @@ function svgChart(sec, seats, stu, G, mode, w) {
         if (showPhoto) h += `<image href="${s.photo}" x="3" y="3" width="${DESK - 6}" height="${ph}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`; else h += `<rect x="3" y="3" width="${DESK - 6}" height="${ph}" rx="6" fill="#E9EEF5"/>`;
         const pp = seatParts(s); const fn = H ? mask(s.display) : pp.first, ln = H ? '' : pp.last;
         h += `<text class="cname" x="${DESK / 2}" y="${DESK - 13}" text-anchor="middle" style="font-size:${fn.length > 9 ? 7 : 8.5}px">${esc(fn)}</text><text class="cname" x="${DESK / 2}" y="${DESK - 4}" text-anchor="middle" style="font-size:${ln.length > 10 ? 6.5 : 7.5}px;font-weight:500">${esc(ln)}</text></g>`; return; }
-      h += `<clipPath id="${cid}"><rect x="3" y="3" width="${DESK - 6}" height="${DESK - 20}" rx="6"/></clipPath>`;
-      if (showPhoto) h += `<image href="${s.photo}" x="3" y="3" width="${DESK - 6}" height="${DESK - 20}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
-      else h += `<rect x="3" y="3" width="${DESK - 6}" height="${DESK - 20}" rx="6" fill="#E9EEF5"/><text x="${DESK / 2}" y="${DESK / 2 - 4}" text-anchor="middle" font-size="16" font-weight="700" fill="#16213A">${esc(initials)}</text>`;
-      h += `<text class="cname" x="${DESK / 2}" y="${DESK - 5}" text-anchor="middle">${esc(seatShort(s))}</text>`;
+      h += `<clipPath id="${cid}"><rect x="3" y="3" width="${DESK - 6}" height="${DESK - 22}" rx="6"/></clipPath>`;
+      if (showPhoto) h += `<image href="${s.photo}" x="3" y="3" width="${DESK - 6}" height="${DESK - 22}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
+      else h += `<rect x="3" y="3" width="${DESK - 6}" height="${DESK - 22}" rx="6" fill="#E9EEF5"/><text x="${DESK / 2}" y="${DESK / 2 - 5}" text-anchor="middle" font-size="16" font-weight="700" fill="#16213A">${esc(initials)}</text>`;
+      const nm = seatShort(s); const fs = nm.length <= 9 ? 11 : nm.length <= 12 ? 10 : 9;
+      h += `<text class="cname" x="${DESK / 2}" y="${DESK - 5}" text-anchor="middle" style="font-size:${fs}px">${esc(nm)}</text>`;
       if (s.level && !H) h += `<circle cx="${DESK - 8}" cy="8" r="5" fill="${SEAT_LV[s.level]}" stroke="#fff" stroke-width="1.5"><title>FAST level ${s.level}</title></circle>`;
       if (s.behavior === 'high' && !H) h += `<rect x="3" y="3" width="11" height="11" rx="2.5" fill="${BEH_COLOR}"/><text x="8.5" y="11.5" text-anchor="middle" font-size="8" font-weight="800" fill="#fff">H</text>`;
       if (s.plan && !H) { const lab = s.plan === 'ESE+504' ? 'E/5' : s.plan; const pw = lab.length * 6 + 6; h += `<rect x="${(DESK - pw) / 2}" y="${DESK - 36}" width="${pw}" height="11" rx="3" fill="#16213A"/><text x="${DESK / 2}" y="${DESK - 27.5}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">${esc(lab)}</text>`; }
@@ -297,6 +300,10 @@ function renderSeating(s) {
   const stu = seatStudents(s), G = geometry(), nd = G.ds.length; const H = seatHidden();
   if (s.seating && s.seating.seats) { const tmp = { seats: s.seating.seats, locks: s.seating.locks || {} }; const freed = pruneSeats(tmp, stu); if (freed) { save(); toast(`${plural(freed, 'seat')} freed — ${freed === 1 ? 'that student is' : 'those students are'} no longer on the roster.`, false, 5000); } }
   const w = workFor(s); if (w) pruneSeats(w, stu);
+  // Seating info for students no longer on the roster: stamped the day they vanish, kept 45 days (transfers come back), then dropped.
+  const onRoster = new Set(stu.map(x => x.id)); const today = new Date().toISOString().slice(0, 10); const departed = []; let changed = false;
+  for (const k of Object.keys(s.seatInfo || {})) { const i = s.seatInfo[k]; if (onRoster.has(k)) { if (i.gone) { delete i.gone; changed = true; } continue; } if (!i.gone) { i.gone = today; changed = true; } if (ageDays(i.gone) > 45) { delete s.seatInfo[k]; changed = true; continue; } departed.push({ id: k, gone: i.gone, photo: i.photo }); }
+  if (changed) save();
   const seatCands = seatCandsBy[s.key] || [];
   let side = '';
   if (!nd) side += `<div class="notice"><span>⚠︎</span><span><b>No desks yet.</b> Draw your room first — it's shared by every class.</span><button data-sub="room">Room</button></div>`;
@@ -317,10 +324,12 @@ function renderSeating(s) {
     const unseated = stu.filter(x => !Object.values(w.seats).includes(x.id));
     if (unseated.length) side += `<div class="notice"><span>⚠︎</span><span><b>Not seated${stu.length > nd ? ` (${stu.length - nd} more students than desks)` : ''}:</b> ${unseated.map(x => `<button class="chip ${seatPending === x.id ? 'on' : ''}" data-unseated="${stu.indexOf(x)}">${esc(seatName(x))}</button>`).join(' ')}</span></div>`;
   }
-  side += `<h3 class="seatH">Students <small>${stu.length}</small></h3><div class="seatList">${stu.map((x, i) => `<button class="seatStu" data-sheet="${i}"><span class="ph">${x.photo && !H ? `<img src="${x.photo}" alt="">` : esc(((x.first[0] || '') + (x.last[0] || '')).toUpperCase())}</span><span class="nm">${esc(seatName(x))}</span><span class="tags">${H ? '' : `${x.behavior === 'high' ? '<i class="hot">H</i>' : x.behavior === 'medium' ? '<i>M</i>' : ''}${x.front ? '<i>Front</i>' : ''}${x.nearTeacher ? '<i>Near</i>' : ''}${x.plan ? `<i class="plan">${esc(x.plan)}</i>` : ''}${x.apart.length ? `<i class="apart">${x.apart.length} apart</i>` : ''}${x.together.length ? `<i class="near">${x.together.length} near</i>` : ''}`}${x.standing != null ? `<i class="st" title="${esc(standingText(x))}">${x.standing}</i>` : ''}</span></button>`).join('')}</div>`;
+  const noScore = stu.filter(x => x.standing == null).length;
+  side += `<h3 class="seatH">Students <small>${stu.length}</small></h3>${stu.length > 8 ? `<input class="txt seatSearch" id="seatSearch" placeholder="Find a student…" aria-label="Find a student" autocomplete="off">` : ''}${noScore ? `<p class="ghint">${plural(noScore, 'student')} with no scores yet — treated as mid-level for placement.</p>` : ''}<div class="seatList">${stu.map((x, i) => `<div class="seatStu" data-n="${esc(norm(x.display + ' ' + seatName(x)))}"><button class="seatOpen" data-sheet="${i}" aria-label="Edit ${esc(seatName(x))}"><span class="ph">${x.photo && !H ? `<img src="${x.photo}" alt="">` : esc(((x.first[0] || '') + (x.last[0] || '')).toUpperCase())}</span><span class="col"><span class="nm">${esc(seatName(x))}</span><span class="tags">${x.standing != null ? `<i class="st" title="${esc(standingText(x))}">${x.standing}</i>` : ''}${H ? '' : `${x.plan ? `<i class="plan">${esc(x.plan)}</i>` : ''}${x.nearTeacher ? '<i>Near</i>' : ''}${x.apart.length ? `<i class="apart">${x.apart.length} apart</i>` : ''}${x.together.length ? `<i class="near">${x.together.length} near</i>` : ''}`}</span></span></button>${H ? '' : `<span class="quick"><span class="seg tiny" role="group" aria-label="Behavior">${['low', 'medium', 'high'].map(b => `<button data-qb="${i}|${b}" class="${x.behavior === b ? (b === 'high' ? 'on hot' : 'on') : ''}" aria-pressed="${x.behavior === b}" title="${b} behavior">${b[0].toUpperCase()}</button>`).join('')}</span><button class="ft ${x.front ? 'on' : ''}" data-qf="${i}" aria-pressed="${!!x.front}" title="Needs a front seat">F</button></span>`}</div>`).join('')}</div>`;
+  if (departed.length) side += `<details class="departed"><summary>Not on the roster <small>${departed.length}</small></summary><p class="ghint">Kept 45 days in case they return, then forgotten. Photos, flags and notes go with them.</p>${departed.map((d, i) => `<div class="seatStu gone"><span class="ph">${d.photo && !H ? `<img src="${d.photo}" alt="">` : '·'}</span><span class="nm">${esc(H ? mask(d.id) : d.id)}</span><span class="tags"><i>since ${esc(fmtDate(d.gone))}</i></span><button class="pill pale small" data-forget="${i}">Forget</button></div>`).join('')}<button class="pill pale small" id="forgetAll">Forget all ${departed.length}</button></details>`;
   const hint = w ? (seatSel ? '<b>Tap another desk</b> to swap or move · tap the same desk to cancel' : seatPending ? '<b>Tap an empty desk</b> to seat them' : 'Tap a student on the chart to see why they\u2019re there, lock them, or move them') : (nd ? 'Generate seating, or seat by hand; tap a student in the list to set flags first.' : '');
   wrap.innerHTML = `<div class="seat"><aside class="seatSide">${side}</aside><section class="seatMain"><p class="ghint seatHint">${hint}</p><div class="chart-stage">${svgChart(s, w ? w.seats : {}, stu, G, 'screen', w)}</div><div class="seatLegend">${H ? '<span>Names off — initials only</span>' : `<span><b class="planTag">H</b> high behavior</span><span>FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')}</span><span><b class="planTag">ESE</b>/<b class="planTag">504</b> plan</span>`}<span>🔒 locked</span><span>number = standing (FAST · Focus · IXL, relative to the class)</span></div></section></div>`;
-  bindSeating(s, wrap, w, stu, G);
+  bindSeating(s, wrap, w, stu, G, departed);
 }
 function movePanelHTML(s, w, stu, G) {
   let h = '';
@@ -334,7 +343,7 @@ function movePanelHTML(s, w, stu, G) {
   if (seatLast && !seatSel) h += `<div class="seatWhy"><b>${esc(seatLast.a && seatLast.b ? `Swapped ${nm(seatLast.a)} and ${nm(seatLast.b)}` : `Moved ${nm(seatLast.a || seatLast.b)} to an empty desk`)}</b> ${deltaHTML(seatLast)}</div>`;
   return h;
 }
-function bindSeating(s, wrap, w, stu, G) {
+function bindSeating(s, wrap, w, stu, G, departed) {
   wrap.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { view.sub = b.dataset.sub; render(); });
   const gen = $('#seatGen'); if (gen) gen.onclick = () => seatGenerate(s);
   const seatCands = seatCandsBy[s.key] || [];
@@ -345,6 +354,12 @@ function bindSeating(s, wrap, w, stu, G) {
   const rv = $('#seatRevert'); if (rv) rv.onclick = () => { seatCandsBy[s.key] = []; delete seatWork[s.key]; renderSeating(s); };
   const cl = $('#seatClear'); if (cl) cl.onclick = () => seatConfirm('Clear the saved chart?', `${esc(s.label)}'s saved seating chart will be removed. Locks go too.`, 'Clear it', () => { delete s.seating; delete seatWork[s.key]; seatCandsBy[s.key] = []; save(); render(); });
   wrap.querySelectorAll('[data-sheet]').forEach(b => b.onclick = () => { const x = stu[+b.dataset.sheet]; if (x) openSeatSheet(s, x.id); });
+  const q = $('#seatSearch'); if (q) { q.value = seatQuery; const filt = () => { const t = norm(q.value); wrap.querySelectorAll('.seatStu[data-n]').forEach(el => { el.hidden = !!t && !el.dataset.n.includes(t); }); }; filt(); q.oninput = () => { seatQuery = q.value; filt(); }; }
+  const touch = () => { seatBase = { key: '', v: 0 }; save(); const sc = wrap.querySelector('.seatList') ? wrap.querySelector('.seatList').scrollTop : 0; renderSeating(s); const sl = $('#gridwrap').querySelector('.seatList'); if (sl) sl.scrollTop = sc; };
+  wrap.querySelectorAll('[data-qb]').forEach(b => b.onclick = () => { const [i, beh] = b.dataset.qb.split('|'); const x = stu[+i]; if (!x) return; seatInfoOf(s, x.id).behavior = beh; touch(); });
+  wrap.querySelectorAll('[data-forget]').forEach(b => b.onclick = () => { const d = departed[+b.dataset.forget]; if (!d) return; delete s.seatInfo[d.id]; save(); renderSeating(s); });
+  const fa = $('#forgetAll'); if (fa) fa.onclick = () => { departed.forEach(d => delete s.seatInfo[d.id]); save(); renderSeating(s); };
+  wrap.querySelectorAll('[data-qf]').forEach(b => b.onclick = () => { const x = stu[+b.dataset.qf]; if (!x) return; const info = seatInfoOf(s, x.id); info.front = !info.front; touch(); });
   wrap.querySelectorAll('[data-lock]').forEach(b => b.onclick = () => { const x = stu[+b.dataset.lock]; if (!x) return; const sid = x.id; if (w.locks[sid]) delete w.locks[sid]; else w.locks[sid] = true; w.dirty = true; renderSeating(s); });
   wrap.querySelectorAll('[data-unseat]').forEach(b => b.onclick = () => { const d = b.dataset.unseat; const sid = w.seats[d]; if (!sid || w.locks[sid]) return; w.undo.push(JSON.stringify(w.seats)); delete w.seats[d]; w.dirty = true; seatSel = null; seatLast = null; renderSeating(s); });
   wrap.querySelectorAll('[data-unseated]').forEach(b => b.onclick = () => { const x = stu[+b.dataset.unseated]; if (!x) return; seatPending = seatPending === x.id ? null : x.id; seatSel = null; renderSeating(s); });
@@ -415,7 +430,8 @@ function openSeatPrint(sec) {
 function printSeating(sec, mode, all) {
   const G = geometry(); const safe = mode === 'safe'; seatPlain = true;   // the teacher asked for the page: full names and photos, whatever the Names toggle says
   const legend = safe ? '' : `<p class="lg"><b>H</b> high behavior · FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')} · <b>ESE</b>/<b>504</b> plan · desk number = empty desk</p>`;
-  const page = (s, seats) => { const stu = seatStudents(s); return `<section class="pp"><h1>${esc(s.label)}${safe ? '' : ' — seating chart'}</h1><p>${new Date().toLocaleDateString()} · ${Object.keys(seats).length} students${safe ? '' : ' · teacher copy'}</p>${legend}${svgChart(s, seats, stu, G, safe ? 'safe' : 'teacher', null)}</section>`; };
+  const course = s => s.prep === 'acc' ? 'Accelerated 7th Grade Math (MA.7 + MA.8)' : '7th Grade Math (MA.7)';
+  const page = (s, seats) => { const stu = seatStudents(s); const L = roomOK(); return `<section class="pp"><h1>${esc(s.label)}${safe ? '' : ' — seating chart'}</h1><p>${esc(course(s))}${L.name ? ' · Room ' + esc(L.name) : ''} · ${new Date().toLocaleDateString()} · ${Object.keys(seats).length} students${safe ? '' : ' · teacher copy'}</p>${legend}${svgChart(s, seats, stu, G, safe ? 'safe' : 'teacher', null)}</section>`; };
   let body = '';
   try {
     if (all) { for (const k of state.order) { const s = state.sections[k]; const seats = s.key === sec.key ? workFor(sec).seats : (s.seating && s.seating.seats); if (seats) body += page(s, seats); } }
@@ -435,7 +451,14 @@ const ROOM_TEMPLATES = [
   { k: 'ushape', name: 'Horseshoe', desc: 'A U open toward the front, everyone facing in', build: n => { const G = 8, out = []; const s = Math.max(2, Math.round(n * 0.27)), b = n - 2 * s; const backW = b * (DESK + G) - G; const W = backW + 2 * (DESK + 40); const H = s * (DESK + G) + DESK + 40; for (let i = 0; i < s; i++) out.push({ x: 0, y: i * (DESK + G), r: 90 }); for (let i = 0; i < b; i++) out.push({ x: DESK + 40 + i * (DESK + G), y: H - DESK, r: 0 }); for (let i = 0; i < s; i++) out.push({ x: W - DESK, y: i * (DESK + G), r: -90 }); return out; } },
   { k: 'chevron', name: 'Chevron rows', desc: 'Two angled halves pointing at the board, aisle down the middle', build: (n, per = 3) => { const G = 10, R = 44, A = 90, out = []; const rowCap = per * 2; for (let i = 0; i < n; i++) { const row = Math.floor(i / rowCap), k = i % rowCap; const inRow = Math.min(rowCap, n - row * rowCap); const leftN = Math.ceil(inRow / 2); const left = k < leftN; const c = left ? k : k - leftN; const blockW = per * (DESK + G); const x = left ? (per - leftN + c) * (DESK + G) : blockW + A + c * (DESK + G); const stagger = left ? (leftN - 1 - c) * 14 : c * 14; out.push({ x, y: row * (DESK + R) + stagger, r: left ? 12 : -12 }); } return out; } },
 ];
-function roomPush() { roomUndo.push(JSON.stringify(state.room)); if (roomUndo.length > 30) roomUndo.shift(); }
+function roomPush() {
+  const seats = {}; for (const k of state.order) { const sec = state.sections[k]; seats[k] = { saved: sec.seating ? JSON.parse(JSON.stringify(sec.seating)) : null, work: seatWork[k] ? JSON.parse(JSON.stringify(seatWork[k])) : null }; }
+  roomUndo.push(JSON.stringify({ room: state.room, seats })); if (roomUndo.length > 30) roomUndo.shift();
+}
+function roomUndoPop() {
+  const snap = JSON.parse(roomUndo.pop()); if (!snap.room) { state.room = snap; return; }   // (older shape: the room alone)
+  state.room = snap.room; for (const k in snap.seats) { const sec = state.sections[k]; if (!sec) continue; const e = snap.seats[k]; if (e.saved) sec.seating = e.saved; else delete sec.seating; if (e.work) seatWork[k] = e.work; else delete seatWork[k]; }
+}
 function roomDropDesks(keep) { for (const k of state.order) { const s = state.sections[k]; if (s.seating && s.seating.seats) for (const d of Object.keys(s.seating.seats)) if (!keep.has(d)) delete s.seating.seats[d]; if (seatWork[k]) for (const d of Object.keys(seatWork[k].seats)) if (!keep.has(d)) delete seatWork[k].seats[d]; } }
 function svgRoom() {
   const L = roomOK(), nums = deskNumbers();
@@ -445,22 +468,23 @@ function svgRoom() {
   h += `<rect class="front" x="${fb[0]}" y="${fb[1]}" width="${fb[2]}" height="${fb[3]}" pointer-events="none"/>`;
   const ft = f === 'top' ? `x="${L.w / 2}" y="${T - 3}"` : f === 'bottom' ? `x="${L.w / 2}" y="${L.h - 3}"` : f === 'left' ? `x="${T - 3}" y="${L.h / 2}" transform="rotate(-90 ${T - 3} ${L.h / 2})"` : `x="${L.w - 3}" y="${L.h / 2}" transform="rotate(90 ${L.w - 3} ${L.h / 2})"`;
   h += `<text class="front-t" ${ft} text-anchor="middle" pointer-events="none">FRONT</text>`;
-  if (L.teacher) { const t = L.teacher; h += `<g class="g-teacher${roomSel && roomSel.type === 'teacher' ? ' sel' : ''}" data-type="teacher" transform="translate(${t.x},${t.y})"><rect class="tdesk" width="${t.w}" height="${t.h}" rx="8"/><text class="tdesk-t" x="${t.w / 2}" y="${t.h / 2 + 4}" text-anchor="middle">Teacher</text></g>`; }
-  if (L.door) { const d = L.door; h += `<g class="g-door${roomSel && roomSel.type === 'door' ? ' sel' : ''}" data-type="door" transform="translate(${d.x},${d.y})"><rect class="door" width="44" height="14" rx="3"/><text class="door-t" x="22" y="11" text-anchor="middle">DOOR</text></g>`; }
-  for (const d of L.desks) h += `<g class="g-desk${roomSel && roomSel.type === 'desk' && roomSel.id === d.id ? ' sel' : ''}" data-type="desk" data-id="${esc(d.id)}" transform="translate(${d.x},${d.y}) rotate(${d.r || 0} ${DESK / 2} ${DESK / 2})"><rect class="cdesk-r${roomSel && roomSel.id === d.id ? ' sel' : ''}" width="${DESK}" height="${DESK}" rx="8"/><rect x="6" y="${DESK - 10}" width="${DESK - 12}" height="4" rx="2" fill="#DDD9CE"/><text class="cnum" x="${DESK / 2}" y="${DESK / 2 + 4}" text-anchor="middle">${nums[d.id]}</text></g>`;
+  if (L.teacher) { const t = L.teacher; h += `<g class="g-teacher${roomSel && roomSel.type === 'teacher' ? ' sel' : ''}" data-type="teacher" tabindex="0" role="button" aria-label="Teacher desk" transform="translate(${t.x},${t.y})"><rect class="tdesk" width="${t.w}" height="${t.h}" rx="8"/><text class="tdesk-t" x="${t.w / 2}" y="${t.h / 2 + 4}" text-anchor="middle">Teacher</text></g>`; }
+  if (L.door) { const d = L.door; h += `<g class="g-door${roomSel && roomSel.type === 'door' ? ' sel' : ''}" data-type="door" tabindex="0" role="button" aria-label="Door" transform="translate(${d.x},${d.y})"><rect class="door" width="44" height="14" rx="3"/><text class="door-t" x="22" y="11" text-anchor="middle">DOOR</text></g>`; }
+  for (const d of L.desks) h += `<g class="g-desk${roomSel && roomSel.type === 'desk' && roomSel.id === d.id ? ' sel' : ''}" data-type="desk" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="Desk ${nums[d.id]}${roomSel && roomSel.id === d.id ? ', selected' : ''}" transform="translate(${d.x},${d.y}) rotate(${d.r || 0} ${DESK / 2} ${DESK / 2})"><rect class="cdesk-r${roomSel && roomSel.id === d.id ? ' sel' : ''}" width="${DESK}" height="${DESK}" rx="8"/><rect x="6" y="${DESK - 10}" width="${DESK - 12}" height="4" rx="2" fill="#DDD9CE"/><text class="cnum" x="${DESK / 2}" y="${DESK / 2 + 4}" text-anchor="middle">${nums[d.id]}</text></g>`;
   return h + `</svg>`;
 }
 function renderRoom(s) {
   const L = roomOK(); const wrap = $('#gridwrap'); renderBar();
   let h = `<div class="room"><div class="toolbar"><button class="pill small" id="rmTpl">Templates</button><button class="pill small" id="rmDesk">+ Desk</button><button class="pill small pale" id="rmRow">+ Row…</button><button class="pill small pale" id="rmGrid">Grid…</button>
     <label class="curUnit">Front <select id="rmFront">${['top', 'right', 'bottom', 'left'].map(f => `<option value="${f}" ${L.front === f ? 'selected' : ''}>${f[0].toUpperCase() + f.slice(1)}</option>`).join('')}</select></label>
-    <label class="curUnit">Room <input class="mini" type="number" id="rmW" step="50" min="400" value="${L.w}"> × <input class="mini" type="number" id="rmH" step="50" min="300" value="${L.h}"></label>
+    <label class="curUnit">Size <input class="mini" type="number" id="rmW" step="50" min="400" value="${L.w}" aria-label="Room width"> × <input class="mini" type="number" id="rmH" step="50" min="300" value="${L.h}" aria-label="Room height"></label>
+    <label class="curUnit">Room <input class="mini wide" type="text" id="rmName" maxlength="24" placeholder="e.g. WHM07 100" value="${esc(L.name || '')}" aria-label="Room name (printed on charts)"></label>
     ${L.teacher ? '' : '<button class="pill small pale" id="rmTeacher">+ Teacher desk</button>'}${L.door ? '' : '<button class="pill small pale" id="rmDoor">+ Door</button>'}
     <span class="spacer"></span><button class="pill small pale" id="rmUndo" ${roomUndo.length ? '' : 'disabled'}>↶ Undo</button><button class="pill small pale danger" id="rmClear" ${L.desks.length ? '' : 'disabled'}>Clear desks</button></div>`;
   if (roomSel) { const isDesk = roomSel.type === 'desk';
-    h += `<div class="selbar"><b>${isDesk ? 'Desk ' + (deskNumbers()[roomSel.id] || '') : roomSel.type === 'teacher' ? 'Teacher desk' : 'Door'}</b>${isDesk ? '<button class="ib" data-rot="-15" title="Rotate left">⟲</button><button class="ib" data-rot="15" title="Rotate right">⟳</button><button class="ib" id="rmDup" title="Duplicate">⧉</button>' : roomSel.type === 'teacher' ? '<button class="ib" data-rot="90">⟳ 90°</button>' : ''}<span class="nudge"><button class="ib" data-nudge="-10,0">◀</button><button class="ib" data-nudge="0,-10">▲</button><button class="ib" data-nudge="0,10">▼</button><button class="ib" data-nudge="10,0">▶</button></span><span class="spacer"></span><button class="ib danger" id="rmDel" title="Delete">🗑</button><button class="ib" id="rmDesel">✕</button></div>`; }
-  h += `<div class="stage" id="stage">${svgRoom()}<div class="zoomctl"><button class="ib" data-zoom="0.7" title="Zoom in">+</button><button class="ib" data-zoom="1.4" title="Zoom out">−</button><button class="ib" id="rmFit" title="Fit room">Fit</button></div></div>
-    <p class="ghint">Drag a desk to move it, drag empty space to pan, pinch or + / − to zoom; select a desk and use the arrows to nudge it one grid step. Desks are numbered from the front, left to right. Saved charts follow desks when you move them; deleting a desk unseats whoever is in it in every class.</p></div>`;
+    h += `<div class="selbar"><b>${isDesk ? 'Desk ' + (deskNumbers()[roomSel.id] || '') : roomSel.type === 'teacher' ? 'Teacher desk' : 'Door'}</b>${isDesk ? '<button class="ib" data-rot="-15" title="Rotate left">⟲</button><button class="ib" data-rot="15" title="Rotate right">⟳</button><button class="ib" id="rmDup" title="Duplicate">⧉</button>' : roomSel.type === 'teacher' ? '<button class="ib" data-rot="90">⟳ 90°</button>' : ''}<span class="nudge"><button class="ib" data-nudge="-10,0" aria-label="Nudge left" title="Nudge left (←)">◀</button><button class="ib" data-nudge="0,-10" aria-label="Nudge up" title="Nudge up (↑)">▲</button><button class="ib" data-nudge="0,10" aria-label="Nudge down" title="Nudge down (↓)">▼</button><button class="ib" data-nudge="10,0" aria-label="Nudge right" title="Nudge right (→)">▶</button></span><span class="spacer"></span><button class="ib danger" id="rmDel" aria-label="Delete" title="Delete (Delete key)">🗑</button><button class="ib" id="rmDesel" aria-label="Deselect" title="Deselect (Esc)">✕</button></div>`; }
+  h += `<div class="stage" id="stage">${svgRoom()}<div class="zoomctl"><button class="ib" data-zoom="0.7" aria-label="Zoom in" title="Zoom in">+</button><button class="ib" data-zoom="1.4" aria-label="Zoom out" title="Zoom out">−</button><button class="ib" id="rmFit" aria-label="Fit the room in view" title="Fit room">Fit</button></div></div>
+    <p class="ghint">Drag a desk to move it, drag empty space to pan, pinch or + / − to zoom; select a desk and use the arrows to nudge it one grid step. Keyboard: Tab to a desk, Enter selects, arrow keys nudge, R rotates, Delete removes, Esc deselects. Desks are numbered from the front, left to right. Saved charts follow desks when you move them; deleting a desk unseats whoever is in it in every class.</p></div>`;
   wrap.innerHTML = h; bindRoom(s, wrap);
 }
 function bindRoom(s, wrap) {
@@ -468,12 +492,13 @@ function bindRoom(s, wrap) {
   $('#rmTpl').onclick = () => openRoomTemplates(s);
   $('#rmDesk').onclick = () => { roomPush(); const p = roomFreeSpot(); const d = { id: seatUid(), x: p.x, y: p.y, r: 0 }; L.desks.push(d); roomSel = { type: 'desk', id: d.id }; rr(); };
   $('#rmRow').onclick = () => seatAsk('Add a row', [['n', 'Desks in the row', 6, 1, 20]], v => { roomPush(); const gap = 10, n = v.n; const rowW = n * DESK + (n - 1) * gap; const x0 = Math.max(20, snap10((L.w - rowW) / 2)); let y = 40; while (y < L.h - DESK && L.desks.some(d => Math.abs(d.y - y) < DESK + gap)) y += DESK + 40; for (let i = 0; i < n; i++) L.desks.push({ id: seatUid(), x: x0 + i * (DESK + gap), y: snap10(y), r: 0 }); roomSel = null; rr(); });
-  $('#rmGrid').onclick = () => seatAsk('Add a grid', [['r', 'Rows (front to back)', 4, 1, 12], ['c', 'Desks per row', 6, 1, 16], ['pairs', 'Group desks in pairs', true], ['replace', 'Remove the desks already there (unseats everyone in every class)', false]], v => { roomPush(); const gap = v.pairs ? 0 : 12, pairGap = 28; const c = v.c, r = v.r; const rowW = v.pairs ? c * DESK + Math.floor((c - 1) / 2) * pairGap : c * DESK + (c - 1) * gap; const x0 = Math.max(20, snap10((L.w - rowW) / 2)); const totalH = r * DESK + (r - 1) * 40; const y0 = Math.max(30, snap10((L.h - totalH) / 2)); const fresh = []; for (let i = 0; i < r; i++) { let x = x0; for (let j = 0; j < c; j++) { fresh.push({ id: seatUid(), x: snap10(x), y: snap10(y0 + i * (DESK + 40)), r: 0 }); x += DESK + (v.pairs ? (j % 2 === 0 ? 0 : pairGap) : gap); } } if (v.replace) { L.desks = fresh; roomDropDesks(new Set(fresh.map(d => d.id))); } else L.desks.push(...fresh); roomSel = null; rr(); });
+  $('#rmGrid').onclick = () => seatAsk('Add a grid', [['r', 'Rows (front to back)', 4, 1, 12], ['c', 'Desks per row', 6, 1, 16], ['pairs', 'Group desks in pairs', true], ['replace', 'Remove the desks already there (unseats everyone in every class)', false]], v => { roomPush(); const gap = v.pairs ? 0 : 12, pairGap = 28; const c = v.c, r = v.r; const rowW = v.pairs ? c * DESK + Math.floor((c - 1) / 2) * pairGap : c * DESK + (c - 1) * gap; const x0 = Math.max(20, snap10((L.w - rowW) / 2)); const totalH = r * DESK + (r - 1) * 40; const y0 = Math.max(30, snap10((L.h - totalH) / 2)); const fresh = []; for (let i = 0; i < r; i++) { let x = x0; for (let j = 0; j < c; j++) { fresh.push({ id: seatUid(), x: snap10(x), y: snap10(y0 + i * (DESK + 40)), r: 0 }); x += DESK + (v.pairs ? (j % 2 === 0 ? 0 : pairGap) : gap); } } if (v.replace) { let unseated = 0; for (const k of state.order) { const sec = state.sections[k]; if (sec.seating && sec.seating.seats) unseated += Object.keys(sec.seating.seats).length; } L.desks = fresh; roomDropDesks(new Set(fresh.map(d => d.id))); if (unseated) setTimeout(() => toast(`${plural(unseated, 'student')} unseated with the old desks. Undo brings them back.`, false, 6000), 300); } else L.desks.push(...fresh); roomSel = null; rr(); });
   $('#rmFront').onchange = e => { roomPush(); L.front = e.target.value; rr(); };
+  $('#rmName').onchange = e => { L.name = e.target.value.trim().slice(0, 24); save(); };
   $('#rmW').onchange = e => { roomPush(); L.w = Math.max(400, +e.target.value || 900); roomView = null; rr(); }; $('#rmH').onchange = e => { roomPush(); L.h = Math.max(300, +e.target.value || 600); roomView = null; rr(); };
   const rt = $('#rmTeacher'); if (rt) rt.onclick = () => { roomPush(); L.teacher = { x: Math.max(0, L.w - 150), y: Math.max(0, L.h - 90), w: 130, h: 64 }; rr(); };
   const rd = $('#rmDoor'); if (rd) rd.onclick = () => { roomPush(); L.door = { x: 20, y: Math.max(0, L.h - 40) }; rr(); };
-  $('#rmUndo').onclick = () => { if (!roomUndo.length) return; state.room = JSON.parse(roomUndo.pop()); roomSel = null; rr(); };
+  $('#rmUndo').onclick = () => { if (!roomUndo.length) return; roomUndoPop(); roomSel = null; rr(); };
   $('#rmClear').onclick = () => seatConfirm('Clear every desk?', 'Saved seating for every class will be cleared too. Undo in the room editor brings the desks back, not the seats.', 'Clear desks', () => { roomPush(); L.desks = []; roomDropDesks(new Set()); roomSel = null; rr(); });
   const selObj = () => roomSel ? (roomSel.type === 'desk' ? L.desks.find(d => d.id === roomSel.id) : L[roomSel.type]) : null;
   wrap.querySelectorAll('[data-rot]').forEach(b => b.onclick = () => { roomPush(); const o = selObj(); if (!o) return; if (roomSel.type === 'desk') o.r = ((o.r || 0) + +b.dataset.rot + 360) % 360; else [o.w, o.h] = [o.h, o.w]; rr(); });
@@ -492,7 +517,7 @@ function roomApplyView() { const svg = $('#roomSvg'); if (!svg || !roomView) ret
 function roomClamp() { const L = state.room; const m = Math.max(roomView.w, roomView.h) * 0.5; roomView.x = Math.max(-m, Math.min(L.w + m - roomView.w, roomView.x)); roomView.y = Math.max(-m, Math.min(L.h + m - roomView.h, roomView.y)); }
 function roomZoom(f, cx, cy) { const L = state.room; if (!roomView) roomFit(); if (cx == null) { cx = roomView.x + roomView.w / 2; cy = roomView.y + roomView.h / 2; } const nw = Math.max(150, Math.min((L.w + 12) * 3, roomView.w * f)), nh = roomView.h * (nw / roomView.w); roomView = { x: cx - (cx - roomView.x) * (nw / roomView.w), y: cy - (cy - roomView.y) * (nh / roomView.h), w: nw, h: nh }; roomClamp(); roomApplyView(); }
 function bindStage(s) {
-  const svg = $('#roomSvg'); if (!svg) return; const L = state.room; if (!roomView) roomFit(); roomApplyView();
+  const svg = $('#roomSvg'); if (!svg) return; const L = state.room; const wrap = $('#gridwrap'); if (!roomView) roomFit(); roomApplyView();
   let drag = null, pinch = null, pan = null; const ptrs = new Map();
   svg.addEventListener('pointerdown', e => {
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); svg.setPointerCapture(e.pointerId);
@@ -510,6 +535,17 @@ function bindStage(s) {
   });
   const up = e => { ptrs.delete(e.pointerId); if (pinch) { if (ptrs.size < 2) pinch = null; return; } if (pan) { const moved = pan.moved; pan = null; if (!moved && roomSel) { roomSel = null; renderRoom(s); } return; } if (!drag) return; const d = drag; drag = null; roomSel = { type: d.type, id: d.id }; save(); renderRoom(s); };
   svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  svg.addEventListener('keydown', e => {
+    const g = e.target.closest && e.target.closest('g[data-type]'); const nudge = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, -10], ArrowDown: [0, 10] }[e.key];
+    if ((e.key === 'Enter' || e.key === ' ') && g) { e.preventDefault(); roomSel = { type: g.dataset.type, id: g.dataset.id }; renderRoom(s); return; }
+    if (!roomSel) return;
+    const obj = roomSel.type === 'desk' ? L.desks.find(d => d.id === roomSel.id) : L[roomSel.type]; if (!obj) return;
+    if (nudge) { e.preventDefault(); roomPush(); const w = roomSel.type === 'desk' ? DESK : roomSel.type === 'teacher' ? obj.w : 44, hh = roomSel.type === 'desk' ? DESK : roomSel.type === 'teacher' ? obj.h : 14; obj.x = Math.max(0, Math.min(L.w - w, obj.x + nudge[0])); obj.y = Math.max(0, Math.min(L.h - hh, obj.y + nudge[1])); save(); renderRoom(s); }
+    else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); const del = $('#rmDel'); if (del) del.click(); }
+    else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); const rb = wrap.querySelector('[data-rot="15"], [data-rot="90"]'); if (rb) rb.click(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); roomSel = null; renderRoom(s); }
+  });
+  if (roomSel && document.activeElement && (document.activeElement === document.body || document.activeElement.closest('#stage'))) { const g = svg.querySelector(roomSel.type === 'desk' ? `g[data-id="${CSS.escape(roomSel.id)}"]` : `g[data-type="${roomSel.type}"]`); if (g) g.focus({ preventScroll: true }); }
   svg.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); const p = svgPt(svg, e); roomZoom(e.deltaY > 0 ? 1.15 : 0.87, p.x, p.y); }, { passive: false });
 }
 function openRoomTemplates(s) {
@@ -523,8 +559,11 @@ function openRoomTemplates(s) {
   m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-tpl]').forEach(b => b.onclick = () => { const t = ROOM_TEMPLATES.find(x => x.k === b.dataset.tpl); const n = Math.max(2, Math.min(60, parseInt($('#tplN').value) || 22)); roomPush();
     const ds = t.build(n); let mx = 0, my = 0; ds.forEach(d => { mx = Math.max(mx, d.x + DESK); my = Math.max(my, d.y + DESK); }); const M = 60; L.w = Math.max(900, snap10(mx + 2 * M)); L.h = Math.max(600, snap10(my + M + 120)); const x0 = snap10((L.w - mx) / 2), y0 = 40;
-    const oldNums = deskNumbers(); const oldIds = [...L.desks].sort((a, b) => oldNums[a.id] - oldNums[b.id]).map(d => d.id);
-    L.desks = ds.map((d, i) => ({ id: oldIds[i] || seatUid(), x: snap10(x0 + d.x), y: snap10(y0 + d.y), r: d.r || 0 })); roomDropDesks(new Set(L.desks.map(d => d.id)));
+    const oldNums = deskNumbers(); const oldIds = [...L.desks].sort((a, b) => oldNums[a.id] - oldNums[b.id]).map(d => d.id); const before = L.desks.length;
+    L.desks = ds.map(d => ({ id: seatUid(), x: snap10(x0 + d.x), y: snap10(y0 + d.y), r: d.r || 0 }));
+    const newNums = deskNumbers(); const byNum = [...L.desks].sort((a, b) => newNums[a.id] - newNums[b.id]); byNum.forEach((d, i) => { if (oldIds[i]) d.id = oldIds[i]; });
+    const keep = new Set(L.desks.map(d => d.id)); let unseated = 0; for (const k of state.order) { const sec = state.sections[k]; if (sec.seating && sec.seating.seats) unseated += Object.keys(sec.seating.seats).filter(d => !keep.has(d)).length; } roomDropDesks(keep);
+    if (unseated) setTimeout(() => toast(`${plural(unseated, 'student')} unseated — the new layout has fewer desks than before (${n} vs ${before}). Undo in the room editor brings them back.`, false, 7000), 400);
     if (L.teacher) { L.teacher.x = snap10(L.w - L.teacher.w - 30); L.teacher.y = snap10(L.h - L.teacher.h - 30); } if (L.door) { L.door.x = 20; L.door.y = snap10(L.h - 40); }
     roomView = null; roomSel = null; close(); save(); renderRoom(s); toast(`${t.name}: ${plural(n, 'desk')}.`, false); });
 }

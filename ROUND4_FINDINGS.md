@@ -52,15 +52,18 @@ Full reports: `review/round4-engineer-1-hig.md`, `review/round4-teacher.md`, `re
 23. [T,H] Print: sub copy printed initials under Names off; no teacher legend. → prints use full names/photos (the
     teacher asked for the page); teacher copy carries a legend.
 
-## P2 — open (noted for later)
-- [W] Template id reuse for the horseshoe changes which numbered desk a student keeps; Grid (replace) and smaller
-  templates unseat silently; Room Undo after a delete restores the desk but not its student.
-- [A] No retention policy for seatInfo of departed students (kept until the class is removed); backup toast doesn't
-  list photos/plan flags; a corrupt localStorage parse boots fresh without a `.broken` copy.
-- [T] Lost from v8: roster search box, one-tap L/M/H + Front toggles on the list, "no FAST score" alert, restore of
-  missing-since students, teacher-desk name and course/room on the print header.
-- [H] Room desks aren't keyboard-focusable; nudge/✕ buttons unlabeled; chart names are still small on the panel.
-- [T] Random baseline drifts fit by a few points between renders (30 random samples).
+## P2 — all done (28 Sep)
+- Templates: the new layout is numbered first and old desk ids handed over in numbered order, so every student keeps
+  their desk *number* through any template (horseshoe included); a smaller template or Grid-with-replace says how
+  many were unseated, and room Undo restores desks **and** the seats (saved and unsaved, every class).
+- Retention: seating info of a student who leaves the roster is stamped, listed under "Not on the roster" with a
+  Forget button (and Forget all), and dropped after 45 days; it comes back untouched if they return in time.
+- Lost v8 niceties restored: search box on the student list, one-tap L/M/H and Front toggles per row, "N students
+  with no scores" note, room name (Room tab) and course on the print header, teacher legend.
+- Room editor keyboard: desks, teacher desk and door are focusable buttons; Enter selects, arrows nudge, R rotates,
+  Delete removes, Esc deselects; every icon button has a label.
+- Fit is deterministic: the random baseline uses a seeded generator (40 fixed seatings), so it no longer drifts.
+- Chart names: 11 px for short names, shrinking only when long; the photo band gave up 2 units.
 
 ## Solid (all four)
 Tap → why → swap-with-consequences works and is accurate; touch drag/pan/pinch on the stage; stable desk ids across

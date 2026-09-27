@@ -75,7 +75,9 @@ per-section-file era and many items in them are now done).
   every P0/P1 fixed: fit no longer collapses on save, options/selection are per class, zero desks can't crash,
   leaving mid-solve aborts it, ghosts of departed students are freed, per-section re-import keeps
   grades/seating, Names off hides every seating detail, imports are coerced (ids, numbers, data-URL photos
-  only), save() reports quota failures, Seat by hand, honest fit caption, standing shows its ranks.
+  only), save() reports quota failures, Seat by hand, honest fit caption, standing shows its ranks. The P2s followed
+  (28 Sep): keep-by-desk-number templates, room undo with seats, 45-day retention for departed students, list
+  search + quick toggles, keyboard room editor, seeded fit baseline, room name on prints, "Shown as" names.
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 

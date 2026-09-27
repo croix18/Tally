@@ -57,7 +57,12 @@ generating; `seatCandsBy`/`seatUiFor` keep options and selection per class; `pru
 no longer on the roster; `cleanSeatInfo`/`cleanId`/`numOr` coerce everything from imports and backups; prints
 ignore the Names toggle (`seatPlain`); "Seat by hand" when there is no chart or more students than desks.
 
+## Later the same night
+P2s closed: `roomPush`/`roomUndoPop` snapshot every class's seats; templates renumber before reusing ids; departed
+students' seatInfo is stamped `gone` and dropped after 45 days (`Not on the roster` list, Forget); list search and
+quick toggles; keyboard room editor; seeded fit baseline; `state.room.name` on prints; `shownLast`/`nick` = "Shown as".
+
 ## Not carried over / open
 - The pdf.js Class List import (photos + FAST come via the JSON backup instead).
 - v8's per-period rename/delete (Tally classes are managed in Settings).
-- Ideas: use the chart on the Overview card; a "who sits where" search; per-unit modified lists could feed seating.
+- Ideas: use the chart on the Overview card; per-unit modified lists could feed seating.
