@@ -7,7 +7,7 @@
 const DESK = 70, SEAT_HARD = 1000, PARTNER_D = DESK + 18, NEIGHBOR_D = DESK * 2.2;
 const seatUid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
 const snap10 = v => Math.round(v / 10) * 10;
-const titleCase = s => String(s || '').toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (m, p, c) => p + c.toUpperCase());
+const titleCase = s => String(s || '').toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (m, p, c) => p + c.toUpperCase()).replace(/\bMc([a-z])/g, (m, c) => 'Mc' + c.toUpperCase()).replace(/\bO'([a-z])/g, (m, c) => "O'" + c.toUpperCase());
 const PHOTO_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 const cleanId = id => { const t = String(id == null ? '' : id).replace(/[^\w-]/g, '').slice(0, 24); return t || seatUid(); };
 const numOr = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
@@ -16,7 +16,7 @@ const numOr = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n)
 function cleanSeatInfo(i) {
   i = i && typeof i === 'object' ? i : {}; const str = v => typeof v === 'string' ? v.slice(0, 2000) : ''; const arr = v => Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 200) : [];
   const level = Number.isInteger(+i.level) && +i.level >= 1 && +i.level <= 5 ? +i.level : null;
-  return { nick: str(i.nick).slice(0, 40), behavior: ['low', 'medium', 'high'].includes(i.behavior) ? i.behavior : 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: ['', 'ESE', '504', 'ESE+504'].includes(i.plan) ? i.plan : '', accom: str(i.accom), apart: arr(i.apart), together: arr(i.together), notes: str(i.notes), photo: typeof i.photo === 'string' && i.photo.length <= 20000 && PHOTO_RE.test(i.photo) ? i.photo : null, level, pct: i.pct == null ? null : numOr(i.pct, null, 0, 100), scale: i.scale == null ? null : numOr(i.scale, null, 0, 2000) };
+  return { nick: str(i.nick).slice(0, 40), shownLast: str(i.shownLast).slice(0, 40), behavior: ['low', 'medium', 'high'].includes(i.behavior) ? i.behavior : 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: ['', 'ESE', '504', 'ESE+504'].includes(i.plan) ? i.plan : '', accom: str(i.accom), apart: arr(i.apart), together: arr(i.together), notes: str(i.notes), photo: typeof i.photo === 'string' && i.photo.length <= 20000 && PHOTO_RE.test(i.photo) ? i.photo : null, level, pct: i.pct == null ? null : numOr(i.pct, null, 0, 100), scale: i.scale == null ? null : numOr(i.scale, null, 0, 2000) };
 }
 function freshRoom() { return { w: 900, h: 600, front: 'top', desks: [], teacher: { x: 740, y: 500, w: 130, h: 64 }, door: { x: 20, y: 560 } }; }
 function roomOK() {
@@ -54,12 +54,13 @@ function seatStudents(sec) {
     return { ...splitDisplay(r.display), id: r.display, display: r.display, sid: r.id || '', ixl: r.ixl, gi, grade: g ? g.pct : null, ixlPct: ixl, info }; });
   const grades = base.map(s => s.grade), ixls = base.map(s => s.ixlPct);
   return base.map(s => { const i = s.info; const parts = [i.pct, rankPct(grades, s.grade), rankPct(ixls, s.ixlPct)].filter(v => v != null); const standing = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
-    return { ...s, nick: i.nick || '', behavior: i.behavior || 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: i.plan || '', accom: i.accom || '', apart: (i.apart || []).slice(), together: (i.together || []).slice(), notes: i.notes || '', photo: i.photo || null, level: i.level || null, pct: i.pct, standing, gradeRank: rankPct(grades, s.grade), ixlRank: rankPct(ixls, s.ixlPct) }; });
+    return { ...s, nick: i.nick || '', shownLast: i.shownLast || '', behavior: i.behavior || 'low', front: !!i.front, nearTeacher: !!i.nearTeacher, plan: i.plan || '', accom: i.accom || '', apart: (i.apart || []).slice(), together: (i.together || []).slice(), notes: i.notes || '', photo: i.photo || null, level: i.level || null, pct: i.pct, standing, gradeRank: rankPct(grades, s.grade), ixlRank: rankPct(ixls, s.ixlPct) }; });
 }
 let seatPlain = false;   // set while printing: the teacher asked for the page, so names and photos print
 const seatHidden = () => state.settings.hideNames && !seatPlain;
-const seatName = s => seatHidden() ? mask(s.display) : (s.nick ? `${s.nick} ${titleCase(s.last)}` : `${titleCase(s.first)} ${titleCase(s.last)}`);
-const seatShort = s => { if (seatHidden()) return mask(s.display); const f = s.nick || titleCase(s.first), l = titleCase(s.last); let t = `${f} ${l[0] || ''}.`; if (t.length > 13) t = f.slice(0, 11) + '…'; return t; };
+const seatParts = s => ({ first: s.nick || titleCase(s.first), last: s.shownLast || titleCase(s.last) });
+const seatName = s => { if (seatHidden()) return mask(s.display); const p = seatParts(s); return `${p.first} ${p.last}`.trim(); };
+const seatShort = s => { if (seatHidden()) return mask(s.display); const { first: f, last: l } = seatParts(s); let t = `${f} ${l[0] || ''}.`; if (t.length > 13) t = f.slice(0, 11) + '…'; return t; };
 const standingOf = s => s.standing == null ? 50 : s.standing;
 const lowStanding = s => standingOf(s) < 25 || s.level === 1;
 const allowedDepth = s => { const p = standingOf(s); return p < 25 ? 0.5 : p < 50 ? 0.75 : 1; };
@@ -265,7 +266,7 @@ function svgChart(sec, seats, stu, G, mode, w) {
       const cid = 'c' + d.id + (print ? 'p' : ''); const showPhoto = s.photo && !H; const initials = ((s.first[0] || '') + (s.last[0] || '')).toUpperCase();
       if (safe) { const ph = DESK - 27; h += `<clipPath id="${cid}"><rect x="3" y="3" width="${DESK - 6}" height="${ph}" rx="6"/></clipPath>`;
         if (showPhoto) h += `<image href="${s.photo}" x="3" y="3" width="${DESK - 6}" height="${ph}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`; else h += `<rect x="3" y="3" width="${DESK - 6}" height="${ph}" rx="6" fill="#E9EEF5"/>`;
-        const fn = H ? mask(s.display) : (s.nick || titleCase(s.first)), ln = H ? '' : titleCase(s.last);
+        const pp = seatParts(s); const fn = H ? mask(s.display) : pp.first, ln = H ? '' : pp.last;
         h += `<text class="cname" x="${DESK / 2}" y="${DESK - 13}" text-anchor="middle" style="font-size:${fn.length > 9 ? 7 : 8.5}px">${esc(fn)}</text><text class="cname" x="${DESK / 2}" y="${DESK - 4}" text-anchor="middle" style="font-size:${ln.length > 10 ? 6.5 : 7.5}px;font-weight:500">${esc(ln)}</text></g>`; return; }
       h += `<clipPath id="${cid}"><rect x="3" y="3" width="${DESK - 6}" height="${DESK - 20}" rx="6"/></clipPath>`;
       if (showPhoto) h += `<image href="${s.photo}" x="3" y="3" width="${DESK - 6}" height="${DESK - 20}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
@@ -378,7 +379,7 @@ function openSeatSheet(sec, display) {
   const list = (field, cls) => others.length ? `<div class="picks">${others.map(o => `<button class="chip rel ${(info[field] || []).includes(o.id) ? cls : ''}" data-rel="${field}|${stu.indexOf(o)}">${esc(seatName(o))}</button>`).join('')}</div>` : '<p class="ghint">No other students.</p>';
   m.innerHTML = `<div class="panel"><header><h2>${esc(seatName(x))} <span class="hsub">${esc(sec.label)} · seating</span></h2><button id="mClose" aria-label="Close">×</button></header><div class="body one stucard">
     <div class="who">${x.photo && !H ? `<img class="ph big" src="${x.photo}" alt="">` : ''}<div><div class="ghint">${esc(H ? '' : x.display)}</div><div><b>Standing:</b> ${esc(standingText(x))}${x.gi != null ? ` · <button class="linkbtn" id="toGrades">Grades card</button>` : ''}</div></div></div>
-    ${H ? '<p class="warnline">Names are hidden — nickname, plan, accommodations and notes are not shown or editable until Names is on.</p>' : `<div class="field"><label>Goes by</label><input id="shNick" class="txt" value="${esc(info.nick || '')}" placeholder="${esc(titleCase(x.first))}"></div>`}
+    ${H ? '<p class="warnline">Names are hidden — nickname, plan, accommodations and notes are not shown or editable until Names is on.</p>' : `<div class="field"><label>Shown as <small>(how the name reads on the chart and prints — Focus has “${esc(x.display)}”)</small></label><div class="two"><input id="shNick" class="txt" value="${esc(info.nick || '')}" placeholder="${esc(titleCase(x.first))}" aria-label="First name shown"><input id="shLast" class="txt" value="${esc(info.shownLast || '')}" placeholder="${esc(titleCase(x.last))}" aria-label="Last name shown"></div></div>`}
     <div class="field"><label>Behavior / talkativeness</label><div class="seg small" id="shBeh">${['low', 'medium', 'high'].map(b => `<button data-beh="${b}" class="${info.behavior === b ? (b === 'high' ? 'on hot' : 'on') : ''}">${b[0].toUpperCase() + b.slice(1)}</button>`).join('')}</div></div>
     <div class="field"><label>Seating flags</label><div class="rp-actions"><button class="pill small ${info.front ? '' : 'pale'}" data-flag="front">${info.front ? '✓ ' : ''}Front seat</button><button class="pill small ${info.nearTeacher ? '' : 'pale'}" data-flag="nearTeacher">${info.nearTeacher ? '✓ ' : ''}Near teacher</button></div></div>
     ${H ? '' : `<div class="field"><label>ESE / 504 plan</label><div class="seg small" id="shPlan">${[['', 'None'], ['ESE', 'ESE (IEP)'], ['504', '504'], ['ESE+504', 'Both']].map(([v, l]) => `<button data-plan="${v}" class="${(info.plan || '') === v ? 'on' : ''}">${l}</button>`).join('')}</div>
@@ -389,7 +390,7 @@ function openSeatSheet(sec, display) {
     <div class="rp-actions"><button class="pill" id="mCancel">Done</button></div></div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; save(); seatBase = { key: '', v: 0 }; render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  const nk = $('#shNick'); if (nk) nk.onchange = e => { info.nick = e.target.value.trim().slice(0, 40); };
+  const nk = $('#shNick'); if (nk) nk.onchange = e => { info.nick = e.target.value.trim().slice(0, 40); }; const sl = $('#shLast'); if (sl) sl.onchange = e => { info.shownLast = e.target.value.trim().slice(0, 40); };
   const ac = $('#shAccom'); if (ac) ac.onchange = e => { info.accom = e.target.value.slice(0, 2000); }; const nt = $('#shNotes'); if (nt) nt.onchange = e => { info.notes = e.target.value.slice(0, 2000); };
   m.querySelectorAll('[data-beh]').forEach(b => b.onclick = () => { info.behavior = b.dataset.beh; m.querySelectorAll('[data-beh]').forEach(z => { z.classList.toggle('on', z === b); z.classList.toggle('hot', z === b && b.dataset.beh === 'high'); }); });
   m.querySelectorAll('[data-flag]').forEach(b => b.onclick = () => { info[b.dataset.flag] = !info[b.dataset.flag]; b.classList.toggle('pale', !info[b.dataset.flag]); b.textContent = (info[b.dataset.flag] ? '✓ ' : '') + (b.dataset.flag === 'front' ? 'Front seat' : 'Near teacher'); });

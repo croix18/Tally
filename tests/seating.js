@@ -127,6 +127,15 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   const pwn=await p.evaluate(([K,n])=>{ const T=window.__tally; const i=T.state.sections[K].seatInfo; const a=i[n]; return { p1:!!window.__pwn, p2:!!window.__pwn2, p3:!!window.__pwn3, level:a.level, pct:a.pct, photo:a.photo, w:T.state.seatWeights.behavior, ids:T.state.room.desks.every(d=>/^[\w-]+$/.test(d.id)) }; }, [K,cur0]);
   check(!pwn.p1 && !pwn.p2 && !pwn.p3 && pwn.level===null && pwn.pct===100 && pwn.w===10 && pwn.ids && (pwn.photo==null || /^data:image\/jpeg/.test(pwn.photo)),'malicious backup values are coerced; nothing executes; no http photo stored: '+JSON.stringify({level:pwn.level,pct:pwn.pct,w:pwn.w}));
   check(!/<b>bold/.test(await p.evaluate(()=>document.querySelector('.seatList').innerHTML)) || /&lt;b&gt;/.test(await p.evaluate(()=>document.querySelector('.seatList').innerHTML)),'nick is escaped on the list');
+  // 10. names: Title Case handles Mc/O', and "Shown as" overrides how a name reads everywhere
+  const tc=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const st=T.seatStudents(s)[0]; const i=s.seatInfo[st.display]; i.nick='Ricky'; i.shownLast="O'Brien-McCall"; T.save(); T.render(); return T.seatStudents(s)[0]; }, K);
+  await p.waitForTimeout(300); const listTxt=await p.locator('.seatStu').first().innerText();
+  check(/Ricky O'Brien-McCall/.test(listTxt),'"Shown as" first and last names drive the list: '+listTxt.split('\n')[0]);
+  await p.locator('.seatStu').first().click(); await p.waitForTimeout(300);
+  check(await p.inputValue('#shNick')==='Ricky' && await p.inputValue('#shLast')==="O'Brien-McCall" && /Focus has/.test(await p.textContent('#modal')),'the sheet shows both fields with the Focus original beside them');
+  await p.fill('#shLast','Mcdonald'); await p.press('#shLast','Tab'); await p.click('#mCancel'); await p.waitForTimeout(300);
+  check(/Ricky Mcdonald/.test(await p.locator('.seatStu').first().innerText()),'editing the shown last name updates the list');
+  const cap=await p.evaluate(()=>{ const T=window.__tally; return null; });
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();
 })();
