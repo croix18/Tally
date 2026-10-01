@@ -1,13 +1,17 @@
 /* ---------- home.js — the Overview: one card per class, what needs attention, and the teacher charts ----------
    Spliced into app.js's closure. view.mode === 'home' renders here instead of the grid. */
-function gradeSummary(sec) {
-  if (!sec.grades) return null;
+function gradeSummary(sec0) {
+  if (!sec0.grades) return null;
+  // Only the open quarter counts here: a closed quarter's missing work and grades don't raise anything.
+  const sec = openSec(sec0);
+  const lastQ = [4, 3, 2, 1].find(n => qClosed(n) && sec0.qArchive && sec0.qArchive[n]); const qFinal = lastQ ? { q: lastQ, avg: mean(sec0.qArchive[lastQ].final) } : null;
+  if (!sec.grades.assignments.length) return { waiting: true, q: currentQuarter(), qFinal, avg: null, prevAvg: null, prevDate: null, letters: { A: 0, B: 0, C: 0, D: 0, F: 0 }, missing: 0, missingStudents: 0, sliding: 0, fit: null, date: sec0.grades.importedAt.slice(0, 10) };
   const gs = gradeAll(sec); const prev = prevGradeSnap(sec); const letters = { A: 0, B: 0, C: 0, D: 0, F: 0 }; gs.forEach(r => { if (r && r.letter) letters[r.letter]++; });
   const avg = classAverage(sec); const pv = prev ? prev.grade.filter(v => v != null) : []; const prevAvg = pv.length ? pv.reduce((a, b) => a + b, 0) / pv.length : null;
   const prevIdx = prev ? new Map(prev.students.map((n, i) => [n, i])) : null; let sliding = 0, missingStudents = 0;
   sec.grades.students.forEach((name, i) => { const r = gs[i]; const miss = sec.grades.assignments.filter(a => a.status && a.status[i] === 'missing').length; if (miss) missingStudents++;
     if (prevIdx && prevIdx.has(name)) { const j = prevIdx.get(name); const d = r && r.rounded != null && prev.grade[j] != null ? r.rounded - prev.grade[j] : null; if ((d != null && d <= -3) || miss > (prev.missing[j] || 0)) sliding++; } });
-  return { avg, prevAvg, prevDate: prev ? prev.date : null, letters, missing: sec.grades.assignments.reduce((a, x) => a + x.missing, 0), missingStudents, sliding, fit: fitCategories(sec), date: sec.grades.importedAt.slice(0, 10) };
+  return { avg, prevAvg, prevDate: prev ? prev.date : null, letters, missing: sec.grades.assignments.reduce((a, x) => a + x.missing, 0), missingStudents, sliding, fit: sec === sec0 ? fitCategories(sec) : null, date: sec.grades.importedAt.slice(0, 10), qFinal };
 }
 // Everything a class could need a look at, one line each, in priority order.
 function attentionItems(sec) {
@@ -18,7 +22,8 @@ function attentionItems(sec) {
   if (ro || am || io) out.push({ level: 'warn', text: [ro ? `${ro} on the roster not in IXL` : '', am ? `${am} with two IXL matches` : '', io ? `${io} in IXL not on the roster` : ''].filter(Boolean).join(' · '), go: 'grid' });
   if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings' });
   if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally — ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid' });
-    const fit = fitCategories(sec); if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' }); if (!sec.grades.overall) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' }); }
+    const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' }); if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' });
+    if (!hasOpenGrades(sec) && anyClosed()) out.push({ level: 'info', text: `waiting for the first ${Q_NAMES[currentQuarter() - 1]} gradebook`, go: 'import' }); }
   // Without a "Working in" unit, assignment is guessed from who has touched what — on a course-wide export that can pick Unit 8.
   if (!sec.placeholder && sec.students.length && !(state.settings.currentUnit || {})[sec.prep]) { const auto = unitsOf(sec).filter(u => u.assigned && !u.marked); out.push({ level: 'info', text: `no "Working in" unit picked — ${auto.length ? auto.map(u => u.short).join(', ') + (auto.length === 1 ? ' is' : ' are') + ' assigned by guess' : 'nothing is assigned yet'}`, go: 'grid' }); }
   const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid' });
@@ -28,6 +33,7 @@ function attentionItems(sec) {
   return out;
 }
 function renderHome() {
+  const qd = quarterDue(); const cq = currentQuarter();
   const secs = state.order.map(k => state.sections[k]); const race = leaderboardData(); const byKey = new Map(race.map(r => [r.key, r]));
   const H = state.settings.hideNames;
   const card = s => { const r = byKey.get(s.key); const g = gradeSummary(s); const att = attentionItems(s); const warn = att.filter(a => a.level === 'warn').length;
@@ -38,23 +44,24 @@ function renderHome() {
       <div class="hhead"><b>${esc(s.label)}</b><small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small></div>
       <div class="hnums">
         <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b><span>${r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : 'first import'}</span></div>
-        <div><small>Focus average</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b><span>${g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? 'first gradebook' : ''}</span></div>
+        <div><small>Focus average${anyClosed() ? ' · Q' + currentQuarter() : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b><span>${g && g.waiting ? `no Q${g.q} gradebook yet${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : ''}` : g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : ''}</span></div>
         <div><small>Missing work</small><b>${g ? g.missing : '—'}</b><span>${g ? plural(g.missingStudents, 'student') : ''}</span></div>
         <div><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b><span>${g && g.prevDate ? 'down 3+ or more missing' : 'needs 2 gradebooks'}</span></div>
       </div>
       <div class="hchips">${focusChip}${g ? `<span class="hchip letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${g.letters[l]}</em></i>`).join('')}</span>` : ''}${warn ? `<span class="hchip warn">${plural(warn, 'thing')} to look at</span>` : ''}</div>
     </button><button class="hchip act hdigest" data-digest="${esc(s.key)}">What changed ›</button></article>`; };
   const att = secs.flatMap(s => attentionItems(s).map(a => ({ ...a, sec: s })));
-  const attList = att.length ? `<ul class="hatt">${att.map(a => `<li class="${a.level}"><button data-go="${esc(a.sec.key)}" data-where="${a.go}"><b>${esc(a.sec.label)}</b> — ${esc(a.text)}</button></li>`).join('')}</ul>` : '<p class="ghint">Nothing needs attention.</p>';
+  const qdLine = qd ? `<li class="info"><button id="qdGo"><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</button></li>` : '';
+  const attList = att.length || qdLine ? `<ul class="hatt">${qdLine}${att.map(a => `<li class="${a.level}"><button data-go="${esc(a.sec.key)}" data-where="${a.go}"><b>${esc(a.sec.label)}</b> — ${esc(a.text)}</button></li>`).join('')}</ul>` : '<p class="ghint">Nothing needs attention.</p>';
   // charts
   const withHist = secs.filter(s => (s.gradeHistory || []).length); const dates = [...new Set(withHist.flatMap(s => s.gradeHistory.map(h => h.date)))].sort();
-  const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.find(h => h.date === d); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, w: 900, labelW: 200, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
+  const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.filter(h => h.date === d).pop(); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, w: 900, labelW: 200, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
   const ixlBars = race.length ? chartBars(race.map(r => ({ label: r.label, value: r.completion * 100, color: classColor(state.sections[r.key]), hint: `${r.done} of ${r.possible} skill-points` })), { pct: true, max: 100, labelW: 180, aria: 'IXL assigned work at goal by class' }) : '';
-  const missLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.find(h => h.date === d); return h ? h.missing.reduce((a, b) => a + b, 0) : null; }) })), { min: 0, h: 220, aria: 'missing assignments by import' }) : '';
+  const missLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.filter(h => h.date === d).pop(); return h ? h.missing.reduce((a, b) => a + b, 0) : null; }) })), { min: 0, h: 220, aria: 'missing assignments by import' }) : '';
   const lettersRows = secs.filter(s => s.grades).map(s => { const g = gradeSummary(s); return { label: s.label, parts: g.letters }; });
   const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, dark: LETTER_DARK, labelW: 180, aria: 'letter grades by class' }) : '';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
-  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''}</span><div class="spacer"></div><div class="legend"><span>Tap a class to open it</span></div>`;
+  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
   $('#bar').classList.remove('detail');
   $('#gridwrap').innerHTML = `<div class="home">
     <div class="hcards">${secs.map(card).join('')}</div>
@@ -68,6 +75,7 @@ function renderHome() {
       <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
     </div>
   </div>`;
+  const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;
   $('#gridwrap').querySelectorAll('[data-digest]').forEach(b => b.onclick = e => { e.stopPropagation(); openDigest(state.sections[b.dataset.digest]); });
   $('#gridwrap').querySelectorAll('[data-go]').forEach(b => b.onclick = e => { e.stopPropagation(); const where = b.dataset.where || 'grid'; state.active = b.dataset.go;
     if (where === 'import') { $('#file').click(); return; }
@@ -81,19 +89,20 @@ function digestFor(sec) {
   const H = state.settings.hideNames; const nm = d => H ? mask(d) : d; const disp = n => nm(ixlDisplay(n));
   const out = { sec, ixl: null, focus: null };
   const hist = sec.history || []; const cur = hist[hist.length - 1]; const prev = hist.filter(h => h.date < (cur ? cur.date : '')).pop();
-  const mv = movement(sec, cur, prev);
+  const mv = movement(sec, cur, prev, true);   // open units only: a closed quarter's IXL doesn't make the digest
   if (mv && !mv.reason) {
     const keys = Object.keys(cur.per); const deltas = keys.map(k => ({ key: k, name: k.replace(/#\d+$/, ''), d: mv.deltas[k] ? mv.deltas[k].d : 0, now: mv.deltas[k] ? mv.deltas[k].now : cur.per[k], had: !!mv.deltas[k] }));
     const measured = deltas.filter(x => x.had); const up = measured.filter(x => x.d > 0), down = measured.filter(x => x.d < 0);
     const total = measured.reduce((a, x) => a + x.d, 0);
     const newNames = keys.filter(k => prev.per[k] == null).map(k => k.replace(/#\d+$/, '')), gone = Object.keys(prev.per).filter(k => cur.per[k] == null).map(k => k.replace(/#\d+$/, ''));
     // units that became complete for everyone counted (no student below the unit's total) between the two dates can't be read from snapshots; use the grid now
-    const units = unitsOf(sec).filter(u => u.assigned && u.total); const pop = population(sec);
+    const units = unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u)); const pop = population(sec);
     const unitDone = units.map(u => ({ u, done: pop.filter(x => points(sec, u, x.i) >= totalFor(sec, u, x.i)).length })).filter(x => x.done === pop.length && pop.length).map(x => x.u.short);
     out.ixl = { from: prev.date, to: cur.date, total, perStudent: measured.length ? total / measured.length : 0, up: up.length, measured: measured.length, movers: up.sort((a, b) => b.d - a.d).slice(0, 5).map(x => ({ name: disp(x.name), d: x.d, now: x.now })),
       down: down.sort((a, b) => a.d - b.d).slice(0, 5).map(x => ({ name: disp(x.name), d: x.d })), stuck: measured.filter(x => x.d === 0 && x.now === 0).length, newNames: newNames.map(disp), gone: gone.map(disp), unitDone };
   } else if (mv) out.ixl = { thrChanged: mv.reason === 'thr', basisChanged: mv.reason === 'basis', from: prev.date, to: cur.date };
-  const gh = sec.gradeHistory || []; const gc = gh[gh.length - 1]; const gp = gh.filter(h => h.date < (gc ? gc.date : '')).pop();
+  const gh = sec.gradeHistory || []; const gc0 = gh[gh.length - 1]; const gc = gc0 && !qClosed(snapQ(gc0)) ? gc0 : null;   // a closed quarter has nothing to report
+  const gp = gc ? gh.filter(h => h.date < gc.date && snapQ(h) === snapQ(gc)).pop() : null;   // a new quarter starts fresh: nothing "slid" across the break
   if (gc && gp) {
     const idxP = new Map(gp.students.map((n, i) => [n, i])); const rows = gc.students.map((n, i) => { const j = idxP.get(n); return { name: n, g: gc.grade[i], m: gc.missing[i], pg: j == null ? null : gp.grade[j], pm: j == null ? null : gp.missing[j] }; });
     const both = rows.filter(r => r.pg != null && r.g != null); const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;

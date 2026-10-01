@@ -45,11 +45,14 @@ function chartLines(labels, series, o) {
   const X = i => l + (labels.length > 1 ? i / (labels.length - 1) : 0.5) * (w - l - r), Y = v => h - b - (v - lo) / (hi - lo || 1) * (h - t - b);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'line chart')}">`;
   const ticks = 4; for (let i = 0; i <= ticks; i++) { const v = lo + (hi - lo) * i / ticks; s += `<line x1="${l}" y1="${Y(v)}" x2="${w - r}" y2="${Y(v)}" class="gl"/><text x="${l - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; }
-  labels.forEach((lb, i) => { s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle" class="tl">${esc(lb)}</text>`; });
+  // Optional x labels thinned so dates don't collide; optional marks = vertical dividers before index i (quarter boundaries).
+  const every = Math.max(1, Math.ceil(labels.length / Math.max(2, Math.floor((w - l - r) / 64))));
+  labels.forEach((lb, i) => { if (i % every && i !== labels.length - 1) return; s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle" class="tl">${esc(lb)}</text>`; });
+  (o.marks || []).forEach(mk => { if (!(mk.i > 0 && mk.i < labels.length)) return; const x = (X(mk.i - 1) + X(mk.i)) / 2; s += `<line x1="${x}" y1="${t}" x2="${x}" y2="${h - b}" class="qmark"/><text x="${x + 4}" y="${h - b - 6}" class="tl qmarkl">${esc(mk.label)}</text>`; });
   const ends = [];
   series.forEach((sr, j) => { const c = sr.color || (series.length === 1 ? 'var(--teal)' : seriesColor(j)); let d = '', last = null, pen = false;
     sr.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; pen = true; last = [i, v]; });
-    s += `<path d="${d}" class="ln" style="stroke:${c}"/>`;
+    s += `<path d="${d}" class="ln${sr.ref ? ' ref' : ''}" style="stroke:${c}"/>`;
     sr.values.forEach((v, i) => { if (v != null) s += `<circle cx="${X(i)}" cy="${Y(v)}" r="4" style="fill:${c}"><title>${esc(sr.name)} · ${esc(labels[i])}: ${o.pct ? Math.round(v) + '%' : fmtV(v)}</title></circle>`; });
     if (last) ends.push({ x: X(last[0]), y: Y(last[1]), want: Y(last[1]), name: sr.name, v: last[1], c }); });
   // Direct labels at the line ends, nudged apart so two classes that finish close together stay readable.
@@ -120,6 +123,7 @@ const CHART_CSS = `
 .chart{width:100%;height:auto;display:block}.chart .gl{stroke:var(--grid);stroke-width:1}.chart .ax{stroke:var(--navy);stroke-width:1.5}
 .chart .tl{font-size:12px;fill:var(--ink-soft)}.chart .lbl{font-size:13px;font-weight:700;fill:var(--navy)}.chart .val{font-size:12px;font-weight:900;fill:var(--navy)}.chart .inv{font-size:12px;font-weight:900;fill:#fff}
 #lb .chart .tl{font-size:14px}#lb .chart .lbl{font-size:15px}#lb .chart .val{font-size:14px}#lb .chart .inv{font-size:14px}
+.chart .qmark{stroke:var(--ink-soft);stroke-width:1;stroke-dasharray:4 4;opacity:.7}.chart .qmarkl{font-size:11px;font-weight:700}.chart .ln.ref{stroke-dasharray:5 4;stroke-width:2}
 .chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--teal);stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
 .stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
 .labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}#lb .chart.circle{max-width:680px}

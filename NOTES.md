@@ -88,6 +88,19 @@ per-section-file era and many items in them are now done).
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 
+- **Students + Quarters** (30 Sep – 1 Oct): Croix wanted the grades in a teacher-only place where he can see everything
+  about one student fast — for conferences, trends, and what-ifs shown to the student — because Tally had only been
+  telling him IXL. And Q1 ends 9 Oct: its assignments should "go dark" (no alerts) but stay tracked and viewable; he
+  doesn't change grades after a quarter ends. His answers: Focus exports **only the new quarter** after a quarter ends;
+  he shows what-ifs on **his laptop or tablet** turned toward the student (not projected); **nothing extra** on the page
+  (no notes/contact log/goals). Built: `students.js` (Students list, student page, Show student) and `quarters.js`
+  (close/reopen, `sec.qArchive[n]` with scores + categories + weights + finals, `state.quarters.units` for IXL units,
+  `openSec()` = the open part of the gradebook that every alerting screen now reads). Grade snapshots carry `q` and
+  `cats`; "since last import" and sliding compare within a quarter only. A review subagent found 10 issues (Q2 export
+  before closing wiped Q1; one-column merge; backup reopening; archive XSS; digest; open column for a closed unit;
+  null grades; all-closed crash; drops under Show; weights drift) — all fixed and covered in `tests/students-quarters.js`.
+- **Find a student** on the Overview now opens the Students list (every class) instead of the active class grid.
+
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.
@@ -96,6 +109,9 @@ per-section-file era and many items in them are now done).
 3. Check the roster-mismatch notice (new or withdrawn students), then copy each unit into Focus. The Focus
    check badge on each unit says whether Focus agrees.
 4. Save backup to Drive.
+
+At a quarter's end: import the last exports of the quarter, then Overview → **Close Quarter N** (the button turns
+primary once the end date has passed). Tick the IXL units that were that quarter's work (pre-ticked from Focus due dates).
 
 ## Open items
 

@@ -47,19 +47,19 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   check(/Focus disagrees/.test(await p.textContent('.gasg')) && /don't all match Focus/.test(await p.textContent('#gridwrap')),'the row and a notice say Focus disagrees');
   await p.selectOption('.gasg select[data-cat="Unit 1 Notebook Check"]','Assessments'); await p.waitForTimeout(500);
   check(!/Focus disagrees/.test(await p.textContent('.gasg')),'moving it back clears the disagreement');
-  // 5. student card + privacy
-  await p.click('.gstu tr[data-stu]'); await p.waitForTimeout(400); const card=await p.textContent('#modal');
-  const first=await p.evaluate(()=>document.querySelector('.gstu tr[data-stu] .nm').textContent);
+  // 5. student page (was the one-student card) + privacy
+  const first=await p.evaluate(()=>document.querySelector('.gstu tr[data-stu]').dataset.stu).then(i=>p.evaluate(({K,i})=>window.__tally.state.sections[K].grades.students[i],{K,i:Number(i)}));
+  await p.click('.gstu tr[data-stu]'); await p.waitForTimeout(400); const card=(await p.textContent('#bar'))+(await p.textContent('#gridwrap'));
   const others=await p.evaluate(K=>window.__tally.state.sections[K].grades.students, K);
-  check(card.includes(first) && others.filter(n=>n!==first).every(n=>!card.includes(n)),'student card shows only that student');
-  const priv=await p.evaluate(()=>{ const m=document.getElementById('modal'); const cs=getComputedStyle(m); return { cls:m.classList.contains('private'), bg:cs.backgroundColor, blur:cs.backdropFilter||cs.webkitBackdropFilter, toast:document.getElementById('toast').classList.contains('show') }; });
-  check(priv.cls && /blur/.test(priv.blur) && /0\.9/.test(priv.bg) && !priv.toast,'card backdrop is near-opaque and blurred; no toast showing: '+JSON.stringify(priv));
-  check(/Missing work/.test(card) && /Retakes/.test(card) && /Next assessment/.test(card) && /→ \d+/.test(card),'card has missing, retakes, next-assessment what-ifs');
-  await p.fill('#nextMax','50'); await p.waitForTimeout(150); check((await p.getAttribute('#nextPts','max'))==='50','next-assessment slider follows points possible');
-  const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#stuPrint')]); await pop.waitForLoadState(); await pop.waitForTimeout(300); const ptxt=await pop.evaluate(()=>document.body.innerText);
+  const last=n=>n.split(',')[0].trim().toUpperCase();
+  check(card.toUpperCase().includes(last(first)) && others.filter(n=>n!==first && last(n).length>3).every(n=>!card.toUpperCase().includes(last(n))),'student page shows only that student');
+  check(await p.locator('.profile').count()===1 && !(await p.evaluate(()=>document.getElementById('toast').classList.contains('show'))),'the page opens in the teacher view');
+  check(/Missing work/.test(card) && /Next assessment/.test(card) && /→ \d+/.test(card),'page has missing, retakes, next-assessment what-ifs');
+  await p.fill('.wiMax','50'); await p.waitForTimeout(150); check((await p.getAttribute('.wiPts','max'))==='50','next-assessment slider follows points possible');
+  const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop.waitForLoadState(); await pop.waitForTimeout(300); const ptxt=await pop.evaluate(()=>document.body.innerText);
   check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /What would move the grade/i.test(ptxt) && /weighted Assessments 70%/.test(ptxt),'print page: one student, formula stated'); await pop.close();
-  await p.click('#mCancel'); await p.waitForTimeout(200);
-  check(!(await p.evaluate(()=>document.getElementById('modal').classList.contains('private'))),'private backdrop cleared on close');
+  await p.click('#back'); await p.waitForTimeout(300);
+  check(await p.locator('.gstu').count()===1,'back returns to Grades');
   // hidden names mask the overview and the card
   await p.click('#btnHide'); await p.waitForTimeout(400);
   check(!(await p.textContent('.gstu')).includes(first),'Names off masks the students table');

@@ -26,15 +26,17 @@ function catGuess(name, cats) {
 // A category the export itself states (a category row above the header) is taken as given when it names one of ours.
 function catFromFile(a, cats) { const c = a && a.categoryFromFile && a.category ? cats.find(x => x.name.toLowerCase() === String(a.category).trim().toLowerCase()) : null; return c ? c.name : null; }
 function catOf(prep, name, a) { const g = gradingFor(prep); return g.map[name] || catFromFile(a, g.cats) || catGuess(name, g.cats); }
+// The category an assignment had in the class as seen: a closed quarter keeps the map it was closed with.
+const catIn = (s, a) => (s._map && s._map[a.name]) || catOf(s.prep, a.name, a);
 
 // The course grade for student i. `over` optionally replaces cells: { [assignmentName]: points } (null = leave out).
 // NHI counts as 0 over the full possible; excused/blank cells are left out; empty categories re-weight the rest.
 function computeGrade(sec, i, over, mapOverride) {
   const gb = sec.grades; if (!gb) return null;
-  const g = gradingFor(sec.prep); const cats = {}; g.cats.forEach(c => cats[c.name] = { earned: 0, possible: 0, w: c.w, n: 0 });
+  const g = gradingFor(sec.prep); const cats = {}; (sec._cats || g.cats).forEach(c => cats[c.name] = { earned: 0, possible: 0, w: c.w, n: 0 });   // a kept quarter keeps its own weights
   gb.assignments.forEach(a => {
     if (a.max == null || !(a.max > 0)) return;
-    const cat = (mapOverride && mapOverride[a.name]) || catOf(sec.prep, a.name, a); const c = cats[cat] || (cats[cat] = { earned: 0, possible: 0, w: 0, n: 0 });
+    const cat = (mapOverride && mapOverride[a.name]) || (sec._map && sec._map[a.name]) || catOf(sec.prep, a.name, a); const c = cats[cat] || (cats[cat] = { earned: 0, possible: 0, w: 0, n: 0 });
     let v = a.values[i], stt = a.status ? a.status[i] : (v == null ? 'blank' : 'score');
     if (over && Object.prototype.hasOwnProperty.call(over, a.name)) { v = over[a.name]; stt = v == null ? 'excused' : 'score'; }
     if (stt === 'excused' || stt === 'blank' || stt === 'unread') return;
@@ -117,16 +119,29 @@ function withNext(sec, i, cat, max, pts) {
 }
 
 /* ---------- history ---------- */
+// What a gradebook snapshot measures: with nothing closed, the whole gradebook; otherwise its open part, or — in the gap
+// before the next quarter's first export — the latest quarter it holds. Each snapshot records its quarter (q).
+function snapBasis(sec) {
+  const gb = sec.grades; if (!anyClosed()) return { s: sec, q: gbQuarter(gb) };
+  const o = openSec(sec); if (o.grades.assignments.length) return { s: o, q: currentQuarter() };
+  const qn = gbQuarter(gb); const sub = gb.assignments.filter(a => aQuarter(a, gb) === qn);
+  return { s: sub.length === gb.assignments.length ? sec : { ...sec, grades: { ...gb, assignments: sub, overall: null } }, q: qn };
+}
+const snapQ = h => h.q || quarterOf(h.date);
 function gradeSnapshot(sec) {
-  const gb = sec.grades; if (!gb) return;
+  if (!sec.grades) return;
+  const { s, q } = snapBasis(sec); const gb = s.grades;
   const date = (gb.importedAt || new Date().toISOString()).slice(0, 10);
-  const grades = gradeAll(sec);
-  const snap = { date, at: gb.importedAt, file: gb.file, students: gb.students.slice(), grade: grades.map(r => r && r.rounded), missing: gb.students.map((_, i) => gb.assignments.filter(a => (a.status ? a.status[i] : null) === 'missing').length),
+  const grades = gradeAll(s); const cn = gradingFor(sec.prep).cats.map(c => c.name);
+  const snap = { date, at: gb.importedAt, file: gb.file, q, students: gb.students.slice(), grade: grades.map(r => r && r.rounded), missing: gb.students.map((_, i) => gb.assignments.filter(a => (a.status ? a.status[i] : null) === 'missing').length),
+    cats: Object.fromEntries(cn.map(c => [c, grades.map(r => r && r.cats[c] && r.cats[c].pct != null ? Math.round(r.cats[c].pct * 10) / 10 : null)])),
     assignments: gb.assignments.map(a => { const v = a.values.filter(x => x != null); return { name: a.name, max: a.max, due: a.due, avg: v.length && a.max ? v.reduce((x, y) => x + y, 0) / v.length / a.max * 100 : null, missing: a.missing }; }) };
-  sec.gradeHistory = (sec.gradeHistory || []).filter(h => h.date !== date); sec.gradeHistory.push(snap); sec.gradeHistory.sort((a, b) => a.date.localeCompare(b.date));
+  // one snapshot per import day AND quarter: the last Q1 export and the first Q2 export can land on the same day
+  sec.gradeHistory = (sec.gradeHistory || []).filter(h => !(h.date === date && snapQ(h) === q)); sec.gradeHistory.push(snap); sec.gradeHistory.sort((a, b) => a.date.localeCompare(b.date) || snapQ(a) - snapQ(b));
   if (sec.gradeHistory.length > 60) sec.gradeHistory = sec.gradeHistory.slice(-60);
 }
-const prevGradeSnap = sec => { const h = sec.gradeHistory || []; const cur = sec.grades ? (sec.grades.importedAt || '').slice(0, 10) : null; return h.filter(x => x.date < cur).pop() || null; };
+// The previous import of the SAME quarter: a fresh quarter's first gradebook has nothing to slide from.
+const prevGradeSnap = sec => { if (sec._closed) return null; const h = sec.gradeHistory || []; const cur = sec.grades ? (sec.grades.importedAt || '').slice(0, 10) : null; const q = sec.grades ? snapBasis(sec).q : null; return h.filter(x => x.date < cur && snapQ(x) === q).pop() || null; };
 
 /* ---------- analysis ---------- */
 function pearson(xs, ys) { const n = xs.length; if (n < 3) return null; const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n; let sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; } return sxx && syy ? sxy / Math.sqrt(sxx * syy) : null; }
@@ -134,7 +149,7 @@ function pearson(xs, ys) { const n = xs.length; if (n < 3) return null; const mx
 function ixlVsTests(sec) {
   const gb = sec.grades; if (!gb) return [];
   const rows = gbRows(sec); const units = unitsOf(sec).filter(u => u.assigned); const t = sec.threshold; const g = gradingFor(sec.prep);
-  const tests = gb.assignments.filter(a => catOf(sec.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max > 0);
+  const tests = gb.assignments.filter(a => catIn(sec, a) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max > 0);
   return gb.students.map((name, i) => {
     const r = rows[i]; let ixl = null;
     if (r && r.ixl != null) { let done = 0, poss = 0; units.forEach(u => { const own = activeFor(sec, u, r.ixl); poss += own.length; own.forEach(k => { const v = eff(sec, k, r.ixl); if (v != null && v >= t) done++; }); }); ixl = poss ? done / poss * 100 : null; }
@@ -171,18 +186,34 @@ function scatterSVG(pts, w, h) {
   return s + '</svg>';
 }
 
+// Which quarter the Grades screen shows: view.q when the class has it, else the newest it has.
+// The class as the Grades screen shows quarter n: its kept copy, or the open gradebook.
+const gradesView = (s0, n) => { const k = qSec(s0, n); return k && k._arch ? k : openSec(s0); };
+function gradesQuarter(s0) { const qs = classQuarters(s0); return view.q && (qs.includes(view.q) || view.q === currentQuarter()) ? view.q : (qs.length ? qs[qs.length - 1] : currentQuarter()); }
 // The class bar's "Grades" button hands over to this; renderGrid defers to it when view.mode === 'grades'.
-function renderGradesBar(s) {
-  const gb = s.grades; const prev = prevGradeSnap(s);
-  return `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>Grades</h2></div><span class="meta">Focus gradebook of ${esc(fmtDate(gb.importedAt.slice(0, 10)))} · ${plural(gb.assignments.length, 'assignment')} · ${plural(gb.students.length, 'student')}${prev ? ` · previous import ${esc(fmtDate(prev.date))}` : ''}</span>
+function renderGradesBar(s0) {
+  const n = gradesQuarter(s0); const s = gradesView(s0, n); const gb = s.grades; const prev = prevGradeSnap(s);
+  const qs = classQuarters(s0); const cur = currentQuarter(); if (!qs.includes(cur)) qs.push(cur);
+  const seg = qs.length > 1 || anyClosed() ? `<div class="seg small qseg" role="group" aria-label="Quarter">${qs.map(q => `<button data-gq="${q}" class="${q === n ? 'on' : ''}" aria-pressed="${q === n}">Q${q}${qClosed(q) ? ' · final' : ''}</button>`).join('')}</div>` : '';
+  return `<div class="crumb"><button id="back">‹ ${esc(s0.label)}</button><h2>Grades</h2></div>${seg}<span class="meta">${s._closed ? `${esc(Q_NAMES[n - 1])} · closed ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))} · ` : s._arch ? `${esc(Q_NAMES[n - 1])} · kept, not closed yet · ` : ''}${gb && gb.assignments.length ? `Focus gradebook of ${esc(fmtDate(gb.importedAt.slice(0, 10)))} · ${plural(gb.assignments.length, 'assignment')} · ${plural(gb.students.length, 'student')}${prev ? ` · previous import ${esc(fmtDate(prev.date))}` : ''}` : `no ${esc(Q_NAMES[n - 1])} gradebook yet`}</span>
       <div class="spacer"></div>
-      <button class="pill toggle" id="gradesWeights" title="Category weights">${gradingFor(s.prep).cats.map(c => `${esc(c.name.slice(0, 1))} ${c.w}`).join(' · ')}</button>
-      <button class="pill toggle" id="gradesCats" title="Check or move assignment categories">Categories</button>
-      <div class="legend"><span>Tap a student for what-ifs and a printable summary</span></div>`;
+      <button class="pill toggle" id="gradesWeights" title="Category weights">${gradingFor(s0.prep).cats.map(c => `${esc(c.name.slice(0, 1))} ${c.w}`).join(' · ')}</button>
+      ${s._arch ? '' : '<button class="pill toggle" id="gradesCats" title="Check or move assignment categories">Categories</button>'}
+      <button class="pill toggle" id="gradesQuarters" title="Quarter dates; close a quarter">Quarters</button>
+      <div class="legend"><span>Tap a student for their page: every grade, trends, what-ifs</span></div>`;
 }
-function renderGrades(s) {
+function renderGrades(s0) {
+  const n = gradesQuarter(s0); const s = gradesView(s0, n); const closedQ = !!(s && s._arch);   // a kept copy is read-only
+  if (!s || !s.grades || !s.grades.assignments.length) {
+    const qs = classQuarters(s0).filter(qClosed);
+    $('#gridwrap').innerHTML = `<div class="grades"><div class="gempty"><h3>${esc(Q_NAMES[n - 1])} hasn't started in Tally yet</h3><p>${qs.length ? `${qs.map(q => Q_NAMES[q - 1]).join(' and ')} ${qs.length === 1 ? 'is' : 'are'} closed and kept. ` : ''}Import this class's first ${esc(Q_NAMES[n - 1])} gradebook from Focus and its grades, trends and what-ifs start here.</p>
+      <div class="rp-actions">${qs.map(q => `<button class="pill pale" data-gq="${q}">Open ${esc(Q_NAMES[q - 1])} (final)</button>`).join('')}<button class="pill" id="gImport">Import</button></div></div></div>`;
+    $('#gridwrap').querySelectorAll('[data-gq]').forEach(b => b.onclick = () => { view.q = Number(b.dataset.gq); render(); });
+    const gi = $('#gImport'); if (gi) gi.onclick = () => $('#file').click();
+    return;
+  }
   const gb = s.grades; const g = gradingFor(s.prep); const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : d);
-  const grades = gradeAll(s); const prev = prevGradeSnap(s); const fit = fitCategories(s);
+  const grades = gradeAll(s); const prev = prevGradeSnap(s); const fit = s === s0 ? fitCategories(s) : null;
   const letters = { A: 0, B: 0, C: 0, D: 0, F: 0 }; grades.forEach(r => { if (r && r.letter) letters[r.letter]++; });
   const avg = classAverage(s); const prevAvg = prev ? (prev.grade.filter(v => v != null).reduce((a, b) => a + b, 0) / (prev.grade.filter(v => v != null).length || 1)) : null;
   const missingTotal = gb.assignments.reduce((a, x) => a + x.missing, 0);
@@ -201,23 +232,23 @@ function renderGrades(s) {
   rows.sort((a, b) => (b.sliding - a.sliding) || ((a.r.rounded ?? 101) - (b.r.rounded ?? 101)) || a.name.localeCompare(b.name));
   const sliding = rows.filter(r => r.sliding).length;
   // assignments
-  const asg = gb.assignments.map(a => { const v = a.values.filter(x => x != null); const cat = catOf(s.prep, a.name); const how = g.how[a.name] || (g.map[a.name] ? 'user' : 'guess');
+  const asg = gb.assignments.map(a => { const v = a.values.filter(x => x != null); const cat = catIn(s, a); const how = g.how[a.name] || (g.map[a.name] ? 'user' : 'guess');
     return { a, cat, how, avg: v.length && a.max ? v.reduce((x, y) => x + y, 0) / v.length / a.max * 100 : null, cost: avg != null ? avg - classAverage(s, null, a.name) : null, disagree: fit && fit.disagree && fit.disagree[a.name] }; })
     .sort((x, y) => dueKey(y.a.due).localeCompare(dueKey(x.a.due)) || x.a.name.localeCompare(y.a.name));
-  const catRows = g.cats.map(c => { const list = asg.filter(x => x.cat === c.name); const gs = grades.map(r => r.cats[c.name] && r.cats[c.name].pct).filter(v => v != null); return { c, n: list.length, avg: gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null }; });
+  const catRows = (s._cats || g.cats).map(c => { const list = asg.filter(x => x.cat === c.name); const gs = grades.map(r => r.cats[c.name] && r.cats[c.name].pct).filter(v => v != null); return { c, n: list.length, avg: gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null }; });
   const pts = ixl.filter(x => x.ixl != null && x.tests != null).map(x => ({ ...x, label: H ? mask(x.name) : x.name })); const rr = pts.length >= 8 ? pearson(pts.map(x => x.ixl), pts.map(x => x.tests)) : null;
   // No direction claim below |r| = 0.3, and a small class is a hint, not a finding.
   const rWord = rr == null ? '' : (Math.abs(rr) < 0.3 ? 'no clear relationship between IXL work and assessment scores here' : (Math.abs(rr) < 0.5 ? 'a weak tendency for ' : Math.abs(rr) < 0.7 ? 'a moderate tendency for ' : 'a strong tendency for ') + (rr > 0 ? 'students doing more IXL to score higher on assessments' : 'students doing more IXL to score lower on assessments')) + (pts.length < 20 ? ` (${pts.length} students — treat as a hint, not proof)` : '');
-  const hist = (s.gradeHistory || []); const trend = hist.length >= 2 ? hist.map(h => { const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) : null;
-  const unverified = !gb.overall ? `<div class="notice info"><span>ⓘ</span><span>This export has no Grade column, so assignment categories are name-based guesses — check them under <b>Categories</b>.</span></div>` : (fit && !fit.exact ? `<div class="notice"><span>⚠︎</span><span><b>Tally's grades don't all match Focus</b> (off by ${fit.err} points in total across ${fit.n} students). A category or weight is probably wrong — open <b>Categories</b>.</span></div>` : '');
+  const hist = (s.gradeHistory || []).filter(h => snapQ(h) === n); const trend = hist.length >= 2 ? hist.map(h => { const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) : null;
+  const unverified = closedQ && s._closed ? `<div class="notice soft"><span>✓</span><span><b>${esc(Q_NAMES[n - 1])} is closed.</b> This is the copy Tally kept on ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))} — every score and the final grades. Nothing here raises an alert.</span></div>` : closedQ ? `<div class="notice info"><span>ⓘ</span><span><b>${esc(Q_NAMES[n - 1])} isn't closed yet.</b> A newer export started the next quarter, so Tally kept this copy of ${esc(Q_NAMES[n - 1])} before it was replaced. Close it under <b>Quarters</b> when grades are final.</span></div>` : s._partial ? '' : !gb.overall ? `<div class="notice info"><span>ⓘ</span><span>This export has no Grade column, so assignment categories are name-based guesses — check them under <b>Categories</b>.</span></div>` : (fit && !fit.exact ? `<div class="notice"><span>⚠︎</span><span><b>Tally's grades don't all match Focus</b> (off by ${fit.err} points in total across ${fit.n} students). A category or weight is probably wrong — open <b>Categories</b>.</span></div>` : '');
   const cell = (v, cls) => `<td class="${cls || ''}">${v}</td>`;
   const html = `<div class="grades">
     ${unverified}
     <div class="gcards">
-      <div class="gcard"><small>Class average</small><b>${pct1(avg)}</b>${prevAvg != null && avg != null ? `<span class="${Math.round(avg) - Math.round(prevAvg) < 0 ? 'down' : 'up'}">${signedPts(Math.round(avg) - Math.round(prevAvg))} since ${esc(fmtDate(prev.date))}</span>` : '<span>first import</span>'}</div>
+      <div class="gcard"><small>${closedQ ? 'Final class average' : 'Class average'}</small><b>${pct1(avg)}</b>${closedQ ? `<span>${esc(Q_NAMES[n - 1])}, as closed</span>` : prevAvg != null && avg != null ? `<span class="${Math.round(avg) - Math.round(prevAvg) < 0 ? 'down' : 'up'}">${signedPts(Math.round(avg) - Math.round(prevAvg))} since ${esc(fmtDate(prev.date))}</span>` : '<span>first import</span>'}</div>
       <div class="gcard"><small>Letters</small><b class="letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${letters[l]}</em></i>`).join('')}</b></div>
-      <div class="gcard"><small>Missing work</small><b>${missingTotal}</b><span>${plural(rows.filter(r => r.missing).length, 'student')} with something missing</span></div>
-      <div class="gcard"><small>Sliding</small><b>${sliding}</b><span>${prev ? 'grade down 3+ or more missing since ' + esc(fmtDate(prev.date)) : 'needs a second import'}</span></div>
+      <div class="gcard"><small>${closedQ ? 'Missing at close' : 'Missing work'}</small><b>${missingTotal}</b><span>${plural(rows.filter(r => r.missing).length, 'student')} with something missing</span></div>
+      ${closedQ ? '' : `<div class="gcard"><small>Sliding</small><b>${sliding}</b><span>${prev ? 'grade down 3+ or more missing since ' + esc(fmtDate(prev.date)) : 'needs a second import'}</span></div>`}
       ${trend ? `<div class="gcard"><small>Class average by import</small>${sparkline(trend, 160, 44)}<span>${hist.map(h => esc(fmtDate(h.date))).join(' → ')}</span></div>` : ''}
     </div>
     <div class="gtwo">
@@ -227,55 +258,17 @@ function renderGrades(s) {
       <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 ? scatterSVG(pts, 420, 260) + `<p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)} — ${rWord}. Assessment average leaves the IXL columns out so it isn't circular.</p>` : `<p class="ghint">Needs at least 8 students matched to IXL with an assessment on record (${pts.length} so far).</p>`}</section>
     </div>
     <section class="gsec"><h3>Assignments</h3><table class="checkTable gasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th>Points</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th><th>Missing</th><th>Excused</th><th title="Class average now minus the class average without this assignment — negative means it pulls grades down">Effect</th></tr></thead><tbody>
-      ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}">${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small title="${x.how === 'fit' ? 'proved by the Focus Grade column' : x.how === 'user' ? 'set by you' : x.how === 'file' ? 'stated in the export' : 'guessed from the name'}">${x.how === 'fit' ? '✓' : x.how === 'user' ? 'edited' : x.how === 'file' ? 'from file' : 'guess'}${x.disagree ? ' · Focus disagrees' : ''}</small></td><td>${esc(x.a.due || '')}</td><td>${x.a.max ?? '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>
+      ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}" ${closedQ ? 'disabled' : ''}>${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small title="${x.how === 'fit' ? 'proved by the Focus Grade column' : x.how === 'user' ? 'set by you' : x.how === 'file' ? 'stated in the export' : 'guessed from the name'}">${x.how === 'fit' ? '✓' : x.how === 'user' ? 'edited' : x.how === 'file' ? 'from file' : 'guess'}${x.disagree ? ' · Focus disagrees' : ''}</small></td><td>${esc(x.a.due || '')}</td><td>${x.a.max != null ? esc(fmtN(x.a.max)) : '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>
     <section class="gsec"><h3>Students</h3><table class="checkTable gstu"><thead><tr><th>Student</th><th>Grade</th><th>Since ${prev ? esc(fmtDate(prev.date)) : 'last import'}</th><th>Missing</th><th>Weakest category</th><th>IXL at goal</th></tr></thead><tbody>
       ${rows.map(x => { const ix = ixlBy.get(x.i); return `<tr class="${x.sliding ? 'sliding' : ''}" data-stu="${x.i}"><td><button class="nm nmbtn">${nm(x.name)}</button>${x.sliding ? ' <span class="gtag">sliding</span>' : ''}</td><td>${gradeChip(x.r)}</td><td class="${x.d != null && x.d < 0 ? 'down' : x.d > 0 ? 'up' : ''}">${x.d == null ? '' : signedPts(x.d)}</td><td>${x.missing || ''}${x.dMissing > 0 ? ` <small>(+${x.dMissing})</small>` : ''}</td><td>${x.weakest ? `${esc(x.weakest)} <small>${pct1(x.r.cats[x.weakest].pct)}</small>` : ''}</td><td>${ix && ix.ixl != null ? pct1(ix.ixl) : '<small>not matched</small>'}</td></tr>`; }).join('')}</tbody></table></section>
   </div>`;
   const wrap = $('#gridwrap'); wrap.innerHTML = html;
-  wrap.querySelectorAll('[data-cat]').forEach(sel => sel.onchange = () => { g.map[sel.dataset.cat] = sel.value; g.how[sel.dataset.cat] = 'user'; gradeSnapshot(s); save(); render(); });
-  wrap.querySelectorAll('[data-stu]').forEach(tr => tr.onclick = () => openStudentCard(s, Number(tr.dataset.stu)));
+  wrap.querySelectorAll('[data-cat]').forEach(sel => sel.onchange = () => { if (closedQ) return; g.map[sel.dataset.cat] = sel.value; g.how[sel.dataset.cat] = 'user'; gradeSnapshot(s0); save(); render(); });
+  wrap.querySelectorAll('[data-stu]').forEach(tr => tr.onclick = () => openProfile(s0.key, gb.students[Number(tr.dataset.stu)]));
 }
 
-function openStudentCard(s, i) {
-  const gb = s.grades; const g = gradingFor(s.prep); const H = state.settings.hideNames; const name = gb.students[i]; const nm = H ? mask(name) : name;
-  const r = computeGrade(s, i); if (!r) return;
-  const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing');
-  const arrow = x => x && x.rounded != null ? `<b class="arrow">→ ${x.rounded} <small>${x.letter}</small></b>` : '';
-  const allIn = {}; missing.forEach(a => allIn[a.name] = a.max);
-  const assess = gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
-  const ixlCols = assess.filter(a => /\bixl\b/i.test(a.name) && (a.values[i] == null || a.values[i] < a.max));
-  const tests = assess.filter(a => !/\bixl\b/i.test(a.name) && (a.values[i] == null || a.values[i] < a.max));
-  const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
-  const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
-  const hist = (s.gradeHistory || []).map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.grade[j] : null; });
-  const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private'); $('#toast').classList.remove('show');   // a lingering toast can carry other names
-  // Only letters ABOVE the current one are targets; a 0 means any score keeps the letter, which reads as "even a 0 keeps".
-  const needLine = mx => { const cur = r.rounded; const parts = [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur == null || cur < t).map(([t, w]) => { const n = neededOn(s, i, 'Assessments', mx, t); return n == null ? null : `<b>${n}/${mx}</b> for ${w}`; }).filter(Boolean);
-    const keep = cur != null && cur >= 70 ? (() => { const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : 70; const n = neededOn(s, i, 'Assessments', mx, floor); return n == null ? null : `${n === 0 ? 'even a 0' : `<b>${n}/${mx}</b>`} keeps ${floor === 90 ? 'the A' : floor === 80 ? 'the B' : 'the C'}`; })() : null;
-    const all = [...parts, keep].filter(Boolean);
-    return all.length ? 'Next assessment: ' + all.join(' · ') : `No single assessment out of ${mx} can reach a C from here — ${missing.length ? 'the missing work is the lever' : 'it will take more than one'}.`; };
-  m.innerHTML = `<div class="panel"><header><h2>${esc(nm)} <span class="hsub">${esc(s.label)} · Focus of ${esc(fmtDate(gb.importedAt.slice(0, 10)))}</span></h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one stucard">
-      <div class="stuhead">${gradeChip(r)}<div class="cats">${g.cats.map(c => { const x = r.cats[c.name]; return `<div class="catbar"><span>${esc(c.name)} <small>${c.w}%</small></span><div class="bar"><i style="width:${x && x.pct != null ? Math.max(0, Math.min(100, x.pct)) : 0}%"></i></div><b>${x && x.pct != null ? pct1(x.pct) : '—'}</b></div>`; }).join('')}</div>
-        ${hist.filter(v => v != null).length >= 2 ? `<div class="stuspark">${sparkline(hist, 140, 40)}<small>${(s.gradeHistory || []).map(h => esc(fmtDate(h.date))).join(' → ')}</small></div>` : ''}</div>
-      <h3>Missing work${missing.length ? ` <small>${missing.length}</small>` : ''}</h3>
-      ${missing.length ? `<table class="checkTable"><tbody>${missing.map(a => `<tr><td>${esc(a.name)} <small>${esc(catOf(s.prep, a.name))} · ${a.max} pts${a.due ? ' · due ' + esc(a.due) : ''}</small></td><td>turn in at full credit ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}
-        ${missing.length > 1 ? `<tr class="total"><td><b>Everything turned in</b></td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
-      <h3>Retakes</h3>
-      ${tests.length ? `<table class="checkTable"><thead><tr><th>Assessment</th><th>Now</th><th>at 70%</th><th>at 80%</th><th>at 90%</th><th>at 100%</th></tr></thead><tbody>${tests.map(a => `<tr><td>${esc(a.name)}</td><td>${a.status[i] === 'missing' ? 'NHI' : `${a.values[i]}/${a.max}`}</td>${[70, 80, 90, 100].map(p => `<td>${a.status[i] !== 'missing' && a.values[i] >= a.max * p / 100 ? '<small>already</small>' : arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p class="ghint">Every assessment is already at full marks.</p>'}
-      ${ixlCols.length ? `<h3>IXL</h3><table class="checkTable"><tbody>${ixlCols.map(a => `<tr><td>${esc(a.name)} <small>now ${a.status[i] === 'missing' ? 'NHI' : a.values[i] + '/' + a.max}</small></td><td>at ${a.max}/${a.max} ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
-      <h3>Next assessment</h3>
-      <div class="nextrow"><label>out of <input type="number" id="nextMax" value="${nextMax}" min="1" max="500" style="width:70px"></label><label>score <input type="range" id="nextPts" min="0" max="${nextMax}" step="0.5" value="${Math.round(nextMax * 0.8)}"> <b id="nextPtsV">${Math.round(nextMax * 0.8)}</b></label><span id="nextOut">${arrow(withNext(s, i, 'Assessments', nextMax, Math.round(nextMax * 0.8)))}</span></div>
-      <p class="ghint" id="needLine">${needLine(nextMax)}</p>
-      <div class="rp-actions"><button class="pill" id="stuPrint">Print report</button><button class="pill pale" id="mCancel">Close</button></div>
-    </div></div>`;
-  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
-  m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  const upd = () => { const mx = Math.max(1, Number($('#nextMax').value) || 1); const sl = $('#nextPts'); sl.max = mx; const p = Math.min(mx, Number(sl.value)); $('#nextPtsV').textContent = p; $('#nextOut').innerHTML = arrow(withNext(s, i, 'Assessments', mx, p));
-    $('#needLine').innerHTML = needLine(mx); };
-  $('#nextMax').oninput = upd; $('#nextPts').oninput = upd;
-  $('#stuPrint').onclick = () => printStudentCard(s, i);
-}
+// The old one-student card became the student's page (students.js); callers keep this name.
+function openStudentCard(s, i) { if (s.grades && s.grades.students[i] != null) openProfile(s.key, s.grades.students[i]); }
 
 /* ---------- Student report: one page per student — the Focus grade, what would move it, and the IXL still owed ----------
    Printed from the student card (one student) or the class ⋯ menu (everyone, or only students who owe something).
@@ -288,10 +281,11 @@ table{border-collapse:collapse;width:100%}td,th{padding:3px 6px;text-align:left;
 .r{text-align:right;white-space:nowrap}.nhi{font-weight:bold}.cats td{border-bottom:none;padding:1px 6px}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
 .u{margin:4px 0 6px}.uh{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt;display:flex;justify-content:space-between}.uh b{font-weight:bold}.l{margin:1px 0 0 12px;font-size:10pt}.l span{font-weight:bold}.l.done{font-style:italic}
 .foot{font-size:8.5pt;color:#444;margin-top:14px;border-top:1px solid #999;padding-top:6px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff;font-family:Arial,sans-serif}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
-function studentReportSection(s, i, ixlRow) {
-  const gb = s.grades; const g = gradingFor(s.prep); const name = gb.students[i]; const r = computeGrade(s, i);
+function studentReportSection(s0, i, ixlRow) {
+  const s = openSec(s0);   // a closed quarter's work can't move the grade any more, so the report is about the open one
+  const gb = s.grades; const g = gradingFor(s.prep); const name = gb.students[i]; const r0 = computeGrade(s, i); const r = r0 && r0.rounded != null ? r0 : null;   // nothing graded yet → no grade line, no targets
   const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing'); const allIn = {}; missing.forEach(a => allIn[a.name] = a.max);
-  const ixlCols = gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && (a.values[i] == null || a.values[i] < a.max));
+  const ixlCols = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && (a.values[i] == null || a.values[i] < a.max));
   const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
   const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
   const cur = r ? r.rounded : null;
@@ -299,7 +293,7 @@ function studentReportSection(s, i, ixlRow) {
   const keep = r && cur >= 70 ? (() => { const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : 70; const n = neededOn(s, i, 'Assessments', nextMax, floor); return n == null ? null : `${n === 0 ? 'even a 0' : n + '/' + nextMax} keeps the ${floor === 90 ? 'A' : floor === 80 ? 'B' : 'C'}`; })() : null;
   const arrow = x => x && x.rounded != null ? `→ ${x.rounded}% ${x.letter}` : '';
   // IXL still owed, from the class's IXL grid via the roster match
-  const units = unitsOf(s).filter(u => u.assigned && u.total); const t = s.threshold; let ixl = '';
+  const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const t = s.threshold; let ixl = '';
   if (ixlRow && ixlRow.ixl != null) {
     const per = units.map(u => { const own = activeFor(s, u, ixlRow.ixl); const p = points(s, u, ixlRow.ixl);
       const below = own.filter(k => { const v = eff(s, k, ixlRow.ixl); return v != null && v < t; }).map(k => `${s.skills[k].name} (${eff(s, k, ixlRow.ixl)})`);
@@ -314,7 +308,7 @@ function studentReportSection(s, i, ixlRow) {
     (missing.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work turned in and IXL finished</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, both))}</b></td></tr>`; })() : '',
     (need.length || keep) ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${[...need, keep].filter(Boolean).join(' · ')}</td></tr>` : r && cur < 70 ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">No single assessment reaches a C from here — ${missing.length || ixlCols.length ? 'the work above is the lever' : 'it will take more than one'}.</td></tr>` : ''].filter(Boolean).join('');
   return `<section class="rep"><h1>${esc(name)}</h1><div class="meta">${esc(s.label)} · Focus gradebook as of ${esc(fmtDate(gb.importedAt.slice(0, 10)))} · printed ${new Date().toLocaleDateString()}</div>
-    <div class="top"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>
+    <div class="top"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>
     <h2>What would move the grade</h2>${moves ? `<table><tbody>${moves}</tbody></table>` : '<p>Nothing missing and every assessment at full marks — keep going.</p>'}
     ${ixl}
@@ -331,8 +325,9 @@ function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.studen
 // Class-level chooser: everyone, or only students with something owed (missing work or IXL below goal).
 function openStudentReports(s) {
   const gb = s.grades; if (!gb) { toast('Import this class\'s Focus gradebook first — the report needs the grade.', true); return; }
-  const rows = gbRows(s); const units = unitsOf(s).filter(u => u.assigned && u.total);
-  const owes = gb.students.map((_, i) => { const miss = gb.assignments.some(a => a.status && a.status[i] === 'missing'); const r = rows[i]; const ixl = r && r.ixl != null && units.some(u => points(s, u, r.ixl) < totalFor(s, u, r.ixl)); return miss || ixl; });
+  if (!hasOpenGrades(s)) { toast(`No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet — reports start with the first ${esc(Q_NAMES[currentQuarter() - 1])} gradebook.`, false, 5000); return; }
+  const rows = gbRows(s); const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const og = openSec(s).grades;
+  const owes = gb.students.map((_, i) => { const miss = og.assignments.some(a => a.status && a.status[i] === 'missing'); const r = rows[i]; const ixl = r && r.ixl != null && units.some(u => points(s, u, r.ixl) < totalFor(s, u, r.ixl)); return miss || ixl; });
   const n = owes.filter(Boolean).length;
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel narrow"><header><h2>Student reports · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>

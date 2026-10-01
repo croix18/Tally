@@ -42,9 +42,9 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   await p.click('#btnSettings'); await p.waitForTimeout(200); await p.click('#mSave'); await p.waitForTimeout(400);
   check(/storage is full|Could not save/.test(await p.textContent('#toast')) && await p.locator('#toast.err').count()===1,'the quota error stays on screen instead of "Saved"');
   await p.evaluate(()=>{ localStorage.setItem=window.__origSet; });
-  // 5. Overview search opens the class grid properly
+  // 5. Overview search opens the Students list properly (was the class grid before Students existed)
   await p.click('#btnHome'); await p.waitForTimeout(300); await p.fill('#search','a'); await p.waitForTimeout(300);
-  check(await p.locator('body.home').count()===0 && await p.locator('table.grid').count()===1 && await p.locator('#bar h2').count()===1,'typing in search on the Overview opens the active class grid with its bar');
+  check(await p.locator('body.home').count()===0 && await p.locator('.sdir').count()===1 && /Students/.test(await p.textContent('#bar h2')),'typing in search on the Overview opens the Students list (every class) with its bar');
   await p.fill('#search',''); await p.waitForTimeout(200);
   // 6. pool replacement guard: a file with barely-overlapping students asks first
   const rows=fs.readFileSync(path.resolve('fixtures',acc),'utf8').split('\n'); const hdrI=rows.findIndex(r=>/skill name/i.test(r));

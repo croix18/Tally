@@ -69,7 +69,7 @@ reachable from projected mode; the Names toggle masks names here as everywhere.
   Shown when ≥ 8 students have both. y excludes the IXL columns so the comparison isn't circular.
 - Trend: class average per import date (small line), when there are ≥ 2 imports.
 
-### 4.2 Student card (modal)
+### 4.2 Student card (modal) — superseded by the student page (§8)
 Only that student's data on screen. Grade, letter, category bars, grade per import (sparkline), missing list.
 
 What-ifs, each rendered as "→ 84 (B)":
@@ -103,3 +103,47 @@ backup toast says it contains names, skill counts and computed grades.
 - Import twice (different dates) → two history entries; class trend and Δ column render.
 - Student card shows only that student's name; print page contains no other names.
 - Gradebook survives a reload and rides in a backup/restore.
+
+## 7. Quarters (added 30 Sep 2026)
+
+Focus starts a fresh gradebook each grading period, so after Q1 a class's export holds only Q2 work. Croix doesn't
+change grades after a quarter ends and wants its work to stop raising anything while staying viewable.
+
+- **Dates**: `state.quarters.ends` = Lake County 2026–27 (Oct 9, Dec 18, Mar 4, May 28), editable in the Quarters dialog.
+  An assignment's quarter = its Focus due date (then assigned date, then the import day). `mdToISO` reads MM/DD into the
+  school year (July–December = the first calendar year).
+- **Close** (`closeQuarter(n, unitPicks)`): per class, `mergeArchive` keeps quarter n's columns in `sec.qArchive[n]`
+  = `{ gb, map, cats, final, at, file }` — the gradebook (every score), each assignment's category, the weights at close,
+  and the final grade per student (equal to the Focus Grade column when the export was single-quarter). Course IXL units
+  ticked in the dialog get `state.quarters.units[prep][unit] = n` (pre-ticked: units whose Focus IXL column is due in n).
+- **Quiet**: every alerting reader uses `openSec(sec)` — the live gradebook minus closed-quarter columns: Overview cards
+  and needs-attention, the Grades screen's current tab, sliding, student reports, the digest (which also skips a
+  closed quarter's last snapshot and closed units' IXL movement). `reconcile` skips closed-quarter Focus columns;
+  still-owed and reports skip closed units — unless the class's open gradebook has a column for that unit (`unitClosed`).
+- **Kept, not lost**: a gradebook import first runs `keepOutgoing` — columns of an earlier (or closed) quarter that the new
+  file lacks are merged into that quarter's record, so a Q2 export that arrives before Q1 is closed can't take Q1 with it.
+  Closed-quarter columns in a later file merge by name (students lined up by name; a file holding every kept column
+  replaces the record). Backups carry `quarters` and each class's `qArchive`; loading one unions closed quarters and keeps
+  the fuller copy of each record (`mergeArchives`); `cleanArchive`/`cleanGB` coerce every field.
+- **History**: grade snapshots carry `q` (and per-student category percents `cats`); one snapshot per day *and* quarter;
+  `prevGradeSnap` and the digest compare within a quarter, so nobody "slides" across the break.
+- **Reading**: Grades has a tab per quarter (`Q1 · final` read-only with a notice; the open quarter; an empty state until
+  the first export of a new quarter). Reopen (Quarters dialog) brings alerts back; the record stays.
+
+## 8. Students (added 30 Sep 2026)
+
+Teacher-only (`view.mode` `students` / `student`; never reachable from projected mode; Names off → initials everywhere).
+- **Students list**: every class's students (roster/gradebook order), grade this quarter, change, missing, IXL at goal
+  (open units; closed units when nothing else is assigned), closed-quarter finals. Sorts: by class, A–Z, lowest grade,
+  most missing, sliding. *Find a student* searches it from the Overview.
+- **A student's page**: tiles (grade now, each kept quarter's final, missing now, IXL at goal with change since the last
+  export, assessments this quarter); charts — grade by import against the class average with dashed quarter marks, each
+  category, missing work, IXL skills at goal (from the IXL snapshots on today's assigned units), every assessment against
+  the class average across quarters; every assignment per quarter (kept quarters collapsed); IXL by unit; what-ifs for the
+  open quarter (missing turned in, retakes at 70–100%, IXL columns at full, next-assessment slider and the score needed for
+  each letter). Prev/Next in Focus order; Print report; Escape/‹ back to wherever it was opened from.
+- **Show student** (`#show`): full screen, only that student's first name and numbers; switches for each missing
+  assignment (with a score slider), retake sliders (up from the current score), IXL sliders, the next assessment (starts at
+  the student's own assessment average); the grade and category bars follow live (`gradeWith` = `computeGrade` with
+  overrides plus an optional extra Assessments item); "on its own: N of P gets you a B". Escape, Tab out and file drops are
+  swallowed; the teacher holds the exit for 1.5 s.
