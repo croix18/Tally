@@ -99,6 +99,8 @@ per-section-file era and many items in them are now done).
   `cats`; "since last import" and sliding compare within a quarter only. A review subagent found 10 issues (Q2 export
   before closing wiped Q1; one-column merge; backup reopening; archive XSS; digest; open column for a closed unit;
   null grades; all-closed crash; drops under Show; weights drift) — all fixed and covered in `tests/students-quarters.js`.
+- **Quickest way to the next letter** (1 Oct): asked for after Students — fewest steps to F→D, D→C, …, missing work (NHI)
+  and IXL first because that's what failing students lack; retakes only if needed. `quickestPath` in students.js, §8.1 of GRADES_SPEC.
 - **Find a student** on the Overview now opens the Students list (every class) instead of the active class grid.
 
 ## Weekly routine
@@ -128,6 +130,7 @@ primary once the end date has passed). Tick the IXL units that were that quarter
   class; the IXL-only "not on roster" flag for a pool class means the name matched no roster line anywhere;
   the calm grid is still a dense table (Just Unit N is the relief); category asker fires for every new
   assignment when a gradebook has no Grade column.
+- `tests/seating.js` "why-here explains the pairing" is occasionally flaky (the first desk's student may have no partner line, depending on the solver run); it passes on rerun.
 - `Scrub.html` still exposes `window.__scrub` (test-only data, left on purpose).
 
 ## Working on the code

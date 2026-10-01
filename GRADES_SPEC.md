@@ -147,3 +147,12 @@ Teacher-only (`view.mode` `students` / `student`; never reachable from projected
   the student's own assessment average); the grade and category bars follow live (`gradeWith` = `computeGrade` with
   overrides plus an optional extra Assessments item); "on its own: N of P gets you a B". Escape, Tab out and file drops are
   swallowed; the teacher holds the exit for 1.5 s.
+
+### 8.1 Quickest way to the next letter (added 1 Oct 2026)
+Croix: "a kid that's failing, the quickest way to a D — use NHIs or IXL first; the kids that are failing are all lacking in
+this stuff anyway." `quickestPath(sec, s, i, ixlIdx)`: target = the next letter's floor (60/70/80/90). Phase 1 adds, one at
+a time, whichever step lifts the grade most: a missing (NHI) assignment at full credit, or one more IXL skill (one point in
+that unit's Focus IXL column; ties go to the assignment). Then it prunes any step the plan reaches the letter without.
+Phase 2 (only if phase 1 can't reach it): retakes at full, best first, the last one lowered to the least half-point score
+that still works. IXL steps name the unit's skills closest to goal first. Shown on the student page (first card), the
+Students list ("3 missing → D"), the printed report, and Show student ("Show me on the sliders" applies it).

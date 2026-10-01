@@ -58,6 +58,16 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   await p.click('#openGrades'); await p.waitForTimeout(300); await p.click(`.gstu tr[data-stu] >> nth=0`); await p.waitForTimeout(300);
   check(await p.locator('.profile').count()===1 && /Grades/.test(await p.textContent('#back')),'a Grades row opens the page, with the way back to Grades');
 
+  // 3b. Quickest way to the next letter: missing work and IXL first, fewest steps
+  const qk=await p.evaluate(({K,MICAH})=>{ const T=window.__tally; const s=T.state.sections[K]; const i=s.grades.students.indexOf(MICAH); const f=T.findStudent(s,MICAH); const q=T.quickestPath(s,s,i,f.ixl);
+    // check it is minimal: no single step can be dropped and still reach the target
+    const over=q.over; const names=Object.keys(over); const drop=names.some(n=>{ const o={...over}; delete o[n]; return T.computeGrade(s,i,o).rounded>=q.target; });
+    const all=T.state.sections[K].grades.students.map((n,j)=>{ const p=T.quickestPath(s,s,j,null); return p && !p.top && p.reached ? T.computeGrade(s,j,p.over).rounded>=p.target && T.computeGrade(s,j).rounded<p.target : true; });
+    return { letter:q.letter, reached:q.reached, res:q.result.rounded, nhi:q.nhi.length, ixl:q.ixl.reduce((a,x)=>a+x.n,0), re:q.retakes.length, drop, allOk:all.every(Boolean), skills:q.ixl.flatMap(x=>x.skills.map(k=>k.name)).length }; },{K,MICAH});
+  check(qk.letter==='D' && qk.reached && qk.res>=60 && qk.re===0 && qk.nhi+qk.ixl>0,'Micah (47 F): quickest way to a D uses missing work / IXL only → '+qk.res+' ('+qk.nhi+' missing, '+qk.ixl+' IXL skills)');
+  check(!qk.drop,'the plan has no step it could do without');
+  check(qk.allOk,'every student\'s plan reaches the next letter it names');
+  check(/Quickest way to a D/.test(await p.textContent('#pQuick')),'the student page leads with the quickest way');
   // 4. Show student
   await p.evaluate(({K,MICAH})=>window.__tally.openProfile(K,MICAH),{K,MICAH}); await p.waitForTimeout(300);
   await p.click('#pShow'); await p.waitForTimeout(300);
@@ -66,6 +76,10 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   const roster=fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8').split('\n').map(l=>l.split('\t').pop().trim()).filter(Boolean);
   const others=roster.filter(n=>n!==MICAH).map(n=>n.split(',')[0].trim()).filter(l=>l.length>3 && sh.txt.toUpperCase().includes(l.toUpperCase()));
   check(/Micah/.test(sh.txt) && !others.length && sh.miss===5,'only the student\'s own name and work on screen'+(others.length?' — also: '+others.join(', '):''));
+  check(/Your quickest way to a D/.test(await p.textContent('#show .shQuick')),'Show student shows the quickest way');
+  await p.click('#shPlan'); await p.waitForTimeout(200); const ifv=parseInt(await p.textContent('#shIfV'));
+  check(ifv===qk.res,'“Show me on the sliders” sets the plan and the grade lands on it ('+ifv+')');
+  await p.click('#shReset'); await p.waitForTimeout(200);
   const ons=await p.$$('#show .shRow[data-k="miss"] .shOn'); for(const o of ons) await o.check(); await p.waitForTimeout(200);
   check(/72/.test(await p.textContent('#shIfV')) && /C/.test(await p.textContent('#shIfL')) && /\+25/.test(await p.textContent('#shDelta')),'turning in all five: 47 → 72 (C), +25 points');
   const nx=await p.evaluate(({K,MICAH})=>{ const T=window.__tally; const s=T.state.sections[K]; const i=s.grades.students.indexOf(MICAH); return [T.gradeWith(s,i,null,{max:20,pts:15}).rounded, T.withNext(s,i,'Assessments',20,15).rounded]; },{K,MICAH});
