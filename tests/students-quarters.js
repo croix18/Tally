@@ -39,7 +39,7 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   const pg=(await p.textContent('#gridwrap')).replace(/\s+/g,' ');
   check(/Micah Dorsey/.test(await p.textContent('#bar h2')) && /Quarter 1 grade\s*47%/.test(pg) && /Missing now\s*5/.test(pg),'page headline: grade and missing work');
   check(await p.locator('.profile svg.chart').count()>=2 && /Grade over the year/.test(pg) && /Assessments across the year/.test(pg),'trends: grade over the year and assessments charts');
-  check(/IXL by unit/.test(pg) && /What would move the grade/.test(pg) && /Everything turned in\s*→ 72/.test(pg),'IXL by unit and the what-ifs (everything turned in → 72)');
+  check(/IXL by unit/.test(pg) && /What would move the grade/.test(pg) && /All 5 turned in.{0,40}→ 72/.test(pg),'IXL by unit and the what-ifs (all 5 turned in → 72)');
   check(await p.locator('.sasg tbody tr').count()===13 && await p.locator('.sasg tr.miss').count()===5,'every assignment listed, the five missing marked');
   await p.click('#pNext'); await p.waitForTimeout(300); const nextName=await p.textContent('#bar h2'); await p.click('#pPrev'); await p.waitForTimeout(300);
   check(nextName!=='Micah Dorsey' && /Micah Dorsey/.test(await p.textContent('#bar h2')),'Prev/Next walks the class in Focus order');
