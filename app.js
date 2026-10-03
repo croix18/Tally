@@ -5,6 +5,10 @@ const DEFAULT_THR = { on: 60, acc: 67 };
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const coarse = () => window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches;   // the tablet and the panel: no auto-focus (it raises the keyboard), bigger targets
+// Focus-check overrides: the teacher decided Focus's number for a student/unit is right on purpose (late penalty, a
+// retake outside IXL, …). Kept with the date and reason; honoured as long as Focus still holds that number.
+function cleanOverrides(o) { const out = {}; if (o && typeof o === 'object') for (const u of Object.keys(o)) { if (!SAFE_KEY(u) || !o[u] || typeof o[u] !== 'object') continue; const m = {}; for (const d of Object.keys(o[u])) { const v = o[u][d]; if (!SAFE_KEY(d) || !v || typeof v !== 'object') continue; m[d] = { focus: v.focus == null ? null : +v.focus, tally: v.tally == null ? null : +v.tally, at: typeof v.at === 'string' ? v.at.slice(0, 30) : '', why: typeof v.why === 'string' ? v.why.slice(0, 200) : '' }; } if (Object.keys(m).length) out[u] = m; } return out; }
+const overrideFor = (sec, unitName, display) => (sec.overrides && sec.overrides[unitName] && sec.overrides[unitName][display]) || null;
 const SAFE_KEY = k => typeof k === 'string' && !['__proto__', 'constructor', 'prototype'].includes(k);   // object keys that come from files
 const plural = (n, w) => n + ' ' + (n === 1 ? w : w + (/s$/.test(w) ? 'es' : 's'));
 
@@ -53,7 +57,7 @@ function migrate() {
     if (typeof s.label !== 'string') s.label = s.autoLabel || k;
     // A gradebook is only usable whole: assignments with values/status arrays of the students' length.
     if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) delete s.grades; else gb.assignments.forEach(a => { a.missing = Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); }
-    s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
+    s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s.overrides = cleanOverrides(s.overrides); s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
     if (s.hiddenUnits && Object.keys(s.hiddenUnits).length) { for (const u in s.hiddenUnits) if (state.assigned[s.prep || 'on'][u] == null) state.assigned[s.prep || 'on'][u] = !s.hiddenUnits[u]; s.hiddenUnits = {}; }
     { const al = {}; if (s.aliases && typeof s.aliases === 'object') for (const k of Object.keys(s.aliases)) if (SAFE_KEY(k) && typeof s.aliases[k] === 'string') al[k] = s.aliases[k]; s.aliases = al; } s.hiddenUnits = s.hiddenUnits && typeof s.hiddenUnits === 'object' ? s.hiddenUnits : {};
@@ -288,7 +292,7 @@ async function importFiles(files) {
         roster: keep.roster || '', rosterAt: keep.rosterAt || null, skipRoster: !!keep.skipRoster,
         excluded: state.skips[keep.prep || (meta.accelerated ? 'acc' : 'on')], ignored: keep.ignored || {}, aliases: keep.aliases || {}, hiddenUnits: {}, studentSkips: keep.studentSkips || {},
         history: keep.history || [], team: keep.team || '', prep: keep.prep || (meta.accelerated ? 'acc' : 'on'),
-        grades: keep.grades, gradeHistory: keep.gradeHistory || [], qArchive: keep.qArchive || {}, seating: keep.seating, seatInfo: keep.seatInfo || {}, period: keep.period != null ? keep.period : (meta.period || undefined),   // the weekly re-import must not drop what the gradebook, the seating chart and the backup put here
+        grades: keep.grades, gradeHistory: keep.gradeHistory || [], qArchive: keep.qArchive || {}, seating: keep.seating, seatInfo: keep.seatInfo || {}, overrides: keep.overrides || {}, period: keep.period != null ? keep.period : (meta.period || undefined),   // the weekly re-import must not drop what the gradebook, the seating chart and the backup put here
         placeholder, allBlank
       };
       if (meta.date) state.sections[meta.key].history = (state.sections[meta.key].history || []).filter(h => h.date <= meta.date);   // an older file accepted on purpose: nothing newer than it is "now"
@@ -1155,7 +1159,7 @@ function renderGrid() {
     const shownUnits = onlyCur ? units.filter(u => u.current) : units.filter(u => !u.hidden || state.settings.showAllUnits);
     const checks = reconcile(s);
     let h = `<table class="grid"><thead><tr><th class="idx" scope="col">#</th><th class="stu" scope="col">Student</th>`;
-    shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="usub">${uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span> ` : ''}${u.upcoming ? 'upcoming · ' : u.current ? 'now · ' : ''}out of ${u.total}<span class="det">${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span></span>${s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}${(() => { const rc = checks.find(x => x.unit.name === u.name); if (!rc) return ''; const bad = rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1); return `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : 'Focus ✓'}</button>`; })()}<button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></th>`; });
+    shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="usub">${uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span> ` : ''}${u.upcoming ? 'upcoming · ' : u.current ? 'now · ' : ''}out of ${u.total}<span class="det">${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span></span>${s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}${(() => { const rc = checks.find(x => x.unit.name === u.name); if (!rc) return ''; const bad = rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1); return `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ✓ · ${rc.counts.accepted} kept` : 'Focus ✓'}</button>`; })()}<button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${shownUnits.length + 1}">No students match “${esc(search)}”.</td></tr>`;
     rows.forEach(r => {
@@ -1266,8 +1270,9 @@ function openFixer(s, display) {
 /* ---------- copy ---------- */
 function unitColumn(sec, unit, mode) {
   const rows = buildRows(sec).filter(r => r.status !== 'ixlOnly');
+  const rc = sec.grades ? reconcile(sec).find(c => c.unit.name === unit.name) : null; const kept = rc ? new Map(rc.rows.filter(x => x.status === 'accepted').map(x => [x.display, x.focus])) : new Map();
   return rows.map(r => {
-    const p = r.ixl == null ? '' : String(points(sec, unit, r.ixl));
+    const p = r.ixl == null ? '' : String(kept.has(r.display) && kept.get(r.display) != null ? kept.get(r.display) : points(sec, unit, r.ixl));
     const own = r.ixl != null && totalFor(sec, unit, r.ixl) !== unit.total ? '\t/' + totalFor(sec, unit, r.ixl) : '';
     if (mode === 'names') return r.display + '\t' + p + own;
     if (mode === 'ids') return (r.id || '') + '\t' + p + own;
@@ -1516,10 +1521,12 @@ function reconcile(sec) {
       else if (Math.abs(focus - tally) < 0.01) status = 'match';
       else if (rcv != null && Math.abs(focus - rcv) < 0.01) status = 'stale';   // Focus has exactly what was copied; the student moved since
       else status = 'differ';
-      return { display: r.display, id: r.id, focus, tally, own, receipt: rcv, status };
+      const ov = overrideFor(sec, u.name, r.display); const honoured = ov && status !== 'match' && ((ov.focus == null && focus == null) || (ov.focus != null && focus != null && Math.abs(ov.focus - focus) < 0.01));
+      if (honoured) status = 'accepted';   // the teacher chose Focus's number on purpose; it stays quiet until Focus changes
+      return { display: r.display, id: r.id, focus, tally, own, receipt: rcv, status, override: honoured ? ov : null, staleOverride: ov && !honoured && status !== 'match' ? ov : null };
     });
     const n = k => list.filter(x => x.status === k).length;
-    out.push({ unit: u, assignment: a, rows: list, maxOK: a.max == null || a.max === u.total, counts: { match: n('match'), stale: n('stale'), differ: n('differ'), missing: n('missing'), unmatched: n('unmatched') }, copiedAt: rc ? rc.at : null });
+    out.push({ unit: u, assignment: a, rows: list, maxOK: a.max == null || a.max === u.total, counts: { match: n('match'), stale: n('stale'), differ: n('differ'), missing: n('missing'), unmatched: n('unmatched'), accepted: n('accepted') }, copiedAt: rc ? rc.at : null });
   });
   return out;
 }
@@ -1527,8 +1534,8 @@ function openFocusCheck(sec, unitName) {
   const all = reconcile(sec); const rc = all.find(x => x.unit.name === unitName); if (!rc) return;
   const m = $('#modal'); m.classList.remove('hidden');
   const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : d);
-  const bad = rc.rows.filter(r => r.status !== 'match');
-  const line = r => `<tr class="${r.status}"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${r.tally == null ? '—' : fmtN(r.tally) + (r.own !== rc.unit.total ? ` <small>/${r.own}</small>` : '')}</td><td>${r.status === 'match' ? '' : r.status === 'stale' ? `matches what you copied${rc.copiedAt ? ' ' + fmtDate(rc.copiedAt.slice(0, 10)) : ''}; up ${fmtN(r.tally - r.focus)} since` : r.status === 'missing' ? 'nothing in Focus yet' : r.status === 'unmatched' ? 'not found in IXL' : 'Focus differs from Tally'}</td></tr>`;
+  const bad = rc.rows.filter(r => r.status !== 'match' && r.status !== 'accepted'); const kept = rc.rows.filter(r => r.status === 'accepted');
+  const line = r => `<tr class="${r.status}"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${r.tally == null ? '—' : fmtN(r.tally) + (r.own !== rc.unit.total ? ` <small>/${r.own}</small>` : '')}</td><td>${r.status === 'match' ? '' : r.status === 'stale' ? `matches what you copied${rc.copiedAt ? ' ' + fmtDate(rc.copiedAt.slice(0, 10)) : ''}; up ${fmtN(r.tally - r.focus)} since` : r.status === 'missing' ? 'nothing in Focus yet' : r.status === 'unmatched' ? 'not found in IXL' : 'Focus differs from Tally'}${r.staleOverride ? ` <small class="ghint">(you kept ${r.staleOverride.focus == null ? 'blank' : fmtN(r.staleOverride.focus)} on ${esc(fmtDate((r.staleOverride.at || '').slice(0, 10)))} — Focus has changed since)</small>` : ''}</td><td>${r.status === 'unmatched' ? '' : `<button class="pill pale small" data-keep="${esc(r.display)}" title="Focus is right for this student — stop flagging it">Keep Focus</button>`}</td></tr>`;
   m.innerHTML = `<div class="panel"><header><h2>Focus check · ${esc(rc.unit.short)}</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one">
       <p><b>Focus "${esc(rc.assignment.name)}"</b> (${rc.assignment.max != null ? rc.assignment.max + ' points' : 'points unknown'}) vs <b>Tally ${esc(rc.unit.short)}</b> (out of ${rc.unit.total}${rc.copiedAt ? ', copied ' + fmtDate(rc.copiedAt.slice(0, 10)) : ', never copied'}).
@@ -1542,7 +1549,9 @@ function openFocusCheck(sec, unitName) {
           <p class="ghint" id="skipCount"></p><button class="pill small" id="skipCand">Skip the ticked skills</button></div>`; })()}
       <p class="checkSummary"><span class="ok">${rc.counts.match} match</span>${rc.counts.stale ? ` · <span class="stale">${rc.counts.stale} up since you copied</span>` : ''}${rc.counts.differ ? ` · <span class="bad">${rc.counts.differ} differ</span>` : ''}${rc.counts.missing ? ` · <span class="bad">${rc.counts.missing} blank in Focus</span>` : ''}${rc.counts.unmatched ? ` · ${rc.counts.unmatched} not matched to IXL` : ''}</p>
       <div class="field"><label>This Focus column is</label><select id="gbMap">${[['', '— not an IXL unit —']].concat(unitsOf(sec).map(u => [u.name, u.short + (u.title ? ' · ' + u.title : '')])).map(([v, l]) => `<option value="${esc(v)}" ${v === rc.unit.name ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
-      ${bad.length ? `<table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th></th></tr></thead><tbody>${bad.map(line).join('')}</tbody></table>` : '<p class="ok">Every student matches. Nothing to fix.</p>'}
+      ${bad.length ? `<table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th></th><th></th></tr></thead><tbody>${bad.map(line).join('')}</tbody></table>` : `<p class="ok">Every student matches${kept.length ? ' or is kept on purpose' : ''}. Nothing to fix.</p>`}
+      <div id="keepForm" class="keepForm hidden"></div>
+      ${kept.length ? `<details class="kept"><summary>${plural(kept.length, 'difference')} kept on purpose</summary><table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th>Why</th><th></th></tr></thead><tbody>${kept.map(r => `<tr class="accepted"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${fmtN(r.tally)}</td><td><small>${esc(fmtDate((r.override.at || '').slice(0, 10)))}${r.override.why ? ' · ' + esc(r.override.why) : ''}</small></td><td><button class="pill pale small" data-unkeep="${esc(r.display)}">Flag again</button></td></tr>`).join('')}</tbody></table><p class="ghint">Kept rows copy Focus's number, not Tally's, when you copy the column. If Focus changes for that student, the row is flagged again.</p></details>` : ''}
       <div class="rp-actions">${bad.length ? `<button class="pill" id="copyFix">Copy corrections (${state.settings.copyMode === 'ids' ? 'ID' : 'name'} ⇥ Tally points)</button>` : ''}<button class="pill pale" id="copyCol">Copy the whole column</button><button class="pill pale" id="mCancel">Close</button></div>
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
@@ -1554,6 +1563,14 @@ function openFocusCheck(sec, unitName) {
     m.querySelectorAll('[data-sk]').forEach(cb => cb.onchange = count); count();
     sc.onclick = () => { const ks = [...m.querySelectorAll('[data-sk]:checked')].map(cb => Number(cb.dataset.sk)); ks.forEach(k => { sec.excluded[skillKey(sec.skills[k])] = true; }); resnapshotPrep(sec.prep); save(); toast(`Skipped ${plural(ks.length, 'skill')} in ${esc(rc.unit.short)} for every ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); openFocusCheck(sec, unitName); };
   }
+  m.querySelectorAll('[data-keep]').forEach(b => b.onclick = () => {
+    const r = rc.rows.find(x => x.display === b.dataset.keep); if (!r) return; const f = $('#keepForm'); f.classList.remove('hidden');
+    f.innerHTML = `<b>Keep Focus's ${r.focus == null ? 'blank' : fmtN(r.focus)} for ${nm(r.display)}</b> <span class="ghint">(Tally has ${fmtN(r.tally)})</span><div class="two"><input class="txt" id="keepWhy" maxlength="200" placeholder="Why — e.g. late penalty, retake on paper, excused (optional)"><span class="rp-actions"><button class="pill small" id="keepOk">Keep it</button><button class="pill pale small" id="keepNo">Cancel</button></span></div>`;
+    if (!coarse()) $('#keepWhy').focus(); $('#keepWhy').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#keepOk').click(); } };
+    $('#keepNo').onclick = () => { f.classList.add('hidden'); f.innerHTML = ''; };
+    $('#keepOk').onclick = () => { sec.overrides = sec.overrides || {}; sec.overrides[rc.unit.name] = sec.overrides[rc.unit.name] || {}; sec.overrides[rc.unit.name][r.display] = { focus: r.focus, tally: r.tally, at: new Date().toISOString(), why: $('#keepWhy').value.trim().slice(0, 200) }; save(); toast(`Kept Focus's number for ${esc(nm(r.display))} in ${esc(rc.unit.short)} — it won't be flagged unless Focus changes.`, false, 5000); openFocusCheck(sec, unitName); };
+  });
+  m.querySelectorAll('[data-unkeep]').forEach(b => b.onclick = () => { if (sec.overrides && sec.overrides[rc.unit.name]) { delete sec.overrides[rc.unit.name][b.dataset.unkeep]; if (!Object.keys(sec.overrides[rc.unit.name]).length) delete sec.overrides[rc.unit.name]; } save(); openFocusCheck(sec, unitName); });
   const cf = $('#copyFix'); if (cf) cf.onclick = () => { const lines = bad.filter(r => r.tally != null).map(r => (state.settings.copyMode === 'ids' ? (r.id || '') : r.display) + '\t' + r.tally); put(lines.join('\n'), `Copied ${plural(lines.length, 'correction')} for ${esc(rc.unit.short)}`); };
   $('#copyCol').onclick = () => copyUnit(sec, rc.unit);
 }
@@ -1680,7 +1697,7 @@ function openSettings() {
   const dg = $('#dropGrades'); if (dg) dg.onclick = () => { if (!confirm(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.`)) return; delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#exportCfg').onclick = () => {
     const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays, skipFirst: state.settings.skipFirst, skipFirstV2: true, currentUnit: state.settings.currentUnit }, assigned: state.assigned, custom: state.custom, grading: state.grading, room: state.room, seatWeights: state.seatWeights, seatBasis: state.seatBasis, seatPairs: state.seatPairs, quarters: quarters(), sections: {} };
-    for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [], seating: x.seating || null, seatInfo: x.seatInfo || {}, qArchive: x.qArchive || {} }; }
+    for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [], seating: x.seating || null, seatInfo: x.seatInfo || {}, qArchive: x.qArchive || {}, overrides: x.overrides || {} }; }
     for (const k in state.pendingCfg) if (!cfg.sections[k]) cfg.sections[k] = state.pendingCfg[k];
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = 'tally-backup-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     toast(`Backup saved — it contains student names, weekly skill counts and computed Focus grades${Object.values(state.sections).some(x => x.qArchive && Object.keys(x.qArchive).length) ? ', and the Focus scores of closed quarters' : ''}, so keep it in your school Drive.`, false, 5000);
@@ -1702,6 +1719,7 @@ function openSettings() {
         roster: typeof c.roster === 'string' ? c.roster : (prev ? prev.roster : ''), rosterAt: c.rosterAt || (prev ? prev.rosterAt : null), skipRoster: !!c.skipRoster,
         excluded: c.excluded && typeof c.excluded === 'object' ? c.excluded : {}, ignored: c.ignored && typeof c.ignored === 'object' ? c.ignored : {},
         aliases: c.aliases && typeof c.aliases === 'object' ? c.aliases : {}, hiddenUnits: c.hiddenUnits && typeof c.hiddenUnits === 'object' ? c.hiddenUnits : {},
+        overrides: c.overrides && typeof c.overrides === 'object' ? cleanOverrides(c.overrides) : (prev ? prev.overrides : {}),
         seatInfo: c.seatInfo && typeof c.seatInfo === 'object' ? c.seatInfo : (prev ? prev.seatInfo : {}), seating: c.seating && typeof c.seating === 'object' && c.seating.seats ? c.seating : (prev ? prev.seating : undefined),
         studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, qArchive: mergeArchives(prev ? prev.qArchive : {}, cleanArchive(c.qArchive)), prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, gradeHistory: Array.isArray(c.gradeHistory) ? c.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : (prev ? prev.gradeHistory : []), history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })) : (prev ? prev.history : [])
       });

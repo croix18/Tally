@@ -85,6 +85,10 @@ per-section-file era and many items in them are now done).
   toasts; pool replacement asks when a file is undated or barely overlaps; Overview search; view scroll reset and
   focus restore in `render()`; Working in never offers review units; percent axes end at 100; CSV formula guard.
   Open P2s are listed at the end of the findings file.
+- **Focus-check overrides** (3 Oct): "Keep Focus" on a differing row stores `sec.overrides[unit][student] = {focus,
+  tally, at, why}`; the row counts as *accepted* (no badge/notice/attention) as long as Focus still holds that number,
+  Copy carries Focus's number for kept students, "Flag again" undoes it, and a Focus change re-flags it with a note.
+  In backups and per-section re-imports. The student card's what-ifs were rewritten as plain conditions with deltas.
 - **Not-on-roster flag** asks "new student? re-paste roster" vs "gone? skip"; copies report students left
   out. The Focus check ignores columns that map to unassigned units.
 

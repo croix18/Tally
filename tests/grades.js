@@ -54,7 +54,7 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   const last=n=>n.split(',')[0].trim().toUpperCase();
   check(card.toUpperCase().includes(last(first)) && others.filter(n=>n!==first && last(n).length>3).every(n=>!card.toUpperCase().includes(last(n))),'student page shows only that student');
   check(await p.locator('.profile').count()===1 && !(await p.evaluate(()=>document.getElementById('toast').classList.contains('show'))),'the page opens in the teacher view');
-  check(/Missing work/.test(card) && /Next assessment/.test(card) && /→ \d+/.test(card),'page has missing, retakes, next-assessment what-ifs');
+  check(/missing work were turned in/i.test(card) && /retaken/i.test(card) && /next assessment scored/i.test(card) && /→ \d+/.test(card),'page has missing, retakes, next-assessment what-ifs');
   await p.fill('.wiMax','50'); await p.waitForTimeout(150); check((await p.getAttribute('.wiPts','max'))==='50','next-assessment slider follows points possible');
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop.waitForLoadState(); await pop.waitForTimeout(300); const ptxt=await pop.evaluate(()=>document.body.innerText);
   check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /What would move the grade/i.test(ptxt) && /weighted Assessments 70%/.test(ptxt),'print page: one student, formula stated'); await pop.close();

@@ -279,21 +279,24 @@ function quickestCard(q, forStudent) {
 
 // The teacher's what-ifs: each missing assignment turned in, retakes, IXL columns, and the next assessment.
 function nextSize(s) { const sizes = {}; s.grades.assignments.filter(a => isAssess(s, a) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1); return Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20); }
+// A result reads "→ 69 D +5": the new grade, its letter, and the change from now ("no change" when it doesn't move).
+const whatIfArrow = r => x => { if (!x || x.rounded == null) return ''; const d = x.rounded - r.rounded; return `<b class="arrow">→ ${x.rounded} <small>${x.letter}</small></b> <span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : 'flat'}">${d > 0 ? '+' + d : d < 0 ? '−' + Math.abs(d) : 'no change'}</span>`; };
 function whatIfMarkup(s, i) {
   const gb = s.grades; const r = computeGrade(s, i); if (!r) return ''; if (r.rounded == null) return '<p class="ghint">Nothing is graded for this student yet this quarter.</p>';
-  const arrow = x => x && x.rounded != null ? `<b class="arrow">→ ${x.rounded} <small>${x.letter}</small></b>` : '';
+  const arrow = whatIfArrow(r);
   const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing'); const allIn = {}; missing.forEach(a => allIn[a.name] = a.max);
   const assess = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
   const ixlCols = assess.filter(a => /\bixl\b/i.test(a.name) && (a.values[i] == null || a.values[i] < a.max));
   const tests = assess.filter(a => !/\bixl\b/i.test(a.name) && (a.values[i] == null || a.values[i] < a.max));
   const nx = nextSize(s);
   return `<div class="wnow">Now ${gradeChip(r)}</div>
-    <h4 class="subh">Missing work${missing.length ? ` <small>${missing.length}</small>` : ''}</h4>
-    ${missing.length ? `<table class="checkTable"><tbody>${missing.map(a => `<tr><td>${esc(a.name)} <small>${esc(catIn(s, a))} · ${a.max} pts${a.due ? ' · due ' + esc(a.due) : ''}</small></td><td>turned in ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}${missing.length > 1 ? `<tr class="total"><td><b>Everything turned in</b></td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
-    ${tests.length ? `<h4 class="subh">Retakes</h4><table class="checkTable"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td>${esc(a.name)}</td><td>${a.status[i] === 'missing' ? 'NHI' : `${fmtN(a.values[i])}/${a.max}`}</td>${[70, 80, 90, 100].map(p => `<td>${a.status[i] !== 'missing' && a.values[i] >= a.max * p / 100 ? '<small>already</small>' : arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
-    ${ixlCols.length ? `<h4 class="subh">IXL in Focus</h4><table class="checkTable"><tbody>${ixlCols.map(a => `<tr><td>${esc(a.name)} <small>now ${a.status[i] === 'missing' ? 'NHI' : fmtN(a.values[i]) + '/' + a.max}</small></td><td>at ${a.max}/${a.max} ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
-    <h4 class="subh">Next assessment</h4>
-    <div class="nextrow"><label>out of <input type="number" class="wiMax" value="${nx}" min="1" max="500" style="width:70px"></label><label>score <input type="range" class="wiPts" min="0" max="${nx}" step="0.5" value="${Math.round(nx * 0.8)}"> <b class="wiV">${Math.round(nx * 0.8)}</b></label><span class="wiOut">${arrow(withNext(s, i, 'Assessments', nx, Math.round(nx * 0.8)))}</span></div>
+    <p class="whatif-intro">Each line below changes <b>one thing</b> in the Focus gradebook and shows the grade that would result — nothing else moves.</p>
+    <h4 class="subh">If missing work were turned in${missing.length ? ` <small>${missing.length}</small>` : ''}</h4>
+    ${missing.length ? `<table class="checkTable whatif"><tbody>${missing.map(a => `<tr><td><b>${esc(a.name)}</b> <small>${esc(catIn(s, a))} · due ${esc(a.due || '?')}</small></td><td>turned in for full credit (${a.max}/${a.max})</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}${missing.length > 1 ? `<tr class="total"><td><b>All ${missing.length} turned in</b></td><td>full credit on each</td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
+    ${tests.length ? `<h4 class="subh">If an assessment were retaken</h4><p class="ghint">Each cell: the grade if that assessment were re-scored at that percent. A dash means the score is already at or above it.</p><table class="checkTable whatif"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${a.status[i] === 'missing' ? '<b class="nhi">NHI</b>' : `${fmtN(a.values[i])}/${a.max} <small>(${Math.round(a.values[i] / a.max * 100)}%)</small>`}</td>${[70, 80, 90, 100].map(p => `<td>${a.status[i] !== 'missing' && a.values[i] >= a.max * p / 100 ? '<span class="ghint" title="already at or above this">—</span>' : `<small class="pts">${fmtN(Math.round(a.max * p / 100 * 2) / 2)}/${a.max}</small><br>${arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}`}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
+    ${ixlCols.length ? `<h4 class="subh">If IXL were finished</h4><table class="checkTable whatif"><tbody>${ixlCols.map(a => `<tr><td><b>${esc(a.name)}</b> <small>now ${a.status[i] === 'missing' ? 'NHI' : fmtN(a.values[i]) + '/' + a.max}</small></td><td>every skill at goal (${a.max}/${a.max})</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
+    <h4 class="subh">If the next assessment scored…</h4>
+    <div class="nextrow"><label>out of <input type="number" class="wiMax" value="${nx}" min="1" max="500" style="width:70px"></label><label>score <input type="range" class="wiPts" min="0" max="${nx}" step="0.5" value="${Math.round(nx * 0.8)}"> <b class="wiV">${Math.round(nx * 0.8)}</b> / <span class="wiMaxV">${nx}</span></label><span class="wiOut">${arrow(withNext(s, i, 'Assessments', nx, Math.round(nx * 0.8)))}</span></div>
     <p class="ghint wiNeed">${needText(s, i, nx)}</p>`;
 }
 function needText(s, i, mx) {
@@ -305,8 +308,8 @@ function needText(s, i, mx) {
 }
 function wireWhatIf(root, s, i) {
   if (!root) return; const mxI = root.querySelector('.wiMax'), sl = root.querySelector('.wiPts'); if (!mxI || !sl) return;
-  const arrow = x => x && x.rounded != null ? `<b class="arrow">→ ${x.rounded} <small>${x.letter}</small></b>` : '';
-  const upd = () => { const mx = Math.max(1, Number(mxI.value) || 1); sl.max = mx; const p = Math.min(mx, Number(sl.value)); root.querySelector('.wiV').textContent = fmtN(p); root.querySelector('.wiOut').innerHTML = arrow(withNext(s, i, 'Assessments', mx, p)); root.querySelector('.wiNeed').innerHTML = needText(s, i, mx); };
+  const arrow = whatIfArrow(computeGrade(s, i));
+  const upd = () => { const mx = Math.max(1, Number(mxI.value) || 1); sl.max = mx; const p = Math.min(mx, Number(sl.value)); root.querySelector('.wiV').textContent = fmtN(p); const mv = root.querySelector('.wiMaxV'); if (mv) mv.textContent = mx; root.querySelector('.wiOut').innerHTML = arrow(withNext(s, i, 'Assessments', mx, p)); root.querySelector('.wiNeed').innerHTML = needText(s, i, mx); };
   mxI.oninput = upd; sl.oninput = upd;
 }
 

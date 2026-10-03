@@ -85,6 +85,12 @@ not started), and the formula footer. Dated, class named, no other students. The
 (print)** prints the same page for everyone or only students who owe something (missing work or IXL below goal),
 one page each — full names, since these go home. `studentReportSection` / `printStudentReports` in `grades.js`.
 
+### 4.2b What-if layout (3 Oct)
+One intro line ("Now 64% D. Each line below changes one thing…"), then four sections phrased as conditions: *If missing
+work were turned in* (each item at full credit, then all of them), *If an assessment were retaken* (cells show the
+points that percent means and the resulting grade; a dash = already at or above), *If IXL were finished*, *If the
+next assessment scored…* (slider). Every result is `→ 69 D +5`; a result equal to now reads "no change".
+
 ### 4.3 Category asker (modal, at import)
 Listed assignments with a radio per category and the guess selected; Apply. Skip keeps the guesses.
 
