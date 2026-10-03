@@ -166,3 +166,28 @@ git -c "http.https://github.com/.extraheader=Authorization: Basic $B" ls-remote 
 
 If a push fails: `curl -s -o /dev/null -w "%{http_code}\n" -u "x-access-token:$T" https://github.com/croix18/Tally.git/info/refs?service=git-receive-pack` — 200 means the token can push, 401 means ask for a new one.
 GitHub Releases and other API writes are refused from a session; Croix does those in the browser.
+
+## Windmill and the room (3 Oct 2026)
+
+Croix's tools now coordinate through **Windmill** (`croix18/Windmill`): the spine (the year's plan as one
+JSON — every school day, both courses, lesson, benchmarks, IXL due dates, the bell and week colour from
+Deckhand's own schedule), the **room** (one small object the tools exchange: `plan` · `tally` · `panel` ·
+`roster` · `log`, one owner per part, newest copy per part, data tiers so counts ride every road, first
+names ride Drive or encrypted, and grades never leave Tally), the reader every tool embeds, two room-code
+forms, and a conformance test each repo runs. The design — alternatives, the contract, three transports
+(room code · Drive file · Apps Script), per-tool changes, the spiral rule, the build order — is the
+*Room Coordination Plan*, a Claude doc of Croix's: https://claude.ai/code/artifact/9db84d04-9444-48c4-adad-9c68905eefd8 (open it with the docs tool). Croix's standing
+instruction: "Keep it over engineered. I want everything." Read Windmill's `README.md` and `HANDOFF.md`
+before building this tool's part.
+
+**Tally's part (plan phase 2; next to build).** Tally is the source of "where are we": `settings.currentUnit[prep]`
+(the "Working in" selector) is the unit per course, and IXL skills at goal, mapped to benchmarks through
+Windmill's `spine.skills`, are the benchmark heat (share of the course's students at goal per benchmark,
+with the count). Tally gets a **Publish** button: it writes `room.js` (`window.ROOM = {…}`, the `tally`
+part, open tier only) into the Drive folder the panel's tools open from, through a File System Access
+handle picked once (test 4 in `Windmill/tests/room-test/`), posts the same to the Apps Script if a link
+is set, and shows both room codes (the readable line and the compact one) for typing on the panel. The
+roster part (first names per period, seating) can ride the Drive file; nothing from Grades, Students or
+Quarters ever goes in the room — the reader and the schema refuse it. Later: exit-ticket results from
+Cadence into the heat map, a heat map over time on the Overview, the nightly digest. Storage keys stay
+as they are; the room is written beside Tally's own store, never read from `tally.v1` by any other tool.
