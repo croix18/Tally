@@ -30,7 +30,8 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300);
   const groups=await p.evaluate(()=>[...document.querySelectorAll('#labUnit optgroup')].map(g=>[g.label,g.children.length]));
   console.log(JSON.stringify(groups));
-  check(groups.some(g=>/Assessments/.test(g[0]) && g[1]===3) && groups.some(g=>/IXL skills/.test(g[0])),'dropdown has assessment, classwork, and per-skill groups');
+  const nOpt=await p.evaluate(()=>document.querySelectorAll('#labUnit option').length);
+  check(groups.some(g=>/Assessments/.test(g[0]) && g[1]===3) && !groups.some(g=>/IXL skills/.test(g[0])) && nOpt<60 && await p.locator('#labUnit option[value="__skill__"]').count()===1,'dropdown has units and gradebook assignments; single skills sit behind one "A single skill…" choice ('+nOpt+' options)');
   await p.selectOption('#labUnit','gb:Unit 1 Test'); await p.waitForTimeout(400);
   check(await p.locator('.labRow').count()===1 && /out of 100/.test(await p.textContent('.lbSub')),'assessment dataset plots the one on-level class that has it');
   check(await p.locator('.labDot').count()===0 && await p.locator('#labDots').count()===0 && await p.locator('#labValues').count()===0,'gradebook dataset: no dots, no Dots or Values controls (individual scores never project)');
@@ -39,9 +40,10 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   check(/missing/.test(await p.textContent('.labName')) || true,'missing count shown when present');
   await p.click('#labStats'); await p.waitForTimeout(200); await p.click('#labStats'); await p.waitForTimeout(200); await p.screenshot({path:path.join(tmp,'shot16.png')});
   await p.click('[data-prep="acc"]'); await p.waitForTimeout(300);
-  const firstSkill=await p.evaluate(()=>[...document.querySelectorAll('#labUnit option')].find(o=>o.value.startsWith('skill:')).value);
-  await p.selectOption('#labUnit', firstSkill); await p.waitForTimeout(400);
-  check(/SmartScore/.test(await p.textContent('.lbSub')) && await p.locator('.labSvg').count()===1,'per-skill SmartScore dataset');
+  await p.selectOption('#labUnit', '__skill__'); await p.waitForTimeout(400);
+  check(/SmartScore/.test(await p.textContent('.lbSub')) && await p.locator('.labSvg').count()===1 && await p.locator('#labSkill optgroup').count()>5 && (await p.inputValue('#labUnit'))==='__skill__','"A single skill…" opens the skill list and plots a SmartScore dataset');
+  const second=await p.evaluate(()=>document.querySelectorAll('#labSkill option')[1].value); await p.selectOption('#labSkill', second); await p.waitForTimeout(300);
+  check((await p.evaluate(()=>window.__tally.state.settings.labUnit))===second && await p.locator('.labSvg').count()===1,'picking another skill switches the dataset');
   const wx=await p.evaluate(()=>{const ls=[...document.querySelectorAll('.labWhisk')].map(l=>+l.getAttribute('x2')); const outs=[...document.querySelectorAll('.labOut')].map(c=>+c.getAttribute('cx')); return {maxWhisk:Math.max(...ls), outs};});
   check(wx.outs.length===0 || wx.outs.every(o=>o<=wx.maxWhisk+0.01),'min–max default: outliers sit on the whisker');
   await p.click('#labTukey'); await p.waitForTimeout(300);

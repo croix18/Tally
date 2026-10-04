@@ -477,20 +477,21 @@ function lbMarkup(data, focus) {
     if (rest < 3 && r.movers > 0) return `<span class="lbWord">nearly all</span><small>moved up</small>`;
     return `${pct(r.active)}<small>% moved up</small>`;
   };
+  const leagues = [['acc', 'Accelerated'], ['on', 'On-level']].map(([p, name]) => ({ p, name, rows: data.filter(r => r.prep === p) })).filter(l => l.rows.length);
+  const multi = leagues.length > 1;
+  // Under a league heading the course in the class's name is said twice; the board has room for one.
+  const shortName = r => multi ? String(r.name).replace(/\s*·\s*(Accelerated|On-level)$/i, '') : r.name;
+  // One card is read from the back of the room: place, name, a bar with what it measures, one line, one number.
   const card = (r, showTrophy) => `<div class="lbCard r${Math.min(r.rank, 3)}" style="--cc:${classColor(state.sections[r.key])}">
       <div class="lbRank">${showTrophy ? '<svg class="trophy" viewBox="0 0 24 24" aria-label="first place"><path d="M7 3h10v3a5 5 0 0 1-10 0V3z"/><path d="M17 5h3v2a4 4 0 0 1-4 4M7 5H4v2a4 4 0 0 0 4 4"/><path d="M12 11v4M8 21h8M9 21v-3h6v3"/></svg>' : r.rank}</div>
       <div class="lbMain">
-        <div class="lbName">${esc(r.name)}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.lead ? ' <span class="lbTie lead">furthest along</span>' : ''}</div>
-        <div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div>
-        <div class="lbChips">
-          <span class="lbChip">${pct(r.completion)}% complete · ${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skill-points · ${plural(r.students, 'student')}</span>
-          ${r.thrChanged ? `<span class="lbChip">goal changed — fresh start this week</span>` : r.basisChanged ? `<span class="lbChip">skills counted changed — fresh start this week</span>` : r.gain != null ? `<span class="lbChip gain">${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}</span>` : `<span class="lbChip">first week in the race</span>`}
-        </div>
+        <div class="lbName">${esc(shortName(r))}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.lead ? ' <span class="lbTie lead">furthest along</span>' : ''}</div>
+        <div class="lbBarRow" title="${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skill-points · ${plural(r.students, 'student')}"><div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div><span class="lbDone">${pct(r.completion)}% complete</span></div>
+        <div class="lbLine ${r.gain != null && !r.thrChanged && !r.basisChanged ? 'gain' : ''}">${r.thrChanged ? 'goal changed — fresh start this week' : r.basisChanged ? 'skills counted changed — fresh start this week' : r.gain != null ? `${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}` : 'first week in the race'}</div>
       </div>
       <div class="lbPct">${headline(r)}</div>
     </div>`;
-  const leagues = [['acc', 'Accelerated'], ['on', 'On-level']].map(([p, name]) => ({ p, name, rows: data.filter(r => r.prep === p) })).filter(l => l.rows.length);
-  const multi = leagues.length > 1;
+  const rowsMax = Math.max(1, ...leagues.map(l => l.rows.length));
   const league = l => {
     const clear = l.rows.length > 1 && !l.rows[0].tied;
     const au = l.rows[0].assignedUnits;
@@ -500,51 +501,48 @@ function lbMarkup(data, focus) {
   };
   const one = !multi && leagues[0] ? leagues[0].rows[0].assignedUnits : null;
   return `<div class="lbHead"><div class="lbTitle">Race</div><div class="lbSub">Ranked by the share of each class that moved up this week${one ? (one.length ? ' · ' + esc(one.join(', ')) : ' · nothing assigned yet') : ''}${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
-    <div class="lbLeagues ${multi ? 'two' : ''}">${leagues.map(league).join('')}</div>`;
+    <div class="lbLeagues ${multi ? 'two' : ''}" style="--rows:${rowsMax}">${leagues.map(league).join('')}</div>`;
 }
 const LB_CSS = `
 .lbCard{border-left:8px solid var(--cc,transparent)}.labRow{border-left:8px solid var(--cc,transparent)}
-.lbWrap{min-height:100%;display:flex;flex-direction:column;gap:16px;padding:20px 28px 96px;max-width:1500px;margin:0 auto;width:100%}
-.lbHead{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
-.lbTitle{font-weight:900;font-size:clamp(34px,4.2vw,58px);letter-spacing:.02em;color:var(--navy)}
-.lbSub{font-weight:700;color:var(--teal);font-size:clamp(14px,1.5vw,20px)}
-.lbList{display:flex;flex-direction:column;gap:14px}
-.lbCard{display:grid;grid-template-columns:72px 1fr auto;gap:18px;align-items:center;background:var(--white);border-radius:20px;box-shadow:var(--shadow-2);padding:16px 26px 16px 18px}
-.lbCard.r1{background:var(--white);box-shadow:0 0 0 3px var(--turq),var(--shadow-2)} .lbCard.r2{background:var(--paleturq)}
-.lbRank{font-weight:900;font-size:clamp(30px,3.4vw,46px);text-align:center;color:var(--navy)}
-.lbName{font-weight:900;font-size:clamp(22px,2.6vw,36px);line-height:1.1;color:var(--navy);margin-bottom:8px;overflow-wrap:anywhere}
-.lbBarWrap{height:16px;border-radius:999px;background:rgba(22,33,58,.12);overflow:hidden}
-.lbCard.r1 .lbBarWrap{background:rgba(255,255,255,.55)}
-.lbBar{height:100%;width:0;border-radius:999px;background:var(--navy);animation:lbGrow 1.2s cubic-bezier(.2,.8,.2,1) forwards}
-@keyframes lbGrow{to{width:var(--w)}}
-.lbChips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.lbChip{background:rgba(255,255,255,.7);color:var(--navy);border-radius:999px;font-weight:700;font-size:clamp(12px,1.2vw,15px);padding:4px 12px}
-.lbCard.r3 .lbChip{background:var(--paleturq)}
-.lbChip.gain{background:var(--navy);color:var(--turq)}
-.lbPct{font-weight:900;font-size:clamp(40px,5vw,72px);line-height:1;color:var(--navy);font-variant-numeric:tabular-nums}
-.lbPct small{font-size:.45em;font-weight:900;opacity:.7}
-.lbTie{display:inline-block;vertical-align:middle;font-size:.45em;font-weight:900;letter-spacing:.08em;text-transform:uppercase;background:var(--paleturq);color:var(--teal);border-radius:999px;padding:3px 10px;margin-left:8px}
-.lbBasis{font-weight:700;color:var(--teal);font-size:clamp(12px,1.2vw,15px)}
-.lbTie.lead{background:var(--navy);color:var(--turq)}
-.lbWord{font-size:.5em;letter-spacing:.01em}
-.trophy{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;margin:0 auto}
-.lbFoot{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
-.lbStat{background:var(--navy);color:var(--white);border-radius:999px;padding:10px 20px;font-weight:700;font-size:clamp(14px,1.4vw,18px)}
-.lbStat b{color:var(--turq);font-weight:900}
-.lbStat.mover{background:var(--sand);color:var(--navy)} .lbStat.mover b{color:var(--navy)}
-.lbEmpty{padding:60px;text-align:center;font-weight:700;color:var(--teal);font-size:20px}
-.lbLeagues{display:flex;flex-direction:column;gap:18px}
-.lbLeagues.two{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
-.lbLeague{display:flex;flex-direction:column;gap:12px}
-.lbLeagueHead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.lbLeagueName{font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--white);background:var(--teal);border-radius:999px;padding:6px 16px;font-size:clamp(13px,1.3vw,17px)}
-.lbLeagueMover{font-weight:700;color:var(--navy);background:var(--sand);border-radius:999px;padding:6px 14px;font-size:clamp(12px,1.2vw,15px)}
+/* The board (Race and Data Lab) is read from the back of a room: one unit, --bu, sized so that a 1920×1080 panel gets
+   19 px and everything is a multiple of it — nothing a class has to read is under ~1.3 bu (25 px there, 18 px on a laptop). */
+.lbWrap{--bu:clamp(11px,min(1vw,1.7778vh),40px)}
+.lbWrap{min-height:100%;display:flex;flex-direction:column;gap:calc(var(--bu)*.85);padding:calc(var(--bu)*1.1) calc(var(--bu)*1.6) 96px;max-width:min(96vw,2600px);margin:0 auto;width:100%}
+.lbHead{display:flex;align-items:baseline;gap:calc(var(--bu)*1);flex-wrap:wrap}
+.lbTitle{font-weight:900;font-size:calc(var(--bu)*3.2);letter-spacing:.02em;color:var(--navy);line-height:1}
+.lbSub{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.3)}
+.lbLeagues{flex:1;display:flex;flex-direction:column;gap:calc(var(--bu)*1)}
+.lbLeagues.two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--bu)*1.2);align-items:stretch}
+.lbLeague{display:flex;flex-direction:column;gap:calc(var(--bu)*.65);min-height:0}
+.lbLeagueHead{display:flex;align-items:center;gap:calc(var(--bu)*.7);flex-wrap:wrap}
+.lbLeagueName{font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--white);background:var(--teal);border-radius:999px;padding:.3em .9em;font-size:calc(var(--bu)*1.15)}
+.lbBasis{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.15)}
+.lbLeagueMover{font-weight:700;color:var(--navy);background:var(--sand);border-radius:999px;padding:.3em .8em;font-size:calc(var(--bu)*1.15)}
 .lbLeagueMover b{font-weight:900}
-.lbLeagues.two .lbCard{grid-template-columns:52px 1fr auto;padding:14px 18px 14px 12px;gap:12px}
-.lbLeagues.two .lbName{font-size:clamp(18px,2vw,28px)}
-.lbLeagues.two .lbPct{font-size:clamp(30px,3.4vw,48px)}
-.lbPct small{display:block;font-size:.28em;letter-spacing:.04em;text-transform:uppercase;opacity:.75;text-align:right}
-@media (max-width:1000px){.lbLeagues.two{grid-template-columns:1fr}}
+/* every league uses the same rows, so cards line up across leagues and fill the height (up to a sensible card) */
+.lbList{flex:1;display:grid;grid-template-rows:repeat(var(--rows,1),minmax(min-content,1fr));gap:calc(var(--bu)*.75);max-height:calc(var(--rows,1)*var(--bu)*13.5)}
+.lbCard{display:grid;grid-template-columns:calc(var(--bu)*3.4) 1fr auto;gap:calc(var(--bu)*1);align-items:center;background:var(--white);border-radius:calc(var(--bu)*1.1);box-shadow:var(--shadow-2);padding:calc(var(--bu)*.8) calc(var(--bu)*1.4) calc(var(--bu)*.8) calc(var(--bu)*.8);min-width:0}
+.lbCard.r1{box-shadow:0 0 0 3px var(--turq),var(--shadow-2)}   /* place is the numeral and the ring, not a tint on second */
+.lbRank{font-weight:900;font-size:calc(var(--bu)*2.8);text-align:center;color:var(--navy)}
+.lbMain{min-width:0}
+.lbName{font-weight:900;font-size:calc(var(--bu)*2.3);line-height:1.1;color:var(--navy);margin-bottom:.3em;overflow-wrap:anywhere}
+.lbBarRow{display:flex;align-items:center;gap:calc(var(--bu)*.8)}
+.lbBarWrap{flex:1;height:calc(var(--bu)*.85);border-radius:999px;background:rgba(22,33,58,.12);overflow:hidden}
+.lbBar{height:100%;width:0;border-radius:999px;background:var(--navy);animation:lbGrow 1.2s cubic-bezier(.2,.8,.2,1) forwards}
+.lbDone{font-weight:800;font-size:calc(var(--bu)*1.35);color:var(--navy);white-space:nowrap}
+.lbLine{font-weight:700;font-size:calc(var(--bu)*1.35);color:var(--ink-soft);margin-top:.3em}.lbLine.gain{color:var(--teal)}
+.lbPct{font-weight:900;font-size:calc(var(--bu)*5);line-height:1;color:var(--navy);text-align:right}
+.lbPct small{display:block;font-size:calc(var(--bu)*1.3);font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);text-align:right;margin-top:.15em}
+.lbPct .lbWord{font-size:.5em;letter-spacing:.01em}
+.lbTie{display:inline-block;vertical-align:middle;font-size:calc(var(--bu)*.95);font-weight:900;letter-spacing:.08em;text-transform:uppercase;background:var(--paleturq);color:var(--teal);border-radius:999px;padding:.2em .7em;margin-left:.5em}
+.lbTie.lead{background:var(--navy);color:var(--turq)}
+.trophy{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;margin:0 auto}
+.lbLeagues.two .lbName{font-size:calc(var(--bu)*2.1)}
+.lbLeagues.two .lbPct{font-size:calc(var(--bu)*4.4)}
+@keyframes lbGrow{to{width:var(--w)}}
+.lbEmpty{padding:60px;text-align:center;font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.4)}
+@media (max-width:1000px){.lbWrap{--bu:clamp(12px,1.9vw,24px)}.lbLeagues.two{grid-template-columns:1fr}.lbLeagues{flex:none}.lbList{flex:none;grid-template-rows:none;grid-auto-rows:min-content;max-height:none}}
 @media (prefers-reduced-motion:reduce){.lbBar{animation:none;width:var(--w)}}
 @media (max-width:700px){.lbCard{grid-template-columns:48px 1fr;padding:14px}.lbPct{grid-column:2;justify-self:end}}
 `;
@@ -720,20 +718,20 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
     <div class="labRows">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
     ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">Stats are hidden — read the plots first. Which class has the higher median? The bigger spread?</div>' : ''}`;
 }
-const LAB_CSS = CHART_CSS + `
-.labLegend{display:flex;gap:16px;flex-wrap:wrap;font-weight:700;font-size:clamp(12px,1.2vw,15px);color:var(--navy)}
+const LAB_ONLY_CSS = `
+.labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:700;font-size:calc(var(--bu)*1.15);color:var(--navy)}
 .labLegend i{display:inline-block;width:16px;height:12px;vertical-align:-1px;margin-right:6px;border-radius:3px}
 .lgNote{color:var(--teal)}
 .lgBox{background:var(--paleturq);border:2px solid var(--navy)} .lgMed{background:var(--navy);width:4px!important} .lgMean{background:var(--turq);border:2px solid var(--navy);transform:rotate(45deg);width:10px!important;height:10px!important} .lgOut{border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important} .lgDot{background:var(--turq);border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important}
 .labRows{display:flex;flex-direction:column;gap:14px}
-.labRow{background:var(--white);border-radius:20px;box-shadow:var(--shadow-2);padding:10px 22px 6px;display:grid;grid-template-columns:190px 1fr;gap:8px 18px;align-items:center}
+.labRow{background:var(--white);border-radius:20px;box-shadow:var(--shadow-2);padding:10px 22px 6px;display:grid;grid-template-columns:calc(var(--bu)*13) 1fr;gap:8px 18px;align-items:center}
 .labRow.thin{opacity:.75}
 .labNotYet{font-weight:700;color:var(--teal);padding:14px 0}
-.labName{font-weight:900;font-size:clamp(18px,2vw,26px);line-height:1.1;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.labName small{display:block;font-size:14px;color:var(--teal);font-weight:700;margin-top:4px} .labName small b{font-size:16px;font-weight:900}
+.labName{font-weight:900;font-size:calc(var(--bu)*1.7);line-height:1.1;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.labName small{display:block;font-size:calc(var(--bu)*1.1);color:var(--teal);font-weight:700;margin-top:4px} .labName small b{font-size:calc(var(--bu)*1.25);font-weight:900}
 .labPlot{min-width:0}
 .labSvg{width:100%;height:auto;display:block;overflow:visible}
-.labTick{stroke:var(--grid);stroke-width:1} .labTickTxt{font-size:11px;font-weight:700;fill:var(--teal);text-anchor:middle}
+.labTick{stroke:var(--grid);stroke-width:1} .labTickTxt{font-size:14px;font-weight:700;fill:var(--teal);text-anchor:middle}
 .labWhisk{stroke:var(--navy);stroke-width:2;stroke-linecap:round}
 .labBox{fill:var(--paleturq);stroke:var(--navy);stroke-width:2}
 .labMed{stroke:var(--navy);stroke-width:4;stroke-linecap:round}
@@ -741,28 +739,31 @@ const LAB_CSS = CHART_CSS + `
 .labMeanLine{stroke:var(--navy);stroke-width:1.5;stroke-dasharray:3 3;opacity:.6}
 .labOut{fill:var(--white);stroke:var(--navy);stroke-width:2}
 .labDot{fill:var(--turq);stroke:var(--white);stroke-width:1.5}
-.labLbl{font-size:12px;font-weight:900;fill:var(--navy)} .labLbl.mid{text-anchor:middle} .labLbl.end{text-anchor:end}
-.labStats{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:6px 8px;border-top:2px solid var(--grid);padding:8px 0 4px}
+.labLbl{font-size:14px;font-weight:900;fill:var(--navy)} .labLbl.mid{text-anchor:middle} .labLbl.end{text-anchor:end}
+.labStats{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(var(--bu)*7),1fr));gap:6px 8px;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labStats div{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--cream);border-radius:10px;padding:6px 4px}
 .labStats div.wide{grid-column:span 3;align-items:flex-start;padding-left:10px;text-align:left}
-.labStats div.wide b{font-size:13px;line-height:1.3}
-.labStats span{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
-.labStats b{font-weight:900;font-size:clamp(14px,1.4vw,18px);font-variant-numeric:tabular-nums}
-.labHint{font-weight:700;color:var(--teal);font-size:clamp(14px,1.4vw,18px);padding:4px 6px}
+.labStats div.wide b{font-size:calc(var(--bu)*.95);line-height:1.3}
+.labStats span{font-size:calc(var(--bu)*.8);font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+.labStats b{font-weight:900;font-size:calc(var(--bu)*1.3);font-variant-numeric:tabular-nums}
+.labHint{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.3);padding:4px 6px}
 .labValues{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-start;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labHalf{display:flex;flex-direction:column;gap:4px}
-.labHalf small{font-size:clamp(11px,1.1vw,15px);font-weight:700;color:var(--teal);letter-spacing:.02em}
+.labHalf small{font-size:calc(var(--bu)*1);font-weight:700;color:var(--teal);letter-spacing:.02em}
 .labChips{display:flex;flex-wrap:wrap;gap:4px}
-.labChips span{min-width:2.2em;padding:.2em .5em;border-radius:8px;background:var(--cream);border:2px solid var(--grid);font-weight:700;font-size:clamp(13px,1.35vw,19px);text-align:center;font-variant-numeric:tabular-nums}
+.labChips span{min-width:2.2em;padding:.2em .5em;border-radius:8px;background:var(--cream);border:2px solid var(--grid);font-weight:700;font-size:calc(var(--bu)*1.3);text-align:center;font-variant-numeric:tabular-nums}
 .labChips span.q{background:var(--paleturq);border-color:var(--turq);font-weight:900}
 .labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:900}
 .labChips span.m.gap{background:var(--white);color:var(--navy);border-style:dashed}
 .labChips span.out{box-shadow:0 0 0 2px var(--coral)}
-.labPlot .chart{max-height:min(32vh,260px)} .labRow.one .labPlot .chart{max-height:min(70vh,520px)}
+.labPlot .chart{max-height:32vh} .labRow.one .labPlot .chart{max-height:68vh}
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
 .lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:999px;padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}
 `;
+const LAB_CSS = CHART_CSS + LAB_ONLY_CSS;
+// One copy of the board's styles: the app injects it here, and the saved Race / Data Lab pages embed the same strings.
+document.head.appendChild(Object.assign(document.createElement('style'), { textContent: LB_CSS + LAB_ONLY_CSS }));
 function dotsDefault(id) { return !(id || '').startsWith('gb:'); }
 const parseNums = txt => String(txt || '').split(/[\s,;]+/).map(Number).filter(Number.isFinite);
 function renderLeaderboard() {
@@ -776,11 +777,14 @@ function renderLeaderboard() {
   if (lab && list.length && !list.some(d => d.id === st.labUnit)) st.labUnit = list[0].id;
   if (lab && (st.labUnit || '').startsWith('gb:') && !['box', 'hist', 'circle', 'line'].includes(st.labKind)) st.labKind = 'box';
   const dotsOn = (st.labUnit || '').startsWith('gb:') ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
+  // The data-set list is units, gradebook assignments and the class's own sets; the 200-odd single skills sit behind one choice.
+  const isSkill = (st.labUnit || '').startsWith('skill:'); const mainGroups = groups.filter(g => !/^IXL skills/.test(g.group)), skillGroups = groups.filter(g => /^IXL skills/.test(g.group));
   const tabs = `<div class="seg lbTabs"><button data-tab="race" class="${!lab ? 'on' : ''}">Race</button><button data-tab="lab" class="${lab ? 'on' : ''}">Data Lab</button></div>`;
   const revealLabel = st.labStats === 0 ? 'Show stats' : st.labStats === 1 ? 'Show more' : 'Hide stats';
   const controls = lab
     ? `${hasBoth ? `<div class="seg lbFocus">${[['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-prep="${k}" class="${st.labPrep === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
-       <select id="labUnit" class="labSelect" aria-label="Data set">${groups.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label)}</option>`).join('')}</optgroup>`).join('')}</select>
+       <select id="labUnit" class="labSelect" aria-label="Data set">${mainGroups.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label)}</option>`).join('')}</optgroup>`).join('')}${skillGroups.length ? `<option value="__skill__" ${isSkill ? 'selected' : ''}>A single skill…</option>` : ''}</select>
+       ${isSkill ? `<select id="labSkill" class="labSelect" aria-label="Skill">${skillGroups.map(g => `<optgroup label="${esc(g.group.replace(/^IXL skills \(SmartScore\) — /, ''))}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label.replace(/^Unit \d+ · /, ''))}</option>`).join('')}</optgroup>`).join('')}</select>` : ''}
        <select id="labKind" class="labSelect" aria-label="Show as">${LAB_KINDS.filter(([k]) => !(st.labUnit || '').startsWith('gb:') || ['box', 'hist', 'circle', 'line'].includes(k)).map(([k, n]) => `<option value="${k}" ${st.labKind === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
        ${st.labKind === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${((st.labUnit || '').startsWith('gb:') ? [5, 10] : [1, 2, 5, 10]).map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
        <button class="pill small" id="labStats" aria-pressed="${st.labStats > 0}">${revealLabel}</button>
@@ -794,7 +798,8 @@ function renderLeaderboard() {
   el.querySelectorAll('[data-focus]').forEach(b => b.onclick = () => { st.lbFocus = b.dataset.focus; save(); renderLeaderboard(); });
   el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { st.lbTab = b.dataset.tab; save(); renderLeaderboard(); });
   el.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { st.labPrep = b.dataset.prep; st.labUnit = ''; save(); renderLeaderboard(); });
-  const sel = $('#labUnit'); if (sel) sel.onchange = () => { st.labUnit = sel.value; save(); renderLeaderboard(); };
+  const sel = $('#labUnit'); if (sel) sel.onchange = () => { if (sel.value === '__skill__') { const cur = (state.settings.currentUnit || {})[st.labPrep]; const g = skillGroups.find(x => cur && x.group.endsWith('— Unit ' + cur)) || skillGroups[0]; st.labUnit = g.items[0].id; } else st.labUnit = sel.value; save(); renderLeaderboard(); };
+  const sks = $('#labSkill'); if (sks) sks.onchange = () => { st.labUnit = sks.value; save(); renderLeaderboard(); };
   const lk = $('#labKind'); if (lk) lk.onchange = () => { st.labKind = lk.value; save(); renderLeaderboard(); };
   el.querySelectorAll('[data-pct]').forEach(b => b.onclick = () => { st.labPct = b.dataset.pct === '1'; save(); renderLeaderboard(); });
   const lb = $('#labBin'); if (lb) lb.onchange = () => { st.labBin = Number(lb.value); save(); renderLeaderboard(); };

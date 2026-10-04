@@ -19,7 +19,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   console.log(JSON.stringify(d));
   check(d.every(r=>r.poss>0 && r.units>0) && d.every(r=>r.rank>=1),'race data: completion over assigned units');
   await p.click('#btnLb'); await p.waitForTimeout(400); const lbt=await p.textContent('#lb');
-  check(/% complete/.test(lbt) && /assigned:/.test(lbt) && /of [\d,]+ skill-points · \d+ students/.test(lbt),'race shows % complete and the assigned units');
+  check(/% complete/.test(lbt) && /assigned:/.test(lbt) && /of [\d,]+ skill-points · \d+ students/.test(await p.getAttribute('.lbBarRow','title')),'race shows % complete and the assigned units; the skill-point detail is the bar\'s tooltip');
   await p.screenshot({path:path.join(tmp,'shot19.png')}); await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(150);
   // 2. per-student skip: tap a cell
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await p.click('th.unit .ulink'); await p.waitForTimeout(250);

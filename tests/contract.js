@@ -62,12 +62,23 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   check(copy && ratio(copy.fg,copy.bg)>=4.5,'the unit view\'s on-bar pill is readable: '+JSON.stringify(copy));
   // 3. Race: keyboard exit works, chip contrast
   await pl.click('#btnLb'); await pl.waitForTimeout(500);
-  const chips=await pl.evaluate(()=>[...document.querySelectorAll('.lbChip')].map(c=>{ const cs=getComputedStyle(c); return [cs.color,cs.backgroundColor]; }));
-  check(chips.length>0 && chips.every(([fg,bg])=>ratio(fg,bg)>=3),'every gain chip on the Race is ≥ 3:1 ('+chips.length+' chips)');
+  const lines=await pl.evaluate(()=>[...document.querySelectorAll('.lbLine,.lbDone,.lbPct small')].map(c=>getComputedStyle(c).color));
+  check(lines.length>=6 && lines.every(fg=>ratio(fg,'rgb(255,255,255)')>=4.5),'every supporting line on a Race card is ≥ 4.5:1 on its white card ('+lines.length+')');
+  const tracks=await pl.evaluate(()=>[...document.querySelectorAll('.lbCard')].map(c=>[getComputedStyle(c).backgroundColor,getComputedStyle(c.querySelector('.lbBarWrap')).backgroundColor]));
+  check(tracks.every(([bg,tr])=>bg==='rgb(255, 255, 255)' && tr!=='rgba(255, 255, 255, 0.55)' && tr!==bg),'every card is white and every bar has a visible track (no tinted second place, no trackless first)');
   await pl.focus('#lbExit'); await pl.keyboard.down('Enter'); await pl.waitForTimeout(1700); await pl.keyboard.up('Enter'); await pl.waitForTimeout(400);
   check(await pl.locator('body.lbMode').count()===0,'holding Enter on "Hold to exit" leaves the Race');
   await pl.context().close();
   const pc=await measure(1366,768,'chromebox',10,8); await pc.context().close();
+  // 3b. the board at 1920×1080: nothing a class has to read is small, and the Race fills the panel
+  const { ctx: cb, p: pb } = await open(1920,1080,{hasTouch:true}); await pb.evaluate(([k,v])=>localStorage.setItem(k,v),[lsKey,saved]); await pb.reload(); await pb.waitForTimeout(700);
+  await pb.click('#btnLb'); await pb.waitForTimeout(600);
+  const bd=await pb.evaluate(()=>{ const px=sel=>[...document.querySelectorAll(sel)].map(e=>parseFloat(getComputedStyle(e).fontSize)); const all=[...px('.lbName'),...px('.lbPct'),...px('.lbPct small'),...px('.lbLine'),...px('.lbDone'),...px('.lbSub')]; const last=[...document.querySelectorAll('.lbCard')].pop().getBoundingClientRect(); return { min:Math.min(...all), name:px('.lbName')[0], pct:px('.lbPct')[0], bottom:last.bottom/innerHeight, over:document.documentElement.scrollWidth>innerWidth+1 }; });
+  check(bd.min>=24 && bd.name>=38 && bd.pct>=80 && !bd.over,'board: Race type is sized for the room (smallest '+bd.min+' px, names '+bd.name+', numbers '+bd.pct+')');
+  await pb.click('[data-tab="lab"]'); await pb.waitForTimeout(500);
+  const lb=await pb.evaluate(()=>{ const px=sel=>[...document.querySelectorAll(sel)].map(e=>parseFloat(getComputedStyle(e).fontSize)); const svg=document.querySelector('.labSvg'); const k=svg? svg.getBoundingClientRect().width/svg.viewBox.baseVal.width : 1; return { legend:px('.labLegend')[0], name:px('.labName')[0], tick:px('.labTickTxt')[0]*k, opts:document.querySelectorAll('#labUnit option').length }; });
+  check(lb.legend>=20 && lb.name>=30 && lb.tick>=20 && lb.opts<60,'board: Data Lab legend '+lb.legend+' px, class name '+lb.name+', axis numbers '+Math.round(lb.tick)+' on screen; '+lb.opts+' data sets in the list');
+  await pb.locator('#lbExit').dispatchEvent('pointerdown'); await pb.waitForTimeout(1700); await cb.close();
   const pt=await measure(1280,800,'tablet',8,7,{hasTouch:true,isMobile:true}); await pt.context().close();
   // 4. 200 % zoom (half-size viewport): every bar control reachable, some rows visible after scrolling the page
   const { ctx: cz, p: pz } = await open(700,450); await pz.evaluate(([k,v])=>localStorage.setItem(k,v),[lsKey,saved]); await pz.reload(); await pz.waitForTimeout(700);

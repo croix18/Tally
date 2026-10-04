@@ -8,7 +8,7 @@ const LETTER_COLORS = { A: '#0F5F6B', B: '#1F8F93', C: '#5FBFB5', D: '#B9E5DF', 
 // Which letter segments are dark enough for white text; the light C/D/F-wash ones take ink.
 const LETTER_DARK = ['A', 'B', 'F'];
 // Ordered quarters (least → most) on the same ramp, for circle graphs of "how much of the unit".
-const QUARTER_COLORS = ['#DDF4F0', '#B9E5DF', '#5FBFB5', '#0F5F6B'];
+const QUARTER_COLORS = ['#9ADBD2', '#5FBFB5', '#1F8F93', '#0F5F6B'];   // the lightest step still reads against a white card on a washed-out projector
 // One colour per class, fixed by period when known (1st = slot 1, …) else by position, so every screen agrees.
 function classColor(sec) { const i = sec && Number.isInteger(sec.period) ? sec.period - 1 : Math.max(0, state.order.indexOf(sec ? sec.key : '')); return seriesColor(i); }
 const fmtV = v => v == null ? '—' : (Math.round(v * 10) / 10).toString();
@@ -116,17 +116,18 @@ function chartCircle(parts, o) {
     const d = p.value === tot ? `M${cx - R} ${cy}A${R} ${R} 0 1 1 ${cx + R} ${cy}A${R} ${R} 0 1 1 ${cx - R} ${cy}` : `M${cx} ${cy}L${x0} ${y0}A${R} ${R} 0 ${big} 1 ${x1} ${y1}Z`;
     s += `<path d="${d}" style="fill:${p.color || seriesColor(i)}" stroke="#fff" stroke-width="2"><title>${esc(p.label)}: ${p.value} (${Math.round(p.value / tot * 100)}%)</title></path>`;
     const am = (a0 + a1) / 2; if (p.value / tot >= 0.06) s += `<text x="${cx + (R + 18) * Math.cos(am)}" y="${cy + (R + 18) * Math.sin(am) + 4}" text-anchor="middle" class="val">${Math.round(p.value / tot * 100)}%</text>`; a0 = a1; });
-  parts.forEach((p, i) => { s += `<rect x="260" y="${40 + i * 26}" width="14" height="14" rx="3" style="fill:${p.color || seriesColor(i)}"/><text x="280" y="${52 + i * 26}" class="lbl">${esc(p.label)} <tspan class="tl">${p.value}</tspan></text>`; });
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/>`;
+  parts.forEach((p, i) => { s += `<rect x="260" y="${40 + i * 26}" width="14" height="14" rx="3" style="fill:${p.color || seriesColor(i)}" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/><text x="280" y="${52 + i * 26}" class="lbl">${esc(p.label)} <tspan class="tl">${p.value}</tspan></text>`; });
   return s + '</svg>';
 }
 const CHART_CSS = `
 .chart{width:100%;height:auto;display:block}.chart .gl{stroke:var(--grid);stroke-width:1}.chart .ax{stroke:var(--navy);stroke-width:1.5}
 .chart .tl{font-size:12px;fill:var(--ink-soft)}.chart .lbl{font-size:13px;font-weight:700;fill:var(--navy)}.chart .val{font-size:12px;font-weight:900;fill:var(--navy)}.chart .inv{font-size:12px;font-weight:900;fill:#fff}
-#lb .chart .tl{font-size:14px}#lb .chart .lbl{font-size:15px}#lb .chart .val{font-size:14px}#lb .chart .inv{font-size:14px}
+#lb .chart .tl{font-size:16px}#lb .chart .lbl{font-size:17px}#lb .chart .val{font-size:16px}#lb .chart .inv{font-size:16px}
 .chart .qmark{stroke:var(--ink-soft);stroke-width:1;stroke-dasharray:4 4;opacity:.7}.chart .qmarkl{font-size:11px;font-weight:700}.chart .ln.ref{stroke-dasharray:5 4;stroke-width:2}
 .chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--teal);stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
 .stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
-.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}#lb .chart.circle{max-width:680px}
+.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.05);margin:.4em 0 .2em}
 `;
 // The app page gets the chart styles at boot; the standalone Race/Lab export includes CHART_CSS through LAB_CSS.
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: CHART_CSS }));
