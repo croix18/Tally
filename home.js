@@ -15,22 +15,34 @@ function gradeSummary(sec0) {
 }
 // Everything a class could need a look at, one line each, in priority order.
 function attentionItems(sec) {
-  const out = []; const rows = buildRows(sec); const rs = rosterState(sec);
-  if (sec.pool && sec.awaitingPool) out.push({ level: 'warn', text: `waiting for the ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export`, go: 'grid' });
+  if (attCache.has(sec.key)) return attCache.get(sec.key);
+  const out = []; attCache.set(sec.key, out); const rows = buildRows(sec); const rs = rosterState(sec);
+  if (sec.pool && sec.awaitingPool) out.push({ level: 'warn', text: `waiting for the ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export`, go: 'import', shared: true });
   if (sec.placeholder) out.push({ level: 'warn', text: 'IXL export has no student names', go: 'grid' });
+  else if (sec.allBlank) out.push({ level: 'warn', text: 'the IXL export has no scores in it', go: 'grid' });
+  if (!rs.hasText && !rs.count && !sec.skipRoster && !(sec.pool && sec.awaitingPool)) out.push({ level: 'warn', text: 'no roster yet', go: 'grid' });
   const ro = rows.filter(r => r.status === 'rosterOnly').length, am = rows.filter(r => r.status === 'ambiguous').length, io = rows.filter(r => r.status === 'ixlOnly').length;
-  if (ro || am || io) out.push({ level: 'warn', text: [ro ? `${ro} on the roster not in IXL` : '', am ? `${am} with two IXL matches` : '', io ? `${io} in IXL not on the roster` : ''].filter(Boolean).join(' · '), go: 'grid' });
+  if ((ro || am || io) && !(sec.pool && sec.awaitingPool)) out.push({ level: 'warn', text: [ro ? `${ro} on the roster not in IXL` : '', am ? `${am} with two IXL matches` : '', io ? `${io} in IXL not on the roster` : ''].filter(Boolean).join(' · '), go: 'grid' });
   if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings' });
-  if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally — ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid' });
+  if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally — ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid', shared: off.every(c => !c.maxOK) });
     const stale = off.length ? [] : checks.filter(c => c.counts.stale > 0); if (stale.length) out.push({ level: 'info', text: 'moved up since you copied — ' + stale.map(c => `${c.unit.short}: ${plural(c.counts.stale, 'student')}`).join(' · ') + ' — copy again', go: 'grid' });
     const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' }); if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' }); }
-  // Without a "Working in" unit, assignment is guessed from who has touched what — on a course-wide export that can pick Unit 8.
-  if (!sec.placeholder && sec.students.length && !(state.settings.currentUnit || {})[sec.prep]) { const auto = unitsOf(sec).filter(u => u.assigned && !u.marked); out.push({ level: 'info', text: `no "Working in" unit picked — ${auto.length ? auto.map(u => u.short).join(', ') + (auto.length === 1 ? ' is' : ' are') + ' assigned by guess' : 'nothing is assigned yet'}`, go: 'grid' }); }
+  // No "Working in" unit and nothing in Focus to read it from: until one is picked, which units count is a guess.
+  if (!sec.placeholder && sec.students.length && !(state.settings.currentUnit || {})[sec.prep]) out.push({ level: 'info', text: 'pick the unit you\'re working in — until then Tally guesses which units count', go: 'grid', shared: true });
   const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid' });
-  const od = overdue(sec); if (od) out.push({ level: 'info', text: `IXL export is ${plural(od, 'day')} old`, go: 'import' });
-  if (sec.grades && state.settings.remindDays && ageDays(sec.grades.importedAt) > state.settings.remindDays) out.push({ level: 'info', text: `Focus gradebook is ${plural(ageDays(sec.grades.importedAt), 'day')} old`, go: 'import' });
-  if (!sec.grades && !sec.awaitingPool) out.push({ level: 'info', text: 'no Focus gradebook yet', go: 'import' });
+  const od = overdue(sec); if (od) out.push({ level: 'info', text: `IXL export is ${plural(od, 'day')} old`, go: 'import', shared: true });
+  if (sec.grades && state.settings.remindDays && ageDays(sec.grades.importedAt) > state.settings.remindDays) out.push({ level: 'info', text: `Focus gradebook is ${plural(ageDays(sec.grades.importedAt), 'day')} old`, go: 'import', shared: true });
+  if (!sec.grades && !sec.awaitingPool) out.push({ level: 'info', text: 'no Focus gradebook yet', go: 'import', shared: true });
   return out;
+}
+// One line per cause: the same line from several classes is said once ("Every class", "Accelerated", or the periods), warnings first.
+function attentionGroups(secs) {
+  const groups = []; secs.forEach(s => attentionItems(s).forEach(a => { const k = a.level + '|' + a.go + '|' + a.text; let g = groups.find(x => x.k === k); if (!g) groups.push(g = { k, level: a.level, go: a.go, text: a.text, shared: !!a.shared, secs: [] }); g.secs.push(s); }));
+  const short = s => String(s.label).split(' · ')[0];
+  groups.forEach(g => { const n = g.secs.length; const prep = ['acc', 'on'].find(p => { const all = secs.filter(s => s.prep === p); return all.length > 1 && all.length === n && g.secs.every(s => s.prep === p); });
+    g.who = n === 1 ? g.secs[0].label : n === secs.length ? 'Every class' : prep ? (prep === 'acc' ? 'Accelerated' : 'On-level') : g.secs.map(short).join(', ');
+    g.each = !g.shared && n > 1 ? g.secs.map(s => ({ key: s.key, label: short(s), color: classColor(s) })) : null; });   // a class's own problem (its roster) keeps a way into each class
+  return [...groups.filter(g => g.level === 'warn'), ...groups.filter(g => g.level !== 'warn')];
 }
 function renderHome() {
   const qd = quarterDue(); const cq = currentQuarter();
@@ -40,7 +52,7 @@ function renderHome() {
     const checks = s.grades ? reconcile(s) : []; const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK).length; const staleN = off ? 0 : checks.reduce((n, c) => n + (c.counts.stale || 0), 0);
     const ixlCols = s.grades ? s.grades.assignments.filter(a => gbUnitFor(s, a)) : [];
     const waiting = !!(g && g.waiting);   // the quarter was closed and the new one has no gradebook yet: say that, not zeros
-    const focusChip = waiting ? '' : !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? (ixlCols.length ? `<span class="hchip muted">Focus IXL column${ixlCols.length === 1 ? '' : 's'} (${esc(ixlCols.map(a => gbUnitFor(s, a).short).join(', '))}) not assigned in Tally${(state.settings.currentUnit || {})[s.prep] ? '' : ' — pick Working in'}</span>` : '<span class="hchip muted">no IXL columns in Focus</span>') : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : staleN ? `<span class="hchip stale">Focus: ${staleN} up since copy</span>` : '<span class="hchip ok">Focus ✓</span>';
+    const focusChip = waiting ? '' : !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? (ixlCols.length ? `<span class="hchip muted" title="Focus has an IXL column for a unit Tally isn't counting (a review unit, or past Working in)">Focus IXL ${esc(ixlCols.map(a => gbUnitFor(s, a).short).join(', '))} not counted</span>` : '<span class="hchip muted">no IXL columns in Focus</span>') : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : staleN ? `<span class="hchip stale">Focus: ${staleN} up since copy</span>` : '<span class="hchip ok">Focus ✓</span>';
     return `<article class="hcardW" style="--cc:${classColor(s)}"><button class="hcard ${warn ? 'warn' : ''}" data-go="${esc(s.key)}" aria-label="Open ${esc(s.label)}">
       <div class="hhead"><b>${esc(s.label)}</b><small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small></div>
       <div class="hnums">
@@ -52,9 +64,11 @@ function renderHome() {
       </div>
       <div class="hchips">${focusChip}${g && !waiting ? `<span class="hchip letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${g.letters[l]}</em></i>`).join('')}</span>` : ''}${warn ? `<span class="hchip warn">${plural(warn, 'thing')} to look at</span>` : ''}</div>
     </button><button class="hchip act hdigest" data-digest="${esc(s.key)}">What changed ›</button></article>`; };
-  const att = secs.flatMap(s => attentionItems(s).map(a => ({ ...a, sec: s })));
-  const qdLine = qd ? `<li class="info"><button id="qdGo"><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</button></li>` : '';
-  const attList = att.length || qdLine ? `<ul class="hatt">${qdLine}${att.map(a => `<li class="${a.level}"><button data-go="${esc(a.sec.key)}" data-where="${a.go}"><b>${esc(a.sec.label)}</b> — ${esc(a.text)}</button></li>`).join('')}</ul>` : '<p class="ghint">Nothing needs attention.</p>';
+  const groups = attentionGroups(secs);
+  const qdLine = qd ? `<li class="info"><button id="qdGo"><i></i><span><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</span><em>›</em></button></li>` : '';
+  const lb = state.lastBackup; const bkLine = backupBehind() ? `<li class="info"><button id="hBackup" title="Download a backup file — keep it in your school Drive"><i></i><span><b>Back up</b> — ${lb ? `new imports since the last backup (${esc(ageDays(lb) === 0 ? 'earlier today' : fmtDate(lb.slice(0, 10)))})` : 'nothing has been backed up from this browser yet'}</span><em>Save backup</em></button></li>` : '';
+  const attList = groups.length || qdLine || bkLine ? `<ul class="hatt">${qdLine}${groups.map(g => g.each ? `<li class="${g.level} each"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div></li>`
+    : `<li class="${g.level}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"><i></i><span><b>${esc(g.who)}</b> — ${esc(g.text)}</span><em>›</em></button></li>`).join('')}${bkLine}</ul>` : '';
   // charts
   const withHist = secs.filter(s => (s.gradeHistory || []).length); const dates = [...new Set(withHist.flatMap(s => s.gradeHistory.map(h => h.date)))].sort();
   const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.filter(h => h.date === d).pop(); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, w: 900, labelW: 200, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
@@ -64,25 +78,25 @@ function renderHome() {
   const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, dark: LETTER_DARK, labelW: 180, aria: 'letter grades by class' }) : '';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   const withGb = secs.filter(s => s.grades).length, waitN = anyClosed() ? secs.filter(s => s.grades && !hasOpenGrades(s)).length : 0;
-  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
+  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · backed up ${esc(ageDays(lb) === 0 ? 'today' : fmtDate(lb.slice(0, 10)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
   $('#bar').classList.remove('detail');
   const li = state.lastImport; const liAge = li ? ageDays(li.at) : null;
-  const importLine = li && (li.lines.length || li.fails.length) ? `<section class="himport ${li.fails.length ? 'warn' : ''}"><h3>Last import <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(li.at.slice(0, 10)))}, ${esc(fmtTime(li.at))}</small><button class="linkbtn" id="liHide" title="Hide until the next import">Hide</button></h3>
-    <ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}${li.skipped ? `<li class="muted">${plural(li.skipped, 'file')} skipped</li>` : ''}</ul></section>` : '';
+  // Today's import is spelled out; an older one folds to a line (failures always show).
+  const importLine = li && (li.lines.length || li.fails.length) ? `<details class="himport ${li.fails.length ? 'warn' : ''}" ${liAge === 0 || li.fails.length ? 'open' : ''}><summary><b>Last import</b> <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(li.at.slice(0, 10)))}, ${esc(fmtTime(li.at))}${li.fails.length ? ` · ${li.fails.length} couldn't be read` : ''}</small><button class="linkbtn" id="liHide" title="Remove this until the next import">Dismiss</button></summary>
+    <ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}${li.skipped ? `<li class="muted">${plural(li.skipped, 'file')} skipped</li>` : ''}</ul></details>` : '';
   $('#gridwrap').innerHTML = `<div class="home">
     ${importLine}
+    ${attList ? `<section class="gsec hneeds"><h3>Needs attention</h3>${attList}</section>` : ''}
     <div class="hcards">${secs.map(card).join('')}</div>
     <div class="gtwo">
-      <section class="gsec"><h3>Needs attention</h3>${attList}</section>
       <section class="gsec"><h3>IXL work at goal by class</h3>${ixlBars || '<p class="ghint">Import an IXL export.</p>'}</section>
+      <section class="gsec"><h3>Letter grades by class</h3>${lettersChart || `<p class="ghint">${waitN ? `Appears with the first ${esc(Q_NAMES[cq - 1])} gradebook.` : 'Import a Focus gradebook.'}</p>`}</section>
     </div>
     <section class="gsec"><h3>Focus class average by import</h3>${avgLines}</section>
-    <div class="gtwo">
-      <section class="gsec"><h3>Letter grades by class</h3>${lettersChart || `<p class="ghint">${waitN ? `Appears with the first ${esc(Q_NAMES[cq - 1])} gradebook.` : 'Import a Focus gradebook.'}</p>`}</section>
-      <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
-    </div>
+    <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
   </div>`;
-  const lh = $('#liHide'); if (lh) lh.onclick = () => { state.lastImport = null; save(); render(); };
+  const hb = $('#hBackup'); if (hb) hb.onclick = () => { saveBackup(); render(); };
+  const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;
   $('#gridwrap').querySelectorAll('[data-digest]').forEach(b => b.onclick = e => { e.stopPropagation(); openDigest(state.sections[b.dataset.digest]); });
   $('#gridwrap').querySelectorAll('[data-go]').forEach(b => b.onclick = e => { e.stopPropagation(); const where = b.dataset.where || 'grid'; state.active = b.dataset.go;

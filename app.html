@@ -50,9 +50,9 @@
 
 /* ---- calm by default: .det shows only in Details view ---- */
 body:not(.details) .det{display:none!important}
-.nstatus{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:2px solid var(--turq);background:var(--paleturq);color:var(--navy);border-radius:14px;padding:8px 16px;font:inherit;font-weight:600;font-size:var(--t-m);cursor:pointer}
-.nstatus.warn{background:var(--coral);border-color:rgba(217,68,47,.3)}.nstatus.warn span,.notice>span:first-child{color:var(--bad)}.nstatus.ok{background:var(--paleturq)}.nstatus i{margin-left:auto;font-style:normal;opacity:.7}
-.nfold{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.notice>span:first-child{color:var(--bad)}
+.nfold{display:flex;flex-direction:column;gap:8px}
+.nchip{border:1px solid rgba(15,118,110,.3);background:var(--paleturq);color:var(--navy);border-radius:999px;padding:4px 12px;font:inherit;font-weight:800;font-size:var(--t-s);min-height:30px;white-space:nowrap}.nchip.warn{background:var(--coral);border-color:rgba(217,68,47,.3);color:var(--bad)}.nchip small{font-weight:600;color:var(--navy);font-size:inherit}.nchip[aria-expanded="true"]{box-shadow:inset 0 0 0 2px currentColor}
 .more{position:relative}.more .menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--white);border-radius:14px;box-shadow:var(--shadow-2);border:2px solid var(--grid);min-width:220px;z-index:30;display:flex;flex-direction:column;padding:6px}
 .more .menu button{background:none;border:none;text-align:left;padding:10px 14px;font:inherit;font-weight:700;color:var(--navy);border-radius:10px;cursor:pointer}.more .menu button:hover{background:var(--paleturq)}
 body:not(.details) .tab .m{display:none}body:not(.details) .tab{padding:8px 16px}
@@ -66,9 +66,11 @@ body.home #board,body.grades #board{background:transparent;border:none;box-shado
 .hnums{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.hnums small{display:block;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:900}
 .hnums b{font-size:24px;font-weight:900;line-height:1.1}.hnums span{display:block;font-size:var(--t-xs);color:var(--ink-soft)}
 .hchips{display:flex;gap:6px;flex-wrap:wrap}.hchip{font-size:var(--t-xs);font-weight:900;border-radius:999px;padding:3px 10px;background:var(--paleturq)}.hchip.warn{background:var(--coral)}.hchip.ok{background:var(--paleturq)}.hchip.muted{background:var(--grid);color:var(--ink-soft)}.hchip.stale{background:var(--sand);color:var(--navy)}
-.himport{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:12px 16px;margin-bottom:14px;box-shadow:var(--shadow-1)}.himport.warn{border-color:var(--coral)}.himport h3{display:flex;align-items:baseline;gap:10px;font-size:var(--t-l)}.himport h3 small{font-weight:500;color:var(--ink-soft);font-size:var(--t-s)}.himport h3 .linkbtn{margin-left:auto;font-size:var(--t-s)}.himport ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}.himport li.bad{color:var(--bad)}.himport li.muted{color:var(--ink-soft)}#drop .himport{text-align:left;margin:18px auto 0;max-width:640px}
+.himport{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:4px 16px;margin-bottom:14px;box-shadow:var(--shadow-1)}.himport.warn{border-color:var(--coral)}.himport summary{display:flex;align-items:baseline;gap:10px;font-size:var(--t-l);cursor:pointer;list-style:none;padding:8px 0;min-height:28px}.himport summary::-webkit-details-marker{display:none}.himport summary::before{content:"";flex:none;width:6px;height:6px;border:solid var(--ink-soft);border-width:0 2px 2px 0;transform:rotate(-45deg);margin:0 2px 2px 0;align-self:center}.himport[open] summary::before{transform:rotate(45deg);margin-bottom:5px}.himport summary b{font-weight:900}.himport summary small{font-weight:500;color:var(--ink-soft);font-size:var(--t-s)}.himport summary .linkbtn{margin-left:auto;font-size:var(--t-s)}.himport ul{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:3px}.himport li.bad{color:var(--bad)}.himport li.muted{color:var(--ink-soft)}#drop .himport{text-align:left;margin:18px auto 0;max-width:640px;padding:12px 16px}#drop .himport h3{font-size:var(--t-l);display:flex;gap:10px;align-items:baseline}#drop .himport h3 small{font-weight:500;color:var(--ink-soft);font-size:var(--t-s)}#drop .himport ul{margin:6px 0 0}
 .hchip.letters{display:inline-flex;gap:6px;background:transparent;padding:0}.hchip.letters i{font-style:normal;display:inline-flex;gap:3px;align-items:baseline;background:var(--paleturq);border-radius:8px;padding:2px 7px}.hchip.letters i em{font-style:normal;font-weight:900}.hchip.letters i.D,.hchip.letters i.F{background:var(--sand)}
-.hatt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.hatt li button{width:100%;text-align:left;background:var(--paleturq);border:none;border-radius:10px;padding:8px 12px;font:inherit;color:var(--navy);cursor:pointer;font-size:var(--t-s)}.hatt li.warn button{background:var(--coral)}
+.hatt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}.hatt li+li{border-top:1px solid var(--grid)}.hatt li button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:none;padding:9px 4px;font:inherit;color:var(--navy);cursor:pointer;font-size:var(--t-m)}.hatt li button:hover{background:var(--cream)}.hatt li i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--teal)}.hatt li.warn i{background:var(--bad)}.hatt li span{flex:1}.hatt li em{font-style:normal;color:var(--ink-soft);font-weight:700}.hatt li #hBackup em{color:var(--teal);font-weight:800;text-decoration:underline;white-space:nowrap}
+.hatt li.each>div{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 4px;font-size:var(--t-m)}.hatt li.each span{flex:none}.hatt li .hgo{width:auto;border:1px solid var(--grid);background:var(--white);border-radius:999px;padding:4px 12px 4px 10px;font:inherit;font-weight:800;font-size:var(--t-s);color:var(--navy);min-height:30px;display:inline-flex;align-items:center;gap:6px}.hatt li .hgo::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--cc)}.hatt li .hgo:hover{background:var(--cream)}
+.hneeds{margin-bottom:14px}.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ---- class colour: --cc follows the class everywhere (after the Overview rules so it wins) ---- */
 .tab::before{content:'';width:10px;height:10px;border-radius:50%;background:var(--cc,var(--grid));flex-shrink:0}.hcard{border-top:6px solid var(--cc,var(--grid))!important}
@@ -272,6 +274,7 @@ table.grid tfoot td.ptsd{background:var(--paleturq);z-index:8;border-top:3px sol
 .stuname .sub{font-size:var(--t-xs);color:var(--teal);font-weight:500;overflow:hidden;text-overflow:ellipsis}
 .flag{font-size:var(--t-xs);font-weight:900;letter-spacing:.07em;padding:3px 9px;border-radius:999px;background:var(--coral);color:var(--navy);flex:none;border:none;min-height:24px}
 .flag.amb{background:var(--paleturq);color:var(--teal)}
+.flag.quiet{background:transparent;color:var(--ink-soft);font-weight:700;letter-spacing:0;border:1px solid var(--grid);font-size:var(--t-xs)}
 button.flag{cursor:pointer}
 
 /* ---- landing ---- */
@@ -518,7 +521,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 
 /* ---- touch: every everyday control reaches 44px on the tablet and panel; the laptop keeps its compact sizes ---- */
 @media (hover:none),(pointer:coarse){
-  #bar .pill.toggle,th.unit .copy,.pill.small,.seg.small button,.seg button,.lbTools .pill,.lbTools .seg button,.lbTools .labSelect,.hatt li button,.pill{min-height:44px}
+  #bar .pill.toggle,th.unit .copy,.pill.small,.seg.small button,.seg button,.lbTools .pill,.lbTools .seg button,.lbTools .labSelect,.hatt li button,.hatt .hgo,.pill{min-height:44px}
   .curUnit select{min-height:44px;padding:8px 12px}
   .fcheck{min-height:36px;padding:6px 12px;font-size:var(--t-s)}
   .flag{min-height:36px;padding:6px 12px}
@@ -526,7 +529,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   .gasg select,.gstu td button,.gstu td .nm{min-height:44px}
   #search{min-height:44px}
   .more .menu button{min-height:48px}
-  .ib{min-width:44px;min-height:44px}.mini{min-height:44px}.seg.tiny button{min-width:38px;min-height:38px}.ft{min-width:40px;min-height:40px}.seatOpen{min-height:44px}.notice button{min-height:44px}.seatSide summary{min-height:44px;display:flex;align-items:center}.chip.rel{min-height:44px}
+  .nchip{min-height:44px;padding:8px 16px}.ib{min-width:44px;min-height:44px}.mini{min-height:44px}.seg.tiny button{min-width:38px;min-height:38px}.ft{min-width:40px;min-height:40px}.seatOpen{min-height:44px}.notice button{min-height:44px}.seatSide summary{min-height:44px;display:flex;align-items:center}.chip.rel{min-height:44px}
 }
 </style>
 </head>

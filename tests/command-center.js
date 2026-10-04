@@ -19,8 +19,9 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   await p.click('.hatt li button'); await p.waitForTimeout(400);
   check(await p.locator('table.grid').count()===1 && await p.locator('.tab.active').count()===1,'tapping an attention item opens that class');
   // --- calm grid
-  check(await p.locator('#nToggle').count()===1 && await p.locator('.nfold.hidden').count()===1 && /to look at/.test(await p.textContent('#nToggle')),'notices fold into one status line');
-  await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('.nfold:not(.hidden) .notice').count()>=1,'tapping the status line expands the notices');
+  check(await p.locator('#bar #nToggle.nchip').count()===1 && await p.locator('#notices .notice').count()===0 && /to fix/.test(await p.textContent('#nToggle')) && (await p.evaluate(()=>document.querySelector('#notices').getBoundingClientRect().height))<14,'notices are a count in the class bar, not a band above it');
+  await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#notices .nfold .notice').count()>=1 && (await p.getAttribute('#nToggle','aria-expanded'))==='true','tapping the count shows the notices');
+  await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#notices .notice').count()===0,'and tapping it again folds them');
   check(await p.locator('#printOwed').isHidden() && await p.locator('#moreBtn').count()===1,'secondary controls live behind the ⋯ menu');
   await p.click('#moreBtn'); await p.waitForTimeout(200); check(await p.locator('#moreMenu:not(.hidden) #mStillOwed').count()===1,'menu opens with Still owed');
   await p.mouse.click(600, 700); await p.waitForTimeout(200); check(await p.locator('#moreMenu.hidden').count()===1 && await p.locator('body.details').count()===0 && await p.locator('#menuOverlay').count()===0,'a tap outside only dismisses the menu (nothing underneath fires)');

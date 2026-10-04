@@ -31,7 +31,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   check(adv.basis===false && adv.gain===0 && adv.units===3,'moving Working in to Unit 3 keeps the comparison (3 assigned units, +0.0, no reset): '+JSON.stringify(adv));
   // 4. per-student skip re-snapshots and offers Undo
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('th.unit .ulink'); await p.waitForTimeout(300);
-  const before=await p.evaluate(K=>{ const s=window.__tally.state.sections[K]; return JSON.stringify(s.history[s.history.length-1].per); }, K);
+  const before=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; T.snapshot(s); return JSON.stringify(s.history[s.history.length-1].per); }, K);   // (step 3 moved Working in by hand: take today's basis first)
   await p.click('tbody tr:first-child td.sc.pass[data-cell]'); await p.waitForTimeout(300);
   check(await p.locator('#toast.show #undoCell').count()===1,'per-student skip toast has an Undo button');
   const mid=await p.evaluate(K=>{ const s=window.__tally.state.sections[K]; return JSON.stringify(s.history[s.history.length-1].per); }, K);
