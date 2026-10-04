@@ -244,7 +244,19 @@ th.unit .copy:hover{background:var(--turq)}
 th.unit .copy:disabled{opacity:.4;cursor:default}
 th.unit .copy svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 th.unit.quiet .ulink .t,th.unit.quiet .ulink .s,th.unit.quiet .usub,td.pts.quiet .v,td.pts.quiet{color:var(--ink-soft)}td.pts.quiet .v{font-weight:500}   /* no opacity: a translucent sticky header lets the rows beneath show through */
-th.unit.upcoming .usub{color:var(--ink-soft)}th.unit.upcoming .ulink .t{color:var(--ink-soft)}th.unit.current{background:var(--paleturq)}
+th.unit.current{background:var(--paleturq)}
+/* Ahead: one quiet column after the units that count; its header opens the list of later units */
+table.grid th.ahead{min-width:190px;padding:0;vertical-align:top;height:1px;border-left:2px solid var(--grid);background:var(--white)}
+th.ahead .uh{height:100%;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 16px;position:relative}
+th.ahead .ulink{background:none;border:none;font:inherit;cursor:pointer;padding:0;text-align:left;display:flex;flex-direction:column;gap:3px;color:var(--ink-soft)}
+th.ahead .ulink .t{font-weight:900;font-size:var(--t-xl);line-height:1.2;color:var(--ink-soft)}th.ahead .ulink .t::after{content:"›";margin-left:5px;font-weight:700;display:inline-block;transform:rotate(90deg)}
+th.ahead .ulink .s{font-size:var(--t-xs);font-weight:600;color:var(--ink-soft);line-height:1.3;text-transform:none;letter-spacing:0}
+th.ahead .ustat{display:block}th.ahead .utag{color:var(--ink-soft)}
+.menu.floating{position:fixed;z-index:31;background:var(--white);border-radius:14px;box-shadow:var(--shadow-2);border:2px solid var(--grid);display:flex;flex-direction:column;padding:6px;overflow-y:auto}.menu.floating button{background:none;border:none;text-align:left;padding:10px 14px;font:inherit;color:var(--navy);border-radius:10px;cursor:pointer;flex:none}.menu.floating button:hover{background:var(--paleturq)}
+#aheadMenu{min-width:300px;max-width:min(440px,calc(100vw - 20px))}
+#aheadMenu button{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;font-weight:600;font-size:var(--t-s)}#aheadMenu button b{font-weight:800;white-space:nowrap}#aheadMenu button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-soft)}#aheadMenu button small{color:var(--teal);font-weight:700;white-space:nowrap}
+table.grid td.aheadc{text-align:left;padding:0 16px;border-left:2px solid var(--grid);white-space:nowrap;font-size:var(--t-s);color:var(--navy);cursor:pointer}td.aheadc.none{cursor:default}td.aheadc b{font-weight:800}td.aheadc small{color:var(--ink-soft);font-weight:600;font-size:var(--t-xs)}
+table.grid tfoot td.aheadc{color:var(--teal);font-weight:700;font-size:var(--t-xs);cursor:default}
 .curUnit{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:var(--t-s);color:var(--ink-soft)}.curUnit select{border:1px solid var(--grid);border-radius:999px;padding:4px 10px;background:var(--white);color:var(--navy);font:inherit;font-weight:700}
 td.pts{text-align:center;padding:0 8px;cursor:pointer}
 td.pts .v{font-weight:900;font-size:var(--t-l);line-height:1}
@@ -367,7 +379,7 @@ th.unit .ustat .fcheck{margin-top:0;max-width:100%;white-space:normal;line-heigh
 th.unit .utag{font-size:var(--t-xs);font-weight:700;color:var(--ink-soft)}th.unit .utag.now{color:var(--teal)}
 th.unit .uact{min-height:32px;display:flex;align-items:center;margin-top:auto}
 th.unit .copy{min-height:32px;padding:5px 12px;font-size:var(--t-s)}
-th.unit.upcoming .ulink .t::after,th.unit.quiet .ulink .t::after{color:var(--ink-soft)}
+th.unit.quiet .ulink .t::after{color:var(--ink-soft)}
 th.unit.current .ulink .t{box-shadow:inset 0 -3px 0 var(--turq)}
 td.pts .v{font-size:var(--t-l)}
 /* skill names: up to four short lines of vertical text instead of two long ones — the same words in two-thirds of the height */
@@ -479,7 +491,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   .gasg select,.gstu td button,.gstu td .nm{min-height:44px}
   #search{min-height:44px}
   #top .nav button{min-height:44px}#topMenu button{min-height:50px}
-  .more .menu button{min-height:48px}
+  .more .menu button,.menu.floating button{min-height:48px}
   .nchip{min-height:44px;padding:8px 16px}.ib{min-width:44px;min-height:44px}.mini{min-height:44px}.seg.tiny button{min-width:38px;min-height:38px}.ft{min-width:40px;min-height:40px}.seatOpen{min-height:44px}.notice button{min-height:44px}.seatSide summary{min-height:44px;display:flex;align-items:center}.chip.rel{min-height:44px}
 }
 </style>

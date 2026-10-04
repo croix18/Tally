@@ -51,18 +51,17 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   await p.click('th.unit .copy'); await p.waitForTimeout(250); let clip=await p.evaluate(()=>navigator.clipboard.readText());
   check(clip.split('\n').every(l=>l.includes('\t')),'no-roster copy always includes names');
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150);
-  // hidden units + toggle
-  // every unit is listed; units nobody has started are marked upcoming rather than hidden; "Working in" makes everything up to a unit count
-  check(await p.locator('th.unit').count()===17 && await p.locator('th.unit.upcoming').count()>0,'all 17 units listed, quiet ones marked upcoming: '+await p.locator('th.unit.upcoming').count());
+  // the grid is the units up to "Working in" (set by the import) and one Ahead column for everything later
+  const cu0=await p.evaluate(()=>window.__tally.state.settings.currentUnit.acc);
+  check(cu0>=1 && await p.locator('th.unit').count()===cu0 && await p.locator('th.ahead').count()===1 && await p.locator('th.unit.upcoming').count()===0,'the import set Working in (Unit '+cu0+'): the grid is Units 1–'+cu0+' and one Ahead column, not 17 columns');
+  check(await p.locator('#onlyCur').count()===0 && await p.locator('#curUnit option[value=""]').count()===0,'no "Just Unit N" and no "— pick —": a course always has a unit it is working in');
   await p.selectOption('#curUnit','4'); await p.waitForTimeout(400);
   const cu=await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['1205050-7T1A']).map(u=>u.num+':'+(u.assigned?'a':u.upcoming?'u':'h')).join(' '));
-  check(/^1:a 2:a 3:a 4:a 5:u/.test(cu) && await p.locator('th.unit.current').count()===1,'Working in Unit 4 → Units 1–4 assigned, 5+ upcoming, current marked: '+cu);
-  await p.click('#onlyCur'); await p.waitForTimeout(300); check(await p.locator('th.unit').count()===1 && /Unit 4/.test(await p.textContent('th.unit')),'"Just Unit 4" shows only the current unit');
+  check(/^1:a 2:a 3:a 4:a 5:u/.test(cu) && await p.locator('th.unit.current').count()===1 && await p.locator('th.unit').count()===4 && /Units 5–17/.test(await p.textContent('th.ahead')),'Working in Unit 4 → Units 1–4 are the columns, 5–17 are under Ahead, current marked: '+cu);
   await p.click('[data-k="1205050-7T3A"]').catch(()=>{}); await p.waitForTimeout(200);
-  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(200); check(await p.locator('th.unit').count()===1,'the view sticks per course');
-  await p.click('#onlyCur'); await p.waitForTimeout(300); check(await p.locator('th.unit').count()===17,'toggling back lists every unit');
-  await p.selectOption('#curUnit',''); await p.waitForTimeout(300);
-  dialogs=[]; dialogAnswer=false; const zi=await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['1205050-7T1A']; const us=T.unitsOf(s); return us.findIndex(u=>!s.students.some((_,si)=>T.unitColumn && u.active.some(k=>{const v=s.scores[k][si]; return v!=null && v>=s.threshold;}))); }); await p.locator('th.unit .copy').nth(zi).click(); await p.waitForTimeout(200);
+  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(200); check(await p.locator('th.unit').count()===4,'Working in is per course and stays');
+  dialogs=[]; dialogAnswer=false; const zi=await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['1205050-7T1A']; const us=T.unitsOf(s); return us.findIndex(u=>!s.students.some((_,si)=>T.unitColumn && u.active.some(k=>{const v=s.scores[k][si]; return v!=null && v>=s.threshold;}))); });
+  await p.selectOption('#curUnit',String(zi+1)); await p.waitForTimeout(400); await p.locator('th.unit .copy').nth(zi).click(); await p.waitForTimeout(200);
   check(dialogs.length===1 && /zeros/.test(dialogs[0]),'all-zero copy asks first');
   // (nothing hidden any more)
   // copy unit 1 toast + clipboard

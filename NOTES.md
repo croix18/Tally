@@ -59,11 +59,23 @@ per-section-file era and many items in them are now done).
   Import. One row from 700 px up (the search field gives way first); below that it wraps. `tests/header.js`.
 - **Roster = the gradebook's student column** (Focus order, with IDs). Filled in automatically when a class
   has no roster and at least half the names match its IXL students; offered when a pasted roster differs.
-- **"Working in" unit per course** (`settings.currentUnit[prep]`): everything up to it is assigned; later
-  units stay listed as *upcoming*; review units (`settings.skipFirst[prep]`, default acc 0 / on-level 1)
-  leave the grid. A "Just Unit N" toggle (`settings.onlyCurrent[prep]`) shows only the current unit.
-  Without a current unit, a unit auto-assigns when ≥25% of the class has any score in it (was "any student
-  at goal", which let one kid working ahead assign Units 9–17 for everyone).
+- **"Working in" unit per course** (`settings.currentUnit[prep]`): everything up to it is assigned and is a column
+  on the class grid; review units (`settings.skipFirst[prep]`, default acc 0 / on-level 1) leave the grid.
+- **One "Ahead" column instead of the upcoming units** (4 Oct, Croix chose it from a mockup — `review/mockups/`).
+  Later units are no longer columns: the last column, **Ahead**, shows a student's skills at goal past the current
+  unit ("5 skills · Unit 8"), only for students who have some; its header opens a floating list of the later units
+  (`#aheadMenu`, appended to `body` because the sticky table header is its own stacking layer), and a cell opens the
+  first later unit that student has work in. Opening a later unit and tapping **Not assigned → Assigned** makes it a
+  column early. `renderGrid` only — `unitsOf` still returns every unit with `upcoming: true` for the later ones, so
+  points, copying, the Race and the Focus check are untouched. **"Just Unit N" is gone**; instead the grid lands
+  scrolled to the current unit and Ahead (`landOnCurrent`). **The 25 % rule is gone for numbered units**: it used to
+  assign whatever a quarter of the class had started when no unit was picked, which gave scattered units (2, 3, 8
+  and 10). Now a course always has a "Working in": `defaultWorkingIn()` sets it at import *and at start-up* (older
+  saves) to the latest unit Focus has an IXL column for, else the last unit of the unbroken run a quarter of the
+  course has started, else the first counted unit — and says which (`WI_WHY`). A pick is never changed, and the
+  selector has no "— pick —" once set. Only a skill plan whose sections aren't "Unit N" keeps the old rule
+  (`startedShare`), because it can't be put in order. `settings.onlyCurrent` and `curUnitTouched` are still read by
+  `migrate()` but no longer used. `tests/ahead.js`.
 - **Skill skips are course-wide** (`state.skips[prep]`, shared as `sec.excluded` by every class of the
   course). Per-student skips (tap a cell) stay per student.
 - **Race ranks on movement**: share of the class that reached ≥1 more skill since the league's shared

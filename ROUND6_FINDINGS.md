@@ -120,7 +120,8 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 
 ## Croix's calls (recorded decisions the reviewers would revisit — not changed without him)
 
-- Upcoming unit columns / Just Unit N / the 25 % rule vs a single "Ahead" column (product 5; 8–12 h, high risk).
+- ~~Upcoming unit columns / Just Unit N / the 25 % rule vs a single "Ahead" column.~~ Done 4 Oct on Croix's go from the
+  mockup, as a change to the grid only (`unitsOf` flags unchanged) plus an always-set "Working in" (NOTES.md, `tests/ahead.js`).
 - The 92 per-row seating toggles (built on request in round 4).
 - Android/browser Back handling (a naive version lets Back exit Show student or Race).
 - ~~The nine-pill header → a four-item one.~~ Done 4 Oct on Croix's go from the mockup: Classes · Students · Board, search,
@@ -148,7 +149,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   control, an eye for names, a ⋯ menu for Details view / Settings / Guide / Save backup. Also fixed on the way: the
   contract suite's focus-ring check was measuring text colour after a mouse click (it now focuses by keyboard and
   requires the ring to be drawn).
-- Next: the Ahead column (its own commit). Build 3 candidates and "Croix's calls" wait for him.
+- 4 Oct: the Ahead column shipped (its own commit). What the reviewer's fuller version asked for and was NOT done:
+  moving "Assigned / Not assigned" into a unit ⋯ menu, and removing the "N unassigned unit" toggle and Settings'
+  "Units not assigned at the start".
+- Next: nothing owed. Remaining "Croix's calls": the seating row toggles and Back-button handling. Build 3 candidates and "Croix's calls" wait for him.
 
 ## Handoff for the next session (any model)
 

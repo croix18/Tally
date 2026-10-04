@@ -11,11 +11,11 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   const K='period-1';
   // 0. Working in, when nobody picked it, comes from Focus's IXL columns (never a review unit) and the import says so
   const wi=await p.evaluate(()=>{ const T=window.__tally; return { cur:T.state.settings.currentUnit, skip:T.state.settings.skipFirst, li:JSON.stringify(T.state.lastImport) }; });
-  check(wi.cur.acc===1 && wi.cur.on==null && wi.skip.on===1,'accelerated Working in is set to the unit Focus has an IXL column for; on-level (its only column is the review unit) is left for the teacher: '+JSON.stringify(wi.cur));
-  check(/Working in set to Unit 1/.test(wi.li),'the import result says Working in was set');
+  check(wi.cur.acc===1 && wi.cur.on>1 && wi.skip.on===1,'accelerated Working in is the unit Focus has an IXL column for; on-level (its only Focus column is the review unit) gets the last unit the course has really started: '+JSON.stringify(wi.cur));
+  check(/Working in set to Unit 1 — the latest unit Focus has an IXL column for/.test(wi.li) && new RegExp('Working in set to Unit '+wi.cur.on+' — the last unit a quarter of the course has started').test(wi.li),'the import result says Working in was set, and on what evidence');
   await p.click('#btnHome'); await p.waitForTimeout(300);
   const l0=await p.evaluate(()=>[...document.querySelectorAll('.hatt li:not(.more)')].map(l=>l.textContent.replace(/\s+/g,' ').trim()));
-  check(!l0.some(t=>/assigned by guess/.test(t)) && l0.filter(t=>/pick the unit you're working in/.test(t)).length===1,'no "assigned by guess" line; only the course that still needs a pick is asked: '+l0.length+' lines');
+  check(!l0.some(t=>/assigned by guess/.test(t)) && !l0.some(t=>/pick the unit you're working in/.test(t)),'nothing is assigned by guess and nobody is asked to pick a unit: every course has one ('+l0.length+' lines)');
   // 0b. backup: asked for once after an import, one tap, then quiet
   check(await p.locator('#hBackup').count()===1 && /nothing has been backed up/.test(await p.textContent('#hBackup')) && /back up/.test(await p.textContent('#hNotes > summary')),'the Overview offers a backup after an import (in the notes line)');
   await p.click('#hNotes > summary'); await p.waitForTimeout(200);
@@ -45,11 +45,11 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const u=T.unitsOf(s).find(u=>u.assigned); s.receipts[u.name]={ at:new Date().toISOString(), exportDate:s.date, goal:s.threshold, outOf:u.total, skipped:[], rows:[] }; T.save(); T.render(); },K);
   const hd=await p.evaluate(()=>({ rl:[...document.querySelectorAll('th.unit .rlink')].filter(e=>e.offsetParent).length, badge:[...document.querySelectorAll('th.unit .fcheck')].filter(e=>e.offsetParent).length, copyY:[...new Set([...document.querySelectorAll('th.unit .copy')].filter(e=>e.offsetParent).map(e=>Math.round(e.getBoundingClientRect().bottom)))].length, titleY:[...new Set([...document.querySelectorAll('th.unit .t')].map(e=>Math.round(e.getBoundingClientRect().top)))].length }));
   check(hd.rl>=1 && hd.badge>=1 && hd.copyY<=1 && hd.titleY===1,'the header shows "copied" next to the Focus badge; titles share a top line and Copy buttons a bottom line: '+JSON.stringify(hd));
-  // 1c. Working in: a choice made on the class bar — even "— pick —" — is not overwritten by the next import
-  await p.selectOption('#curUnit',''); await p.waitForTimeout(300);
+  // 1c. Working in: a choice made on the class bar is not overwritten by the next import or a reload
+  await p.selectOption('#curUnit','2'); await p.waitForTimeout(300);
   await p.setInputFiles('#file',[path.resolve('fixtures',acc)]); await p.waitForTimeout(900);
-  check((await p.evaluate(()=>window.__tally.state.settings.currentUnit.acc))===null,'choosing "— pick —" survives the next import (the default only fills a course nobody has touched)');
-  await p.reload(); await p.waitForTimeout(600); check((await p.evaluate(()=>window.__tally.defaultWorkingIn().length))===0 && (await p.evaluate(()=>window.__tally.state.settings.curUnitTouched.acc))===true,'and survives a reload');
+  check((await p.evaluate(()=>window.__tally.state.settings.currentUnit.acc))===2,'the unit picked on the class bar survives the next import');
+  await p.reload(); await p.waitForTimeout(600); check((await p.evaluate(()=>window.__tally.defaultWorkingIn().length))===0 && (await p.evaluate(()=>window.__tally.state.settings.currentUnit.acc))===2,'and a reload');
   await p.click(`[data-k="${K}"]`); await p.waitForTimeout(300); await p.selectOption('#curUnit','1'); await p.waitForTimeout(300);
   // 2. the tab dot and the Overview say the same thing
   const agree=await p.evaluate(()=>{ const T=window.__tally; return T.state.order.map(k=>{ const s=T.state.sections[k]; return T.sectionWarn(s)===T.attentionItems(s).some(a=>a.level==='warn') && document.querySelector(`.tab[data-k="${k}"]`).classList.contains('warn')===T.sectionWarn(s); }); });

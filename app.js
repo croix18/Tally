@@ -63,7 +63,7 @@ function migrate() {
   state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
     skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line'].includes(st.labKind) ? st.labKind : 'box', labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null },
-    curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) } };   // the unit each course is working in: everything up to it is assigned, later units are listed as upcoming   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
+    curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) } };   // the unit each course is working in: everything up to it is assigned, later units are gathered under Aheag   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
   state.assigned = state.assigned && typeof state.assigned === 'object' ? state.assigned : {}; state.assigned.acc = state.assigned.acc || {}; state.assigned.on = state.assigned.on || {};
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && typeof c.id === 'string' && typeof c.label === 'string').map(c => { const values = {}; if (c.values && typeof c.values === 'object') for (const k of Object.keys(c.values)) if (SAFE_KEY(k) && Array.isArray(c.values[k])) values[k] = c.values[k].map(Number).filter(Number.isFinite); return { ...c, label: c.label.slice(0, 80), unit: typeof c.unit === 'string' ? c.unit.slice(0, 40) : '', prep: c.prep === 'acc' ? 'acc' : 'on', values }; }) : [];
@@ -213,6 +213,8 @@ function buildRows(sec) {
 
 /* ---------- computations ---------- */
 const skillKey = sk => sk.id || (sk.unit + '|' + sk.name);
+// The share of a class that has any score in these skills. One student working ahead is not "started".
+function startedShare(sec, idx) { const n = sec.students.length; if (!n) return 0; const seen = new Array(n).fill(false); idx.forEach(k => sec.scores[k].forEach((v, si) => { if (v != null) seen[si] = true; })); return seen.filter(Boolean).length / n; }
 function unitsOf(sec) {
   const map = new Map();
   sec.skills.forEach((sk, i) => { if (!map.has(sk.unit)) map.set(sk.unit, []); map.get(sk.unit).push(i); });
@@ -220,18 +222,14 @@ function unitsOf(sec) {
   return [...map.entries()].map(([name, idx]) => {
     const m = name.match(/^Unit\s+(\d+)\s*(.*)$/i);
     const active = idx.filter(k => !sec.excluded[skillKey(sec.skills[k])]);
-    // "Looks started": a real share of the class has touched the unit (a quarter of students), not one kid working ahead —
-    // a course-wide export has students on every unit, so a single score at goal must not assign a unit for the whole course.
-    const n = sec.students.length; const seen = new Array(n).fill(false);
-    idx.forEach(k => sec.scores[k].forEach((v, si) => { if (v != null) seen[si] = true; }));
-    const share = n ? seen.filter(Boolean).length / n : 0;
-    const auto = share >= 0.25;
     const num = m ? Number(m[1]) : 0; const skipFirst = (state.settings.skipFirst || {})[sec.prep] || 0; const cur = (state.settings.currentUnit || {})[sec.prep];
     // Assigned: the course's mark wins; else the first N review units aren't; else everything up to the unit the course is
-    // working in is (or, with no current unit chosen yet, whatever a quarter of the class has started).
+    // working in is. "Working in" is always set once a course has data (defaultWorkingIn), so nothing is guessed from who
+    // has touched what. A plan whose sections aren't "Unit N" can't be put in order: there a section counts once a quarter
+    // of the class has started it (startedShare), as it always did.
     const review = num > 0 && num <= skipFirst;
-    const assigned = marks[name] != null ? !!marks[name] : review ? false : (cur ? num > 0 && num <= cur : auto);
-    const hidden = marks[name] != null ? !marks[name] : review;   // only review units (or ones you hid) leave the grid; upcoming units stay listed
+    const assigned = marks[name] != null ? !!marks[name] : review ? false : num > 0 ? (!!cur && num <= cur) : startedShare(sec, idx) >= 0.25;
+    const hidden = marks[name] != null ? !marks[name] : review;   // review units (or ones you hid) leave the grid; later units are gathered under "Ahead"
     return { name, short: m ? 'Unit ' + m[1] : name, title: m ? m[2] : '', num, idx, active, total: active.length, hidden, assigned, upcoming: !assigned && !hidden, current: !!cur && num === cur, marked: marks[name] != null };
   });
 }
@@ -368,7 +366,7 @@ async function importFiles(files) {
   const poolLine = p => { const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === p.prep && !x.awaitingPool).length; return { label: p.prep === 'acc' ? 'Accelerated IXL' : 'On-level IXL', pool: p.prep, text: `${plural(p.students, 'student')}, ${plural(p.skills, 'skill')}${fed ? ` → ${plural(fed, 'class')} updated` : ' — no class uses it yet: import a Focus gradebook for each period'}` }; };
   const pools = poolImported.map(poolLine);
   const classes = ok.filter(s => !s.pool).map(s => ({ label: s.label, text: `IXL export — goal ${s.threshold}, ${plural(s.students.length, 'student')}` }));
-  const lines = [...pools, ...classes, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook — ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: `Working in set to Unit ${x.unit} — the latest unit Focus has an IXL column for. Change it on the class bar.` }))];
+  const lines = [...pools, ...classes, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook — ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: `Working in set to Unit ${x.unit} — ${WI_WHY[x.why]}. Change it on the class bar.` }))];
   if (lines.length || fails.length || skipped) {   // files dropped within a quarter of an hour read as one import; a newer line for the same class replaces the older
     const prev = state.lastImport && Date.now() - new Date(state.lastImport.at) < 15 * 60000 ? state.lastImport : { lines: [], fails: [], skipped: 0 };
     const fresh = lines.map(l => ({ label: String(l.label).slice(0, 80), text: String(l.text).replace(/<[^>]+>/g, '').slice(0, 300), pool: l.pool || null, wi: l.wi || null }));
@@ -386,16 +384,24 @@ async function importFiles(files) {
   else if (skipped) toast('Nothing imported.', false);
 }
 
-// "Working in", when nobody has picked it: the latest unit this course's Focus gradebooks already have an IXL column for
-// (review units don't count). The product can see it, so it doesn't ask — and doesn't guess from who has touched what.
+// "Working in", when nobody has picked it. In order: the latest unit this course's Focus gradebooks already have an IXL
+// column for (the product can see it, so it doesn't ask); else the last unit of the unbroken run, from the first counted
+// unit, that a quarter of the course's students have started; else the first counted unit. So once a course has data it
+// always has a "Working in", every unit up to it counts, and nothing is assigned by guess. A pick is never changed here.
 function defaultWorkingIn() {
   const set = []; state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null };
-  const touched = state.settings.curUnitTouched || {};
-  ['acc', 'on'].forEach(p => { if (state.settings.currentUnit[p] || touched[p]) return; let hi = 0;
-    state.order.map(k => state.sections[k]).filter(s => s.prep === p && s.grades && !s.placeholder && s.skills && s.skills.length).forEach(s => { const o = openSec(s); ((o.grades && o.grades.assignments) || []).forEach(x => { const u = gbUnitFor(s, x); if (u && u.num > hi) hi = u.num; }); });
-    if (hi > ((state.settings.skipFirst || {})[p] || 0)) { state.settings.currentUnit[p] = hi; resnapshotPrep(p); set.push({ prep: p, unit: hi }); } });
+  ['acc', 'on'].forEach(p => { if (state.settings.currentUnit[p]) return; const skip = (state.settings.skipFirst || {})[p] || 0;
+    const secs = state.order.map(k => state.sections[k]).filter(s => s.prep === p && !s.placeholder && s.skills && s.skills.length); if (!secs.length) return;
+    let hi = 0, why = 'focus';
+    secs.filter(s => s.grades).forEach(s => { const o = openSec(s); ((o.grades && o.grades.assignments) || []).forEach(x => { const u = gbUnitFor(s, x); if (u && u.num > hi) hi = u.num; }); });
+    if (hi <= skip) { hi = 0; why = 'started';
+      const nums = [...new Set(secs.flatMap(s => s.skills.map(sk => { const m = String(sk.unit).match(/^Unit\s+(\d+)/i); return m ? Number(m[1]) : 0; })))].filter(n => n > skip).sort((a, b) => a - b); if (!nums.length) return;
+      for (const n of nums) { let seen = 0, all = 0; secs.forEach(s => { const idx = []; s.skills.forEach((sk, i) => { const m = String(sk.unit).match(/^Unit\s+(\d+)/i); if (m && Number(m[1]) === n) idx.push(i); }); all += s.students.length; seen += startedShare(s, idx) * s.students.length; }); if (all && seen / all >= 0.25) hi = n; else break; }
+      if (!hi) { hi = nums[0]; why = 'first'; } }
+    state.settings.currentUnit[p] = hi; resnapshotPrep(p); set.push({ prep: p, unit: hi, why }); });
   return set;
 }
+const WI_WHY = { focus: 'the latest unit Focus has an IXL column for', started: 'the last unit a quarter of the course has started', first: 'the first unit that counts' };
 
 /* ---------- history snapshots (aggregates only: per-skill counts + per-student totals) ---------- */
 // The students a class is measured on: roster-matched students when a roster exists, otherwise everyone in IXL minus ignored.
@@ -1094,10 +1100,10 @@ function pickSection(fileName, gb, mt) {
 // A ⋯ button and its menu (the class bar's and the header's). An invisible overlay swallows the tap that dismisses the
 // menu (on the panel "outside" is a student's cell); Escape closes and returns focus; arrows move between items.
 // Choosing an item closes the menu and puts focus back on the button first, so a dialog the item opens returns there.
-function wireMenu(mb, menu) {
+function wireMenu(mb, menu, place) {
   const closeMenu = () => { menu.classList.add('hidden'); mb.setAttribute('aria-expanded', 'false'); const ov = $('#menuOverlay'); if (ov) ov.remove(); document.removeEventListener('keydown', onKey, true); };
   const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(); mb.focus(); } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const items = [...menu.querySelectorAll('button')]; const i = items.indexOf(document.activeElement); e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); } else if (e.key === 'Tab') { setTimeout(() => { if (!menu.contains(document.activeElement)) closeMenu(); }, 0); } };
-  mb.onclick = e => { e.stopPropagation(); if (!menu.classList.contains('hidden')) { closeMenu(); return; } menu.classList.remove('hidden'); mb.setAttribute('aria-expanded', 'true'); const ov = document.createElement('div'); ov.id = 'menuOverlay'; ov.onclick = ev => { ev.stopPropagation(); closeMenu(); }; document.body.appendChild(ov); document.addEventListener('keydown', onKey, true); const first = menu.querySelector('button'); if (first) first.focus(); };
+  mb.onclick = e => { e.stopPropagation(); if (!menu.classList.contains('hidden')) { closeMenu(); return; } menu.classList.remove('hidden'); mb.setAttribute('aria-expanded', 'true'); const ov = document.createElement('div'); ov.id = 'menuOverlay'; ov.onclick = ev => { ev.stopPropagation(); closeMenu(); }; document.body.appendChild(ov); document.addEventListener('keydown', onKey, true); if (place) place(); const first = menu.querySelector('button'); if (first) first.focus(); };
   menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { const open = !menu.classList.contains('hidden'); closeMenu(); if (open) mb.focus(); }, true));   // capture: before the item's own handler
   return closeMenu;
 }
@@ -1106,12 +1112,14 @@ const EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.94 17.
 
 /* ---------- render ---------- */
 let lastViewKey = '';
+let landOnCurrent = false;   // on arriving at a class grid (or moving "Working in"), bring the current unit and Ahead into view: late in the year the early units are the ones to scroll back to
 function render() {
+  { const am = document.getElementById('aheadMenu'); if (am) { am.remove(); const ov = document.getElementById('menuOverlay'); if (ov) ov.remove(); } }   // the grid's floating list of later units belongs to one render
   rowCache = new Map();   // students.js name-match cache: never outlives one render
   attCache = new Map();   // home.js attention items per class: the tabs, the cards and the list read the same answer once per render
   const has = state.order.length > 0;
   const focusId = document.activeElement && document.activeElement.id && !document.activeElement.closest('#modal') ? document.activeElement.id : null;
-  const viewKey = view.mode + '|' + (view.unit || '') + '|' + (view.sub || '') + '|' + (view.q || '') + '|' + (view.stu ? view.stu.key + '/' + view.stu.name : '') + '|' + state.active; if (viewKey !== lastViewKey) { lastViewKey = viewKey; const gw = $('#gridwrap'); if (gw) gw.scrollTop = 0; }
+  const viewKey = view.mode + '|' + (view.unit || '') + '|' + (view.sub || '') + '|' + (view.q || '') + '|' + (view.stu ? view.stu.key + '/' + view.stu.name : '') + '|' + state.active; if (viewKey !== lastViewKey) { lastViewKey = viewKey; const gw = $('#gridwrap'); if (gw) gw.scrollTop = 0; landOnCurrent = true; }
   $('#empty').classList.toggle('hidden', has);
   if (!has) {   // the landing: after a course export with no class yet, say what landed and what comes next instead of "Drop here" again
     const li = state.lastImport, pools = ['acc', 'on'].filter(p => state.pools[p]); const d = $('#drop');
@@ -1204,13 +1212,12 @@ function renderBar() {
     const hid = units.filter(u => u.hidden).length;
     html = `<h2>${esc(s.label)}</h2>${noticeChip()}<span class="meta det">${units.length} units · ${s.skills.length} skills · ${plural(s.students.length, 'student')} · one point per skill at goal (<b>${t}</b>) · IXL export of ${fmtDate(dataDate(s)) || '?'}${dataDate(s) ? ` (${ageText(dataDate(s))})` : ''}</span>
       <div class="spacer"></div>
-      ${(() => { const cu = units.find(u => u.current); return cu ? `<button class="pill toggle" id="onlyCur" aria-pressed="${!!state.settings.onlyCurrent[s.prep]}" title="Show only the unit this course is working in">${state.settings.onlyCurrent[s.prep] ? 'Just ' + esc(cu.short) : 'Just ' + esc(cu.short)}</button>` : ''; })()}
-      ${hid && !state.settings.onlyCurrent[s.prep] ? `<button class="pill toggle" id="toggleAll" aria-pressed="${!!state.settings.showAllUnits}">${plural(hid, 'unassigned unit')}</button>` : ''}
+      ${hid ? `<button class="pill toggle" id="toggleAll" aria-pressed="${!!state.settings.showAllUnits}">${plural(hid, 'unassigned unit')}</button>` : ''}
       <span class="det"><button class="pill toggle" id="printOwed" title="Printer-friendly page: what each student still owes">Still owed</button></span>
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
-      <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are listed as upcoming">Working in <select id="curUnit"><option value="">— pick —</option>${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
-      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid && !state.settings.onlyCurrent[s.prep] ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>
+      <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are gathered under Ahead">Working in <select id="curUnit">${units.some(u => u.current) ? '' : '<option value="">— pick —</option>'}${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
+      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>
       <div class="legend det"><span>Tap a unit for skill scores</span></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
@@ -1232,13 +1239,12 @@ function renderBar() {
   const back = $('#back'); if (back) back.onclick = () => { view = { mode: 'units', unit: null }; render(); };
   const cu = $('#copyUnit'); if (cu) cu.onclick = () => copyUnit(s, units.find(u => u.name === view.unit));
   const ta = $('#toggleAll'); if (ta) ta.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); };
-  const oc = $('#onlyCur'); if (oc) oc.onclick = () => { state.settings.onlyCurrent[s.prep] = !state.settings.onlyCurrent[s.prep]; save(); render(); };
   const hu = $('#hideUnit'); if (hu) hu.onclick = () => { const u = units.find(u => u.name === view.unit); state.assigned[s.prep][u.name] = !u.assigned; save(); render(); toast(`${esc(u.short)} ${!u.assigned ? 'assigned' : 'unassigned'} for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); };
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
   const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu'); wireMenu(mb, menu);
     const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const so = $('#mStillOwed'); if (so) so.onclick = () => openStillOwed(s); const mr = $('#mReports'); if (mr) mr.onclick = () => openStudentReports(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; }
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
-  const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.settings.curUnitTouched = { ...(state.settings.curUnitTouched || {}), [s.prep]: true }; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}; later units are upcoming.` : 'No current unit — units count once a quarter of the class has started them.', false, 5000); };
+  const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.settings.curUnitTouched = { ...(state.settings.curUnitTouched || {}), [s.prep]: true }; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); landOnCurrent = true; render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}; work in later units shows under Ahead.` : 'No current unit — no unit counts until you pick one.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
   $('#bar').querySelectorAll('[data-gq]').forEach(b => b.onclick = () => { view.q = Number(b.dataset.gq); render(); });
   const gqz = $('#gradesQuarters'); if (gqz) gqz.onclick = openQuarters;
@@ -1294,21 +1300,26 @@ function renderGrid() {
       r.status === 'ixlOnly' ? `<button class="flag" data-ignore="${esc(r.key)}">NOT ON ROSTER — FIX</button>` :
       (r.sub && !state.settings.hideNames ? `<span class="sub">${esc(r.sub)}</span>` : '')}</div></td>`;
   if (view.mode === 'units') {
-    const onlyCur = state.settings.onlyCurrent[s.prep] && units.some(u => u.current);
-    const shownUnits = onlyCur ? units.filter(u => u.current) : units.filter(u => !u.hidden || state.settings.showAllUnits);
+    // The grid is the units that count (up to "Working in"), then one column, Ahead, for work in later units — it only
+    // speaks for students who have some. Review / unassigned units stay behind their toggle.
+    const shownUnits = units.filter(u => u.upcoming ? false : !u.hidden || state.settings.showAllUnits);
+    const ahead = units.filter(u => u.upcoming); const aheadOf = r => { if (r.ixl == null) return null; let sum = 0; const where = []; ahead.forEach(u => { const p = points(s, u, r.ixl); if (p) { sum += p; where.push(u); } }); return { sum, where }; };
+    const aheadAll = ahead.length ? allRows.map(aheadOf) : []; const nAhead = aheadAll.filter(a => a && a.sum).length;
+    const span = ahead.length ? (ahead.every(u => u.num) ? (ahead.length === 1 ? ahead[0].short : `Units ${ahead[0].num}–${ahead[ahead.length - 1].num}`) : plural(ahead.length, 'later unit')) : '';
     const checks = reconcile(s);
     let h = `<table class="grid"><thead><tr><th class="idx" scope="col">#</th><th class="stu" scope="col">Student</th>`;
     // One slot per line so every title in the header row sits on the same baseline: title, one-line subtitle, one status
-    // (the Focus badge, else when it was copied, else a closed-quarter / now / upcoming tag), then Copy for assigned units.
+    // (the Focus badge, else when it was copied, else a closed-quarter / now tag), then Copy for assigned units.
     shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; const rc = checks.find(x => x.unit.name === u.name); const bad = rc ? rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1) : 0;
       const stat = rc ? `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ${ico('check', 'matches')} · ${rc.counts.accepted} kept` : `Focus ${ico('check', 'matches')}`}</button>`
         : uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span>`
-        : u.upcoming ? '<span class="utag">upcoming</span>' : u.current && !s.receipts[u.name] ? '<span class="utag now">now</span>' : '';
+        : u.current && !s.receipts[u.name] ? '<span class="utag now">now</span>' : '';
       // when it was copied stays in the header whatever the badge says (the slot holds both; Copy sits on the row's bottom line)
       const copied = s.receipts[u.name] && !uq ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : '';
-      h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}${u.title ? ' — ' + esc(u.title) : ''}, out of ${u.total}" title="${esc(u.title)} · out of ${u.total}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="ustat">${stat}${copied}</span><span class="usub det">out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span><span class="uact"><button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></span></div></th>`; });
+      h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}${u.title ? ' — ' + esc(u.title) : ''}, out of ${u.total}" title="${esc(u.title)} · out of ${u.total}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="ustat">${stat}${copied}</span><span class="usub det">out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span><span class="uact"><button class="copy" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></span></div></th>`; });
+    if (ahead.length) h += `<th class="ahead" scope="col"><div class="uh"><button class="ulink" id="aheadBtn" aria-haspopup="true" aria-expanded="false" aria-label="Ahead: ${esc(span)} — open one" title="Later units — open one to see its skills, or to count it early"><span class="t">Ahead</span><span class="s">${esc(span)} · skills at goal</span></button></div></th>`;
     h += `</tr></thead><tbody>`;
-    if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${shownUnits.length + 1}">No students match “${esc(search)}”.</td></tr>`;
+    if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${shownUnits.length + 1 + (ahead.length ? 1 : 0)}">No students match “${esc(search)}”.</td></tr>`;
     rows.forEach(r => {
       h += `<tr><td class="idx">${r.n}</td>${nameCell(r)}`;
       shownUnits.forEach(u => {
@@ -1317,12 +1328,24 @@ function renderGrid() {
         const p = points(s, u, r.ixl); const tot = totalFor(s, u, r.ixl);
         h += `<td class="pts ${p === tot && tot ? 'full' : p === 0 ? 'zero' : ''} ${u.hidden ? 'quiet' : ''} ${tot !== u.total ? 'own' : ''}" data-u="${ui}" tabindex="0" role="button" aria-label="${esc(u.short)}: ${p} of ${tot} — open"><span class="v">${p}<small>/${tot}</small></span></td>`;
       });
+      if (ahead.length) { const a = aheadOf(r);
+        if (!a || !a.sum) h += `<td class="aheadc none"></td>`;
+        else { const w = a.where; const at = w.length === 1 ? w[0].short : w.length === 2 && w.every(u => u.num) ? `Units ${w[0].num} and ${w[1].num}` : `in ${w.length} units`;
+          h += `<td class="aheadc" data-u="${units.indexOf(w[0])}" tabindex="0" role="button" aria-label="Ahead: ${plural(a.sum, 'skill')} at goal, ${esc(at)} — open ${esc(w[0].short)}"><b>${plural(a.sum, 'skill')}</b> <small>· ${esc(at)}</small></td>`; } }
       h += `</tr>`;
     });
     h += `</tbody><tfoot><tr><td class="idx"></td><td class="stu">Class average</td>`;
     shownUnits.forEach(u => { let sum = 0, n = 0; allRows.forEach(r => { if (r.ixl != null) { sum += points(s, u, r.ixl); n++; } }); h += `<td>${n ? (sum / n).toFixed(1) : '—'}</td>`; });
+    if (ahead.length) h += `<td class="aheadc">${nAhead ? plural(nAhead, 'student') + ' ahead' : 'nobody yet'}</td>`;
     h += `</tr></tfoot></table>`;
     wrap.innerHTML = h;
+    // The list of later units floats above the page (the table header is its own stacking layer, under the dismiss overlay).
+    if (landOnCurrent) { landOnCurrent = false; wrap.scrollLeft = wrap.querySelector('th.unit.current') ? Math.max(0, wrap.scrollWidth - wrap.clientWidth) : 0; }
+    const ab = $('#aheadBtn'); if (ab) { const menu = document.createElement('div'); menu.id = 'aheadMenu'; menu.className = 'menu floating hidden';
+      menu.innerHTML = ahead.map(u => { const n = aheadAll.filter(a => a && a.where.includes(u)).length; return `<button data-open="${units.indexOf(u)}"><b>${esc(u.short)}</b><span>${esc(u.title)}</span>${n ? `<small>${plural(n, 'student')}</small>` : ''}</button>`; }).join('');
+      document.body.appendChild(menu);
+      wireMenu(ab, menu, () => { const r = ab.getBoundingClientRect(); const top = r.bottom + 8; menu.style.top = top + 'px'; menu.style.maxHeight = Math.max(160, innerHeight - top - 16) + 'px'; menu.style.left = Math.max(8, Math.min(r.left - 8, innerWidth - menu.offsetWidth - 12)) + 'px'; });
+      menu.querySelectorAll('[data-open]').forEach(el => el.onclick = () => { view = { mode: 'unit', unit: units[+el.dataset.open].name }; render(); wrap.scrollTop = 0; }); }
     wrap.querySelectorAll('[data-u]').forEach(el => { el.onclick = () => { view = { mode: 'unit', unit: units[+el.dataset.u].name }; render(); wrap.scrollTop = 0; }; if (el.tagName === 'TD') el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }; });
     wrap.querySelectorAll('[data-c]').forEach(el => el.onclick = (e) => { e.stopPropagation(); copyUnit(s, units[+el.dataset.c]); });
     wrap.querySelectorAll('[data-fc]').forEach(el => el.onclick = (e) => { e.stopPropagation(); openFocusCheck(s, el.dataset.fc); });
@@ -1591,7 +1614,8 @@ dd{margin:0}
 <dt>Grades</dt><dd>After a Focus gradebook is loaded: the real course grade (weighted categories, proved against the Focus Grade column), trends since the last import, sliding students, IXL against assessment scores, and per-student what-ifs — turn in, retake, next assessment — with a printable one-student page. Categories are proved from the Grade column where possible; move any assignment from its row.</dd>
 <dt>Students</dt><dd>Header button (teacher only). Every student of every class with their grade, change, missing work and IXL; tap one for their page: this quarter's grade and each closed quarter's final, the grade, categories, missing work and IXL over the year, every assignment and assessment, IXL still owed by unit, and what would move the grade, starting with the <b>quickest way to the next letter</b> — missing work and IXL first. <b>Show student</b> turns the screen toward them: only their numbers, switches and sliders to try turning work in, retakes and the next test. Hold the exit button to leave.</dd>
 <dt>Quarters</dt><dd>When a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28), close it from the Overview. Tally keeps a copy of every class's gradebook for that quarter and goes quiet about it: no missing counts, sliding, Focus checks or still-owed lines for its work or its IXL units. Open it any time under Grades → Q1 and on each student's page. If the next quarter's export arrives first, the old quarter is kept automatically.</dd>
-<dt>Working in</dt><dd>The unit each course is on (the selector on the class bar). If you haven't picked one, an import sets it to the latest unit Focus has an IXL column for and says so; your own pick is never changed. Every unit up to it counts toward the Race and Focus check; later units stay listed as <i>upcoming</i> so you can see who's working ahead. The first on-level unit is a review unit and never counts (change in Settings).</dd>
+<dt>Working in</dt><dd>The unit each course is on (the selector on the class bar). The first import sets it — to the latest unit Focus has an IXL column for, or failing that the last unit the course has really started — and says so; your own pick is never changed. Every unit up to it is a column on the class grid and counts toward the Race and the Focus check. The first on-level unit is a review unit and never counts (change in Settings).</dd>
+<dt>Ahead</dt><dd>The last column of the class grid: skills at goal in units past the one you're working in, shown only for students who have some. Tap <b>Ahead</b> to open a later unit (to look at its skills, or to count it early with <b>Not assigned → Assigned</b>); tap a student's cell to open the unit they're working in.</dd>
 <dt>Assigned</dt><dd>Tap a unit's Assigned button to override the rule for that unit either way. Units you unassign leave the grid; the unassigned-units button brings them back.</dd>
 <dt>Best</dt><dd>A score from an earlier export that was higher than today's. Points once earned are kept.</dd>
 <dt>Copied</dt><dd>A receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</dd>
@@ -1962,8 +1986,9 @@ document.addEventListener('keydown', e => {
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { get state() { return state; }, save, matchSection, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { get state() { return state; }, save, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
+{ const wi = bootError ? [] : defaultWorkingIn(); if (wi.length) { save(); setTimeout(() => toast(wi.map(x => `${x.prep === 'acc' ? 'Accelerated' : 'On-level'} classes: <b>Working in</b> set to Unit ${x.unit} — ${WI_WHY[x.why]}.`).join('<br>') + ' Change it on the class bar.', false, 9000), 400); } }
 render();
 if (bootError) setTimeout(() => toast('Saved Tally data could not be read and was set aside (kept as a backup in this browser). Re-import your exports.', true, 8000), 300);
 })();
