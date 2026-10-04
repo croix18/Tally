@@ -423,7 +423,7 @@ details.qbook>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap
 .qmore{border-top:1px solid var(--grid);margin-top:10px}.qmore summary{cursor:pointer;padding:12px 0;min-height:44px;box-sizing:border-box;display:flex;gap:10px;align-items:center;justify-content:space-between;list-style:none;font-weight:700}.qmore summary::-webkit-details-marker{display:none}.qmore summary u{color:var(--teal);font-weight:800;white-space:nowrap}.qmore summary b{font-weight:900}.qmore[open] summary u{visibility:hidden}.qmore#qDates summary{color:var(--teal);justify-content:flex-start}.qmore .field>label{color:var(--ink-soft)}.qmore+.rp-actions{margin-top:14px}
 .qunits{display:flex;flex-wrap:wrap;gap:6px 14px;padding:6px 0}.qunits label{display:flex;gap:6px;align-items:center;font-size:var(--t-s)}.qunits label.dim{color:var(--ink-soft)}.qunits small{color:var(--teal)}
 .linkbtn{background:none;border:none;padding:0;color:var(--teal);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
-.usub .qtag{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:var(--grid);color:var(--ink-soft);font-weight:900}
+.qtag{display:inline-block;font-size:var(--t-xs);padding:0 6px;border-radius:999px;background:var(--grid);color:var(--ink-soft);font-weight:900}
 th.unit.qclosed .uh{opacity:.7}
 body.showMode #top,body.showMode #app,body.showMode #empty,body.showMode #toast{display:none!important}
 #show{position:fixed;inset:0;z-index:60;background:var(--cream,#F6F5F0);overflow:auto;padding:24px clamp(16px,4vw,56px) 60px;color:var(--navy)}

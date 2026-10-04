@@ -30,6 +30,8 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
     // class grid rows between the sticky header and footer
     await p.click('[data-k="period-1"]'); await p.waitForTimeout(400);
     const g=await rows(p,'table.grid tbody tr'); check(g>=minGrid,label+': grid shows ≥ '+minGrid+' complete student rows ('+g+')');
+    const heads=await p.evaluate(()=>({ tops:[...new Set([...document.querySelectorAll('th.unit .ulink .t')].map(t=>Math.round(t.getBoundingClientRect().top)))].length, cut:[...document.querySelectorAll('th.unit .ulink .s')].filter(e=>e.scrollHeight>e.clientHeight+1).length, h:Math.round(document.querySelector('table.grid thead').getBoundingClientRect().height) }));
+    check(heads.tops===1 && heads.cut===0,label+': every unit title sits on one line of the header and no subtitle is cut mid-line (header '+heads.h+' px)');
     // sticky header + name column
     const sticky=await p.evaluate(()=>{ const th=document.querySelector('table.grid thead th'); const cs=getComputedStyle(th); const name=document.querySelector('table.grid tbody th, table.grid tbody td.name, table.grid tbody tr > :first-child'); const ns=getComputedStyle(name); return { head:cs.position, name:ns.position }; });
     check(sticky.head==='sticky' && sticky.name==='sticky',label+': table header and name column are sticky');
@@ -38,6 +40,8 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
     // unit view rows
     await p.click('th.unit .ulink'); await p.waitForTimeout(400);
     const u=await rows(p,'table.grid tbody tr'); check(u>=minUnit,label+': unit view shows ≥ '+minUnit+' complete rows ('+u+')');
+    const sk=await p.evaluate(()=>{ const r=[...document.querySelectorAll('th.skill .rot')]; return { n:r.length, cut:r.filter(e=>e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+1).length, legendInBar:!!document.querySelector('#bar .legend') }; });
+    check(sk.n>0 && sk.cut===0 && !sk.legendInBar,label+': no skill name is cut ('+sk.n+' skills) and the legend is in the table corner, not the bar');
     // focus ring on header pills ≥ 3:1 against the header
     const ring=await p.evaluate(()=>{ const b=document.querySelector('#top .pill'); b.focus(); const cs=getComputedStyle(b); return { oc:cs.outlineColor, bg:getComputedStyle(document.querySelector('#top')).backgroundColor, img:getComputedStyle(document.querySelector('#top')).backgroundImage }; });
     // header is a navy gradient; measure the ring against #16213A
@@ -47,7 +51,7 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
     await p.click('#back'); await p.waitForTimeout(300);
     return p;
   };
-  const pl=await measure(1400,900,'laptop',11,7);
+  const pl=await measure(1400,900,'laptop',13,11);
   // 2. F chip is coral on the student page; Copy in the unit view is not white on white
   await pl.click('#btnHome'); await pl.waitForTimeout(300); await pl.fill('#search','a'); await pl.waitForTimeout(300);
   const fRow=await pl.evaluate(()=>{ const rows=[...document.querySelectorAll('.sdir tr[data-stu], .sdir [data-open], .sdir tr')]; const f=rows.find(r=>/\bF\b/.test(r.textContent)); return f? (f.dataset.stu||f.textContent.trim().slice(0,40)) : null; });
@@ -63,8 +67,8 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   await pl.focus('#lbExit'); await pl.keyboard.down('Enter'); await pl.waitForTimeout(1700); await pl.keyboard.up('Enter'); await pl.waitForTimeout(400);
   check(await pl.locator('body.lbMode').count()===0,'holding Enter on "Hold to exit" leaves the Race');
   await pl.context().close();
-  const pc=await measure(1366,768,'chromebox',8,5); await pc.context().close();
-  const pt=await measure(1280,800,'tablet',7,4,{hasTouch:true,isMobile:true});   // unit view: 4 until the skill header is redesigned (Build 2) await pt.context().close();
+  const pc=await measure(1366,768,'chromebox',10,8); await pc.context().close();
+  const pt=await measure(1280,800,'tablet',8,7,{hasTouch:true,isMobile:true}); await pt.context().close();
   // 4. 200 % zoom (half-size viewport): every bar control reachable, some rows visible after scrolling the page
   const { ctx: cz, p: pz } = await open(700,450); await pz.evaluate(([k,v])=>localStorage.setItem(k,v),[lsKey,saved]); await pz.reload(); await pz.waitForTimeout(700);
   await pz.click('[data-k="period-1"]'); await pz.waitForTimeout(400);

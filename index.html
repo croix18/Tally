@@ -179,15 +179,16 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 #bar.detail{background:var(--white);color:var(--navy)}
 #bar h2{font-weight:900;letter-spacing:0;font-size:20px;text-transform:none}
 #bar .crumb{display:inline-flex;align-items:center;gap:10px}
-#bar .crumb button{background:none;border:none;color:inherit;font-weight:900;letter-spacing:.06em;text-transform:uppercase;font-size:var(--t-l);padding:8px 4px;opacity:.92;text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:4px;text-decoration-color:var(--turq)}
+#bar .crumb button{background:none;border:none;color:var(--teal);font-weight:700;font-size:var(--t-m);padding:8px 6px 8px 2px;border-radius:8px}#bar .crumb button:hover{background:var(--paleturq)}   /* the way back is a quiet link; the page's title is the heading beside it */
 #bar .meta{font-weight:700;font-size:var(--t-m);opacity:.92}
 #bar .meta b{font-weight:900}
 #bar .spacer{flex:1}
 .legend{display:flex;gap:12px;align-items:center;font-size:var(--t-s);font-weight:700;flex-wrap:wrap}
 .legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px;border:2px solid transparent}
 .legend .lp{background:var(--turq);border-color:var(--white)} .legend .ll{background:var(--sand);border-color:var(--white)} .legend .ln{background:var(--white);border-color:var(--grid)} .legend .lx{background:repeating-linear-gradient(45deg,var(--grid),var(--grid) 3px,var(--white) 3px,var(--white) 6px);border-color:var(--grid)}
-#bar .pill.onbar{background:var(--navy);color:var(--white)}
-#bar.detail .pill.onbar{background:var(--navy);color:var(--white)}
+#bar .pill.onbar,#bar.detail .pill.onbar{background:var(--turq);color:var(--navy);font-weight:800}   /* Copy is why the unit view exists: the one filled control on its bar */
+#bar .pill.onbar:hover{background:#25bfae}
+#bar .pill.toggle.soft[aria-pressed="true"]{background:var(--paleturq);color:var(--teal);border-color:transparent}
 #bar .pill.toggle{background:var(--white);color:var(--navy);border:2px solid var(--navy);padding:3px 14px;min-height:32px;font-size:var(--t-s)}
 #bar .pill.toggle[aria-pressed="true"]{background:var(--navy);color:var(--white)}
 
@@ -224,8 +225,8 @@ th.unit .copy{background:var(--paleturq);border:2px solid var(--turq);border-rad
 th.unit .copy:hover{background:var(--turq)}
 th.unit .copy:disabled{opacity:.4;cursor:default}
 th.unit .copy svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-th.unit.quiet .ulink .t,th.unit.quiet .ulink .s,th.unit.quiet .usub,td.pts.quiet .v,td.pts.quiet{color:var(--ink-soft)}th.unit.quiet .ulink .t{text-decoration-color:var(--grid)}td.pts.quiet .v{font-weight:500}   /* no opacity: a translucent sticky header lets the rows beneath show through */
-th.unit.upcoming .usub{color:var(--ink-soft)}th.unit.upcoming .ulink .t{color:var(--ink-soft)}th.unit.current .ulink .t{text-decoration-color:var(--turq);text-decoration-thickness:4px}th.unit.current{background:var(--paleturq)}
+th.unit.quiet .ulink .t,th.unit.quiet .ulink .s,th.unit.quiet .usub,td.pts.quiet .v,td.pts.quiet{color:var(--ink-soft)}td.pts.quiet .v{font-weight:500}   /* no opacity: a translucent sticky header lets the rows beneath show through */
+th.unit.upcoming .usub{color:var(--ink-soft)}th.unit.upcoming .ulink .t{color:var(--ink-soft)}th.unit.current{background:var(--paleturq)}
 .curUnit{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:var(--t-s);color:var(--ink-soft)}.curUnit select{border:1px solid var(--grid);border-radius:999px;padding:4px 10px;background:var(--white);color:var(--navy);font:inherit;font-weight:700}
 td.pts{text-align:center;padding:0 8px;cursor:pointer}
 td.pts .v{font-weight:900;font-size:var(--t-l);line-height:1}
@@ -334,14 +335,27 @@ body.dragging::after{content:'Drop IXL exports anywhere';position:fixed;inset:0;
 #modal footer .spacer{flex:1}
 @media (max-width:820px){#modal .body{grid-template-columns:1fr}}
 
-/* ---- compact headers, no bars, readable skill names ---- */
-th.unit{min-width:118px;padding:6px 6px}
-th.unit .ulink{min-height:40px;padding:4px 8px;gap:2px}
-th.unit .ulink .s{max-width:110px;font-size:var(--t-xs)}
+/* ---- unit column headers: top-aligned fixed slots (title · subtitle · status · Copy), so the row reads as one line ---- */
+table.grid thead th.unit{vertical-align:top}
+th.unit{min-width:118px;max-width:150px;padding:4px 6px 8px}
+th.unit .uh{gap:3px}
+th.unit .ulink{min-height:0;width:100%;padding:5px 6px 3px;gap:1px}
+th.unit .ulink .t{text-decoration:none;font-size:var(--t-xl);line-height:1.2}
+th.unit .ulink .t::after{content:"›";margin-left:5px;color:var(--teal);font-weight:700}
+th.unit .ulink .s{display:block;max-width:112px;max-height:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;font-size:var(--t-xs);font-weight:600}
+th.unit .ustat{min-height:22px;display:flex;align-items:center;justify-content:center}
+th.unit .ustat .fcheck{margin-top:0}
+th.unit .utag{font-size:var(--t-xs);font-weight:700;color:var(--ink-soft)}th.unit .utag.now{color:var(--teal)}
+th.unit .uact{min-height:32px;display:flex;align-items:center}
 th.unit .copy{min-height:32px;padding:5px 12px;font-size:var(--t-s)}
+th.unit.upcoming .ulink .t::after,th.unit.quiet .ulink .t::after{color:var(--ink-soft)}
+th.unit.current .ulink .t{box-shadow:inset 0 -3px 0 var(--turq)}
 td.pts .v{font-size:var(--t-l)}
-th.skill{min-width:48px;width:48px;height:196px}
-th.skill .rot{white-space:normal;width:32px;max-height:176px;line-height:1.15;font-size:var(--t-s);overflow:hidden}
+/* skill names: up to four short lines of vertical text instead of two long ones — the same words in two-thirds of the height */
+th.skill{min-width:var(--skw,56px);width:var(--skw,56px);height:auto}td.sc{width:var(--skw,56px);min-width:var(--skw,56px)}
+th.skill button{padding:6px 0 4px}
+th.skill .rot{white-space:normal;width:auto;max-width:calc(var(--skw,56px) - 4px);max-height:var(--skh,120px);line-height:1.08;font-size:12px;overflow:hidden;text-align:left}
+.ukey{display:grid;grid-template-columns:auto auto;gap:4px 12px;justify-content:start;text-transform:none;letter-spacing:0;font-weight:700;font-size:var(--t-xs);color:var(--navy);margin-bottom:10px;white-space:normal}.ukey i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px;border:1px solid var(--grid)}.ukey .lp{background:var(--turq)}.ukey .ll{background:var(--sand)}.ukey .ln{background:var(--white)}.ukey .lx{background:repeating-linear-gradient(45deg,var(--grid),var(--grid) 3px,var(--white) 3px,var(--white) 6px)}.ukey small{grid-column:1 / -1;font-size:var(--t-xs);font-weight:500;color:var(--ink-soft);line-height:1.3}
 .nmbtn{background:none;border:none;padding:0;text-decoration:underline dotted var(--teal);text-underline-offset:3px;cursor:pointer;text-align:left}
 .rpanel{display:grid;grid-template-columns:1.2fr 1fr;gap:26px;padding:26px 28px;min-height:100%}
 .rpanel h3{font-weight:900;font-size:var(--t-xl);margin-bottom:6px}
@@ -2859,7 +2873,7 @@ details.qbook>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap
 .qmore{border-top:1px solid var(--grid);margin-top:10px}.qmore summary{cursor:pointer;padding:12px 0;min-height:44px;box-sizing:border-box;display:flex;gap:10px;align-items:center;justify-content:space-between;list-style:none;font-weight:700}.qmore summary::-webkit-details-marker{display:none}.qmore summary u{color:var(--teal);font-weight:800;white-space:nowrap}.qmore summary b{font-weight:900}.qmore[open] summary u{visibility:hidden}.qmore#qDates summary{color:var(--teal);justify-content:flex-start}.qmore .field>label{color:var(--ink-soft)}.qmore+.rp-actions{margin-top:14px}
 .qunits{display:flex;flex-wrap:wrap;gap:6px 14px;padding:6px 0}.qunits label{display:flex;gap:6px;align-items:center;font-size:var(--t-s)}.qunits label.dim{color:var(--ink-soft)}.qunits small{color:var(--teal)}
 .linkbtn{background:none;border:none;padding:0;color:var(--teal);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
-.usub .qtag{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:var(--grid);color:var(--ink-soft);font-weight:900}
+.qtag{display:inline-block;font-size:var(--t-xs);padding:0 6px;border-radius:999px;background:var(--grid);color:var(--ink-soft);font-weight:900}
 th.unit.qclosed .uh{opacity:.7}
 body.showMode #top,body.showMode #app,body.showMode #empty,body.showMode #toast{display:none!important}
 #show{position:fixed;inset:0;z-index:60;background:var(--cream,#F6F5F0);overflow:auto;padding:24px clamp(16px,4vw,56px) 60px;color:var(--navy)}
@@ -3992,11 +4006,10 @@ function renderBar() {
     const ex = u.idx.length - u.active.length;
     html = `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
       <div class="spacer"></div>
-      <button class="pill toggle" id="hideUnit" aria-pressed="${u.assigned}">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
+      <button class="pill toggle soft" id="hideUnit" aria-pressed="${u.assigned}" title="Whether this unit counts for the course — tap to change">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
       ${s.receipts[u.name] ? `<button class="pill toggle" id="rcUnit" title="What was copied to Focus, and when">Copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}
       <button class="pill toggle" id="csvUnit" title="Download this unit as a CSV keyed by student ID">CSV</button>
-      <button class="pill onbar" id="copyUnit"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
-      <div class="legend"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped — tap a skill for the whole course, a cell for one student</span></div>`;
+      <button class="pill onbar" id="copyUnit"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>`;
   }
   $('#bar').innerHTML = html; $('#bar').classList.toggle('detail', view.mode !== 'units');
   const nt = $('#nToggle'); if (nt) nt.onclick = () => { noticesOpen = !noticesOpen; render(); };
@@ -4043,6 +4056,13 @@ function renderRosterPanel(s) {
   $('#rpSave').onclick = () => { const txt = ta.value; if (!parseRosterText(txt).length) { toast("Couldn't read any names in that paste.", true); return; } s.roster = txt; s.rosterAt = new Date().toISOString(); s.skipRoster = false; if (s.pool) materialize(s); save(); render(); toast('Roster saved', false); };
   $('#rpSkip').onclick = () => { s.skipRoster = true; save(); render(); };
 }
+// The unit view's skill names are vertical text wrapped onto a few lines. The header is only as tall as this unit's longest
+// name needs (a unit of short names gets a short header) and no name is ever cut: grow the line length until all fit.
+function fitSkillHeads(wrap) {
+  const tbl = wrap.querySelector('table.grid'); const rots = [...wrap.querySelectorAll('th.skill .rot')]; if (!tbl || !rots.length) return;
+  let hgt = 84; tbl.style.setProperty('--skh', hgt + 'px');
+  while (hgt < 220 && rots.some(e => e.scrollWidth > e.clientWidth + 1)) { hgt += 12; tbl.style.setProperty('--skh', hgt + 'px'); }
+}
 function renderGrid() {
   const s = state.sections[state.active]; const units = unitsOf(s); const allRows = buildRows(s); const t = s.threshold;
   const rs = rosterState(s);
@@ -4064,7 +4084,14 @@ function renderGrid() {
     const shownUnits = onlyCur ? units.filter(u => u.current) : units.filter(u => !u.hidden || state.settings.showAllUnits);
     const checks = reconcile(s);
     let h = `<table class="grid"><thead><tr><th class="idx" scope="col">#</th><th class="stu" scope="col">Student</th>`;
-    shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="usub">${uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span> ` : ''}${u.upcoming ? 'upcoming · ' : u.current ? 'now · ' : ''}out of ${u.total}<span class="det">${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span></span>${s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}${(() => { const rc = checks.find(x => x.unit.name === u.name); if (!rc) return ''; const bad = rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1); return `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ✓ · ${rc.counts.accepted} kept` : 'Focus ✓'}</button>`; })()}<button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></th>`; });
+    // One slot per line so every title in the header row sits on the same baseline: title, one-line subtitle, one status
+    // (the Focus badge, else when it was copied, else a closed-quarter / now / upcoming tag), then Copy for assigned units.
+    shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; const rc = checks.find(x => x.unit.name === u.name); const bad = rc ? rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1) : 0;
+      const stat = rc ? `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ✓ · ${rc.counts.accepted} kept` : 'Focus ✓'}</button>`
+        : uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span>`
+        : s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>`
+        : u.upcoming ? '<span class="utag">upcoming</span>' : u.current ? '<span class="utag now">now</span>' : '';
+      h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}${u.title ? ' — ' + esc(u.title) : ''}, out of ${u.total}" title="${esc(u.title)} · out of ${u.total}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="ustat">${stat}</span><span class="usub det">out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}${rc && s.receipts[u.name] ? ` · <button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}</span><span class="uact"><button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></span></div></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${shownUnits.length + 1}">No students match “${esc(search)}”.</td></tr>`;
     rows.forEach(r => {
@@ -4089,8 +4116,9 @@ function renderGrid() {
     const u = units.find(u => u.name === view.unit); if (!u) { view = { mode: 'units', unit: null }; return renderGrid(); }
     const lessons = []; u.idx.forEach(k => { const L = s.skills[k].lesson; const last = lessons[lessons.length - 1]; if (last && last.name === L) last.n++; else lessons.push({ name: L, n: 1 }); });
     let h = `<table class="grid"><thead><tr class="lessons"><th class="idx"></th><th class="stu"></th><th class="ptsd"></th>`;
-    lessons.forEach(L => { const m = L.name.match(/^Lesson\s+([\d.]+)/i); h += `<th class="lname" colspan="${L.n}" scope="colgroup" title="${esc(L.name)}">${esc(m ? m[1] + ' ' + L.name.slice(m[0].length).replace(/^[:\s]+/, '') : L.name)}</th>`; });
-    h += `</tr><tr class="skills"><th class="idx" scope="col">#</th><th class="stu" scope="col">Student</th><th class="ptsd" scope="col">Points<br><span class="usub">of ${u.total}</span></th>`;
+    lessons.forEach(L => { const m = L.name.match(/^Lesson\s+([\d.]+)/i); const rest = m ? L.name.slice(m[0].length).replace(/^[:\s]+/, '') : L.name;   // a lesson over one or two skills has room for its number, not for "1.2 CONVE…"
+      h += `<th class="lname" colspan="${L.n}" scope="colgroup" title="${esc(L.name)}">${esc(m ? (L.n >= 3 ? m[1] + ' ' + rest : m[1]) : L.name)}</th>`; });
+    h += `</tr><tr class="skills"><th class="idx" scope="col">#</th><th class="stu" scope="col"><div class="ukey" aria-hidden="true"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped</span><small>Tap a skill to skip it for the course, a cell to skip it for one student.</small></div>Student</th><th class="ptsd" scope="col">Points<br><span class="usub">of ${u.total}</span></th>`;
     u.idx.forEach(k => { const sk = s.skills[k]; const off = !!s.excluded[skillKey(sk)]; h += `<th class="skill ${off ? 'off' : ''}" scope="col"><button data-x="${k}" aria-pressed="${off}" aria-label="${esc(sk.name)}${off ? ' (excluded)' : ''}"><span class="rot">${esc(sk.name)}</span><span class="sid">${esc(sk.id)}</span></button></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${u.idx.length + 2}">No students match “${esc(search)}”.</td></tr>`;
@@ -4106,6 +4134,7 @@ function renderGrid() {
     u.idx.forEach(k => { let n = 0, p = 0; allRows.forEach(r => { if (r.ixl != null) { n++; const v = eff(s, k, r.ixl); if (v != null && v >= t) p++; } }); h += `<td>${n ? Math.round(p / n * 100) + '%' : '—'}</td>`; });
     h += `</tr></tfoot></table>`;
     wrap.innerHTML = h;
+    fitSkillHeads(wrap);
     wrap.querySelectorAll('[data-x]').forEach(el => el.onclick = () => {
       const sk = s.skills[+el.dataset.x]; const key = skillKey(sk);
       if (s.excluded[key]) delete s.excluded[key]; else s.excluded[key] = true;

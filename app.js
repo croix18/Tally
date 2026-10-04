@@ -1131,11 +1131,10 @@ function renderBar() {
     const ex = u.idx.length - u.active.length;
     html = `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
       <div class="spacer"></div>
-      <button class="pill toggle" id="hideUnit" aria-pressed="${u.assigned}">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
+      <button class="pill toggle soft" id="hideUnit" aria-pressed="${u.assigned}" title="Whether this unit counts for the course — tap to change">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
       ${s.receipts[u.name] ? `<button class="pill toggle" id="rcUnit" title="What was copied to Focus, and when">Copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}
       <button class="pill toggle" id="csvUnit" title="Download this unit as a CSV keyed by student ID">CSV</button>
-      <button class="pill onbar" id="copyUnit"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
-      <div class="legend"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped — tap a skill for the whole course, a cell for one student</span></div>`;
+      <button class="pill onbar" id="copyUnit"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>`;
   }
   $('#bar').innerHTML = html; $('#bar').classList.toggle('detail', view.mode !== 'units');
   const nt = $('#nToggle'); if (nt) nt.onclick = () => { noticesOpen = !noticesOpen; render(); };
@@ -1182,6 +1181,13 @@ function renderRosterPanel(s) {
   $('#rpSave').onclick = () => { const txt = ta.value; if (!parseRosterText(txt).length) { toast("Couldn't read any names in that paste.", true); return; } s.roster = txt; s.rosterAt = new Date().toISOString(); s.skipRoster = false; if (s.pool) materialize(s); save(); render(); toast('Roster saved', false); };
   $('#rpSkip').onclick = () => { s.skipRoster = true; save(); render(); };
 }
+// The unit view's skill names are vertical text wrapped onto a few lines. The header is only as tall as this unit's longest
+// name needs (a unit of short names gets a short header) and no name is ever cut: grow the line length until all fit.
+function fitSkillHeads(wrap) {
+  const tbl = wrap.querySelector('table.grid'); const rots = [...wrap.querySelectorAll('th.skill .rot')]; if (!tbl || !rots.length) return;
+  let hgt = 84; tbl.style.setProperty('--skh', hgt + 'px');
+  while (hgt < 220 && rots.some(e => e.scrollWidth > e.clientWidth + 1)) { hgt += 12; tbl.style.setProperty('--skh', hgt + 'px'); }
+}
 function renderGrid() {
   const s = state.sections[state.active]; const units = unitsOf(s); const allRows = buildRows(s); const t = s.threshold;
   const rs = rosterState(s);
@@ -1203,7 +1209,14 @@ function renderGrid() {
     const shownUnits = onlyCur ? units.filter(u => u.current) : units.filter(u => !u.hidden || state.settings.showAllUnits);
     const checks = reconcile(s);
     let h = `<table class="grid"><thead><tr><th class="idx" scope="col">#</th><th class="stu" scope="col">Student</th>`;
-    shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="usub">${uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span> ` : ''}${u.upcoming ? 'upcoming · ' : u.current ? 'now · ' : ''}out of ${u.total}<span class="det">${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span></span>${s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}${(() => { const rc = checks.find(x => x.unit.name === u.name); if (!rc) return ''; const bad = rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1); return `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ✓ · ${rc.counts.accepted} kept` : 'Focus ✓'}</button>`; })()}<button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div></th>`; });
+    // One slot per line so every title in the header row sits on the same baseline: title, one-line subtitle, one status
+    // (the Focus badge, else when it was copied, else a closed-quarter / now / upcoming tag), then Copy for assigned units.
+    shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; const rc = checks.find(x => x.unit.name === u.name); const bad = rc ? rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1) : 0;
+      const stat = rc ? `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ✓ · ${rc.counts.accepted} kept` : 'Focus ✓'}</button>`
+        : uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span>`
+        : s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>`
+        : u.upcoming ? '<span class="utag">upcoming</span>' : u.current ? '<span class="utag now">now</span>' : '';
+      h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}${u.title ? ' — ' + esc(u.title) : ''}, out of ${u.total}" title="${esc(u.title)} · out of ${u.total}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="ustat">${stat}</span><span class="usub det">out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}${rc && s.receipts[u.name] ? ` · <button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}</span><span class="uact"><button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></span></div></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${shownUnits.length + 1}">No students match “${esc(search)}”.</td></tr>`;
     rows.forEach(r => {
@@ -1228,8 +1241,9 @@ function renderGrid() {
     const u = units.find(u => u.name === view.unit); if (!u) { view = { mode: 'units', unit: null }; return renderGrid(); }
     const lessons = []; u.idx.forEach(k => { const L = s.skills[k].lesson; const last = lessons[lessons.length - 1]; if (last && last.name === L) last.n++; else lessons.push({ name: L, n: 1 }); });
     let h = `<table class="grid"><thead><tr class="lessons"><th class="idx"></th><th class="stu"></th><th class="ptsd"></th>`;
-    lessons.forEach(L => { const m = L.name.match(/^Lesson\s+([\d.]+)/i); h += `<th class="lname" colspan="${L.n}" scope="colgroup" title="${esc(L.name)}">${esc(m ? m[1] + ' ' + L.name.slice(m[0].length).replace(/^[:\s]+/, '') : L.name)}</th>`; });
-    h += `</tr><tr class="skills"><th class="idx" scope="col">#</th><th class="stu" scope="col">Student</th><th class="ptsd" scope="col">Points<br><span class="usub">of ${u.total}</span></th>`;
+    lessons.forEach(L => { const m = L.name.match(/^Lesson\s+([\d.]+)/i); const rest = m ? L.name.slice(m[0].length).replace(/^[:\s]+/, '') : L.name;   // a lesson over one or two skills has room for its number, not for "1.2 CONVE…"
+      h += `<th class="lname" colspan="${L.n}" scope="colgroup" title="${esc(L.name)}">${esc(m ? (L.n >= 3 ? m[1] + ' ' + rest : m[1]) : L.name)}</th>`; });
+    h += `</tr><tr class="skills"><th class="idx" scope="col">#</th><th class="stu" scope="col"><div class="ukey" aria-hidden="true"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped</span><small>Tap a skill to skip it for the course, a cell to skip it for one student.</small></div>Student</th><th class="ptsd" scope="col">Points<br><span class="usub">of ${u.total}</span></th>`;
     u.idx.forEach(k => { const sk = s.skills[k]; const off = !!s.excluded[skillKey(sk)]; h += `<th class="skill ${off ? 'off' : ''}" scope="col"><button data-x="${k}" aria-pressed="${off}" aria-label="${esc(sk.name)}${off ? ' (excluded)' : ''}"><span class="rot">${esc(sk.name)}</span><span class="sid">${esc(sk.id)}</span></button></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${u.idx.length + 2}">No students match “${esc(search)}”.</td></tr>`;
@@ -1245,6 +1259,7 @@ function renderGrid() {
     u.idx.forEach(k => { let n = 0, p = 0; allRows.forEach(r => { if (r.ixl != null) { n++; const v = eff(s, k, r.ixl); if (v != null && v >= t) p++; } }); h += `<td>${n ? Math.round(p / n * 100) + '%' : '—'}</td>`; });
     h += `</tr></tfoot></table>`;
     wrap.innerHTML = h;
+    fitSkillHeads(wrap);
     wrap.querySelectorAll('[data-x]').forEach(el => el.onclick = () => {
       const sk = s.skills[+el.dataset.x]; const key = skillKey(sk);
       if (s.excluded[key]) delete s.excluded[key]; else s.excluded[key] = true;
