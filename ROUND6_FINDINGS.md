@@ -102,3 +102,14 @@ evidence, what it withdrew, and what all four would sign.
   now says "hasn't ended yet" before the end date instead of "exported before it ended"; the landing after a course-only
   drop says what landed and asks for the gradebooks instead of "Drop your IXL Score Grid here" again.
 - Next: Build 2, starting with the quarter-close alert list and cards (before 9 Oct), then clearable alerts.
+
+## Handoff for the next session (any model)
+
+1. `git clone https://github.com/croix18/Tally.git` into `/home/claude/Tally`, `npm install`, read `NOTES.md` then this file.
+2. Croix pastes a GitHub token; store it as described in `GITHUB_FROM_A_CLAUDE_SESSION.md` (never in a URL, commit or
+   message) and push with the `extraheader` recipe there. Commit as Croix with the two trailers NOTES.md shows.
+3. Work order: Build 2 rows above, one commit each, `npm test` green (20 suites; `tests/contract.js` is the visual net),
+   `python3 build.py` before every commit (`grep -c window.__tally Tally.html` → 0), push, verify `ls-remote` equals
+   `git rev-parse HEAD`, update this build log, deliver `Tally.html` into the chat.
+4. Don't change anything under "Croix's calls" without asking him. Test with the scrubbed fixtures only; he can't upload
+   real student data.
