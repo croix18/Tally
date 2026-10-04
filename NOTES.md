@@ -97,6 +97,29 @@ per-section-file era and many items in them are now done).
   reminder, copy format, backup, own data, share, storage, clear). Same ids, same Save. `tests/settings.js`.
 - **The Guide is two printed pages** (4 Oct): the routine, then "Words on the screen" in two balanced columns. It was
   three because a two-column grid does not balance. `tests/reminders-lab-guide.js` counts the pages.
+- **One scale for corners, control heights and weights** (4 Oct). `<style id="tallyTokens">` in `app.html` is the only
+  place a radius (`--r-xs` 4 · `--r-s` 8 · `--r-m` 12 · `--r` 16 cards · `--r-l` 20 dialogs · `--r-pill`), a control
+  height (`--h-s` 32 · `--h-m` 38 · `--h-touch` 44 · `--h-l` 48) or a weight (`--w-reg` 500 … `--w-black` 900) is a
+  number. The app's CSS — every other `<style>` in `app.html` plus `LB_CSS`, `LAB_ONLY_CSS`, `CHART_CSS`, `STU_CSS` —
+  uses the tokens (17 radii became 6, 8 heights became 4); `tests/style-contract.js` fails on a bare number. A page
+  saved out of Tally (Race, Data Lab) embeds the same block through `tokensCss()`, so it no longer keeps a second
+  copy of the theme. Printed pages (reports, still-owed, guide, seating) are plain black-and-white documents and keep
+  literal styles. Not done, on purpose: weights were named, not reduced (900 is still used 82 times — that is a
+  design decision for Croix, now a one-line change), and the button / card / table families were not merged into
+  single components. 36 declarations that could never win (an older value left under a newer rule with the same
+  selector) and three rules for classes that no longer exist were removed.
+- **How a refactor like that is checked** (scratch tools, not in the repo, described here so they can be rebuilt):
+  open the saved five-class state at 1536×864, 1280×720, 1366×768, a touch tablet and the touch panel; visit twenty
+  screens; save a screenshot and, for every button / select / tab / cell / card, the style it computes to. Compare
+  two builds pixel by pixel and style by style. The exact-token pass and the dead-declaration pass were both 0
+  pixels and 0 styles different over 143 screenshots; snapping near-misses onto the scale moved things by ≤ 2 px.
+- **`body.home` / `body.grades` collided with `.home` / `.grades`** (found 4 Oct by that comparison): the page body
+  wears those classes as mode flags, and the containers' rules (`padding:4px 0 40px; gap:16px`) were styling the
+  body too — the Overview, Grades and Students sat 20 px lower than a class page and wasted 40 px at the bottom. The
+  rules are `div.home` / `div.grades` now.
+- **Short windows** (`@media (max-height:800px)`): tighter margins around the header, tabs and board. A 1080p Windows
+  laptop at 150 % scale is 1280×720 CSS px: 10 student rows (was 9), and the Overview's class cards are whole on the
+  first screen. `tests/contract.js` now measures 1536×864 (125 %) and 1280×720 (150 %) with row floors.
 - **Menus** (`wireMenu(button, menu, place)`): one open at a time (`closeOpenMenu`), closed by any `render()` so a
   key listener or overlay never outlives its screen; `role="menu"`, arrows / Home / End / Escape; a floating menu
   (`place`) closes on resize or page scroll; `keepInside()` keeps the header's menu in the window when the header
@@ -227,9 +250,8 @@ primary once the end date has passed). Tick the IXL units that were that quarter
   student's modified assignment list once for every unit (per-student skips are per cell today).
 - Known rough edges: a student in two classes of the same course can't be — pools carve each name into one
   class; the IXL-only "not on roster" flag for a pool class means the name matched no roster line anywhere;
-  the calm grid is still a dense table (Just Unit N is the relief); category asker fires for every new
+  category asker fires for every new
   assignment when a gradebook has no Grade column.
-- `tests/seating.js` "why-here explains the pairing" is occasionally flaky (the first desk's student may have no partner line, depending on the solver run); it passes on rerun.
 - `Scrub.html` still exposes `window.__scrub` (test-only data, left on purpose).
 
 ## Working on the code

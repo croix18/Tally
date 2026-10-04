@@ -571,36 +571,36 @@ const LB_CSS = `
 .lbLeagues:not(.two){--bu:calc(var(--bu0)*1.3)}   /* one league has the whole width: its cards are a third larger */
 .lbWrap{min-height:100%;display:flex;flex-direction:column;gap:calc(var(--bu)*.85);padding:calc(var(--bu)*1.1) calc(var(--bu)*1.6) 96px;max-width:min(96vw,2600px);margin:0 auto;width:100%}
 .lbHead{display:flex;align-items:baseline;gap:calc(var(--bu)*1);flex-wrap:wrap}
-.lbTitle{font-weight:900;font-size:calc(var(--bu)*3.2);letter-spacing:.02em;color:var(--navy);line-height:1}
-.lbSub{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.3)}
+.lbTitle{font-weight:var(--w-black);font-size:calc(var(--bu)*3.2);letter-spacing:.02em;color:var(--navy);line-height:1}
+.lbSub{font-weight:var(--w-bold);color:var(--teal);font-size:calc(var(--bu)*1.3)}
 .lbLeagues{flex:1;display:flex;flex-direction:column;gap:calc(var(--bu)*1)}
 .lbLeagues.two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--bu)*1.2);align-items:stretch}
 .lbLeague{display:flex;flex-direction:column;gap:calc(var(--bu)*.65);min-height:0;flex:1}
 .lbLeagueHead{display:flex;align-items:center;gap:calc(var(--bu)*.7);flex-wrap:wrap}
-.lbLeagueName{font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--white);background:var(--teal);border-radius:999px;padding:.3em .9em;font-size:calc(var(--bu)*1.3)}
-.lbBasis{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.3)}
+.lbLeagueName{font-weight:var(--w-black);letter-spacing:.1em;text-transform:uppercase;color:var(--white);background:var(--teal);border-radius:var(--r-pill);padding:.3em .9em;font-size:calc(var(--bu)*1.3)}
+.lbBasis{font-weight:var(--w-bold);color:var(--teal);font-size:calc(var(--bu)*1.3)}
 /* every league uses the same rows, so cards line up across leagues and fill the height (up to a sensible card) */
 .lbList{flex:1;display:grid;grid-template-rows:repeat(var(--rows,1),minmax(min-content,1fr));gap:calc(var(--bu)*.75);max-height:calc(var(--rows,1)*var(--bu)*13.5)}
 .lbCard{display:grid;grid-template-columns:calc(var(--bu)*3.4) 1fr auto;gap:calc(var(--bu)*1);align-items:center;background:var(--white);border-radius:calc(var(--bu)*1.1);box-shadow:var(--shadow-2);padding:calc(var(--bu)*.8) calc(var(--bu)*1.4) calc(var(--bu)*.8) calc(var(--bu)*.8);min-width:0}
 .lbCard.r1{box-shadow:0 0 0 3px var(--turq),var(--shadow-2)}   /* place is the numeral and the ring, not a tint on second */
-.lbRank{font-weight:900;font-size:calc(var(--bu)*2.8);text-align:center;color:var(--navy)}
+.lbRank{font-weight:var(--w-black);font-size:calc(var(--bu)*2.8);text-align:center;color:var(--navy)}
 .lbMain{min-width:0}
-.lbName{font-weight:900;font-size:calc(var(--bu)*2.3);line-height:1.1;color:var(--navy);margin-bottom:.3em;overflow-wrap:anywhere}
+.lbName{font-weight:var(--w-black);font-size:calc(var(--bu)*2.3);line-height:1.1;color:var(--navy);margin-bottom:.3em;overflow-wrap:anywhere}
 .lbBarRow{display:flex;align-items:center;gap:calc(var(--bu)*.8)}
-.lbBarWrap{flex:1;height:calc(var(--bu)*.85);border-radius:999px;background:rgba(22,33,58,.12);overflow:hidden}
-.lbBar{height:100%;width:0;border-radius:999px;background:var(--navy);animation:lbGrow 1.2s cubic-bezier(.2,.8,.2,1) forwards}
-.lbDone{font-weight:800;font-size:calc(var(--bu)*1.35);color:var(--navy);white-space:nowrap}
-.lbLine{font-weight:700;font-size:calc(var(--bu)*1.35);color:var(--ink-soft);margin-top:.3em}.lbLine.gain{color:var(--teal)}
-.lbPct{font-weight:900;font-size:calc(var(--bu)*5);line-height:1;color:var(--navy);text-align:right;padding-left:calc(var(--bu)*1.4);border-left:1px solid var(--grid);align-self:stretch;display:flex;flex-direction:column;justify-content:center}
-.lbPct small{display:block;font-size:calc(var(--bu)*1.3);font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);text-align:right;margin-top:.15em}
+.lbBarWrap{flex:1;height:calc(var(--bu)*.85);border-radius:var(--r-pill);background:rgba(22,33,58,.12);overflow:hidden}
+.lbBar{height:100%;width:0;border-radius:var(--r-pill);background:var(--navy);animation:lbGrow 1.2s cubic-bezier(.2,.8,.2,1) forwards}
+.lbDone{font-weight:var(--w-heavy);font-size:calc(var(--bu)*1.35);color:var(--navy);white-space:nowrap}
+.lbLine{font-weight:var(--w-bold);font-size:calc(var(--bu)*1.35);color:var(--ink-soft);margin-top:.3em}.lbLine.gain{color:var(--teal)}
+.lbPct{font-weight:var(--w-black);font-size:calc(var(--bu)*5);line-height:1;color:var(--navy);text-align:right;padding-left:calc(var(--bu)*1.4);border-left:1px solid var(--grid);align-self:stretch;display:flex;flex-direction:column;justify-content:center}
+.lbPct small{display:block;font-size:calc(var(--bu)*1.3);font-weight:var(--w-black);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);text-align:right;margin-top:.15em}
 .lbPct .lbWord{font-size:.5em;letter-spacing:.01em}
-.lbTie{display:inline-block;vertical-align:middle;font-size:calc(var(--bu)*1.1);font-weight:900;letter-spacing:.08em;text-transform:uppercase;background:var(--paleturq);color:var(--teal);border-radius:999px;padding:.2em .7em;margin-left:.5em}
+.lbTie{display:inline-block;vertical-align:middle;font-size:calc(var(--bu)*1.1);font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;background:var(--paleturq);color:var(--teal);border-radius:var(--r-pill);padding:.2em .7em;margin-left:.5em}
 .lbTie.lead{background:var(--navy);color:var(--turq)}
 .trophy{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;margin:0 auto}
 .lbLeagues.two .lbName{font-size:calc(var(--bu)*2.1)}
 .lbLeagues.two .lbPct{font-size:calc(var(--bu)*4.4)}
 @keyframes lbGrow{to{width:var(--w)}}
-.lbEmpty{padding:60px;text-align:center;font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.4)}
+.lbEmpty{padding:60px;text-align:center;font-weight:var(--w-bold);color:var(--teal);font-size:calc(var(--bu)*1.4)}
 @media (max-width:1000px){.lbWrap{--bu0:clamp(12px,1.9vw,24px)}.lbLeagues:not(.two){--bu:var(--bu0)}.lbLeagues.two{grid-template-columns:1fr}.lbLeagues{flex:none}.lbList{flex:none;grid-template-rows:none;grid-auto-rows:min-content;max-height:none}}
 @media (prefers-reduced-motion:reduce){.lbBar{animation:none;width:var(--w)}}
 @media (max-width:700px){.lbCard{grid-template-columns:48px 1fr;padding:14px}.lbPct{grid-column:2;justify-self:end}}
@@ -779,19 +779,19 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
     ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">Stats are hidden — read the plots first. Which class has the higher median? The bigger spread?</div>' : ''}`;
 }
 const LAB_ONLY_CSS = `
-.labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:700;font-size:calc(var(--bu)*1.15);color:var(--navy)}
-.labLegend i{display:inline-block;width:16px;height:12px;vertical-align:-1px;margin-right:6px;border-radius:3px}
+.labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.15);color:var(--navy)}
+.labLegend i{display:inline-block;width:16px;height:12px;vertical-align:-1px;margin-right:6px;border-radius:var(--r-xs)}
 .lgNote{color:var(--teal)}
 .lgBox{background:var(--paleturq);border:2px solid var(--navy)} .lgMed{background:var(--navy);width:4px!important} .lgMean{background:var(--turq);border:2px solid var(--navy);transform:rotate(45deg);width:10px!important;height:10px!important} .lgOut{border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important} .lgDot{background:var(--turq);border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important}
 .labRows{display:flex;flex-direction:column;gap:14px}
-.labRow{background:var(--white);border-radius:20px;box-shadow:var(--shadow-2);padding:10px 22px 6px;display:grid;grid-template-columns:calc(var(--bu)*13) 1fr;gap:8px 18px;align-items:center}
+.labRow{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:10px 22px 6px;display:grid;grid-template-columns:calc(var(--bu)*13) 1fr;gap:8px 18px;align-items:center}
 .labRow.thin{opacity:.75}
-.labNotYet{font-weight:700;color:var(--teal);padding:14px 0}
-.labName{font-weight:900;font-size:calc(var(--bu)*1.7);line-height:1.1;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.labName small{display:block;font-size:calc(var(--bu)*1.1);color:var(--teal);font-weight:700;margin-top:4px} .labName small b{font-size:calc(var(--bu)*1.25);font-weight:900}
+.labNotYet{font-weight:var(--w-bold);color:var(--teal);padding:14px 0}
+.labName{font-weight:var(--w-black);font-size:calc(var(--bu)*1.7);line-height:1.1;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.labName small{display:block;font-size:calc(var(--bu)*1.1);color:var(--teal);font-weight:var(--w-bold);margin-top:4px} .labName small b{font-size:calc(var(--bu)*1.25);font-weight:var(--w-black)}
 .labPlot{min-width:0}
 .labSvg{width:100%;height:auto;display:block;overflow:visible}
-.labTick{stroke:var(--grid);stroke-width:1} .labTickTxt{font-size:14px;font-weight:700;fill:var(--teal);text-anchor:middle}
+.labTick{stroke:var(--grid);stroke-width:1} .labTickTxt{font-size:14px;font-weight:var(--w-bold);fill:var(--teal);text-anchor:middle}
 .labWhisk{stroke:var(--navy);stroke-width:2;stroke-linecap:round}
 .labBox{fill:var(--paleturq);stroke:var(--navy);stroke-width:2}
 .labMed{stroke:var(--navy);stroke-width:4;stroke-linecap:round}
@@ -799,26 +799,26 @@ const LAB_ONLY_CSS = `
 .labMeanLine{stroke:var(--navy);stroke-width:1.5;stroke-dasharray:3 3;opacity:.6}
 .labOut{fill:var(--white);stroke:var(--navy);stroke-width:2}
 .labDot{fill:var(--turq);stroke:var(--white);stroke-width:1.5}
-.labLbl{font-size:14px;font-weight:900;fill:var(--navy)} .labLbl.mid{text-anchor:middle} .labLbl.end{text-anchor:end}
+.labLbl{font-size:14px;font-weight:var(--w-black);fill:var(--navy)} .labLbl.mid{text-anchor:middle} .labLbl.end{text-anchor:end}
 .labStats{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(var(--bu)*7),1fr));gap:6px 8px;border-top:2px solid var(--grid);padding:8px 0 4px}
-.labStats div{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--cream);border-radius:10px;padding:6px 4px}
+.labStats div{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--cream);border-radius:var(--r-m);padding:6px 4px}
 .labStats div.wide{grid-column:span 3;align-items:flex-start;padding-left:10px;text-align:left}
 .labStats div.wide b{font-size:calc(var(--bu)*.95);line-height:1.3}
-.labStats span{font-size:calc(var(--bu)*.95);font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
-.labStats b{font-weight:900;font-size:calc(var(--bu)*1.3)}
-.labHint{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.3);padding:4px 6px}
+.labStats span{font-size:calc(var(--bu)*.95);font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+.labStats b{font-weight:var(--w-black);font-size:calc(var(--bu)*1.3)}
+.labHint{font-weight:var(--w-bold);color:var(--teal);font-size:calc(var(--bu)*1.3);padding:4px 6px}
 .labValues{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-start;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labHalf{display:flex;flex-direction:column;gap:4px}
-.labHalf small{font-size:calc(var(--bu)*1);font-weight:700;color:var(--teal);letter-spacing:.02em}
+.labHalf small{font-size:calc(var(--bu)*1);font-weight:var(--w-bold);color:var(--teal);letter-spacing:.02em}
 .labChips{display:flex;flex-wrap:wrap;gap:4px}
-.labChips span{min-width:2.2em;padding:.2em .5em;border-radius:8px;background:var(--cream);border:2px solid var(--grid);font-weight:700;font-size:calc(var(--bu)*1.3);text-align:center}
-.labChips span.q{background:var(--paleturq);border-color:var(--turq);font-weight:900}
-.labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:900}
+.labChips span{min-width:2.2em;padding:.2em .5em;border-radius:var(--r-s);background:var(--cream);border:2px solid var(--grid);font-weight:var(--w-bold);font-size:calc(var(--bu)*1.3);text-align:center}
+.labChips span.q{background:var(--paleturq);border-color:var(--turq);font-weight:var(--w-black)}
+.labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:var(--w-black)}
 .labChips span.m.gap{background:var(--white);color:var(--navy);border-style:dashed}
 .labChips span.out{box-shadow:0 0 0 2px var(--coral)}
 .labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*10 - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
-.lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:28px;padding:6px 8px;box-shadow:var(--shadow-1)}
+.lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:var(--r-l);padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}
 `;
 const LAB_CSS = CHART_CSS + LAB_ONLY_CSS;
@@ -882,6 +882,8 @@ function enterProjected() {
 }
 // The embedded DM Sans, for the pages that leave the room (reports, still owed, the digest, the guide, seating prints):
 // they are separate documents, so each carries the face itself — still no network request.
+// The theme tokens (colours, radii, heights, weights), for a page saved out of Tally: one source, the app's own.
+function tokensCss() { return (document.getElementById('tallyTokens') || {}).textContent || ''; }
 function printFontCss() { const m = ((document.getElementById('tallyFont') || {}).textContent || '').match(/@font-face\s*\{[^}]*\}/); return m ? m[0] : ''; }
 function downloadLeaderboard(which) {
   const data = leaderboardData(); const st = state.settings; const lab = which === 'lab';
@@ -889,7 +891,7 @@ function downloadLeaderboard(which) {
   const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, st.lbFocus);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
 <style>${printFontCss()}</style>
-<style>:root{--cream:#F6F5F0;--grid:#E6E4DC;--sand:#EFECE3;--shadow:rgba(22,33,58,.10);--shadow-1:0 1px 2px rgba(22,33,58,.06);--shadow-2:0 1px 2px rgba(22,33,58,.06),0 12px 32px -14px rgba(22,33,58,.22);--turq:#2DD4BF;--paleturq:#DDF4F0;--teal:#0F766E;--navy:#16213A;--coral:#FBDAD2;--bad:#B8321F;--white:#fff;--ink-soft:#66708A;--r:16px}
+<style>${tokensCss()}
 *{box-sizing:border-box}html,body{margin:0;height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream)}
 ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = (lab ? 'Data-Lab-' : 'IXL-Race-') + (data.map(r => r.date).filter(Boolean).sort().pop() || new Date().toISOString().slice(0, 10)) + '.html'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);

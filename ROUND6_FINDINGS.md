@@ -158,8 +158,16 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 4 Oct: Build 3's visible items, on Croix's word ("the things you see and under the hood"; the Windows laptop is
   the screen that has to be right): the Focus check split into setup and the weekly check, Settings grouped by scope
   with a class picker, the Guide down to two printed pages. 26 suites.
-- Next: the under-the-hood cleanup (tokens, shared components) behind a pixel comparison at 1536×864 and 1280×720.
-  Remaining "Croix's calls": the seating row toggles and Back-button handling. Build 3 candidates and "Croix's calls" wait for him.
+- 4 Oct: the under-the-hood cleanup, as far as it could be proved harmless: one token scale for radii, control
+  heights and weights enforced by `tests/style-contract.js`; saved pages share the theme block; 36 dead declarations
+  and three dead rules removed; verified by a pixel and computed-style comparison over 143 screenshots (NOTES.md).
+  It also found and fixed a class-name collision that had the Overview sitting 20 px low and wasting 40 px, and
+  short windows (the Windows laptop at 150 %) got a row back. **Not done:** reducing how often weight 900 is used,
+  and merging the button / card / table families into single components — both change how things look and are
+  Croix's call. The "memo cache" was dropped: the class grid renders in 12 ms.
+- Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
+  hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
+  report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.
 
 ## Handoff for the next session (any model)
 

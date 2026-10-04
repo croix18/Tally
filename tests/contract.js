@@ -53,7 +53,7 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
     await p.click('#back'); await p.waitForTimeout(300);
     return p;
   };
-  const pl=await measure(1400,900,'laptop',13,11);
+  const pl=await measure(1400,900,'laptop',14,12);
   // 2. F chip is coral on the student page; Copy in the unit view is not white on white
   await pl.click('#btnHome'); await pl.waitForTimeout(300); await pl.fill('#search','a'); await pl.waitForTimeout(300);
   const fRow=await pl.evaluate(()=>{ const rows=[...document.querySelectorAll('.sdir tr[data-stu], .sdir [data-open], .sdir tr')]; const f=rows.find(r=>/\bF\b/.test(r.textContent)); return f? (f.dataset.stu||f.textContent.trim().slice(0,40)) : null; });
@@ -83,7 +83,10 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   await pl.focus('#lbExit'); await pl.keyboard.down('Enter'); await pl.waitForTimeout(1700); await pl.keyboard.up('Enter'); await pl.waitForTimeout(400);
   check(await pl.locator('body.lbMode').count()===0,'holding Enter on "Hold to exit" leaves the Race');
   await pl.context().close();
-  const pc=await measure(1366,768,'chromebox',10,8); await pc.context().close();
+  const pc=await measure(1366,768,'chromebox',11,10); await pc.context().close();
+  // Croix's Windows laptop: a 1920×1080 panel at Windows' 125 % and 150 % display scale
+  const pw1=await measure(1536,864,'Windows laptop at 125 %',13,11); await pw1.context().close();
+  const pw2=await measure(1280,720,'Windows laptop at 150 %',10,8); await pw2.context().close();
   // 3b. the board at 1920×1080: nothing a class has to read is small, and the Race fills the panel
   const { ctx: cb, p: pb } = await open(1920,1080,{hasTouch:true}); await pb.evaluate(([k,v])=>localStorage.setItem(k,v),[lsKey,saved]); await pb.reload(); await pb.waitForTimeout(700);
   await pb.click('#btnLb'); await pb.waitForTimeout(600);
@@ -93,7 +96,7 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   const lb=await pb.evaluate(()=>{ const px=sel=>[...document.querySelectorAll(sel)].map(e=>parseFloat(getComputedStyle(e).fontSize)); const svg=document.querySelector('.labSvg'); const k=svg? svg.getBoundingClientRect().width/svg.viewBox.baseVal.width : 1; return { legend:px('.labLegend')[0], name:px('.labName')[0], tick:px('.labTickTxt')[0]*k, opts:document.querySelectorAll('#labUnit option').length }; });
   check(lb.legend>=20 && lb.name>=30 && lb.tick>=20 && lb.opts<60,'board: Data Lab legend '+lb.legend+' px, class name '+lb.name+', axis numbers '+Math.round(lb.tick)+' on screen; '+lb.opts+' data sets in the list');
   await pb.locator('#lbExit').dispatchEvent('pointerdown'); await pb.waitForTimeout(1700); await cb.close();
-  const pt=await measure(1280,800,'tablet',8,7,{hasTouch:true,isMobile:true}); await pt.context().close();
+  const pt=await measure(1280,800,'tablet',9,9,{hasTouch:true,isMobile:true}); await pt.context().close();
   // 4. 200 % zoom (half-size viewport): every bar control reachable, some rows visible after scrolling the page
   const { ctx: cz, p: pz } = await open(700,450); await pz.evaluate(([k,v])=>localStorage.setItem(k,v),[lsKey,saved]); await pz.reload(); await pz.waitForTimeout(700);
   await pz.click('[data-k="period-1"]'); await pz.waitForTimeout(400);
