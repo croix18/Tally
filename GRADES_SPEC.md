@@ -85,6 +85,13 @@ not started), and the formula footer. Dated, class named, no other students. The
 (print)** prints the same page for everyone or only students who owe something (missing work or IXL below goal),
 one page each — full names, since these go home. `studentReportSection` / `printStudentReports` in `grades.js`.
 
+*Round 6 (4 Oct):* the report is held to its one page. "IXL still owed" names every below-goal skill with its
+SmartScore; "Not started (N)" names the next few in the unit's order and counts the rest ("and 14 more, in order,
+under Unit 1 in IXL") — about fifteen names in all, shared across the units. The next-assessment row names the letters
+one assessment can reach; when none can, it is one sentence ("One assessment alone won't change the letter — the work
+above will"). Set in the embedded DM Sans, like every other printed page (`printFontCss`). `tests/round6.js` prints the
+whole scrubbed class to PDF and checks one page per student.
+
 ### 4.2b What-if layout (3 Oct)
 One intro line ("Now 64% D. Each line below changes one thing…"), then four sections phrased as conditions: *If missing
 work were turned in* (each item at full credit, then all of them), *If an assessment were retaken* (cells show the

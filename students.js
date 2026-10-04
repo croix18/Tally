@@ -123,6 +123,14 @@ function profileLeave() {
   else view = { mode: 'students', unit: null };
   render();
 }
+// A tile's own trend: a small line (and optionally a dashed reference, e.g. the class average) scaled to its own range.
+function tileSpark(vals, o) {
+  o = o || {}; const all = [...vals, ...(o.ref || [])].filter(x => x != null); if (vals.filter(x => x != null).length < 2) return '';
+  const W = 96, Hh = 26; const lo = Math.min(...all), hi = Math.max(...all); const X = (i, n) => 3 + i * (W - 6) / Math.max(1, n - 1), Y = x => Hh - 4 - (x - lo) / ((hi - lo) || 1) * (Hh - 8);
+  const path = a => { let d = ''; a.forEach((x, i) => { if (x != null) d += (d ? 'L' : 'M') + X(i, a.length).toFixed(1) + ' ' + Y(x).toFixed(1) + ' '; }); return d; };
+  const lastI = vals.map((x, i) => x != null ? i : -1).filter(i => i >= 0).pop();
+  return `<svg class="tspark" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}" role="img" aria-label="${esc(o.label || 'trend')}">${o.ref ? `<path class="ref" d="${path(o.ref)}"/>` : ''}<path d="${path(vals)}" style="stroke:${o.color || 'var(--teal)'}"/><circle cx="${X(lastI, vals.length).toFixed(1)}" cy="${Y(vals[lastI]).toFixed(1)}" r="2.6" style="fill:${o.color || 'var(--teal)'}"/></svg>`;
+}
 function renderProfile() {
   rowCache = new Map();
   const st = view.stu; const sec = state.sections[st.key]; if (!sec) { view = { mode: 'students', unit: null }; return render(); }
@@ -132,7 +140,7 @@ function renderProfile() {
   const list = classStudents(sec); const at = list.findIndex(n => norm(n) === norm(name));
   const backLabel = profileBack && profileBack.mode === 'grades' ? 'Grades' : profileBack && profileBack.mode === 'home' ? 'Overview' : profileBack && profileBack.mode === 'seating' ? 'Seating' : profileBack && (profileBack.mode === 'units' || profileBack.mode === 'unit') ? sec.label : 'Students';
   $('#bar').innerHTML = `<div class="crumb"><button id="back">‹ ${esc(backLabel)}</button><h2>${esc(shownName)}</h2></div><span class="meta"><span class="qdot" style="--cc:${classColor(sec)}"></span>${esc(sec.label)}${f.id && !H ? ` · ID ${esc(f.id)}` : ''}${at >= 0 ? ` · ${at + 1} of ${list.length}` : ''}</span><div class="spacer"></div>
-    <button class="pill toggle" id="pPrev" ${at > 0 ? '' : 'disabled'} title="Previous student in this class">‹ Prev</button><button class="pill toggle" id="pNext" ${at >= 0 && at < list.length - 1 ? '' : 'disabled'} title="Next student in this class">Next ›</button>
+    <span class="pnav"><button class="pill toggle" id="pPrev" ${at > 0 ? '' : 'disabled'} title="Previous student in this class">‹ Prev</button><button class="pill toggle" id="pNext" ${at >= 0 && at < list.length - 1 ? '' : 'disabled'} title="Next student in this class">Next ›</button></span>
     ${openB ? `<button class="pill toggle" id="pPrint" title="One printed page for the student and home">Print report</button><button class="pill" id="pShow" title="Turn the screen toward the student: their grade and what-ifs, nothing else">Show student</button>` : ''}`;
   $('#bar').classList.add('detail');
 
@@ -140,11 +148,14 @@ function renderProfile() {
   const r = sum.grade; const ix = sum.ixl;
   const assessNow = openB ? (() => { let e = 0, p = 0; openB.s.grades.assignments.filter(a => isAssess(openB.s, a)).forEach(a => { const c = cellOf(a, openB.i); if (c.st === 'score' || c.st === 'missing') { e += c.st === 'missing' ? 0 : (c.v || 0); p += a.max; } }); return p ? e / p * 100 : null; })() : null;
   const it = ixlTrend(sec, f.ixl); const itD = it && it.mine.filter(v => v != null).length >= 2 ? (() => { const v = it.mine.filter(x => x != null); return v[v.length - 1] - v[v.length - 2]; })() : null;
+  // The two small trends live inside their tiles (a 6 px chart axis helps nobody): the line, and for IXL the class average as a number.
+  const ghs = sec.gradeHistory || []; const missHist = ghs.map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.missing[j] : null; });
+  const clsNow = it && it.cls.length ? it.cls[it.cls.length - 1] : null;
   const tiles = `<div class="gcards">
     <div class="gcard big"><small>${esc(Q_NAMES[cq - 1])} grade</small>${r && r.rounded != null ? `<b>${r.rounded}%<em class="lt ${r.letter}">${r.letter}</em></b><span class="${sum.d < 0 ? 'down' : 'up'}">${sum.d != null ? `${signedPts(sum.d)} since the last import` : 'first import this quarter'}</span>` : `<b>—</b><span>${f.gi < 0 ? 'not in this class\'s Focus gradebook' : openB ? 'nothing graded yet (all excused or blank)' : 'no ' + esc(Q_NAMES[cq - 1]) + ' gradebook yet'}</span>`}</div>
     ${sum.finals.map(x => `<div class="gcard"><small>${esc(Q_NAMES[x.q - 1])} ${x.closed ? 'final' : '(kept)'}</small><b>${x.g}%<em class="lt ${letterOf(x.g)}">${letterOf(x.g)}</em></b><span>${x.closed ? 'closed · kept in Tally' : 'not closed yet · kept in Tally'}</span></div>`).join('')}
-    <div class="gcard"><small>Missing now</small><b>${openB ? sum.missing : '—'}</b><span>${openB ? (sum.dMissing > 0 ? `+${sum.dMissing} since the last import` : sum.missing ? 'not handed in (counts as 0)' : 'nothing missing') : ''}</span></div>
-    <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}` : f.ixl == null ? 'not matched to IXL' : 'no units assigned'}</span></div>
+    <div class="gcard"><small>Missing now</small><b>${openB ? sum.missing : '—'}${openB ? tileSpark(missHist, { color: 'var(--bad)', label: 'missing assignments at each Focus import' }) : ''}</b><span>${openB ? (sum.dMissing > 0 ? `+${sum.dMissing} since the last import` : sum.missing ? 'not handed in (counts as 0)' : 'nothing missing') : ''}</span></div>
+    <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}${it ? tileSpark(it.mine, { ref: it.cls, label: 'IXL skills at goal at each export, with the class average dashed' }) : ''}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}${clsNow != null && !ix.basisClosed ? ` · class average ${fmtN(Math.round(clsNow * 10) / 10)}` : ''}` : f.ixl == null ? 'not matched to IXL' : 'no units assigned'}</span></div>
     <div class="gcard"><small>Tests &amp; quizzes</small><b>${assessNow != null ? Math.round(assessNow) + '%' : '—'}</b><span>${assessNow != null ? 'assessment points, IXL columns left out' : ''}</span></div>
   </div>`;
 
@@ -155,12 +166,9 @@ function renderProfile() {
     const mine = gh.map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.grade[j] : null; }); const cls = gh.map(h => mean(h.grade));
     const gradeChart = mine.filter(v => v != null).length >= 2 ? chartLines(labels, [{ name: H ? mask(name) : firstName(name), values: mine, color: 'var(--teal)' }, { name: 'Class average', values: cls, color: '#8a93a6', ref: true }], { pct: true, min: (lo => lo >= 65 ? 60 : lo >= 25 ? 20 : 0)(Math.min(...mine.filter(v => v != null), ...cls.filter(v => v != null))), max: 100, h: 240, w: 760, marks, aria: 'grade by import against the class average' }) : '';
     const catNames = gradingFor(sec.prep).cats.map(c => c.name); const hc = gh.filter(h => h.cats);
-    const catChart = hc.length >= 2 ? chartLines(hc.map(h => fmtDate(h.date)), catNames.map((c, k) => ({ name: c, values: hc.map(h => { const j = h.students.indexOf(name); return j >= 0 && h.cats[c] ? h.cats[c][j] : null; }), color: seriesColor(k) })).filter(sr => sr.values.some(v => v != null)), { pct: true, min: 0, max: 100, h: 220, w: 760, aria: 'category percent by import' }) : '';
-    const missChart = mine.filter(v => v != null).length >= 2 ? chartLines(labels, [{ name: 'Missing', values: gh.map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.missing[j] : null; }), color: 'var(--bad)' }], { min: 0, h: 180, w: 760, marks, aria: 'missing assignments by import' }) : '';
-    const ixlChart = it && it.mine.filter(v => v != null).length >= 2 ? chartLines(it.dates.map(fmtDate), [{ name: H ? mask(name) : firstName(name), values: it.mine, color: 'var(--teal)' }, { name: 'Class average', values: it.cls, color: '#8a93a6', ref: true }], { min: 0, h: 200, w: 760, aria: 'IXL skills at goal by export' }) : '';
+    const catChart = hc.length >= 2 ? chartLines(hc.map(h => fmtDate(h.date)), catNames.map((c, k) => ({ name: c, values: hc.map(h => { const j = h.students.indexOf(name); return j >= 0 && h.cats[c] ? h.cats[c][j] : null; }), color: ['#0F5F6B', '#2E9E97', '#7A8699', '#B26A00'][k % 4] })).filter(sr => sr.values.some(v => v != null)), { pct: true, min: 0, max: 100, h: 220, w: 760, aria: 'category percent by import' }) : '';
     trends = `<section class="gsec"><h3>Grade over the year</h3>${gradeChart || `<p class="ghint">The line appears after a second Focus import (${plural(mine.filter(v => v != null).length, 'import')} so far).</p>`}
-      ${catChart ? `<h4 class="subh">Each category</h4>${catChart}` : ''}
-      <div class="gtwo">${missChart ? `<div><h4 class="subh">Missing work</h4>${missChart}</div>` : ''}${ixlChart ? `<div><h4 class="subh">IXL skills at goal</h4>${ixlChart}</div>` : ''}</div></section>`;
+      ${catChart ? `<h4 class="subh">Each category</h4>${catChart}` : ''}</section>`;
   }
 
   // assessments across the year
@@ -185,7 +193,7 @@ function renderProfile() {
   let ixlSec = '';
   if (ix && ix.units.length) {
     const unitRow = x => `<div class="iu ${x.closed ? 'closed' : ''}"><div class="iuh"><b>${esc(x.u.short)}</b> <span>${esc(x.u.title)}</span>${x.closed ? ` <span class="gtag muted">Q${x.q} · closed</span>` : x.u.current ? ' <span class="gtag">now</span>' : ''}<span class="iup">${x.p} / ${x.n}</span></div><div class="bar"><i style="width:${x.n ? x.p / x.n * 100 : 0}%"></i></div>
-      ${x.below.length ? `<div class="iul"><span>Below goal (${sec.threshold}):</span> ${x.below.map(b => `${esc(b.name)} <small>${b.v}</small>`).join(' · ')}</div>` : ''}${x.notStarted.length ? `<div class="iul"><span>Not started:</span> ${esc(x.notStarted.join(' · '))}</div>` : ''}${!x.below.length && !x.notStarted.length ? `<div class="iul done">All ${x.n} skills at goal</div>` : ''}</div>`;
+      ${x.below.length ? `<div class="iul"><span>Below goal (${sec.threshold}):</span> ${x.below.map(b => `${esc(b.name)} <small>${b.v}</small>`).join(' · ')}</div>` : ''}${x.notStarted.length ? (x.notStarted.length <= 4 ? `<div class="iul"><span>Not started:</span> ${esc(x.notStarted.join(' · '))}</div>` : `<details class="iul iumore"><summary><span>Not started:</span> ${plural(x.notStarted.length, 'skill')}</summary>${esc(x.notStarted.join(' · '))}</details>`) : ''}${!x.below.length && !x.notStarted.length ? `<div class="iul done">All ${x.n} skills at goal</div>` : ''}</div>`;
     const cl = ix.units.filter(x => x.closed);
     ixlSec = `<section class="gsec"><h3>IXL by unit <small>goal SmartScore ${sec.threshold} · export of ${esc(fmtDate(dataDate(sec)))}</small></h3>${ix.open.map(unitRow).join('') || '<p class="ghint">Every assigned unit is in a closed quarter.</p>'}
       ${cl.length ? `<details class="qunitsold"><summary>${plural(cl.length, 'unit')} from closed quarters — still tracked, no alerts</summary>${cl.map(unitRow).join('')}</details>` : ''}</section>`;
@@ -292,9 +300,9 @@ function whatIfMarkup(s, i) {
   return `<div class="wnow">Now ${gradeChip(r)}</div>
     <p class="whatif-intro">Each line below changes <b>one thing</b> in the Focus gradebook and shows the grade that would result — nothing else moves.</p>
     <h4 class="subh">If missing work were turned in${missing.length ? ` <small>${missing.length}</small>` : ''}</h4>
-    ${missing.length ? `<table class="checkTable whatif"><tbody>${missing.map(a => `<tr><td><b>${esc(a.name)}</b> <small>${esc(catIn(s, a))} · due ${esc(a.due || '?')}</small></td><td>turned in for full credit (${a.max}/${a.max})</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}${missing.length > 1 ? `<tr class="total"><td><b>All ${missing.length} turned in</b></td><td>full credit on each</td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
+    ${missing.length ? `<table class="checkTable whatif"><tbody>${missing.map(a => `<tr><td><b>${esc(a.name)}</b><small>${esc(catIn(s, a))} · due ${esc(a.due || '?')}</small></td><td>turned in, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}${missing.length > 1 ? `<tr class="total"><td><b>All ${missing.length} turned in</b></td><td>full credit</td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
     ${tests.length ? `<h4 class="subh">If an assessment were retaken</h4><p class="ghint">Each cell: the grade if that assessment were re-scored at that percent. A dash means the score is already at or above it.</p><table class="checkTable whatif"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${a.status[i] === 'missing' ? '<b class="nhi">NHI</b>' : `${fmtN(a.values[i])}/${a.max} <small>(${Math.round(a.values[i] / a.max * 100)}%)</small>`}</td>${[70, 80, 90, 100].map(p => `<td>${a.status[i] !== 'missing' && a.values[i] >= a.max * p / 100 ? '<span class="ghint" title="already at or above this">—</span>' : `<small class="pts">${fmtN(Math.round(a.max * p / 100 * 2) / 2)}/${a.max}</small><br>${arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}`}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
-    ${ixlCols.length ? `<h4 class="subh">If IXL were finished</h4><table class="checkTable whatif"><tbody>${ixlCols.map(a => `<tr><td><b>${esc(a.name)}</b> <small>now ${a.status[i] === 'missing' ? 'NHI' : fmtN(a.values[i]) + '/' + a.max}</small></td><td>every skill at goal (${a.max}/${a.max})</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
+    ${ixlCols.length ? `<h4 class="subh">If IXL were finished</h4><table class="checkTable whatif"><tbody>${ixlCols.map(a => `<tr><td><b>${esc(a.name)}</b><small>now ${a.status[i] === 'missing' ? 'NHI' : fmtN(a.values[i]) + '/' + a.max}</small></td><td>every skill, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
     <h4 class="subh">If the next assessment scored…</h4>
     <div class="nextrow"><label>out of <input type="number" class="wiMax" value="${nx}" min="1" max="500" style="width:70px"></label><label>score <input type="range" class="wiPts" min="0" max="${nx}" step="0.5" value="${Math.round(nx * 0.8)}"> <b class="wiV">${Math.round(nx * 0.8)}</b> / <span class="wiMaxV">${nx}</span></label><span class="wiOut">${arrow(withNext(s, i, 'Assessments', nx, Math.round(nx * 0.8)))}</span></div>
     <p class="ghint wiNeed">${needText(s, i, nx)}</p>`;
@@ -405,7 +413,14 @@ const STU_CSS = `
 .profile .gcards{margin-bottom:14px}.gcard b em.lt,.shGrade em.lt{font-style:normal;font-size:.55em;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--paleturq);vertical-align:middle}
 .gcard b em.lt.D,.shGrade em.lt.D,em.lt.D{background:var(--sand)}.gcard b em.lt.F,.shGrade em.lt.F,em.lt.F{background:var(--coral);color:var(--bad)}.gcard.big b{font-size:34px}
 .pcols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}.pmain,.pside{display:flex;flex-direction:column;gap:16px;min-width:0}
-@media (max-width:1100px){.pcols{grid-template-columns:1fr}}
+/* one column: the plan and the what-ifs come first, then the trends, then the long lists */
+@media (max-width:1100px){.pcols{display:flex;flex-direction:column;align-items:stretch}.pmain,.pside{display:contents}.pcols #pQuick{order:-3}.pcols #pWhat{order:-2}}
+@media (max-width:900px){.profile .gcards{grid-template-columns:1fr 1fr}}
+.profile .gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.profile .gcard b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.profile .gcard b em.lt{margin-left:0}
+.tspark{margin-left:auto;flex:none}.tspark path{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.tspark path.ref{stroke:#8a93a6;stroke-width:1.5;stroke-dasharray:3 3}
+.pnav{display:inline-flex;gap:6px;white-space:nowrap}
+.iumore summary{cursor:pointer;list-style:none}.iumore summary::-webkit-details-marker{display:none}.iumore summary::after{content:" — show";color:var(--teal);font-weight:700}.iumore[open] summary::after{content:" — hide"}.iumore[open] summary{margin-bottom:2px}
+.checkTable.whatif td:first-child small{display:block;font-weight:500;color:var(--ink-soft)}.checkTable.whatif td:nth-child(2){white-space:nowrap}.checkTable.whatif td:last-child{white-space:nowrap;text-align:right}.checkTable.whatif thead+tbody td:last-child,.checkTable.whatif thead+tbody td{text-align:left;white-space:normal}
 .subh{margin:14px 0 4px;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}.subh small{color:var(--teal)}
 .gsec h3 small{font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-soft);margin-left:6px}
 .catline{display:flex;flex-direction:column;gap:4px;margin:4px 0 10px}.catline .catbar{display:grid;grid-template-columns:150px 1fr 54px 110px;gap:10px;align-items:center;font-size:var(--t-s)}.catline .catbar small{color:var(--ink-soft)}

@@ -273,14 +273,14 @@ function openStudentCard(s, i) { if (s.grades && s.grades.students[i] != null) o
 /* ---------- Student report: one page per student — the Focus grade, what would move it, and the IXL still owed ----------
    Printed from the student card (one student) or the class ⋯ menu (everyone, or only students who owe something).
    Always full names: this page is for the student and the people at home. */
-const REPORT_CSS = `@page{margin:.6in}body{font-family:Georgia,'Times New Roman',serif;color:#000;background:#fff;margin:0;font-size:11pt;line-height:1.35}
-.rep{padding:18px 24px 24px;break-after:page;page-break-after:always}.rep:last-child{break-after:auto;page-break-after:auto}
-h1,h2,h3,.meta,th,.big,.grid small{font-family:Arial,Helvetica,sans-serif}h1{font-size:17pt;margin:0}h2{font-size:11.5pt;margin:16px 0 4px;border-bottom:1.5px solid #000;padding-bottom:2px;text-transform:uppercase;letter-spacing:.06em}
-.meta{font-size:9.5pt;color:#333;margin:2px 0 10px}.top{display:flex;gap:24px;align-items:flex-start}.big{font-size:30pt;font-weight:bold;line-height:1;margin:2px 0 4px;white-space:nowrap}.big small{font-size:14pt;margin-left:6px}
-table{border-collapse:collapse;width:100%}td,th{padding:3px 6px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd;font-size:10.5pt}th{font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;color:#333}
+const REPORT_CSS = `@page{margin:.5in}body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:0;font-size:10pt;line-height:1.32}
+.rep{padding:18px 24px 24px;break-after:page;page-break-after:always}.rep:last-child{break-after:auto;page-break-after:auto}@media print{.rep{padding:0}}
+h1{font-size:17pt;margin:0;font-weight:900}h2{font-size:10pt;font-weight:900;margin:12px 0 3px;border-bottom:1.5px solid #000;padding-bottom:2px;text-transform:uppercase;letter-spacing:.06em}
+.meta{font-size:9.5pt;color:#333;margin:2px 0 10px}.top{display:flex;gap:24px;align-items:flex-start}.big{font-size:30pt;font-weight:900;line-height:1;margin:2px 0 4px;white-space:nowrap}.big small{font-size:14pt;margin-left:6px}
+table{border-collapse:collapse;width:100%}td,th{padding:2.5px 6px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd;font-size:10pt}th{font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;color:#333}
 .r{text-align:right;white-space:nowrap}.nhi{font-weight:bold}.cats td{border-bottom:none;padding:1px 6px}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
-.u{margin:4px 0 6px}.uh{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt;display:flex;justify-content:space-between}.uh b{font-weight:bold}.l{margin:1px 0 0 12px;font-size:10pt}.l span{font-weight:bold}.l.done{font-style:italic}
-.qpath{margin:2px 0 6px;padding-left:20px}.qpath li{margin:2px 0}.qsk{font-size:9.5pt;margin-left:4px}.foot{font-size:8.5pt;color:#444;margin-top:14px;border-top:1px solid #999;padding-top:6px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff;font-family:Arial,sans-serif}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
+.u{margin:4px 0 6px}.uh{font-size:10pt;display:flex;justify-content:space-between}.uh b{font-weight:bold}.l{margin:1px 0 0 12px;font-size:9.5pt}.l span{font-weight:bold}.l.done{font-style:italic}
+.qpath{margin:2px 0 6px;padding-left:20px}.qpath li{margin:2px 0}.qsk{font-size:9.5pt;margin-left:4px}.foot{font-size:8pt;color:#444;margin-top:10px;border-top:1px solid #999;padding-top:6px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
 function studentReportSection(s0, i, ixlRow) {
   const s = openSec(s0);   // a closed quarter's work can't move the grade any more, so the report is about the open one
   const gb = s.grades; const g = gradingFor(s.prep); const name = gb.students[i]; const r0 = computeGrade(s, i); const r = r0 && r0.rounded != null ? r0 : null;   // nothing graded yet → no grade line, no targets
@@ -289,16 +289,18 @@ function studentReportSection(s0, i, ixlRow) {
   const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
   const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
   const cur = r ? r.rounded : null;
-  const need = r ? [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur < t).map(([t, w]) => { const n = neededOn(s, i, 'Assessments', nextMax, t); return n == null ? `${w} isn't reachable on one assessment` : `${n}/${nextMax} for ${w}`; }) : [];
+  const reach = r ? [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur < t).map(([t, w]) => ({ w, n: neededOn(s, i, 'Assessments', nextMax, t) })) : [];
+  const can = reach.filter(x => x.n != null).map(x => `${x.n}/${nextMax} for ${x.w}`), cant = reach.filter(x => x.n == null).map(x => x.w);
   const keep = r && cur >= 70 ? (() => { const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : 70; const n = neededOn(s, i, 'Assessments', nextMax, floor); return n == null ? null : `${n === 0 ? 'even a 0' : n + '/' + nextMax} keeps the ${floor === 90 ? 'A' : floor === 80 ? 'B' : 'C'}`; })() : null;
   const arrow = x => x && x.rounded != null ? `→ ${x.rounded}% ${x.letter}` : '';
   // IXL still owed, from the class's IXL grid via the roster match
   const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const t = s.threshold; let ixl = '';
   if (ixlRow && ixlRow.ixl != null) {
+    const nsUnits = units.filter(u => activeFor(s, u, ixlRow.ixl).some(k => eff(s, k, ixlRow.ixl) == null)).length; const perUnit = Math.max(3, Math.floor(15 / Math.max(1, nsUnits)));   // about fifteen names in all keeps the report to its page
     const per = units.map(u => { const own = activeFor(s, u, ixlRow.ixl); const p = points(s, u, ixlRow.ixl);
       const below = own.filter(k => { const v = eff(s, k, ixlRow.ixl); return v != null && v < t; }).map(k => `${s.skills[k].name} (${eff(s, k, ixlRow.ixl)})`);
       const notStarted = own.filter(k => eff(s, k, ixlRow.ixl) == null).map(k => s.skills[k].name);
-      return `<div class="u"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}</span><b>${p} / ${own.length}</b></div>${below.length ? `<div class="l"><span>Below goal (${t}):</span> ${esc(below.join(' · '))}</div>` : ''}${notStarted.length ? `<div class="l"><span>Not started:</span> ${esc(notStarted.join(' · '))}</div>` : ''}${!below.length && !notStarted.length ? `<div class="l done">All ${own.length} skills at goal</div>` : ''}</div>`; }).join('');
+      return `<div class="u"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}</span><b>${p} / ${own.length}</b></div>${below.length ? `<div class="l"><span>Below goal (${t}):</span> ${esc(below.join(' · '))}</div>` : ''}${notStarted.length ? `<div class="l"><span>Not started (${notStarted.length}):</span> ${esc(notStarted.slice(0, notStarted.length <= perUnit + 1 ? notStarted.length : perUnit).join(' · '))}${notStarted.length > perUnit + 1 ? ` · <i>and ${notStarted.length - perUnit} more, in order, under ${esc(u.short)} in IXL</i>` : ''}</div>` : ''}${!below.length && !notStarted.length ? `<div class="l done">All ${own.length} skills at goal</div>` : ''}</div>`; }).join('');
     ixl = `<h2>IXL still owed <span style="text-transform:none;letter-spacing:0;font-weight:normal">· export of ${esc(fmtDate(dataDate(s)) || '?')} · goal SmartScore ${t}</span></h2>${per || '<p>No units assigned yet.</p>'}`;
   } else if (s.students.length) ixl = `<h2>IXL still owed</h2><p>IXL progress isn't available for this student yet.</p>`;
   const moves = [
@@ -306,7 +308,9 @@ function studentReportSection(s0, i, ixlRow) {
     missing.length > 1 ? `<tr><td><b>All missing work turned in</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
     ...ixlCols.map(a => `<tr><td>${esc(a.name)}</td><td>now ${a.status[i] === 'missing' ? 'NHI' : a.values[i] + '/' + a.max}</td><td class="r">at ${a.max}/${a.max} ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
     (missing.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work turned in and IXL finished</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, both))}</b></td></tr>`; })() : '',
-    (need.length || keep) ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${[...need, keep].filter(Boolean).join(' · ')}</td></tr>` : r && cur < 70 ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">No single assessment reaches a C from here — ${missing.length || ixlCols.length ? 'the work above is the lever' : 'it will take more than one'}.</td></tr>` : ''].filter(Boolean).join('');
+    // one sentence when no single assessment can change the letter, instead of "an A isn't reachable · a B isn't reachable · a C isn't reachable"
+    !can.length && cant.length ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">One assessment alone won't change the letter${missing.length || ixlCols.length ? ' — the work above will' : '; it will take more than one'}.</td></tr>`
+      : (can.length || keep) ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${[...can, cant.length ? `${cant.join(' or ')} would take more than one` : '', keep].filter(Boolean).join(' · ')}</td></tr>` : ''].filter(Boolean).join('');
   return `<section class="rep"><h1>${esc(name)}</h1><div class="meta">${esc(s.label)} · Focus gradebook as of ${esc(fmtDate(gb.importedAt.slice(0, 10)))} · printed ${new Date().toLocaleDateString()}</div>
     <div class="top"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>
@@ -317,7 +321,7 @@ function studentReportSection(s0, i, ixlRow) {
 }
 function printStudentReports(s, indices, title) {
   const rows = gbRows(s);
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}</body></html>`;
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}</body></html>`;
   const w = window.open('', '_blank');
   if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = title.replace(/[^\w-]+/g, '_') + '.html'; a.click(); toast('Pop-ups are blocked, so the page was saved as a file instead.', false, 5000); return; }
   w.document.open(); w.document.write(html); w.document.close(); if (indices.length === 1) setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 300);

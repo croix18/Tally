@@ -1092,14 +1092,14 @@ function openStudentCard(s, i) { if (s.grades && s.grades.students[i] != null) o
 /* ---------- Student report: one page per student — the Focus grade, what would move it, and the IXL still owed ----------
    Printed from the student card (one student) or the class ⋯ menu (everyone, or only students who owe something).
    Always full names: this page is for the student and the people at home. */
-const REPORT_CSS = `@page{margin:.6in}body{font-family:Georgia,'Times New Roman',serif;color:#000;background:#fff;margin:0;font-size:11pt;line-height:1.35}
-.rep{padding:18px 24px 24px;break-after:page;page-break-after:always}.rep:last-child{break-after:auto;page-break-after:auto}
-h1,h2,h3,.meta,th,.big,.grid small{font-family:Arial,Helvetica,sans-serif}h1{font-size:17pt;margin:0}h2{font-size:11.5pt;margin:16px 0 4px;border-bottom:1.5px solid #000;padding-bottom:2px;text-transform:uppercase;letter-spacing:.06em}
-.meta{font-size:9.5pt;color:#333;margin:2px 0 10px}.top{display:flex;gap:24px;align-items:flex-start}.big{font-size:30pt;font-weight:bold;line-height:1;margin:2px 0 4px;white-space:nowrap}.big small{font-size:14pt;margin-left:6px}
-table{border-collapse:collapse;width:100%}td,th{padding:3px 6px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd;font-size:10.5pt}th{font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;color:#333}
+const REPORT_CSS = `@page{margin:.5in}body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:0;font-size:10pt;line-height:1.32}
+.rep{padding:18px 24px 24px;break-after:page;page-break-after:always}.rep:last-child{break-after:auto;page-break-after:auto}@media print{.rep{padding:0}}
+h1{font-size:17pt;margin:0;font-weight:900}h2{font-size:10pt;font-weight:900;margin:12px 0 3px;border-bottom:1.5px solid #000;padding-bottom:2px;text-transform:uppercase;letter-spacing:.06em}
+.meta{font-size:9.5pt;color:#333;margin:2px 0 10px}.top{display:flex;gap:24px;align-items:flex-start}.big{font-size:30pt;font-weight:900;line-height:1;margin:2px 0 4px;white-space:nowrap}.big small{font-size:14pt;margin-left:6px}
+table{border-collapse:collapse;width:100%}td,th{padding:2.5px 6px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd;font-size:10pt}th{font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;color:#333}
 .r{text-align:right;white-space:nowrap}.nhi{font-weight:bold}.cats td{border-bottom:none;padding:1px 6px}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
-.u{margin:4px 0 6px}.uh{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt;display:flex;justify-content:space-between}.uh b{font-weight:bold}.l{margin:1px 0 0 12px;font-size:10pt}.l span{font-weight:bold}.l.done{font-style:italic}
-.qpath{margin:2px 0 6px;padding-left:20px}.qpath li{margin:2px 0}.qsk{font-size:9.5pt;margin-left:4px}.foot{font-size:8.5pt;color:#444;margin-top:14px;border-top:1px solid #999;padding-top:6px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff;font-family:Arial,sans-serif}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
+.u{margin:4px 0 6px}.uh{font-size:10pt;display:flex;justify-content:space-between}.uh b{font-weight:bold}.l{margin:1px 0 0 12px;font-size:9.5pt}.l span{font-weight:bold}.l.done{font-style:italic}
+.qpath{margin:2px 0 6px;padding-left:20px}.qpath li{margin:2px 0}.qsk{font-size:9.5pt;margin-left:4px}.foot{font-size:8pt;color:#444;margin-top:10px;border-top:1px solid #999;padding-top:6px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
 function studentReportSection(s0, i, ixlRow) {
   const s = openSec(s0);   // a closed quarter's work can't move the grade any more, so the report is about the open one
   const gb = s.grades; const g = gradingFor(s.prep); const name = gb.students[i]; const r0 = computeGrade(s, i); const r = r0 && r0.rounded != null ? r0 : null;   // nothing graded yet → no grade line, no targets
@@ -1108,16 +1108,18 @@ function studentReportSection(s0, i, ixlRow) {
   const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
   const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
   const cur = r ? r.rounded : null;
-  const need = r ? [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur < t).map(([t, w]) => { const n = neededOn(s, i, 'Assessments', nextMax, t); return n == null ? `${w} isn't reachable on one assessment` : `${n}/${nextMax} for ${w}`; }) : [];
+  const reach = r ? [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur < t).map(([t, w]) => ({ w, n: neededOn(s, i, 'Assessments', nextMax, t) })) : [];
+  const can = reach.filter(x => x.n != null).map(x => `${x.n}/${nextMax} for ${x.w}`), cant = reach.filter(x => x.n == null).map(x => x.w);
   const keep = r && cur >= 70 ? (() => { const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : 70; const n = neededOn(s, i, 'Assessments', nextMax, floor); return n == null ? null : `${n === 0 ? 'even a 0' : n + '/' + nextMax} keeps the ${floor === 90 ? 'A' : floor === 80 ? 'B' : 'C'}`; })() : null;
   const arrow = x => x && x.rounded != null ? `→ ${x.rounded}% ${x.letter}` : '';
   // IXL still owed, from the class's IXL grid via the roster match
   const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const t = s.threshold; let ixl = '';
   if (ixlRow && ixlRow.ixl != null) {
+    const nsUnits = units.filter(u => activeFor(s, u, ixlRow.ixl).some(k => eff(s, k, ixlRow.ixl) == null)).length; const perUnit = Math.max(3, Math.floor(15 / Math.max(1, nsUnits)));   // about fifteen names in all keeps the report to its page
     const per = units.map(u => { const own = activeFor(s, u, ixlRow.ixl); const p = points(s, u, ixlRow.ixl);
       const below = own.filter(k => { const v = eff(s, k, ixlRow.ixl); return v != null && v < t; }).map(k => `${s.skills[k].name} (${eff(s, k, ixlRow.ixl)})`);
       const notStarted = own.filter(k => eff(s, k, ixlRow.ixl) == null).map(k => s.skills[k].name);
-      return `<div class="u"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}</span><b>${p} / ${own.length}</b></div>${below.length ? `<div class="l"><span>Below goal (${t}):</span> ${esc(below.join(' · '))}</div>` : ''}${notStarted.length ? `<div class="l"><span>Not started:</span> ${esc(notStarted.join(' · '))}</div>` : ''}${!below.length && !notStarted.length ? `<div class="l done">All ${own.length} skills at goal</div>` : ''}</div>`; }).join('');
+      return `<div class="u"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}</span><b>${p} / ${own.length}</b></div>${below.length ? `<div class="l"><span>Below goal (${t}):</span> ${esc(below.join(' · '))}</div>` : ''}${notStarted.length ? `<div class="l"><span>Not started (${notStarted.length}):</span> ${esc(notStarted.slice(0, notStarted.length <= perUnit + 1 ? notStarted.length : perUnit).join(' · '))}${notStarted.length > perUnit + 1 ? ` · <i>and ${notStarted.length - perUnit} more, in order, under ${esc(u.short)} in IXL</i>` : ''}</div>` : ''}${!below.length && !notStarted.length ? `<div class="l done">All ${own.length} skills at goal</div>` : ''}</div>`; }).join('');
     ixl = `<h2>IXL still owed <span style="text-transform:none;letter-spacing:0;font-weight:normal">· export of ${esc(fmtDate(dataDate(s)) || '?')} · goal SmartScore ${t}</span></h2>${per || '<p>No units assigned yet.</p>'}`;
   } else if (s.students.length) ixl = `<h2>IXL still owed</h2><p>IXL progress isn't available for this student yet.</p>`;
   const moves = [
@@ -1125,7 +1127,9 @@ function studentReportSection(s0, i, ixlRow) {
     missing.length > 1 ? `<tr><td><b>All missing work turned in</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
     ...ixlCols.map(a => `<tr><td>${esc(a.name)}</td><td>now ${a.status[i] === 'missing' ? 'NHI' : a.values[i] + '/' + a.max}</td><td class="r">at ${a.max}/${a.max} ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
     (missing.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work turned in and IXL finished</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, both))}</b></td></tr>`; })() : '',
-    (need.length || keep) ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${[...need, keep].filter(Boolean).join(' · ')}</td></tr>` : r && cur < 70 ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">No single assessment reaches a C from here — ${missing.length || ixlCols.length ? 'the work above is the lever' : 'it will take more than one'}.</td></tr>` : ''].filter(Boolean).join('');
+    // one sentence when no single assessment can change the letter, instead of "an A isn't reachable · a B isn't reachable · a C isn't reachable"
+    !can.length && cant.length ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">One assessment alone won't change the letter${missing.length || ixlCols.length ? ' — the work above will' : '; it will take more than one'}.</td></tr>`
+      : (can.length || keep) ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${[...can, cant.length ? `${cant.join(' or ')} would take more than one` : '', keep].filter(Boolean).join(' · ')}</td></tr>` : ''].filter(Boolean).join('');
   return `<section class="rep"><h1>${esc(name)}</h1><div class="meta">${esc(s.label)} · Focus gradebook as of ${esc(fmtDate(gb.importedAt.slice(0, 10)))} · printed ${new Date().toLocaleDateString()}</div>
     <div class="top"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>
@@ -1136,7 +1140,7 @@ function studentReportSection(s0, i, ixlRow) {
 }
 function printStudentReports(s, indices, title) {
   const rows = gbRows(s);
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}</body></html>`;
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}</body></html>`;
   const w = window.open('', '_blank');
   if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = title.replace(/[^\w-]+/g, '_') + '.html'; a.click(); toast('Pop-ups are blocked, so the page was saved as a file instead.', false, 5000); return; }
   w.document.open(); w.document.write(html); w.document.close(); if (indices.length === 1) setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 300);
@@ -1505,7 +1509,7 @@ function openDigest(sec) {
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   $('#dgPrint').onclick = () => { const w = window.open('', '_blank'); if (!w) { toast('Pop-up blocked — allow pop-ups for this page to print.', true); return; }
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>What changed — ${esc(sec.label)}</title><style>body{font-family:Georgia,serif;margin:28px;color:#000;font-size:11.5pt}h1,h3{font-family:Arial,sans-serif}h1{font-size:16pt;margin:0 0 2px}h3{font-size:11pt;margin:16px 0 4px;border-bottom:1px solid #999}.dgrid{display:flex;gap:18px;flex-wrap:wrap;margin:6px 0}.dstat b{font-size:18pt;display:block}.dstat small{font-size:9pt;color:#444}p{margin:4px 0}.dup,.ddown{font-weight:bold}.ghint{color:#555}</style></head><body><h1>What changed · ${esc(sec.label)}</h1><div style="font-size:9.5pt;color:#333">${esc(span)} · printed ${new Date().toLocaleDateString()}</div>${digestMarkup(d)}</body></html>`); w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 300); };
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>What changed — ${esc(sec.label)}</title><style>${printFontCss()}</style><style>body{font-family:'DM Sans',Arial,Helvetica,sans-serif;margin:28px;color:#000;font-size:11pt}h1{font-size:16pt;margin:0 0 2px}h3{font-size:11pt;margin:16px 0 4px;border-bottom:1px solid #999}.dgrid{display:flex;gap:18px;flex-wrap:wrap;margin:6px 0}.dstat b{font-size:18pt;display:block}.dstat small{font-size:9pt;color:#444}p{margin:4px 0}.dup,.ddown{font-weight:bold}.ghint{color:#555}</style></head><body><h1>What changed · ${esc(sec.label)}</h1><div style="font-size:9.5pt;color:#333">${esc(span)} · printed ${new Date().toLocaleDateString()}</div>${digestMarkup(d)}</body></html>`); w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 300); };
 }
      // home.js too
 /* ---------- seating.js — room layout, seating charts and the solver (spliced into app.js's closure) ----------
@@ -1972,7 +1976,7 @@ function printSeating(sec, mode, all) {
     if (all) { for (const k of state.order) { const s = state.sections[k]; const seats = s.key === sec.key ? workFor(sec).seats : (s.seating && s.seating.seats); if (seats) body += page(s, seats); } }
     else body += page(sec, workFor(sec).seats);
   } finally { seatPlain = false; }
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Seating — ${esc(sec.label)}</title><style>@page{size:landscape;margin:12mm}body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:16px}h1{font-size:18pt;margin:0 0 2px}p{font-size:10pt;color:#555;margin:0 0 8px}.pp{break-after:page;page-break-after:always}.pp:last-child{break-after:auto;page-break-after:auto}.pp svg{width:100%;height:auto;max-height:160mm}.lg{font-size:9pt;color:#333}.lg i{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin:0 2px 0 4px}.lg b{background:#16213A;color:#fff;padding:0 4px;border-radius:3px;font-size:8pt}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}${SEAT_SVG_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${body}</body></html>`;
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Seating — ${esc(sec.label)}</title><style>${printFontCss()}</style><style>@page{size:landscape;margin:12mm}body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:16px}h1{font-size:18pt;margin:0 0 2px}p{font-size:10pt;color:#555;margin:0 0 8px}.pp{break-after:page;page-break-after:always}.pp:last-child{break-after:auto;page-break-after:auto}.pp svg{width:100%;height:auto;max-height:160mm}.lg{font-size:9pt;color:#333}.lg i{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin:0 2px 0 4px}.lg b{background:#16213A;color:#fff;padding:0 4px;border-radius:3px;font-size:8pt}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}${SEAT_SVG_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${body}</body></html>`;
   const win = window.open('', '_blank');
   if (!win) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `Seating_${sec.label.replace(/[^\w-]+/g, '_')}.html`; a.click(); toast('Pop-ups are blocked, so the page was saved as a file instead.', false, 5000); return; }
   win.document.open(); win.document.write(html); win.document.close();
@@ -2490,6 +2494,14 @@ function profileLeave() {
   else view = { mode: 'students', unit: null };
   render();
 }
+// A tile's own trend: a small line (and optionally a dashed reference, e.g. the class average) scaled to its own range.
+function tileSpark(vals, o) {
+  o = o || {}; const all = [...vals, ...(o.ref || [])].filter(x => x != null); if (vals.filter(x => x != null).length < 2) return '';
+  const W = 96, Hh = 26; const lo = Math.min(...all), hi = Math.max(...all); const X = (i, n) => 3 + i * (W - 6) / Math.max(1, n - 1), Y = x => Hh - 4 - (x - lo) / ((hi - lo) || 1) * (Hh - 8);
+  const path = a => { let d = ''; a.forEach((x, i) => { if (x != null) d += (d ? 'L' : 'M') + X(i, a.length).toFixed(1) + ' ' + Y(x).toFixed(1) + ' '; }); return d; };
+  const lastI = vals.map((x, i) => x != null ? i : -1).filter(i => i >= 0).pop();
+  return `<svg class="tspark" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}" role="img" aria-label="${esc(o.label || 'trend')}">${o.ref ? `<path class="ref" d="${path(o.ref)}"/>` : ''}<path d="${path(vals)}" style="stroke:${o.color || 'var(--teal)'}"/><circle cx="${X(lastI, vals.length).toFixed(1)}" cy="${Y(vals[lastI]).toFixed(1)}" r="2.6" style="fill:${o.color || 'var(--teal)'}"/></svg>`;
+}
 function renderProfile() {
   rowCache = new Map();
   const st = view.stu; const sec = state.sections[st.key]; if (!sec) { view = { mode: 'students', unit: null }; return render(); }
@@ -2499,7 +2511,7 @@ function renderProfile() {
   const list = classStudents(sec); const at = list.findIndex(n => norm(n) === norm(name));
   const backLabel = profileBack && profileBack.mode === 'grades' ? 'Grades' : profileBack && profileBack.mode === 'home' ? 'Overview' : profileBack && profileBack.mode === 'seating' ? 'Seating' : profileBack && (profileBack.mode === 'units' || profileBack.mode === 'unit') ? sec.label : 'Students';
   $('#bar').innerHTML = `<div class="crumb"><button id="back">‹ ${esc(backLabel)}</button><h2>${esc(shownName)}</h2></div><span class="meta"><span class="qdot" style="--cc:${classColor(sec)}"></span>${esc(sec.label)}${f.id && !H ? ` · ID ${esc(f.id)}` : ''}${at >= 0 ? ` · ${at + 1} of ${list.length}` : ''}</span><div class="spacer"></div>
-    <button class="pill toggle" id="pPrev" ${at > 0 ? '' : 'disabled'} title="Previous student in this class">‹ Prev</button><button class="pill toggle" id="pNext" ${at >= 0 && at < list.length - 1 ? '' : 'disabled'} title="Next student in this class">Next ›</button>
+    <span class="pnav"><button class="pill toggle" id="pPrev" ${at > 0 ? '' : 'disabled'} title="Previous student in this class">‹ Prev</button><button class="pill toggle" id="pNext" ${at >= 0 && at < list.length - 1 ? '' : 'disabled'} title="Next student in this class">Next ›</button></span>
     ${openB ? `<button class="pill toggle" id="pPrint" title="One printed page for the student and home">Print report</button><button class="pill" id="pShow" title="Turn the screen toward the student: their grade and what-ifs, nothing else">Show student</button>` : ''}`;
   $('#bar').classList.add('detail');
 
@@ -2507,11 +2519,14 @@ function renderProfile() {
   const r = sum.grade; const ix = sum.ixl;
   const assessNow = openB ? (() => { let e = 0, p = 0; openB.s.grades.assignments.filter(a => isAssess(openB.s, a)).forEach(a => { const c = cellOf(a, openB.i); if (c.st === 'score' || c.st === 'missing') { e += c.st === 'missing' ? 0 : (c.v || 0); p += a.max; } }); return p ? e / p * 100 : null; })() : null;
   const it = ixlTrend(sec, f.ixl); const itD = it && it.mine.filter(v => v != null).length >= 2 ? (() => { const v = it.mine.filter(x => x != null); return v[v.length - 1] - v[v.length - 2]; })() : null;
+  // The two small trends live inside their tiles (a 6 px chart axis helps nobody): the line, and for IXL the class average as a number.
+  const ghs = sec.gradeHistory || []; const missHist = ghs.map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.missing[j] : null; });
+  const clsNow = it && it.cls.length ? it.cls[it.cls.length - 1] : null;
   const tiles = `<div class="gcards">
     <div class="gcard big"><small>${esc(Q_NAMES[cq - 1])} grade</small>${r && r.rounded != null ? `<b>${r.rounded}%<em class="lt ${r.letter}">${r.letter}</em></b><span class="${sum.d < 0 ? 'down' : 'up'}">${sum.d != null ? `${signedPts(sum.d)} since the last import` : 'first import this quarter'}</span>` : `<b>—</b><span>${f.gi < 0 ? 'not in this class\'s Focus gradebook' : openB ? 'nothing graded yet (all excused or blank)' : 'no ' + esc(Q_NAMES[cq - 1]) + ' gradebook yet'}</span>`}</div>
     ${sum.finals.map(x => `<div class="gcard"><small>${esc(Q_NAMES[x.q - 1])} ${x.closed ? 'final' : '(kept)'}</small><b>${x.g}%<em class="lt ${letterOf(x.g)}">${letterOf(x.g)}</em></b><span>${x.closed ? 'closed · kept in Tally' : 'not closed yet · kept in Tally'}</span></div>`).join('')}
-    <div class="gcard"><small>Missing now</small><b>${openB ? sum.missing : '—'}</b><span>${openB ? (sum.dMissing > 0 ? `+${sum.dMissing} since the last import` : sum.missing ? 'not handed in (counts as 0)' : 'nothing missing') : ''}</span></div>
-    <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}` : f.ixl == null ? 'not matched to IXL' : 'no units assigned'}</span></div>
+    <div class="gcard"><small>Missing now</small><b>${openB ? sum.missing : '—'}${openB ? tileSpark(missHist, { color: 'var(--bad)', label: 'missing assignments at each Focus import' }) : ''}</b><span>${openB ? (sum.dMissing > 0 ? `+${sum.dMissing} since the last import` : sum.missing ? 'not handed in (counts as 0)' : 'nothing missing') : ''}</span></div>
+    <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}${it ? tileSpark(it.mine, { ref: it.cls, label: 'IXL skills at goal at each export, with the class average dashed' }) : ''}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}${clsNow != null && !ix.basisClosed ? ` · class average ${fmtN(Math.round(clsNow * 10) / 10)}` : ''}` : f.ixl == null ? 'not matched to IXL' : 'no units assigned'}</span></div>
     <div class="gcard"><small>Tests &amp; quizzes</small><b>${assessNow != null ? Math.round(assessNow) + '%' : '—'}</b><span>${assessNow != null ? 'assessment points, IXL columns left out' : ''}</span></div>
   </div>`;
 
@@ -2522,12 +2537,9 @@ function renderProfile() {
     const mine = gh.map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.grade[j] : null; }); const cls = gh.map(h => mean(h.grade));
     const gradeChart = mine.filter(v => v != null).length >= 2 ? chartLines(labels, [{ name: H ? mask(name) : firstName(name), values: mine, color: 'var(--teal)' }, { name: 'Class average', values: cls, color: '#8a93a6', ref: true }], { pct: true, min: (lo => lo >= 65 ? 60 : lo >= 25 ? 20 : 0)(Math.min(...mine.filter(v => v != null), ...cls.filter(v => v != null))), max: 100, h: 240, w: 760, marks, aria: 'grade by import against the class average' }) : '';
     const catNames = gradingFor(sec.prep).cats.map(c => c.name); const hc = gh.filter(h => h.cats);
-    const catChart = hc.length >= 2 ? chartLines(hc.map(h => fmtDate(h.date)), catNames.map((c, k) => ({ name: c, values: hc.map(h => { const j = h.students.indexOf(name); return j >= 0 && h.cats[c] ? h.cats[c][j] : null; }), color: seriesColor(k) })).filter(sr => sr.values.some(v => v != null)), { pct: true, min: 0, max: 100, h: 220, w: 760, aria: 'category percent by import' }) : '';
-    const missChart = mine.filter(v => v != null).length >= 2 ? chartLines(labels, [{ name: 'Missing', values: gh.map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.missing[j] : null; }), color: 'var(--bad)' }], { min: 0, h: 180, w: 760, marks, aria: 'missing assignments by import' }) : '';
-    const ixlChart = it && it.mine.filter(v => v != null).length >= 2 ? chartLines(it.dates.map(fmtDate), [{ name: H ? mask(name) : firstName(name), values: it.mine, color: 'var(--teal)' }, { name: 'Class average', values: it.cls, color: '#8a93a6', ref: true }], { min: 0, h: 200, w: 760, aria: 'IXL skills at goal by export' }) : '';
+    const catChart = hc.length >= 2 ? chartLines(hc.map(h => fmtDate(h.date)), catNames.map((c, k) => ({ name: c, values: hc.map(h => { const j = h.students.indexOf(name); return j >= 0 && h.cats[c] ? h.cats[c][j] : null; }), color: ['#0F5F6B', '#2E9E97', '#7A8699', '#B26A00'][k % 4] })).filter(sr => sr.values.some(v => v != null)), { pct: true, min: 0, max: 100, h: 220, w: 760, aria: 'category percent by import' }) : '';
     trends = `<section class="gsec"><h3>Grade over the year</h3>${gradeChart || `<p class="ghint">The line appears after a second Focus import (${plural(mine.filter(v => v != null).length, 'import')} so far).</p>`}
-      ${catChart ? `<h4 class="subh">Each category</h4>${catChart}` : ''}
-      <div class="gtwo">${missChart ? `<div><h4 class="subh">Missing work</h4>${missChart}</div>` : ''}${ixlChart ? `<div><h4 class="subh">IXL skills at goal</h4>${ixlChart}</div>` : ''}</div></section>`;
+      ${catChart ? `<h4 class="subh">Each category</h4>${catChart}` : ''}</section>`;
   }
 
   // assessments across the year
@@ -2552,7 +2564,7 @@ function renderProfile() {
   let ixlSec = '';
   if (ix && ix.units.length) {
     const unitRow = x => `<div class="iu ${x.closed ? 'closed' : ''}"><div class="iuh"><b>${esc(x.u.short)}</b> <span>${esc(x.u.title)}</span>${x.closed ? ` <span class="gtag muted">Q${x.q} · closed</span>` : x.u.current ? ' <span class="gtag">now</span>' : ''}<span class="iup">${x.p} / ${x.n}</span></div><div class="bar"><i style="width:${x.n ? x.p / x.n * 100 : 0}%"></i></div>
-      ${x.below.length ? `<div class="iul"><span>Below goal (${sec.threshold}):</span> ${x.below.map(b => `${esc(b.name)} <small>${b.v}</small>`).join(' · ')}</div>` : ''}${x.notStarted.length ? `<div class="iul"><span>Not started:</span> ${esc(x.notStarted.join(' · '))}</div>` : ''}${!x.below.length && !x.notStarted.length ? `<div class="iul done">All ${x.n} skills at goal</div>` : ''}</div>`;
+      ${x.below.length ? `<div class="iul"><span>Below goal (${sec.threshold}):</span> ${x.below.map(b => `${esc(b.name)} <small>${b.v}</small>`).join(' · ')}</div>` : ''}${x.notStarted.length ? (x.notStarted.length <= 4 ? `<div class="iul"><span>Not started:</span> ${esc(x.notStarted.join(' · '))}</div>` : `<details class="iul iumore"><summary><span>Not started:</span> ${plural(x.notStarted.length, 'skill')}</summary>${esc(x.notStarted.join(' · '))}</details>`) : ''}${!x.below.length && !x.notStarted.length ? `<div class="iul done">All ${x.n} skills at goal</div>` : ''}</div>`;
     const cl = ix.units.filter(x => x.closed);
     ixlSec = `<section class="gsec"><h3>IXL by unit <small>goal SmartScore ${sec.threshold} · export of ${esc(fmtDate(dataDate(sec)))}</small></h3>${ix.open.map(unitRow).join('') || '<p class="ghint">Every assigned unit is in a closed quarter.</p>'}
       ${cl.length ? `<details class="qunitsold"><summary>${plural(cl.length, 'unit')} from closed quarters — still tracked, no alerts</summary>${cl.map(unitRow).join('')}</details>` : ''}</section>`;
@@ -2659,9 +2671,9 @@ function whatIfMarkup(s, i) {
   return `<div class="wnow">Now ${gradeChip(r)}</div>
     <p class="whatif-intro">Each line below changes <b>one thing</b> in the Focus gradebook and shows the grade that would result — nothing else moves.</p>
     <h4 class="subh">If missing work were turned in${missing.length ? ` <small>${missing.length}</small>` : ''}</h4>
-    ${missing.length ? `<table class="checkTable whatif"><tbody>${missing.map(a => `<tr><td><b>${esc(a.name)}</b> <small>${esc(catIn(s, a))} · due ${esc(a.due || '?')}</small></td><td>turned in for full credit (${a.max}/${a.max})</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}${missing.length > 1 ? `<tr class="total"><td><b>All ${missing.length} turned in</b></td><td>full credit on each</td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
+    ${missing.length ? `<table class="checkTable whatif"><tbody>${missing.map(a => `<tr><td><b>${esc(a.name)}</b><small>${esc(catIn(s, a))} · due ${esc(a.due || '?')}</small></td><td>turned in, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}${missing.length > 1 ? `<tr class="total"><td><b>All ${missing.length} turned in</b></td><td>full credit</td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
     ${tests.length ? `<h4 class="subh">If an assessment were retaken</h4><p class="ghint">Each cell: the grade if that assessment were re-scored at that percent. A dash means the score is already at or above it.</p><table class="checkTable whatif"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${a.status[i] === 'missing' ? '<b class="nhi">NHI</b>' : `${fmtN(a.values[i])}/${a.max} <small>(${Math.round(a.values[i] / a.max * 100)}%)</small>`}</td>${[70, 80, 90, 100].map(p => `<td>${a.status[i] !== 'missing' && a.values[i] >= a.max * p / 100 ? '<span class="ghint" title="already at or above this">—</span>' : `<small class="pts">${fmtN(Math.round(a.max * p / 100 * 2) / 2)}/${a.max}</small><br>${arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}`}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
-    ${ixlCols.length ? `<h4 class="subh">If IXL were finished</h4><table class="checkTable whatif"><tbody>${ixlCols.map(a => `<tr><td><b>${esc(a.name)}</b> <small>now ${a.status[i] === 'missing' ? 'NHI' : fmtN(a.values[i]) + '/' + a.max}</small></td><td>every skill at goal (${a.max}/${a.max})</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
+    ${ixlCols.length ? `<h4 class="subh">If IXL were finished</h4><table class="checkTable whatif"><tbody>${ixlCols.map(a => `<tr><td><b>${esc(a.name)}</b><small>now ${a.status[i] === 'missing' ? 'NHI' : fmtN(a.values[i]) + '/' + a.max}</small></td><td>every skill, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
     <h4 class="subh">If the next assessment scored…</h4>
     <div class="nextrow"><label>out of <input type="number" class="wiMax" value="${nx}" min="1" max="500" style="width:70px"></label><label>score <input type="range" class="wiPts" min="0" max="${nx}" step="0.5" value="${Math.round(nx * 0.8)}"> <b class="wiV">${Math.round(nx * 0.8)}</b> / <span class="wiMaxV">${nx}</span></label><span class="wiOut">${arrow(withNext(s, i, 'Assessments', nx, Math.round(nx * 0.8)))}</span></div>
     <p class="ghint wiNeed">${needText(s, i, nx)}</p>`;
@@ -2772,7 +2784,14 @@ const STU_CSS = `
 .profile .gcards{margin-bottom:14px}.gcard b em.lt,.shGrade em.lt{font-style:normal;font-size:.55em;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--paleturq);vertical-align:middle}
 .gcard b em.lt.D,.shGrade em.lt.D,em.lt.D{background:var(--sand)}.gcard b em.lt.F,.shGrade em.lt.F,em.lt.F{background:var(--coral);color:var(--bad)}.gcard.big b{font-size:34px}
 .pcols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}.pmain,.pside{display:flex;flex-direction:column;gap:16px;min-width:0}
-@media (max-width:1100px){.pcols{grid-template-columns:1fr}}
+/* one column: the plan and the what-ifs come first, then the trends, then the long lists */
+@media (max-width:1100px){.pcols{display:flex;flex-direction:column;align-items:stretch}.pmain,.pside{display:contents}.pcols #pQuick{order:-3}.pcols #pWhat{order:-2}}
+@media (max-width:900px){.profile .gcards{grid-template-columns:1fr 1fr}}
+.profile .gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.profile .gcard b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.profile .gcard b em.lt{margin-left:0}
+.tspark{margin-left:auto;flex:none}.tspark path{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.tspark path.ref{stroke:#8a93a6;stroke-width:1.5;stroke-dasharray:3 3}
+.pnav{display:inline-flex;gap:6px;white-space:nowrap}
+.iumore summary{cursor:pointer;list-style:none}.iumore summary::-webkit-details-marker{display:none}.iumore summary::after{content:" — show";color:var(--teal);font-weight:700}.iumore[open] summary::after{content:" — hide"}.iumore[open] summary{margin-bottom:2px}
+.checkTable.whatif td:first-child small{display:block;font-weight:500;color:var(--ink-soft)}.checkTable.whatif td:nth-child(2){white-space:nowrap}.checkTable.whatif td:last-child{white-space:nowrap;text-align:right}.checkTable.whatif thead+tbody td:last-child,.checkTable.whatif thead+tbody td{text-align:left;white-space:normal}
 .subh{margin:14px 0 4px;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}.subh small{color:var(--teal)}
 .gsec h3 small{font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-soft);margin-left:6px}
 .catline{display:flex;flex-direction:column;gap:4px;margin:4px 0 10px}.catline .catbar{display:grid;grid-template-columns:150px 1fr 54px 110px;gap:10px;align-items:center;font-size:var(--t-s)}.catline .catbar small{color:var(--ink-soft)}
@@ -3612,12 +3631,15 @@ function enterProjected() {
   const t = $('#toast'); t.classList.remove('show'); clearTimeout(toastT);
   save(); render();
 }
+// The embedded DM Sans, for the pages that leave the room (reports, still owed, the digest, the guide, seating prints):
+// they are separate documents, so each carries the face itself — still no network request.
+function printFontCss() { return (document.getElementById('tallyFont') || {}).textContent || ''; }
 function downloadLeaderboard(which) {
   const data = leaderboardData(); const st = state.settings; const lab = which === 'lab';
   const dotsOn = (st.labUnit || '').startsWith('gb:') ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
   const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, st.lbFocus);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
-<style>${(document.getElementById('tallyFont') || {}).textContent || ''}</style>
+<style>${printFontCss()}</style>
 <style>:root{--cream:#F6F5F0;--grid:#E6E4DC;--sand:#EFECE3;--shadow:rgba(22,33,58,.10);--shadow-1:0 1px 2px rgba(22,33,58,.06);--shadow-2:0 1px 2px rgba(22,33,58,.06),0 12px 32px -14px rgba(22,33,58,.22);--turq:#2DD4BF;--paleturq:#DDF4F0;--teal:#0F766E;--navy:#16213A;--coral:#FBDAD2;--bad:#B8321F;--white:#fff;--ink-soft:#66708A;--r:16px}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream)}
 ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body></html>`;
@@ -4214,20 +4236,21 @@ function printStillOwed(sec, mode) {
     return `<section class="stu"><h2>${esc(nm(r))}</h2>${per || '<div class="l">No units assigned yet.</div>'}</section>`;
   };
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Still owed — ${esc(sec.label)}</title>
+<style>${printFontCss()}</style>
 <style>
 @page{margin:.6in}
-body{font-family:Georgia,'Times New Roman',serif;color:#000;background:#fff;margin:24px;font-size:11.5pt;line-height:1.35}
-h1{font-size:16pt;margin:0 0 2px;font-family:Arial,Helvetica,sans-serif}
-.meta{font-size:9.5pt;margin:0 0 14px;font-family:Arial,Helvetica,sans-serif}
+body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px;font-size:11pt;line-height:1.35}
+h1{font-size:16pt;margin:0 0 2px}
+.meta{font-size:9.5pt;margin:0 0 14px}
 .stu{border-top:1.5px solid #000;padding:6px 0 8px;break-inside:avoid;page-break-inside:avoid}${slips ? '.stu{break-before:page;page-break-before:always;border-top:none;padding-top:0}.stu:first-of-type{break-before:auto;page-break-before:auto}' : ''}
-.stu h2{font-size:13pt;margin:0 0 4px;font-family:Arial,Helvetica,sans-serif}
+.stu h2{font-size:13pt;margin:0 0 4px}
 .u{margin:2px 0 4px 10px}
-.uh{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt}
+.uh{font-size:10.5pt}
 .uh .pts{float:right;font-weight:bold}
 .l{margin:1px 0 0 14px;font-size:10.5pt}
 .l span{font-weight:bold}
 .l.done{font-style:italic}
-.bar{position:fixed;top:0;right:0;padding:8px;background:#fff;font-family:Arial,sans-serif}
+.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}
 .bar button{font:inherit;padding:6px 14px}
 @media print{.bar{display:none}}
 </style></head><body>
@@ -4248,9 +4271,10 @@ function openGuide() {
   const goalLine = thrs.length ? thrs.join(', ') : `on-level ${DEFAULT_THR.on}, accelerated ${DEFAULT_THR.acc}`;
   const remind = state.settings.remindDays;
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Tally — one-page guide</title>
+<style>${printFontCss()}</style>
 <style>
 @page{margin:.55in}
-body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px auto;max-width:8in;font-size:10.5pt;line-height:1.4}
+body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px auto;max-width:8in;font-size:10.5pt;line-height:1.4}
 h1{font-size:20pt;margin:0;letter-spacing:.06em}
 .sub{font-size:10pt;margin:2px 0 14px}
 h2{font-size:11.5pt;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1.5px solid #000;padding-bottom:2px}

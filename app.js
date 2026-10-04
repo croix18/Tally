@@ -820,12 +820,15 @@ function enterProjected() {
   const t = $('#toast'); t.classList.remove('show'); clearTimeout(toastT);
   save(); render();
 }
+// The embedded DM Sans, for the pages that leave the room (reports, still owed, the digest, the guide, seating prints):
+// they are separate documents, so each carries the face itself — still no network request.
+function printFontCss() { return (document.getElementById('tallyFont') || {}).textContent || ''; }
 function downloadLeaderboard(which) {
   const data = leaderboardData(); const st = state.settings; const lab = which === 'lab';
   const dotsOn = (st.labUnit || '').startsWith('gb:') ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
   const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, st.lbFocus);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
-<style>${(document.getElementById('tallyFont') || {}).textContent || ''}</style>
+<style>${printFontCss()}</style>
 <style>:root{--cream:#F6F5F0;--grid:#E6E4DC;--sand:#EFECE3;--shadow:rgba(22,33,58,.10);--shadow-1:0 1px 2px rgba(22,33,58,.06);--shadow-2:0 1px 2px rgba(22,33,58,.06),0 12px 32px -14px rgba(22,33,58,.22);--turq:#2DD4BF;--paleturq:#DDF4F0;--teal:#0F766E;--navy:#16213A;--coral:#FBDAD2;--bad:#B8321F;--white:#fff;--ink-soft:#66708A;--r:16px}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream)}
 ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body></html>`;
@@ -1422,20 +1425,21 @@ function printStillOwed(sec, mode) {
     return `<section class="stu"><h2>${esc(nm(r))}</h2>${per || '<div class="l">No units assigned yet.</div>'}</section>`;
   };
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Still owed — ${esc(sec.label)}</title>
+<style>${printFontCss()}</style>
 <style>
 @page{margin:.6in}
-body{font-family:Georgia,'Times New Roman',serif;color:#000;background:#fff;margin:24px;font-size:11.5pt;line-height:1.35}
-h1{font-size:16pt;margin:0 0 2px;font-family:Arial,Helvetica,sans-serif}
-.meta{font-size:9.5pt;margin:0 0 14px;font-family:Arial,Helvetica,sans-serif}
+body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px;font-size:11pt;line-height:1.35}
+h1{font-size:16pt;margin:0 0 2px}
+.meta{font-size:9.5pt;margin:0 0 14px}
 .stu{border-top:1.5px solid #000;padding:6px 0 8px;break-inside:avoid;page-break-inside:avoid}${slips ? '.stu{break-before:page;page-break-before:always;border-top:none;padding-top:0}.stu:first-of-type{break-before:auto;page-break-before:auto}' : ''}
-.stu h2{font-size:13pt;margin:0 0 4px;font-family:Arial,Helvetica,sans-serif}
+.stu h2{font-size:13pt;margin:0 0 4px}
 .u{margin:2px 0 4px 10px}
-.uh{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt}
+.uh{font-size:10.5pt}
 .uh .pts{float:right;font-weight:bold}
 .l{margin:1px 0 0 14px;font-size:10.5pt}
 .l span{font-weight:bold}
 .l.done{font-style:italic}
-.bar{position:fixed;top:0;right:0;padding:8px;background:#fff;font-family:Arial,sans-serif}
+.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}
 .bar button{font:inherit;padding:6px 14px}
 @media print{.bar{display:none}}
 </style></head><body>
@@ -1456,9 +1460,10 @@ function openGuide() {
   const goalLine = thrs.length ? thrs.join(', ') : `on-level ${DEFAULT_THR.on}, accelerated ${DEFAULT_THR.acc}`;
   const remind = state.settings.remindDays;
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Tally — one-page guide</title>
+<style>${printFontCss()}</style>
 <style>
 @page{margin:.55in}
-body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px auto;max-width:8in;font-size:10.5pt;line-height:1.4}
+body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px auto;max-width:8in;font-size:10.5pt;line-height:1.4}
 h1{font-size:20pt;margin:0;letter-spacing:.06em}
 .sub{font-size:10pt;margin:2px 0 14px}
 h2{font-size:11.5pt;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1.5px solid #000;padding-bottom:2px}
