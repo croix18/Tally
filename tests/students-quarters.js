@@ -94,8 +94,11 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   await p.click('#btnHome'); await p.waitForTimeout(200);
   const before=await p.evaluate(K=>{ const T=window.__tally; return T.reconcile(T.state.sections[K]).length; }, K);
   await p.click('#homeQuarters'); await p.waitForTimeout(300);
+  // before the quarter's end date the dialog is "Quarters" and closing is one deliberate step away; after it, the dialog is the close form
+  if (await p.locator('#qEarly').count()) { check(/^Quarters/.test(await p.textContent('#modal h2')) && await p.locator('#qEarly:not([open])').count()===1 && !(await p.locator('#qClose').isVisible()),'before the end date the dialog opens on the dates; "Close Quarter 1 early…" is folded'); await p.click('#qEarly > summary'); await p.waitForTimeout(200); }
+  else check(/^Close Quarter 1/.test(await p.textContent('#modal h2')),'after the end date the dialog is the close form');
   const dlg=(await p.evaluate(()=>document.querySelector('#modal .panel').innerText)).split(/\s+/).length;
-  check(dlg<140 && await p.locator('#modal .warnline').count()<=1 && await p.locator('#qDates:not([open])').count()===1 && /IXL units in Quarter 1: Accelerated Unit 1, Unit 2/.test(await p.textContent('#qUnits summary')),'the close dialog is short: the caution once, dates and unit ticks folded away ('+dlg+' words)');
+  check(dlg<190 && await p.locator('#modal .warnline').count()<=1 && await p.locator('#qUnits:not([open])').count()===1 && /IXL units in Quarter 1: Accelerated Unit 1, Unit 2/.test(await p.textContent('#qUnits summary')),'the close dialog is short: the caution once, dates and unit ticks folded away ('+dlg+' words)');
   const pre=await p.evaluate(()=>[...document.querySelectorAll('[data-qu]')].filter(x=>x.checked).map(x=>x.dataset.qu));
   check(pre.join()==='acc|Unit 1: Equations and Inequalities,acc|Unit 2: Rational and Irrational Numbers' || pre.length===2,'the close dialog pre-ticks the IXL units whose Focus column was due in Q1: '+pre.join(' / '));
   await p.click('#qClose'); await p.waitForTimeout(500);

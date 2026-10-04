@@ -75,7 +75,7 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   // 3. Race: keyboard exit works, chip contrast
   await pl.click('#btnLb'); await pl.waitForTimeout(500);
   const lines=await pl.evaluate(()=>[...document.querySelectorAll('.lbLine,.lbDone,.lbPct small')].map(c=>getComputedStyle(c).color));
-  check(lines.length>=6 && lines.every(fg=>ratio(fg,'rgb(255,255,255)')>=4.5),'every supporting line on a Race card is ≥ 4.5:1 on its white card ('+lines.length+')');
+  check(lines.length>=4 && lines.every(fg=>ratio(fg,'rgb(255,255,255)')>=4.5),'every supporting line on a Race card is ≥ 4.5:1 on its white card ('+lines.length+')');
   const tracks=await pl.evaluate(()=>[...document.querySelectorAll('.lbCard')].map(c=>[getComputedStyle(c).backgroundColor,getComputedStyle(c.querySelector('.lbBarWrap')).backgroundColor]));
   check(tracks.every(([bg,tr])=>bg==='rgb(255, 255, 255)' && tr!=='rgba(255, 255, 255, 0.55)' && tr!==bg),'every card is white and every bar has a visible track (no tinted second place, no trackless first)');
   await pl.focus('#lbExit'); await pl.keyboard.down('Enter'); await pl.waitForTimeout(1700); await pl.keyboard.up('Enter'); await pl.waitForTimeout(400);

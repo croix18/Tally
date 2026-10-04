@@ -39,7 +39,7 @@ let state = null;
 /*__QUARTERS__*/ // quarters.js too
 /*__STUDENTS__*/ // students.js too
 let view = { mode: 'home', unit: null };   // opens on the Overview
-let noticesOpen = false, noticeCount = { warn: 0, info: 0 }; let attCache = new Map();
+let noticesOpen = false, noticeCount = { warn: 0, info: 0 }; let attCache = new Map(); let homeNotesOpen = false;
 let search = '';
 
 // Gradebook data is saved with everything else. One earlier build kept it in sessionStorage only; anything still
@@ -62,14 +62,15 @@ function migrate() {
   const st = state.settings || {};
   state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
     skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line'].includes(st.labKind) ? st.labKind : 'box', labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
-    currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null } };   // the unit each course is working in: everything up to it is assigned, later units are listed as upcoming   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
+    currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null },
+    curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) } };   // the unit each course is working in: everything up to it is assigned, later units are listed as upcoming   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
   state.assigned = state.assigned && typeof state.assigned === 'object' ? state.assigned : {}; state.assigned.acc = state.assigned.acc || {}; state.assigned.on = state.assigned.on || {};
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && typeof c.id === 'string' && typeof c.label === 'string').map(c => { const values = {}; if (c.values && typeof c.values === 'object') for (const k of Object.keys(c.values)) if (SAFE_KEY(k) && Array.isArray(c.values[k])) values[k] = c.values[k].map(Number).filter(Number.isFinite); return { ...c, label: c.label.slice(0, 80), unit: typeof c.unit === 'string' ? c.unit.slice(0, 40) : '', prep: c.prep === 'acc' ? 'acc' : 'on', values }; }) : [];
   state.grading = state.grading && typeof state.grading === 'object' ? state.grading : {};
   state.pools = state.pools && typeof state.pools === 'object' ? state.pools : {};
   state.lastBackup = typeof state.lastBackup === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(state.lastBackup) ? state.lastBackup.slice(0, 30) : null;
-  const li = state.lastImport; state.lastImport = li && typeof li === 'object' && typeof li.at === 'string' ? { at: li.at.slice(0, 30), lines: (Array.isArray(li.lines) ? li.lines : []).filter(l => l && typeof l === 'object').map(l => ({ label: String(l.label || '').slice(0, 80), text: String(l.text || '').slice(0, 300), pool: l.pool === 'acc' || l.pool === 'on' ? l.pool : null })).slice(0, 20), fails: (Array.isArray(li.fails) ? li.fails : []).map(x => String(x).slice(0, 300)).slice(0, 20), skipped: Number(li.skipped) || 0 } : null;
+  const li = state.lastImport; state.lastImport = li && typeof li === 'object' && typeof li.at === 'string' ? { at: li.at.slice(0, 30), lines: (Array.isArray(li.lines) ? li.lines : []).filter(l => l && typeof l === 'object').map(l => ({ label: String(l.label || '').slice(0, 80), text: String(l.text || '').slice(0, 300), pool: l.pool === 'acc' || l.pool === 'on' ? l.pool : null, wi: typeof l.wi === 'string' && /^(acc|on):\d+$/.test(l.wi) ? l.wi : null })).slice(0, 20), fails: (Array.isArray(li.fails) ? li.fails : []).map(x => String(x).slice(0, 300)).slice(0, 20), skipped: Number(li.skipped) || 0 } : null;
   roomOK(); state.seatWeights = state.seatWeights && typeof state.seatWeights === 'object' ? state.seatWeights : {};
   state.seatBasis = typeof state.seatBasis === 'string' ? state.seatBasis : 'blend'; state.seatPairs = typeof state.seatPairs === 'string' ? state.seatPairs : 'mix';
   if (!state.settings.skipFirstV2) { state.settings.skipFirst = { acc: 0, on: 1 }; state.settings.skipFirstV2 = true; }   // one-time: the earlier default hid on-level Unit 2 too
@@ -105,7 +106,7 @@ function migrate() {
 function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (fallback != null ? fallback : DEFAULT_THR.on) : Math.max(1, Math.min(100, n)); }
 // A pool class reads its skills from the course pool (the same array in memory); writing a copy per class was a quarter
 // of everything stored. The saved class carries poolSkills instead, and load() points it back at the pool.
-function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = state.sections[k]; const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: null, poolSkills: true } : s; } return { ...state, sections: secs }; }
+function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = state.sections[k]; const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
 function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
@@ -360,10 +361,10 @@ async function importFiles(files) {
   const poolLine = p => { const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === p.prep && !x.awaitingPool).length; return { label: p.prep === 'acc' ? 'Accelerated IXL' : 'On-level IXL', pool: p.prep, text: `${plural(p.students, 'student')}, ${plural(p.skills, 'skill')}${fed ? ` → ${plural(fed, 'class')} updated` : ' — no class uses it yet: import a Focus gradebook for each period'}` }; };
   const pools = poolImported.map(poolLine);
   const classes = ok.filter(s => !s.pool).map(s => ({ label: s.label, text: `IXL export — goal ${s.threshold}, ${plural(s.students.length, 'student')}` }));
-  const lines = [...pools, ...classes, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook — ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', text: `Working in set to Unit ${x.unit} — the latest unit Focus has an IXL column for. Change it on the class bar.` }))];
+  const lines = [...pools, ...classes, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook — ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: `Working in set to Unit ${x.unit} — the latest unit Focus has an IXL column for. Change it on the class bar.` }))];
   if (lines.length || fails.length || skipped) {   // files dropped within a quarter of an hour read as one import; a newer line for the same class replaces the older
     const prev = state.lastImport && Date.now() - new Date(state.lastImport.at) < 15 * 60000 ? state.lastImport : { lines: [], fails: [], skipped: 0 };
-    const fresh = lines.map(l => ({ label: String(l.label).slice(0, 80), text: String(l.text).replace(/<[^>]+>/g, '').slice(0, 300), pool: l.pool || null }));
+    const fresh = lines.map(l => ({ label: String(l.label).slice(0, 80), text: String(l.text).replace(/<[^>]+>/g, '').slice(0, 300), pool: l.pool || null, wi: l.wi || null }));
     const kept = prev.lines.filter(l => !fresh.some(f => f.label === l.label)).map(l => { const pl = l.pool && state.pools[l.pool]; return pl ? { ...poolLine({ prep: l.pool, students: pl.students.length, skills: pl.skills.length }) } : l; });   // a course line's "N classes updated" follows the gradebooks dropped after it
     state.lastImport = { at: new Date().toISOString(), lines: [...kept, ...fresh].slice(-20), fails: [...prev.fails, ...fails.map(x => String(x).slice(0, 300))].slice(-20), skipped: (prev.skipped || 0) + skipped }; }
   // A drop that touched several classes lands on the Overview, where the result is; a single file for one class lands on
@@ -382,7 +383,8 @@ async function importFiles(files) {
 // (review units don't count). The product can see it, so it doesn't ask — and doesn't guess from who has touched what.
 function defaultWorkingIn() {
   const set = []; state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null };
-  ['acc', 'on'].forEach(p => { if (state.settings.currentUnit[p]) return; let hi = 0;
+  const touched = state.settings.curUnitTouched || {};
+  ['acc', 'on'].forEach(p => { if (state.settings.currentUnit[p] || touched[p]) return; let hi = 0;
     state.order.map(k => state.sections[k]).filter(s => s.prep === p && s.grades && !s.placeholder && s.skills && s.skills.length).forEach(s => { const o = openSec(s); ((o.grades && o.grades.assignments) || []).forEach(x => { const u = gbUnitFor(s, x); if (u && u.num > hi) hi = u.num; }); });
     if (hi > ((state.settings.skipFirst || {})[p] || 0)) { state.settings.currentUnit[p] = hi; resnapshotPrep(p); set.push({ prep: p, unit: hi }); } });
   return set;
@@ -483,6 +485,8 @@ const FMT_MD = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeri
 const fmtDate = d => { if (!d) return ''; let v = fmtDateCache.get(d); if (v == null) { const [y, m, dd] = d.split('-').map(Number); v = FMT_MD.format(new Date(y, m - 1, dd)); fmtDateCache.set(d, v); } return v; };
 const fmtTime = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); };
 // Age of a yyyy-mm-dd date (or ISO stamp) in whole days, as of today — local calendar days, so "yesterday" is right at 8 am.
+// The local calendar day of an ISO timestamp (a backup saved at 9 pm is "today", not tomorrow's UTC date).
+const localDay = iso => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const ageDays = d => { if (!d) return null; const [y, m, dd] = String(d).slice(0, 10).split('-').map(Number); const then = new Date(y, m - 1, dd); const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); return Math.max(0, Math.round((today - then) / 86400000)); };
 const ageText = d => { const n = ageDays(d); if (n == null) return ''; if (n === 0) return 'today'; if (n === 1) return 'yesterday'; if (n < 14) return n + ' days ago'; if (n < 60) return Math.round(n / 7) + ' weeks ago'; return Math.round(n / 30) + ' months ago'; };
 // The date a class's IXL data is from: the export date in the file name, else the day it was imported.
@@ -513,7 +517,7 @@ function lbMarkup(data, focus) {
       <div class="lbRank">${showTrophy ? '<svg class="trophy" viewBox="0 0 24 24" aria-label="first place"><path d="M7 3h10v3a5 5 0 0 1-10 0V3z"/><path d="M17 5h3v2a4 4 0 0 1-4 4M7 5H4v2a4 4 0 0 0 4 4"/><path d="M12 11v4M8 21h8M9 21v-3h6v3"/></svg>' : r.rank}</div>
       <div class="lbMain">
         <div class="lbName">${esc(shortName(r))}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.lead ? ' <span class="lbTie lead">furthest along</span>' : ''}</div>
-        <div class="lbBarRow" title="${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skill-points · ${plural(r.students, 'student')}"><div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div><span class="lbDone">${pct(r.completion)}% complete</span></div>
+        <div class="lbBarRow" title="${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skill-points · ${plural(r.students, 'student')}"><div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div>${r.active == null ? '' : `<span class="lbDone">${pct(r.completion)}% complete</span>`}</div>
         <div class="lbLine ${r.gain != null && !r.thrChanged && !r.basisChanged ? 'gain' : ''}">${r.thrChanged ? 'goal changed — fresh start this week' : r.basisChanged ? 'skills counted changed — fresh start this week' : r.gain != null ? `${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}` : 'first week in the race'}</div>
       </div>
       <div class="lbPct">${headline(r)}</div>
@@ -533,20 +537,20 @@ function lbMarkup(data, focus) {
 const LB_CSS = `
 .lbCard{border-left:8px solid var(--cc,transparent)}.labRow{border-left:8px solid var(--cc,transparent)}
 /* The board (Race and Data Lab) is read from the back of a room: one unit, --bu, sized so that a 1920×1080 panel gets
-   19 px and everything is a multiple of it — nothing a class has to read is under ~1.3 bu (25 px there, 18 px on a laptop). */
-.lbWrap{--bu:clamp(11px,min(1vw,1.7778vh),40px)}
+   19 px and everything is a multiple of it: what a class reads (names, numbers, the lines under them) is 1.3 bu or more
+   (25 px there, 18 px on a laptop); tags and stat labels are about 1 bu. */
+.lbWrap{--bu0:clamp(11px,min(1vw,1.7778vh),40px);--bu:var(--bu0)}
+.lbLeagues:not(.two){--bu:calc(var(--bu0)*1.3)}   /* one league has the whole width: its cards are a third larger */
 .lbWrap{min-height:100%;display:flex;flex-direction:column;gap:calc(var(--bu)*.85);padding:calc(var(--bu)*1.1) calc(var(--bu)*1.6) 96px;max-width:min(96vw,2600px);margin:0 auto;width:100%}
 .lbHead{display:flex;align-items:baseline;gap:calc(var(--bu)*1);flex-wrap:wrap}
 .lbTitle{font-weight:900;font-size:calc(var(--bu)*3.2);letter-spacing:.02em;color:var(--navy);line-height:1}
 .lbSub{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.3)}
 .lbLeagues{flex:1;display:flex;flex-direction:column;gap:calc(var(--bu)*1)}
 .lbLeagues.two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--bu)*1.2);align-items:stretch}
-.lbLeague{display:flex;flex-direction:column;gap:calc(var(--bu)*.65);min-height:0}
+.lbLeague{display:flex;flex-direction:column;gap:calc(var(--bu)*.65);min-height:0;flex:1}
 .lbLeagueHead{display:flex;align-items:center;gap:calc(var(--bu)*.7);flex-wrap:wrap}
-.lbLeagueName{font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--white);background:var(--teal);border-radius:999px;padding:.3em .9em;font-size:calc(var(--bu)*1.15)}
-.lbBasis{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.15)}
-.lbLeagueMover{font-weight:700;color:var(--navy);background:var(--sand);border-radius:999px;padding:.3em .8em;font-size:calc(var(--bu)*1.15)}
-.lbLeagueMover b{font-weight:900}
+.lbLeagueName{font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--white);background:var(--teal);border-radius:999px;padding:.3em .9em;font-size:calc(var(--bu)*1.3)}
+.lbBasis{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.3)}
 /* every league uses the same rows, so cards line up across leagues and fill the height (up to a sensible card) */
 .lbList{flex:1;display:grid;grid-template-rows:repeat(var(--rows,1),minmax(min-content,1fr));gap:calc(var(--bu)*.75);max-height:calc(var(--rows,1)*var(--bu)*13.5)}
 .lbCard{display:grid;grid-template-columns:calc(var(--bu)*3.4) 1fr auto;gap:calc(var(--bu)*1);align-items:center;background:var(--white);border-radius:calc(var(--bu)*1.1);box-shadow:var(--shadow-2);padding:calc(var(--bu)*.8) calc(var(--bu)*1.4) calc(var(--bu)*.8) calc(var(--bu)*.8);min-width:0}
@@ -559,17 +563,17 @@ const LB_CSS = `
 .lbBar{height:100%;width:0;border-radius:999px;background:var(--navy);animation:lbGrow 1.2s cubic-bezier(.2,.8,.2,1) forwards}
 .lbDone{font-weight:800;font-size:calc(var(--bu)*1.35);color:var(--navy);white-space:nowrap}
 .lbLine{font-weight:700;font-size:calc(var(--bu)*1.35);color:var(--ink-soft);margin-top:.3em}.lbLine.gain{color:var(--teal)}
-.lbPct{font-weight:900;font-size:calc(var(--bu)*5);line-height:1;color:var(--navy);text-align:right}
+.lbPct{font-weight:900;font-size:calc(var(--bu)*5);line-height:1;color:var(--navy);text-align:right;padding-left:calc(var(--bu)*1.4);border-left:1px solid var(--grid);align-self:stretch;display:flex;flex-direction:column;justify-content:center}
 .lbPct small{display:block;font-size:calc(var(--bu)*1.3);font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);text-align:right;margin-top:.15em}
 .lbPct .lbWord{font-size:.5em;letter-spacing:.01em}
-.lbTie{display:inline-block;vertical-align:middle;font-size:calc(var(--bu)*.95);font-weight:900;letter-spacing:.08em;text-transform:uppercase;background:var(--paleturq);color:var(--teal);border-radius:999px;padding:.2em .7em;margin-left:.5em}
+.lbTie{display:inline-block;vertical-align:middle;font-size:calc(var(--bu)*1.1);font-weight:900;letter-spacing:.08em;text-transform:uppercase;background:var(--paleturq);color:var(--teal);border-radius:999px;padding:.2em .7em;margin-left:.5em}
 .lbTie.lead{background:var(--navy);color:var(--turq)}
 .trophy{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;margin:0 auto}
 .lbLeagues.two .lbName{font-size:calc(var(--bu)*2.1)}
 .lbLeagues.two .lbPct{font-size:calc(var(--bu)*4.4)}
 @keyframes lbGrow{to{width:var(--w)}}
 .lbEmpty{padding:60px;text-align:center;font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.4)}
-@media (max-width:1000px){.lbWrap{--bu:clamp(12px,1.9vw,24px)}.lbLeagues.two{grid-template-columns:1fr}.lbLeagues{flex:none}.lbList{flex:none;grid-template-rows:none;grid-auto-rows:min-content;max-height:none}}
+@media (max-width:1000px){.lbWrap{--bu0:clamp(12px,1.9vw,24px)}.lbLeagues:not(.two){--bu:var(--bu0)}.lbLeagues.two{grid-template-columns:1fr}.lbLeagues{flex:none}.lbList{flex:none;grid-template-rows:none;grid-auto-rows:min-content;max-height:none}}
 @media (prefers-reduced-motion:reduce){.lbBar{animation:none;width:var(--w)}}
 @media (max-width:700px){.lbCard{grid-template-columns:48px 1fr;padding:14px}.lbPct{grid-column:2;justify-self:end}}
 `;
@@ -706,6 +710,7 @@ function labPlot(kind, x, scale, id, o) {
   return boxSVG(x.st, scale, 800, o);
 }
 const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph']];
+const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   statsLevel = +statsLevel || 0; const kind = state.settings.labKind || 'box';
   const { list, secs } = labDatasets(prep);
@@ -731,7 +736,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
   const row = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return `<div class="labRow" style="--cc:${classColor(x.sec)}">
-      <div class="labName">${esc(x.name)}<small><b>n = ${x.st.n}</b>${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}</small></div>
+      <div class="labName">${esc(labShort(x.name))}<small><b>n = ${x.st.n}</b>${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}</small></div>
       <div class="labPlot">${labPlot(kind, x, scale, unitName, { stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1, bin: gbSet ? Math.max(5, state.settings.labBin || 5) : state.settings.labBin, pct: x.pct })}</div>
       ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
       ${statsLevel > 0 ? `<div class="labStats">
@@ -739,10 +744,10 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
         ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)} — too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''}
     </div>`; };
-  const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labName">${esc(x.name)}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
+  const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
   return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(ds.label)} · ${esc(unitLabel)} per student${seriesAll[0] && seriesAll[0].pct ? ' (rounded to whole percents)' : ''} · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
     ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${esc(LAB_KINDS.find(k => k[0] === kind)[1])} · one row per class · ${kind === 'hist' ? 'bars count students in each range' : kind === 'dots' ? 'one dot per student' : kind === 'stem' ? 'each leaf is one student' : kind === 'bar' ? (scale > 26 ? 'bar height = how many students in each range (values grouped — too many for one bar each)' : 'bar height = how many students got that value') : kind === 'circle' ? 'share of the class in each slice' : 'class average by import date'}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">whiskers stop at the last value inside 1.5 × IQR</span>' : '<span class="lgNote">whiskers: minimum to maximum</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
-    <div class="labRows">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
+    <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
     ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">Stats are hidden — read the plots first. Which class has the higher median? The bigger spread?</div>' : ''}`;
 }
 const LAB_ONLY_CSS = `
@@ -771,7 +776,7 @@ const LAB_ONLY_CSS = `
 .labStats div{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--cream);border-radius:10px;padding:6px 4px}
 .labStats div.wide{grid-column:span 3;align-items:flex-start;padding-left:10px;text-align:left}
 .labStats div.wide b{font-size:calc(var(--bu)*.95);line-height:1.3}
-.labStats span{font-size:calc(var(--bu)*.8);font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+.labStats span{font-size:calc(var(--bu)*.95);font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
 .labStats b{font-weight:900;font-size:calc(var(--bu)*1.3)}
 .labHint{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.3);padding:4px 6px}
 .labValues{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-start;border-top:2px solid var(--grid);padding:8px 0 4px}
@@ -783,7 +788,7 @@ const LAB_ONLY_CSS = `
 .labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:900}
 .labChips span.m.gap{background:var(--white);color:var(--navy);border-style:dashed}
 .labChips span.out{box-shadow:0 0 0 2px var(--coral)}
-.labPlot .chart{max-height:32vh} .labRow.one .labPlot .chart{max-height:68vh}
+.labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*10 - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
 .lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:999px;padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}
@@ -849,7 +854,7 @@ function enterProjected() {
 }
 // The embedded DM Sans, for the pages that leave the room (reports, still owed, the digest, the guide, seating prints):
 // they are separate documents, so each carries the face itself — still no network request.
-function printFontCss() { return (document.getElementById('tallyFont') || {}).textContent || ''; }
+function printFontCss() { const m = ((document.getElementById('tallyFont') || {}).textContent || '').match(/@font-face\s*\{[^}]*\}/); return m ? m[0] : ''; }
 function downloadLeaderboard(which) {
   const data = leaderboardData(); const st = state.settings; const lab = which === 'lab';
   const dotsOn = (st.labUnit || '').startsWith('gb:') ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
@@ -857,7 +862,7 @@ function downloadLeaderboard(which) {
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
 <style>${printFontCss()}</style>
 <style>:root{--cream:#F6F5F0;--grid:#E6E4DC;--sand:#EFECE3;--shadow:rgba(22,33,58,.10);--shadow-1:0 1px 2px rgba(22,33,58,.06);--shadow-2:0 1px 2px rgba(22,33,58,.06),0 12px 32px -14px rgba(22,33,58,.22);--turq:#2DD4BF;--paleturq:#DDF4F0;--teal:#0F766E;--navy:#16213A;--coral:#FBDAD2;--bad:#B8321F;--white:#fff;--ink-soft:#66708A;--r:16px}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream)}
+*{box-sizing:border-box}html,body{margin:0;height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream)}
 ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = (lab ? 'Data-Lab-' : 'IXL-Race-') + (data.map(r => r.date).filter(Boolean).sort().pop() || new Date().toISOString().slice(0, 10)) + '.html'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast(lab ? 'Saved the Data Lab page — no names; it does contain each class\'s values.' : 'Saved the Race page — class totals only, no names.', false, 4500, true);
@@ -1164,7 +1169,7 @@ function renderBar() {
     const u = units.find(u => u.name === view.unit);
     if (!u) { view = { mode: 'units', unit: null }; return renderBar(); }
     const ex = u.idx.length - u.active.length;
-    html = `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
+    html = `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="vh">Legend: filled cells are at goal, sand cells below goal, a dot is not started, hatched is skipped. Tap a skill to skip it for the course, a cell to skip it for one student.</span><span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
       <div class="spacer"></div>
       <button class="pill toggle soft" id="hideUnit" aria-pressed="${u.assigned}" title="Whether this unit counts for the course — tap to change">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
       ${s.receipts[u.name] ? `<button class="pill toggle" id="rcUnit" title="What was copied to Focus, and when">Copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}
@@ -1187,7 +1192,7 @@ function renderBar() {
     menu.querySelectorAll('button').forEach(b => b.addEventListener('click', closeMenu));
     const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const so = $('#mStillOwed'); if (so) so.onclick = () => openStillOwed(s); const mr = $('#mReports'); if (mr) mr.onclick = () => openStudentReports(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; const md = $('#mDetails'); if (md) md.onclick = () => { state.settings.details = !state.settings.details; save(); render(); }; }
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
-  const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}; later units are upcoming.` : 'No current unit — units count once a quarter of the class has started them.', false, 5000); };
+  const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.settings.curUnitTouched = { ...(state.settings.curUnitTouched || {}), [s.prep]: true }; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}; later units are upcoming.` : 'No current unit — units count once a quarter of the class has started them.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
   $('#bar').querySelectorAll('[data-gq]').forEach(b => b.onclick = () => { view.q = Number(b.dataset.gq); render(); });
   const gqz = $('#gradesQuarters'); if (gqz) gqz.onclick = openQuarters;
@@ -1218,10 +1223,13 @@ function renderRosterPanel(s) {
 }
 // The unit view's skill names are vertical text wrapped onto a few lines. The header is only as tall as this unit's longest
 // name needs (a unit of short names gets a short header) and no name is ever cut: grow the line length until all fit.
-function fitSkillHeads(wrap) {
+const skillHeadH = new Map();
+function fitSkillHeads(wrap, key) {
   const tbl = wrap.querySelector('table.grid'); const rots = [...wrap.querySelectorAll('th.skill .rot')]; if (!tbl || !rots.length) return;
+  const known = skillHeadH.get(key); if (known) { tbl.style.setProperty('--skh', known + 'px'); return; }
   let hgt = 84; tbl.style.setProperty('--skh', hgt + 'px');
   while (hgt < 220 && rots.some(e => e.scrollWidth > e.clientWidth + 1)) { hgt += 12; tbl.style.setProperty('--skh', hgt + 'px'); }
+  if (key && document.fonts && document.fonts.status === 'loaded') skillHeadH.set(key, hgt);   // (a measurement before the font is in would be of the fallback face)
 }
 function renderGrid() {
   const s = state.sections[state.active]; const units = unitsOf(s); const allRows = buildRows(s); const t = s.threshold;
@@ -1232,7 +1240,7 @@ function renderGrid() {
   const q = norm(search);
   const rows = allRows.map((r, i) => ({ ...r, n: i + 1 })).filter(r => !q || norm(r.display).includes(q) || norm(r.sub).includes(q));
   const wrap = $('#gridwrap');
-  const nameCell = r => `<td class="stu"><div class="stuname">${r.status === 'ok' && r.tier === 'loose' ? `<button class="nm nmbtn" data-fix="${esc(r.display)}" title="Matched loosely to ${esc(shown(r.ixlName))} — tap to change">${esc(shown(r.display))}</button>` : r.status === 'ok' || r.status === 'rosterOnly' ? `<button class="nm nmbtn" data-prof="${esc(r.display)}" title="Open ${esc(shown(r.display))}'s page: grades, trends, what-ifs">${esc(shown(r.display))}</button>` : `<span class="nm">${esc(shown(r.display))}</span>`}${
+  const nameCell = r => `<td class="stu"><div class="stuname">${r.status === 'ok' && r.tier === 'loose' ? `<button class="nm nmbtn" data-fix="${esc(r.display)}" title="Matched loosely to ${esc(shown(r.ixlName))} — tap to change">${esc(shown(r.display))}</button>` : r.status === 'ok' || r.status === 'rosterOnly' || r.status === 'noAccount' ? `<button class="nm nmbtn" data-prof="${esc(r.display)}" title="Open ${esc(shown(r.display))}'s page: grades, trends, what-ifs">${esc(shown(r.display))}</button>` : `<span class="nm">${esc(shown(r.display))}</span>`}${
       r.status === 'rosterOnly' && s.pool && s.awaitingPool ? '' :   // the course export hasn't arrived: nobody is "not in IXL" yet
       r.status === 'rosterOnly' ? `<button class="flag" data-fix="${esc(r.display)}">NOT IN IXL — FIX</button>` :
       r.status === 'ambiguous' ? `<button class="flag amb" data-fix="${esc(r.display)}">TWO MATCHES — PICK</button>` :
@@ -1249,9 +1257,10 @@ function renderGrid() {
     shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; const rc = checks.find(x => x.unit.name === u.name); const bad = rc ? rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1) : 0;
       const stat = rc ? `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ${ico('check', 'matches')} · ${rc.counts.accepted} kept` : `Focus ${ico('check', 'matches')}`}</button>`
         : uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span>`
-        : s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>`
-        : u.upcoming ? '<span class="utag">upcoming</span>' : u.current ? '<span class="utag now">now</span>' : '';
-      h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}${u.title ? ' — ' + esc(u.title) : ''}, out of ${u.total}" title="${esc(u.title)} · out of ${u.total}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="ustat">${stat}</span><span class="usub det">out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}${rc && s.receipts[u.name] ? ` · <button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}</span><span class="uact"><button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></span></div></th>`; });
+        : u.upcoming ? '<span class="utag">upcoming</span>' : u.current && !s.receipts[u.name] ? '<span class="utag now">now</span>' : '';
+      // when it was copied stays in the header whatever the badge says (the slot holds both; Copy sits on the row's bottom line)
+      const copied = s.receipts[u.name] && !uq ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : '';
+      h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.upcoming ? 'upcoming' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}${u.title ? ' — ' + esc(u.title) : ''}, out of ${u.total}" title="${esc(u.title)} · out of ${u.total}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="ustat">${stat}${copied}</span><span class="usub det">out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span><span class="uact"><button class="copy${u.upcoming ? ' det' : ''}" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></span></div></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${shownUnits.length + 1}">No students match “${esc(search)}”.</td></tr>`;
     rows.forEach(r => {
@@ -1294,7 +1303,7 @@ function renderGrid() {
     u.idx.forEach(k => { let n = 0, p = 0; allRows.forEach(r => { if (r.ixl != null) { n++; const v = eff(s, k, r.ixl); if (v != null && v >= t) p++; } }); h += `<td>${n ? Math.round(p / n * 100) + '%' : '—'}</td>`; });
     h += `</tr></tfoot></table>`;
     wrap.innerHTML = h;
-    fitSkillHeads(wrap);
+    fitSkillHeads(wrap, s.prep + '|' + u.name + '|' + u.idx.map(k => s.skills[k].name.length).join(','));
     wrap.querySelectorAll('[data-x]').forEach(el => el.onclick = () => {
       const sk = s.skills[+el.dataset.x]; const key = skillKey(sk);
       if (s.excluded[key]) delete s.excluded[key]; else s.excluded[key] = true;
@@ -1486,7 +1495,7 @@ function openGuide() {
   const thrs = [...new Set(secs.map(s => `${s.prep === 'acc' ? 'accelerated' : 'on-level'} ${s.threshold}`))];
   const goalLine = thrs.length ? thrs.join(', ') : `on-level ${DEFAULT_THR.on}, accelerated ${DEFAULT_THR.acc}`;
   const remind = state.settings.remindDays;
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Tally — one-page guide</title>
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Tally — guide</title>
 <style>${printFontCss()}</style>
 <style>
 @page{margin:.55in}
@@ -1515,7 +1524,7 @@ dd{margin:0}
 <ol>
 <li><b>Export</b> from IXL: Analytics → Score Grid → This school year → Export — one file per course (every student in it) or one per class, both work. From Focus: gradebook → Export, one per period.</li>
 <li><b>Import</b> all of them at once (button or drag onto the page). Newer exports replace older; best scores are kept.</li>
-<li>Look at the <b>notices</b> under the class chips: roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}).</li>
+<li>Look at <b>Needs attention</b> on the Overview (and the "N to fix" count beside a class's name): roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}). A student who has no IXL account: tap their flag → <b>No IXL account</b>, and the flag goes.</li>
 <li>Tap <b>Copy</b> on a unit → paste into that unit's Focus column (rows are already in Focus order). The unit header then shows <i>copied ‹date›</i>.</li>
 <li>After the next Focus export, each unit's <b>Focus badge</b> says ${ico('check', 'a check')}, "N up since copy", or "N off" — tap it to see who, and <b>Copy corrections</b>.</li>
 <li><b>Save a backup</b> to your school Drive (Overview → <i>Back up</i>, or Settings). It is how the laptop and the tablet stay in step, and the only copy if this browser's storage is cleared.</li>
@@ -1536,7 +1545,7 @@ dd{margin:0}
 <dt>Grades</dt><dd>After a Focus gradebook is loaded: the real course grade (weighted categories, proved against the Focus Grade column), trends since the last import, sliding students, IXL against assessment scores, and per-student what-ifs — turn in, retake, next assessment — with a printable one-student page. Categories are proved from the Grade column where possible; move any assignment from its row.</dd>
 <dt>Students</dt><dd>Header button (teacher only). Every student of every class with their grade, change, missing work and IXL; tap one for their page: this quarter's grade and each closed quarter's final, the grade, categories, missing work and IXL over the year, every assignment and assessment, IXL still owed by unit, and what would move the grade, starting with the <b>quickest way to the next letter</b> — missing work and IXL first. <b>Show student</b> turns the screen toward them: only their numbers, switches and sliders to try turning work in, retakes and the next test. Hold the exit button to leave.</dd>
 <dt>Quarters</dt><dd>When a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28), close it from the Overview. Tally keeps a copy of every class's gradebook for that quarter and goes quiet about it: no missing counts, sliding, Focus checks or still-owed lines for its work or its IXL units. Open it any time under Grades → Q1 and on each student's page. If the next quarter's export arrives first, the old quarter is kept automatically.</dd>
-<dt>Working in</dt><dd>Pick the unit each course is on (the selector on the class bar). Every unit up to it counts toward the Race and Focus check; later units stay listed as <i>upcoming</i> so you can see who's working ahead. The first on-level unit is a review unit and never counts (change in Settings).</dd>
+<dt>Working in</dt><dd>The unit each course is on (the selector on the class bar). If you haven't picked one, an import sets it to the latest unit Focus has an IXL column for and says so; your own pick is never changed. Every unit up to it counts toward the Race and Focus check; later units stay listed as <i>upcoming</i> so you can see who's working ahead. The first on-level unit is a review unit and never counts (change in Settings).</dd>
 <dt>Assigned</dt><dd>Tap a unit's Assigned button to override the rule for that unit either way. Units you unassign leave the grid; the unassigned-units button brings them back.</dd>
 <dt>Best</dt><dd>A score from an earlier export that was higher than today's. Points once earned are kept.</dd>
 <dt>Copied</dt><dd>A receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</dd>
@@ -1693,7 +1702,7 @@ function matchReport(s, rosterText) {
 }
 // The backup is the bridge between the laptop and the tablet, and the only copy if this browser's storage is cleared.
 function saveBackup() {
-  const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays, skipFirst: state.settings.skipFirst, skipFirstV2: true, currentUnit: state.settings.currentUnit }, assigned: state.assigned, custom: state.custom, grading: state.grading, room: state.room, seatWeights: state.seatWeights, seatBasis: state.seatBasis, seatPairs: state.seatPairs, quarters: quarters(), sections: {} };
+  const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays, skipFirst: state.settings.skipFirst, skipFirstV2: true, currentUnit: state.settings.currentUnit, curUnitTouched: state.settings.curUnitTouched }, assigned: state.assigned, custom: state.custom, grading: state.grading, room: state.room, seatWeights: state.seatWeights, seatBasis: state.seatBasis, seatPairs: state.seatPairs, quarters: quarters(), sections: {} };
   for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [], seating: x.seating || null, seatInfo: x.seatInfo || {}, qArchive: x.qArchive || {}, overrides: x.overrides || {} }; }
   for (const k in state.pendingCfg) if (!cfg.sections[k]) cfg.sections[k] = state.pendingCfg[k];
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = 'tally-backup-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -1702,7 +1711,7 @@ function saveBackup() {
 }
 // How full this browser's storage is. Pages opened from files (and every project on one Pages site) share one allowance
 // of about five million characters, so "other saved pages" is counted too.
-function storageUse() { const quota = 5242880; let total = 0, tally = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); const n = k.length + (localStorage.getItem(k) || '').length; total += n; if (k.indexOf(LS_KEY) === 0) tally += n; } } catch (e) {} return { quota, total, tally, other: total - tally, pct: Math.round(total / quota * 100), mb: n => (n / 1048576).toFixed(n < 1048576 * 0.95 ? 1 : 1) }; }
+function storageUse() { const quota = 5242880; let total = 0, tally = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); const n = k.length + (localStorage.getItem(k) || '').length; total += n; if (k.indexOf(LS_KEY) === 0) tally += n; } } catch (e) {} return { quota, total, tally, other: total - tally, pct: Math.round(total / quota * 100), mb: n => (n / 1048576).toFixed(1) }; }
 // The newest thing imported (an IXL export or a gradebook), to tell whether the last backup is behind it.
 function latestImportAt() { let m = ''; for (const k of state.order) { const s = state.sections[k]; [s.importedAt, s.grades && s.grades.importedAt].forEach(v => { if (typeof v === 'string' && v > m) m = v; }); } return m || null; }
 const backupBehind = () => { const li = latestImportAt(); return !!(li && (!state.lastBackup || state.lastBackup < li)); };
@@ -1744,9 +1753,9 @@ function openSettings() {
         ${s.grades ? `<h3 class="mt">Gradebook</h3><p>${plural(s.grades.assignments.length, 'assignment')} · ${plural(s.grades.students.length, 'student')} · imported ${fmtDate(s.grades.importedAt.slice(0, 10))} from ${esc(s.grades.file || 'file')}</p><button class="pill danger small" id="dropGrades">Remove this gradebook</button>` : ''}
         <h3 class="mt">Backup</h3>
         <p>Rosters, goals, skips, matches, category weights, each student's weekly skill counts (for the race) and their computed Focus grade per import (for trends). Not raw scores. Load it on another computer before or after importing exports.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load backup</button><input type="file" id="cfgFile" accept=".json" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last saved ${esc(ageDays(state.lastBackup) === 0 ? 'today' : fmtDate(state.lastBackup.slice(0, 10)))}.` : 'Never saved from this browser.'}</small></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load backup</button><input type="file" id="cfgFile" accept=".json" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last saved ${esc(ageDays(localDay(state.lastBackup)) === 0 ? 'today' : fmtDate(localDay(state.lastBackup)))}.` : 'Never saved from this browser.'}</small></div>
         <h3 class="mt">This computer</h3>
-        ${(() => { const u = storageUse(); return `<p class="storeLine ${u.pct >= 80 ? 'full' : ''}" id="storeLine"><span class="storeBar"><i style="width:${Math.min(100, Math.max(2, u.pct))}%"></i></span>Storage: <b>${u.mb(u.total)} of about ${u.mb(u.quota)} MB</b> used in this browser${u.other > 20000 ? ` — Tally ${u.mb(u.tally)} MB, other saved pages ${u.mb(u.other)} MB` : ''}.${u.pct >= 80 ? ' Nearly full: save a backup, then remove an old class or gradebook.' : ''}</p>`; })()}
+        ${(() => { const u = storageUse(); return `<p class="storeLine ${u.pct >= 80 ? 'full' : ''}" id="storeLine"><span class="storeBar"><i style="width:${Math.min(100, Math.max(2, u.pct))}%"></i></span>Storage: <b>${u.mb(u.total)} of about ${u.mb(u.quota)} MB</b> used in this browser${u.other > 20000 ? ` — Tally ${u.mb(u.tally)} MB, other saved pages ${u.mb(u.other)} MB` : ''}.${u.pct >= 80 ? (u.other > u.tally ? ' Nearly full, mostly from other saved pages: save a backup, then clear those pages\' data.' : ' Nearly full: save a backup, then remove an old class or gradebook.') : ''}</p>`; })()}
         <p>Everything Tally shows — IXL scores, rosters, goals, skips, and the Focus gradebook with its grade history — is saved in this browser. On a shared computer, clear it when you're done.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="forget">Remove this class</button><button class="pill danger small" id="wipe">Clear all Tally data</button></div>
       </section>
@@ -1814,7 +1823,7 @@ function openSettings() {
   $('#importCfg').onclick = () => $('#cfgFile').click();
   $('#cfgFile').onchange = async e => {
     try { const cfg = JSON.parse(await e.target.files[0].text()); if (!cfg || !cfg.tally || typeof cfg.sections !== 'object') throw 0;
-      if (cfg.settings) { if (cfg.settings.currentUnit && typeof cfg.settings.currentUnit === 'object') state.settings.currentUnit = { acc: Number.isInteger(cfg.settings.currentUnit.acc) ? cfg.settings.currentUnit.acc : null, on: Number.isInteger(cfg.settings.currentUnit.on) ? cfg.settings.currentUnit.on : null }; if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object' && cfg.settings.skipFirstV2) state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 0, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 1 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
+      if (cfg.settings) { if (cfg.settings.curUnitTouched && typeof cfg.settings.curUnitTouched === 'object') state.settings.curUnitTouched = { acc: !!cfg.settings.curUnitTouched.acc, on: !!cfg.settings.curUnitTouched.on }; if (cfg.settings.currentUnit && typeof cfg.settings.currentUnit === 'object') state.settings.currentUnit = { acc: Number.isInteger(cfg.settings.currentUnit.acc) ? cfg.settings.currentUnit.acc : null, on: Number.isInteger(cfg.settings.currentUnit.on) ? cfg.settings.currentUnit.on : null }; if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object' && cfg.settings.skipFirstV2) state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 0, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 1 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
       const safeObj = o => { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) if (SAFE_KEY(k)) out[k] = o[k]; return out; };
       if (cfg.assigned && typeof cfg.assigned === 'object') { state.assigned.acc = { ...state.assigned.acc, ...safeObj(cfg.assigned.acc) }; state.assigned.on = { ...state.assigned.on, ...safeObj(cfg.assigned.on) }; }
       if (cfg.grading && typeof cfg.grading === 'object') ['acc', 'on'].forEach(pp => { const g = cfg.grading[pp]; if (g && Array.isArray(g.cats) && g.cats.length) state.grading[pp] = { cats: g.cats.filter(c => c && c.name && isFinite(c.w)).map(c => ({ name: String(c.name), w: Number(c.w) })), map: safeObj(g.map), how: safeObj(g.how) }; });
@@ -1903,7 +1912,7 @@ document.addEventListener('keydown', e => {
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { get state() { return state; }, save, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { get state() { return state; }, save, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 render();
 if (bootError) setTimeout(() => toast('Saved Tally data could not be read and was set aside (kept as a backup in this browser). Re-import your exports.', true, 8000), 300);

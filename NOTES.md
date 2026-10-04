@@ -118,6 +118,30 @@ per-section-file era and many items in them are now done).
   `Tally.test.html` (git-ignored) so a test run can never ship `window.__tally`; `tests/contract.js` measures layout
   (one-row header, rows visible, sticky header, ring contrast, chip colours, font applied, no overflow, no debug handle).
   Build 2 and the items that are Croix's call are listed in the findings file.
+- **Round 6, Build 2** (4 Oct, seven commits + one of fixes after an independent verifier's pass —
+  `review/round6-build2-verify.md`). What changed and where to look:
+  *Alerts* — "No IXL account" is a row status (`noAccount`, alias `'#none'`), so the fixer really clears the flag, the
+  notice and the tab dot; Needs attention is one line per cause (`attentionGroups` in `home.js`, per-class chips when
+  the cause is per class), warnings first, notes folded; the class page's notice band is a count chip in the bar
+  (`noticeChip`), open by default only when the class has nothing to show. *Quarter close* — waiting cards read "Focus
+  · Q1 final 84%" and "Q2 gradebook not in yet", no dashes or zeros; "Quarters" opens on the dates until the quarter
+  has ended, with closing early behind a fold (`#qEarly`). *Backup* — `state.lastBackup`, "backed up 3 days ago" on
+  the Overview and in Settings, a nudge when imports are newer than the backup. *Working in* — set at import from the
+  latest unit that has a Focus IXL column (`defaultWorkingIn`), never a review unit, never over a choice Croix made
+  (`settings.curUnitTouched`, which `migrate()` must keep in its whitelist). *Headers* — unit headers have fixed slots
+  (title, status, action) so Copy lines up across units; skill names stand vertically on up to four lines
+  (`fitSkillHeads`, cached per unit) so none is cut and three or four more students fit. *Board* — one unit (`--bu`)
+  sizes the Race and Data Lab for the room, `LB_CSS` is the single source for the app and the saved page, the Race
+  card is one line, and the Data Lab's data-set list no longer carries 219 single skills (a second select appears
+  for "A single skill…"). *Student page and report* — tiles with sparklines, the answer first, numeric columns
+  right-aligned; the printed report is one page; `nextAssessment` in `grades.js` is the one source for "what score
+  on the next assessment". *Glyphs* — the font is re-subset with arrows and ≤ ≥ ≈ (recipe in `fonts/README.md`), and
+  check/warning/lock/trash are inline SVG (`ICO`, `ico()`), so nothing falls back to a system face; every printed
+  page embeds DM Sans via `printFontCss()` (the `@font-face` block only). *Storage* — a pool's classes no longer
+  save a second copy of the course's skills (`stateForSave`, `poolSkills: true`, **`skills: []` not `null`** so an
+  older Tally.html opening a newer save can't drop the class), and Settings shows how full the browser's storage is.
+  Two lessons worth keeping: a `//` comment inside a one-line function swallows its closing brace (use `/* */`; the
+  ship script now parse-checks), and `${...}` only works inside back-ticks — both broke a build this round.
 
 ## Weekly routine
 

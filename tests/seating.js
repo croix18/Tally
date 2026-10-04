@@ -63,7 +63,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   // 6. print copies
   await p.click('#seatPrint'); await p.waitForTimeout(200); check(await p.locator('[data-pm="teacher"]').count()===1 && await p.locator('[data-pm="safe"]').count()===1,'print offers teacher and student/sub copies');
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('[data-pm="safe"]')]); await pop.waitForLoadState(); await pop.waitForTimeout(300);
-  const ptxt=await pop.textContent('body'); check(await pop.locator('.chartSvg').count()===1 && !/L\d|🔒/.test(ptxt) && !(await pop.locator('circle').count()),'sub copy has no level dots, behavior dots or locks'); await pop.close();
+  const ptxt=await pop.textContent('body'); check(await pop.locator('.chartSvg').count()===1 && !/L\d/.test(ptxt) && !(await pop.locator('.lockmark').count()) && !(await pop.locator('circle').count()),'sub copy has no level dots, behavior dots or locks'); await pop.close();
   // 7. import the standalone Seating Chart's backup: photos shrink, FAST comes in, relations and the saved chart map onto Tally's roster
   const names=await p.evaluate(K=>window.__tally.seatStudents(window.__tally.state.sections[K]).map(x=>x.display), K);
   const png1=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==','base64');

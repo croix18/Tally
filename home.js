@@ -57,19 +57,27 @@ function renderHome() {
       <div class="hhead"><b>${esc(s.label)}</b><small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small></div>
       <div class="hnums">
         <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b><span>${r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : 'first import'}</span></div>
-        ${waiting ? `<div><small>Focus${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final` : ''}</small><b>${g.qFinal && g.qFinal.avg != null ? Math.round(g.qFinal.avg) + '%' : '—'}</b><span>Q${g.q} gradebook not in yet</span></div>` : `
+        ${waiting ? `<div><small>Focus${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final` : ''}</small><b>${g.qFinal && g.qFinal.avg != null ? Math.round(g.qFinal.avg) + '%' : '—'}</b><span>${[1, 2, 3, 4].every(qClosed) ? 'every quarter is closed' : `Q${g.q} gradebook not in yet`}</span></div>` : `
         <div><small>Focus average${anyClosed() ? ' · Q' + currentQuarter() : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b><span>${g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : ''}</span></div>
         <div><small>Missing work</small><b>${g ? g.missing : '—'}</b><span>${g ? plural(g.missingStudents, 'student') : ''}</span></div>
         <div><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b><span>${g && g.prevDate ? 'down 3+ or more missing' : 'needs 2 gradebooks'}</span></div>`}
       </div>
       <div class="hchips">${focusChip}${g && !waiting ? `<span class="hchip letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${g.letters[l]}</em></i>`).join('')}</span>` : ''}${warn ? `<span class="hchip warn">${plural(warn, 'thing')} to look at</span>` : ''}</div>
     </button><button class="hchip act hdigest" data-digest="${esc(s.key)}">What changed ›</button></article>`; };
-  const groups = attentionGroups(secs);
-  const qdLine = qd ? `<li class="info"><button id="qdGo"><i></i><span><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</span><em>›</em></button></li>` : '';
-  const lb = state.lastBackup; const bkLine = backupBehind() ? `<li class="info"><button id="hBackup" title="Download a backup file — keep it in your school Drive"><i></i><span><b>Back up</b> — ${lb ? `new imports since the last backup (${esc(ageDays(lb) === 0 ? 'earlier today' : fmtDate(lb.slice(0, 10)))})` : 'nothing has been backed up from this browser yet'}</span><em>Save backup</em></button></li>` : '';
-  const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>Storage is ${su.pct}% full</b> — save a backup, then remove an old class or gradebook in Settings</span><em>›</em></button></li>` : '';
-  const attList = groups.length || qdLine || bkLine || stLine ? `<ul class="hatt">${stLine}${qdLine}${groups.map(g => g.each ? `<li class="${g.level} each"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div></li>`
-    : `<li class="${g.level}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"><i></i><span><b>${esc(g.who)}</b> — ${esc(g.text)}</span><em>›</em></button></li>`).join('')}${bkLine}</ul>` : '';
+  // What to do comes first, but not at the cost of the cards: things to fix are listed; things to know (an old export,
+  // a backup due) share one line that opens — so the list is two or three rows and the class cards stay on the first screen.
+  const groups = attentionGroups(secs); const day = iso => localDay(iso);
+  const row = g => g.each ? `<li class="${g.level} each"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div></li>`
+    : `<li class="${g.level}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"><i></i><span><b>${esc(g.who)}</b> — ${esc(g.text)}</span><em>›</em></button></li>`;
+  const qdLine = qd ? `<li class="warn"><button id="qdGo"><i></i><span><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</span><em>›</em></button></li>` : '';
+  const lb = state.lastBackup; const bkDue = backupBehind();
+  const bkLine = bkDue ? `<li class="info"><button id="hBackup" title="Download a backup file — keep it in your school Drive"><i></i><span><b>Back up</b> — ${lb ? `new imports since the last backup (${esc(ageDays(day(lb)) === 0 ? 'earlier today' : fmtDate(day(lb)))})` : 'nothing has been backed up from this browser yet'}</span><em>Save backup</em></button></li>` : '';
+  const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>This browser's storage is ${su.pct}% full</b> — ${su.other > su.tally ? `other saved pages hold most of it (${su.mb(su.other)} MB; Tally ${su.mb(su.tally)} MB). Save a backup first` : 'save a backup, then remove an old class or gradebook in Settings'}</span><em>›</em></button></li>` : '';
+  const warns = groups.filter(g => g.level === 'warn'), notes = groups.filter(g => g.level !== 'warn');
+  const noteN = notes.length + (bkLine ? 1 : 0); const noteWords = [...notes.map(g => g.text.split(' — ')[0]), bkLine ? 'back up' : ''].filter(Boolean).join(' · ');
+  const noteRows = notes.map(row).join('') + bkLine;
+  const fix = stLine + qdLine + warns.map(row).join('');
+  const attList = fix || noteN ? `<ul class="hatt">${fix}${noteN === 1 ? noteRows : noteN ? `<li class="info more"><details id="hNotes" ${homeNotesOpen ? 'open' : ''}><summary><i></i><span><b>${plural(noteN, 'note')}</b> — ${esc(noteWords)}</span><em></em></summary><ul class="hatt">${noteRows}</ul></details></li>` : ''}</ul>` : '';
   // charts
   const withHist = secs.filter(s => (s.gradeHistory || []).length); const dates = [...new Set(withHist.flatMap(s => s.gradeHistory.map(h => h.date)))].sort();
   const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.filter(h => h.date === d).pop(); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, w: 900, labelW: 200, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
@@ -79,11 +87,13 @@ function renderHome() {
   const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, dark: LETTER_DARK, labelW: 180, aria: 'letter grades by class' }) : '';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   const withGb = secs.filter(s => s.grades).length, waitN = anyClosed() ? secs.filter(s => s.grades && !hasOpenGrades(s)).length : 0;
-  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · backed up ${esc(ageDays(lb) === 0 ? 'today' : fmtDate(lb.slice(0, 10)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
+  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · backed up ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
   $('#bar').classList.remove('detail');
-  const li = state.lastImport; const liAge = li ? ageDays(li.at) : null;
-  // Today's import is spelled out; an older one folds to a line (failures always show).
-  const importLine = li && (li.lines.length || li.fails.length) ? `<details class="himport ${li.fails.length ? 'warn' : ''}" ${liAge === 0 || li.fails.length ? 'open' : ''}><summary><b>Last import</b> <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(li.at.slice(0, 10)))}, ${esc(fmtTime(li.at))}${li.fails.length ? ` · ${li.fails.length} couldn't be read` : ''}</small><button class="linkbtn" id="liHide" title="Remove this until the next import">Dismiss</button></summary>
+  const li0 = state.lastImport; const curU = state.settings.currentUnit || {};
+  const li = li0 ? { ...li0, lines: li0.lines.filter(l => !l.wi || String(curU[l.wi.split(':')[0]]) === l.wi.split(':')[1]) } : null;   // a "Working in set to…" line retires once the teacher picks another unit
+  const liAge = li ? ageDays(day(li.at)) : null; const nFiles = li ? li.lines.filter(l => !l.wi).length : 0;
+  // The import's result is one line that opens (it stays until the next import); it starts open only when a file couldn't be read.
+  const importLine = li && (li.lines.length || li.fails.length) ? `<details class="himport ${li.fails.length ? 'warn' : ''}" ${li.fails.length ? 'open' : ''}><summary><b>Last import</b> <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(day(li.at)))}, ${esc(fmtTime(li.at))} · ${plural(nFiles, 'file')}${li.fails.length ? ` · <span class="bad">${li.fails.length} couldn't be read</span>` : ' — all read'}${li.lines.some(l => l.wi) ? ' · Working in was set for you' : ''}</small><button class="linkbtn" id="liHide" title="Remove this until the next import">Dismiss</button></summary>
     <ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}${li.skipped ? `<li class="muted">${plural(li.skipped, 'file')} skipped</li>` : ''}</ul></details>` : '';
   $('#gridwrap').innerHTML = `<div class="home">
     ${importLine}
@@ -97,6 +107,7 @@ function renderHome() {
     <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
   </div>`;
   const hs = $('#hStore'); if (hs) hs.onclick = () => openSettings();
+  const hn = $('#hNotes'); if (hn) hn.ontoggle = () => { homeNotesOpen = hn.open; };
   const hb = $('#hBackup'); if (hb) hb.onclick = () => { saveBackup(); render(); };
   const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;

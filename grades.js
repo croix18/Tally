@@ -281,6 +281,15 @@ table{border-collapse:collapse;width:100%}td,th{padding:2.5px 6px;text-align:lef
 .r{text-align:right;white-space:nowrap}.nhi{font-weight:bold}.cats td{border-bottom:none;padding:1px 6px}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
 .u{margin:4px 0 6px}.uh{font-size:10pt;display:flex;justify-content:space-between}.uh b{font-weight:bold}.l{margin:1px 0 0 12px;font-size:9.5pt}.l span{font-weight:bold}.l.done{font-style:italic}
 .qpath{margin:2px 0 6px;padding-left:20px}.qpath li{margin:2px 0}.qsk{font-size:9.5pt;margin-left:4px}.foot{font-size:8pt;color:#444;margin-top:10px;border-top:1px solid #999;padding-top:6px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
+// What one next assessment of `mx` points can do for student i — only what is computed: for each letter above the
+// current grade (a D counts), the score that reaches it or the fact that none does; and the score that keeps the
+// current letter. The report, the student page and Show student all word their sentence from this.
+function nextAssessment(s, i, mx) {
+  const r = computeGrade(s, i); const cur = r && r.rounded != null ? r.rounded : null; if (cur == null) return { cur: null, can: [], cant: [], keep: null };
+  const reach = [[90, 'an A'], [80, 'a B'], [70, 'a C'], [60, 'a D']].filter(([t]) => cur < t).map(([t, w]) => ({ w, n: neededOn(s, i, 'Assessments', mx, t) }));
+  const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : cur >= 70 ? 70 : cur >= 60 ? 60 : null; const kn = floor == null ? null : neededOn(s, i, 'Assessments', mx, floor);
+  return { cur, can: reach.filter(x => x.n != null), cant: reach.filter(x => x.n == null).map(x => x.w), keep: kn == null ? null : { n: kn, letter: floor === 90 ? 'A' : floor === 80 ? 'B' : floor === 70 ? 'C' : 'D' } };
+}
 function studentReportSection(s0, i, ixlRow) {
   const s = openSec(s0);   // a closed quarter's work can't move the grade any more, so the report is about the open one
   const gb = s.grades; const g = gradingFor(s.prep); const name = gb.students[i]; const r0 = computeGrade(s, i); const r = r0 && r0.rounded != null ? r0 : null;   // nothing graded yet → no grade line, no targets
@@ -289,9 +298,10 @@ function studentReportSection(s0, i, ixlRow) {
   const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
   const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
   const cur = r ? r.rounded : null;
-  const reach = r ? [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur < t).map(([t, w]) => ({ w, n: neededOn(s, i, 'Assessments', nextMax, t) })) : [];
-  const can = reach.filter(x => x.n != null).map(x => `${x.n}/${nextMax} for ${x.w}`), cant = reach.filter(x => x.n == null).map(x => x.w);
-  const keep = r && cur >= 70 ? (() => { const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : 70; const n = neededOn(s, i, 'Assessments', nextMax, floor); return n == null ? null : `${n === 0 ? 'even a 0' : n + '/' + nextMax} keeps the ${floor === 90 ? 'A' : floor === 80 ? 'B' : 'C'}`; })() : null;
+  const na = nextAssessment(s, i, nextMax);
+  const nextLine = [na.can.map(x => `${x.n}/${nextMax} for ${x.w}`).join(' · '),
+    na.cant.length ? (na.can.length ? `${na.cant.join(' or ')} would take more than one assessment` : `one assessment alone won't reach ${na.cant[na.cant.length - 1]}`) : '',
+    na.keep ? `${na.keep.n === 0 ? 'even a 0' : na.keep.n + '/' + nextMax} keeps the ${na.keep.letter}` : ''].filter(Boolean).join(' · ');
   const arrow = x => x && x.rounded != null ? `→ ${x.rounded}% ${x.letter}` : '';
   // IXL still owed, from the class's IXL grid via the roster match
   const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const t = s.threshold; let ixl = '';
@@ -302,15 +312,13 @@ function studentReportSection(s0, i, ixlRow) {
       const notStarted = own.filter(k => eff(s, k, ixlRow.ixl) == null).map(k => s.skills[k].name);
       return `<div class="u"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}</span><b>${p} / ${own.length}</b></div>${below.length ? `<div class="l"><span>Below goal (${t}):</span> ${esc(below.join(' · '))}</div>` : ''}${notStarted.length ? `<div class="l"><span>Not started (${notStarted.length}):</span> ${esc(notStarted.slice(0, notStarted.length <= perUnit + 1 ? notStarted.length : perUnit).join(' · '))}${notStarted.length > perUnit + 1 ? ` · <i>and ${notStarted.length - perUnit} more, in order, under ${esc(u.short)} in IXL</i>` : ''}</div>` : ''}${!below.length && !notStarted.length ? `<div class="l done">All ${own.length} skills at goal</div>` : ''}</div>`; }).join('');
     ixl = `<h2>IXL still owed <span style="text-transform:none;letter-spacing:0;font-weight:normal">· export of ${esc(fmtDate(dataDate(s)) || '?')} · goal SmartScore ${t}</span></h2>${per || '<p>No units assigned yet.</p>'}`;
-  } else if (s.students.length) ixl = `<h2>IXL still owed</h2><p>IXL progress isn't available for this student yet.</p>`;
+  } else if (s.students.length) ixl = `<h2>IXL still owed</h2><p>${ixlRow && ixlRow.status === 'noAccount' ? 'No IXL account.' : 'Not matched to an IXL account yet — check the roster in Tally.'}</p>`;
   const moves = [
     ...missing.map(a => `<tr><td class="nhi">${esc(a.name)}</td><td>${a.max} pts${a.due ? ' · due ' + esc(a.due) : ''}</td><td class="r">turned in ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
     missing.length > 1 ? `<tr><td><b>All missing work turned in</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
     ...ixlCols.map(a => `<tr><td>${esc(a.name)}</td><td>now ${a.status[i] === 'missing' ? 'NHI' : a.values[i] + '/' + a.max}</td><td class="r">at ${a.max}/${a.max} ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
     (missing.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work turned in and IXL finished</b></td><td></td><td class="r"><b>${arrow(computeGrade(s, i, both))}</b></td></tr>`; })() : '',
-    // one sentence when no single assessment can change the letter, instead of "an A isn't reachable · a B isn't reachable · a C isn't reachable"
-    !can.length && cant.length ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">One assessment alone won't change the letter${missing.length || ixlCols.length ? ' — the work above will' : '; it will take more than one'}.</td></tr>`
-      : (can.length || keep) ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${[...can, cant.length ? `${cant.join(' or ')} would take more than one` : '', keep].filter(Boolean).join(' · ')}</td></tr>` : ''].filter(Boolean).join('');
+    nextLine ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${nextLine.charAt(0).toUpperCase() + nextLine.slice(1)}.</td></tr>` : ''].filter(Boolean).join('');
   return `<section class="rep"><h1>${esc(name)}</h1><div class="meta">${esc(s.label)} · Focus gradebook as of ${esc(fmtDate(gb.importedAt.slice(0, 10)))} · printed ${new Date().toLocaleDateString()}</div>
     <div class="top"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>

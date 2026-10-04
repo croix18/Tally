@@ -87,10 +87,15 @@ one page each — full names, since these go home. `studentReportSection` / `pri
 
 *Round 6 (4 Oct):* the report is held to its one page. "IXL still owed" names every below-goal skill with its
 SmartScore; "Not started (N)" names the next few in the unit's order and counts the rest ("and 14 more, in order,
-under Unit 1 in IXL") — about fifteen names in all, shared across the units. The next-assessment row names the letters
-one assessment can reach; when none can, it is one sentence ("One assessment alone won't change the letter — the work
-above will"). Set in the embedded DM Sans, like every other printed page (`printFontCss`). `tests/round6.js` prints the
-whole scrubbed class to PDF and checks one page per student.
+under Unit 1 in IXL") — about fifteen names in all, shared across the units. The next-assessment row comes from
+`nextAssessment(s, i, max)` in `grades.js`, the same function the student page and Show student use, so the three can
+never disagree: every letter above the current one that a single assessment can reach, with its score ("40/50 for a
+D"); the letters it can't ("a C or a B would take more than one assessment", or "one assessment alone won't reach a
+D" when none can); and the score that keeps the current letter for anyone at a D or better ("31/50 keeps the C"). An F
+student is always told the D score when one exists — the first version of this row said "won't change the letter" to
+students one test away from a D. Set in the embedded DM Sans, like every other printed page (`printFontCss`). `tests/round6.js` prints the
+whole scrubbed class to PDF and checks one page per student, and checks the row against the grade maths for every
+synthetic student.
 
 ### 4.2b What-if layout (3 Oct)
 One intro line ("Now 64% D. Each line below changes one thing…"), then four sections phrased as conditions: *If missing

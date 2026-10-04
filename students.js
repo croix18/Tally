@@ -23,7 +23,7 @@ function findStudent(sec, name) {
   const gi = gb ? gb.students.findIndex(n => norm(n) === nn) : -1;
   let row = gi >= 0 ? cachedRows(sec, 'gb')[gi] : null;
   if (!row || row.ixl == null) { const r2 = cachedRows(sec, 'all').find(r => norm(r.display) === nn && r.status !== 'ixlOnly'); if (r2) row = r2; }
-  return { gi, ixl: row && row.ixl != null ? row.ixl : null, row, id: row && row.id ? row.id : (gb && gi >= 0 && gb.ids ? gb.ids[gi] : '') };
+  return { gi, ixl: row && row.ixl != null ? row.ixl : null, row, noAccount: !!(row && row.status === 'noAccount'), id: row && row.id ? row.id : (gb && gi >= 0 && gb.ids ? gb.ids[gi] : '') };
 }
 // The students of a class, in Focus order: the roster rows (the gradebook's list when one is loaded).
 function classStudents(sec) {
@@ -48,7 +48,8 @@ function ixlTrend(sec, si) {
   const hist = sec.history || []; if (!hist.length || si == null) return null; const key = ixlKeyAt(sec, si);
   const units = unitsOf(sec).filter(u => u.assigned);
   const val = (h, k) => h.pu ? units.reduce((a, u) => a + ((h.pu[u.name] || {})[k] || 0), 0) : (h.per[k] != null ? h.per[k] : null);
-  return { dates: hist.map(h => h.date), mine: hist.map(h => h.per[key] == null ? null : val(h, key)), cls: hist.map(h => mean(Object.keys(h.per).map(k => val(h, k)))) };
+  const pop = new Set(population(sec).map(x => x.key)); const inClass = h => { const ks = Object.keys(h.per).filter(k => pop.has(k)); return ks.length ? ks : Object.keys(h.per); };   // the roster-matched class, as on the Race and the grid
+  return { dates: hist.map(h => h.date), mine: hist.map(h => h.per[key] == null ? null : val(h, key)), cls: hist.map(h => mean(inClass(h).map(k => val(h, k)))) };
 }
 // Every gradebook this student appears in, oldest quarter first: the closed archives, then the open gradebook.
 function studentBooks(sec, name) {
@@ -155,7 +156,7 @@ function renderProfile() {
     <div class="gcard big"><small>${esc(Q_NAMES[cq - 1])} grade</small>${r && r.rounded != null ? `<b>${r.rounded}%<em class="lt ${r.letter}">${r.letter}</em></b><span class="${sum.d < 0 ? 'down' : 'up'}">${sum.d != null ? `${signedPts(sum.d)} since the last import` : 'first import this quarter'}</span>` : `<b>—</b><span>${f.gi < 0 ? 'not in this class\'s Focus gradebook' : openB ? 'nothing graded yet (all excused or blank)' : 'no ' + esc(Q_NAMES[cq - 1]) + ' gradebook yet'}</span>`}</div>
     ${sum.finals.map(x => `<div class="gcard"><small>${esc(Q_NAMES[x.q - 1])} ${x.closed ? 'final' : '(kept)'}</small><b>${x.g}%<em class="lt ${letterOf(x.g)}">${letterOf(x.g)}</em></b><span>${x.closed ? 'closed · kept in Tally' : 'not closed yet · kept in Tally'}</span></div>`).join('')}
     <div class="gcard"><small>Missing now</small><b>${openB ? sum.missing : '—'}${openB ? tileSpark(missHist, { color: 'var(--bad)', label: 'missing assignments at each Focus import' }) : ''}</b><span>${openB ? (sum.dMissing > 0 ? `+${sum.dMissing} since the last import` : sum.missing ? 'not handed in (counts as 0)' : 'nothing missing') : ''}</span></div>
-    <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}${it ? tileSpark(it.mine, { ref: it.cls, label: 'IXL skills at goal at each export, with the class average dashed' }) : ''}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}${clsNow != null && !ix.basisClosed ? ` · class average ${fmtN(Math.round(clsNow * 10) / 10)}` : ''}` : f.ixl == null ? 'not matched to IXL' : 'no units assigned'}</span></div>
+    <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}${it ? tileSpark(it.mine, { ref: it.cls, label: 'IXL skills at goal at each export, with the class average dashed' }) : ''}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}${clsNow != null && !ix.basisClosed ? ` · class average ${fmtN(Math.round(clsNow * 10) / 10)} skills` : ''}` : f.ixl == null ? (f.noAccount ? 'no IXL account' : 'not matched to an IXL account') : 'no units assigned'}</span></div>
     <div class="gcard"><small>Tests &amp; quizzes</small><b>${assessNow != null ? Math.round(assessNow) + '%' : '—'}</b><span>${assessNow != null ? 'assessment points, IXL columns left out' : ''}</span></div>
   </div>`;
 
@@ -197,7 +198,7 @@ function renderProfile() {
     const cl = ix.units.filter(x => x.closed);
     ixlSec = `<section class="gsec"><h3>IXL by unit <small>goal SmartScore ${sec.threshold} · export of ${esc(fmtDate(dataDate(sec)))}</small></h3>${ix.open.map(unitRow).join('') || '<p class="ghint">Every assigned unit is in a closed quarter.</p>'}
       ${cl.length ? `<details class="qunitsold"><summary>${plural(cl.length, 'unit')} from closed quarters — still tracked, no alerts</summary>${cl.map(unitRow).join('')}</details>` : ''}</section>`;
-  } else if (f.ixl == null) ixlSec = `<section class="gsec"><h3>IXL</h3><p class="ghint">Not matched to an IXL account in this class.</p></section>`;
+  } else if (f.ixl == null) ixlSec = `<section class="gsec"><h3>IXL</h3><p class="ghint">${f.noAccount ? 'No IXL account.' : 'Not matched to an IXL account in this class.'}</p></section>`;
 
   // what would move it (open quarter only)
   const qp = openB ? quickestPath(sec, openB.s, openB.i, f.ixl) : null;
@@ -308,11 +309,11 @@ function whatIfMarkup(s, i) {
     <p class="ghint wiNeed">${needText(s, i, nx)}</p>`;
 }
 function needText(s, i, mx) {
-  const r = computeGrade(s, i); const cur = r && r.rounded; const miss = s.grades.assignments.some(a => a.status && a.status[i] === 'missing');
-  const parts = [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => cur == null || cur < t).map(([t, w]) => { const n = neededOn(s, i, 'Assessments', mx, t); return n == null ? null : `<b>${fmtN(n)}/${mx}</b> for ${w}`; }).filter(Boolean);
-  const keep = cur != null && cur >= 70 ? (() => { const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : 70; const n = neededOn(s, i, 'Assessments', mx, floor); return n == null ? null : `${n === 0 ? 'even a 0' : `<b>${fmtN(n)}/${mx}</b>`} keeps ${floor === 90 ? 'the A' : floor === 80 ? 'the B' : 'the C'}`; })() : null;
-  const all = [...parts, keep].filter(Boolean);
-  return all.length ? 'Next assessment: ' + all.join(' · ') : `No single assessment out of ${mx} can reach a C from here — ${miss ? 'the missing work is the lever' : 'it will take more than one'}.`;
+  const na = nextAssessment(s, i, mx); if (na.cur == null) return '';
+  const parts = [na.can.map(x => `<b>${fmtN(x.n)}/${mx}</b> for ${x.w}`).join(' · '),
+    na.cant.length ? (na.can.length ? `${na.cant.join(' or ')} would take more than one` : `no single assessment out of ${mx} reaches ${na.cant[na.cant.length - 1]}`) : '',
+    na.keep ? `${na.keep.n === 0 ? 'even a 0' : `<b>${fmtN(na.keep.n)}/${mx}</b>`} keeps the ${na.keep.letter}` : ''].filter(Boolean);
+  return parts.length ? 'Next assessment: ' + parts.join(' · ') + '.' : '';
 }
 function wireWhatIf(root, s, i) {
   if (!root) return; const mxI = root.querySelector('.wiMax'), sl = root.querySelector('.wiPts'); if (!mxI || !sl) return;
@@ -375,9 +376,8 @@ function openShow(sec, name) {
     $('#shDelta').innerHTML = !picked ? 'Pick something below' : d > 0 ? `<b>+${d}</b> points${r.letter !== base.letter ? ` — that's ${/^[AF]/.test(r.letter) ? 'an' : 'a'} <b>${r.letter}</b>` : ''}` : d < 0 ? `<b>${d}</b> points` : 'no change yet';
     $('#shDelta').className = 'shDelta ' + (d > 0 ? 'up' : d < 0 ? 'down' : '');
     $('#shCats').innerHTML = catBars(base, r);
-    const mx = st.next.max; const n = [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => base.rounded < t).map(([t, w]) => { const v = neededOn(s, i, 'Assessments', mx, t); return v == null ? null : `<b>${fmtN(v)} of ${mx}</b> gets you ${w}`; }).filter(Boolean);
-    const nextUp = [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => base.rounded < t).pop();
-    $('#shNeed').innerHTML = n.length ? 'On its own: ' + n.join(' · ') + '.' : !nextUp ? 'You have an A — keep it up.' : `One test alone can't get you to ${nextUp[1]} from here${missing.length ? ' — turning in the missing work is the biggest help' : ''}.`;
+    const mx = st.next.max; const na = nextAssessment(s, i, mx);   // the same computed facts as the report: every letter above, a D included
+    $('#shNeed').innerHTML = na.can.length ? 'On its own: ' + na.can.map(x => `<b>${fmtN(x.n)} of ${mx}</b> gets you ${x.w}`).join(' · ') + '.' : !na.cant.length ? 'You have an A — keep it up.' : `One test alone can't get you to ${na.cant[na.cant.length - 1]} from here${missing.length ? ' — turning in the missing work is the biggest help' : ''}.`;
   };
   el.querySelectorAll('.shRow').forEach(rw => { const k = rw.dataset.k, nm = rw.dataset.n; const rg = rw.querySelector('.shPts'), on = rw.querySelector('.shOn'), out = rw.querySelector('output'), box = rw.querySelector('.shS');
     const mxOf = () => k === 'next' ? st.next.max : Number(rg.max);
@@ -415,8 +415,7 @@ const STU_CSS = `
 .pcols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}.pmain,.pside{display:flex;flex-direction:column;gap:16px;min-width:0}
 /* one column: the plan and the what-ifs come first, then the trends, then the long lists */
 @media (max-width:1100px){.pcols{display:flex;flex-direction:column;align-items:stretch}.pmain,.pside{display:contents}.pcols #pQuick{order:-3}.pcols #pWhat{order:-2}}
-@media (max-width:900px){.profile .gcards{grid-template-columns:1fr 1fr}}
-.profile .gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.profile .gcard b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.profile .gcard b em.lt{margin-left:0}
+.profile .gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}@media (max-width:900px){.profile .gcards{grid-template-columns:1fr 1fr}}.profile .gcard b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.profile .gcard b em.lt{margin-left:0}
 .tspark{margin-left:auto;flex:none}.tspark path{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.tspark path.ref{stroke:#8a93a6;stroke-width:1.5;stroke-dasharray:3 3}
 .pnav{display:inline-flex;gap:6px;white-space:nowrap}
 .iumore summary{cursor:pointer;list-style:none}.iumore summary::-webkit-details-marker{display:none}.iumore summary::after{content:" — show";color:var(--teal);font-weight:700}.iumore[open] summary::after{content:" — hide"}.iumore[open] summary{margin-bottom:2px}
@@ -435,7 +434,7 @@ details.qbook>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap
 .qseg{margin:0 6px}.quarters .qdates{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}.quarters .qdates label{display:flex;flex-direction:column;gap:3px;padding:8px;border:2px solid var(--grid);border-radius:10px;font-size:var(--t-s)}
 .quarters .qdates label.now{border-color:var(--teal)}.quarters .qdates label.closed{background:var(--grid)}.quarters .qdates small{color:var(--ink-soft)}.quarters h3{margin:14px 0 6px}
 .quarters .qlead{font-size:var(--t-l);margin:0 0 10px}.quarters .qkeep{margin:10px 0 4px}.quarters .qkeep td{padding:8px 10px}.quarters .qkeep td:last-child{color:var(--ink-soft);text-align:right;white-space:nowrap}
-.qmore{border-top:1px solid var(--grid);margin-top:10px}.qmore summary{cursor:pointer;padding:12px 0;min-height:44px;box-sizing:border-box;display:flex;gap:10px;align-items:center;justify-content:space-between;list-style:none;font-weight:700}.qmore summary::-webkit-details-marker{display:none}.qmore summary u{color:var(--teal);font-weight:800;white-space:nowrap}.qmore summary b{font-weight:900}.qmore[open] summary u{visibility:hidden}.qmore#qDates summary{color:var(--teal);justify-content:flex-start}.qmore .field>label{color:var(--ink-soft)}.qmore+.rp-actions{margin-top:14px}
+.qmore{border-top:1px solid var(--grid);margin-top:10px}.qmore summary{cursor:pointer;padding:12px 0;min-height:44px;box-sizing:border-box;display:flex;gap:10px;align-items:center;justify-content:space-between;list-style:none;font-weight:700}.qmore summary::-webkit-details-marker{display:none}.qmore summary u{color:var(--teal);font-weight:800;white-space:nowrap}.qmore summary b{font-weight:900}.qmore[open]>summary u{visibility:hidden}.qmore#qDates summary,.qmore#qEarly>summary{color:var(--teal);justify-content:flex-start}.qmore#qEarly>summary small{color:var(--ink-soft);font-weight:500;margin-left:6px}.qmore#qEarly[open]>summary{margin-bottom:4px}.quarters>.qdates{margin-bottom:2px}.qmore .field>label{color:var(--ink-soft)}.qmore+.rp-actions{margin-top:14px}
 .qunits{display:flex;flex-wrap:wrap;gap:6px 14px;padding:6px 0}.qunits label{display:flex;gap:6px;align-items:center;font-size:var(--t-s)}.qunits label.dim{color:var(--ink-soft)}.qunits small{color:var(--teal)}
 .linkbtn{background:none;border:none;padding:0;color:var(--teal);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
 .qtag{display:inline-block;font-size:var(--t-xs);padding:0 6px;border-radius:999px;background:var(--grid);color:var(--ink-soft);font-weight:900}

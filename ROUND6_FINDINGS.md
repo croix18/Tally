@@ -69,24 +69,56 @@ evidence, what it withdrew, and what all four would sign.
 | 10 | Show student: sticky compact result, trend card out | `students.js` | done — the sticky band is name + grade (~190 px on the tablet); category bars moved below the switches |
 | 11 | Layout-contract suite (`tests/contract.js`): one-row header; ≥ 9 grid / ≥ 5 unit rows at 1366×768; sticky header + name column; ring ≥ 3:1; F chip coral; DM Sans applied; no horizontal overflow; shipped build has no `__tally` | `tests/` | done — `tests/contract.js`, 39 checks; tablet unit view floor is 4 rows until the skill header is redesigned |
 
-## Build 2 (next, needs a design pass each)
+## Build 2 (shipped 4 Oct)
 
-- Alerts that cannot be cleared: "No IXL account" as a `buildRows` status so the fixer actually clears the flag, band
-  and tab dot (4–5 h). Needs attention: one line per cause, no dot without an action.
-- Quarter close: the alert list must get shorter, not longer, and cards show the Q1 final rather than dashes (3 h,
-  before 9 Oct if possible).
-- Skill-header redesign (the 138 px `th.unit` and the clipped skill names) (3–4 h).
-- `lastBackup` date and a "backed up N days ago" line; Guide's weekly list mentions backup (1 h).
-- Default Working in from Focus's IXL columns (1.5 h).
-- Race card to one line; Data Lab data-set select without 219 single-skill entries (3 h).
-- Student page order and a one-page report (3–4 h).
-- Font re-subset with `→ ← ≥ ≤` (fixes 73 of 130 missing-glyph uses), then four inline SVGs (check, warning, lock, trash).
-- `min-width: 2ch` numerals; delete dead `tabular-nums`.
-- Storage gauge (13 % of quota today, ~50–65 % by year end; a quarter of it a duplicated `skills` array).
-- Board type ramp (≥ 31 px floor at 4 m) after the Race card cut.
-- Then, behind the contract suite and Croix's decision: four components (button, segmented, card, table), one weight
-  scale (900 used 97 times), spacing/radius tokens (17 radii, 8 control heights), the toolbar/IA redesign (Classes /
-  Students / Board + Import), Focus check split into setup vs weekly diff, Settings by scope.
+| change | commit | what it is now |
+|---|---|---|
+| Quarter close goes quiet | `78e3092` | Waiting cards show "Focus · Q1 final NN%" and "Q2 gradebook not in yet" — no dashes, zeros or letters; the alert list gets shorter after a close |
+| Alerts that can be cleared | `c203316` | `noAccount` row status ("No IXL account" in the fixer clears flag, notice and tab dot); Needs attention is one line per cause (`attentionGroups`), no dot without an action; the notice band is a count chip in the bar |
+| Backup line | `c203316` | `state.lastBackup`; "backed up N days ago" on the Overview and in Settings; a nudge when imports are newer than the backup; the Guide's weekly list mentions it |
+| Working in from Focus | `c203316` | `defaultWorkingIn()` at import: latest unit with a Focus IXL column, never a review unit, never over Croix's own choice (`curUnitTouched`) |
+| Column headers | `425b18e` | Unit headers in fixed slots (title / status / action); skill names vertical on up to four lines, none clipped; laptop grid 13 rows, unit view 11 (was 9 / 5) |
+| The board | `45b0603` | One unit `--bu` sizes Race and Data Lab for the room; `LB_CSS` single source for app and saved page; Race card one line; Data Lab list without 219 single skills |
+| Student page and report | `6052267` | Tiles with sparklines, answer first, right-aligned numerals, dead `tabular-nums` gone; printed report is one page per student |
+| Glyphs | `d37fc55` | Font re-subset (+ ← → ↔ ≤ ≥ ≈ ≠ ∞, recipe in `fonts/README.md`); check / warning / lock / trash etc. as inline SVG (`ico()`); every print page embeds DM Sans |
+| Storage | `3725bec` | Pool classes don't save a second copy of `skills` (`stateForSave`); gauge in Settings; warning on the Overview when nearly full |
+| Verifier fixes | the commit after `3725bec` | See below |
+
+### The independent verifier (`review/round6-build2-verify.md`) — 2 P0, 7 P1, 17 P2
+
+Fixed:
+
+- **P0-1** The report told F students one test from a D that "one assessment alone won't change the letter". Now
+  `nextAssessment()` in `grades.js` feeds the report, the student page and Show student; `tests/round6.js` checks the
+  sentence against the grade maths for every synthetic student.
+- **P0-2** A Build 2 save opened by an older Tally.html deleted every pool class (`skills: null`). Saved as
+  `skills: []` with `poolSkills: true`; an old build shows the class empty instead of dropping it, and the new build
+  rehydrates.
+- **P1-3** Overview: class cards are back on the first screen (notes folded into "N notes", import card collapsed
+  unless something failed). **P1-4** Data Lab rows fit the 1920×1080 panel with three classes. **P1-5** A "No IXL
+  account" student is still a link to their page. **P1-6/7** "copied ‹date›" is back in the unit header beside the
+  Focus badge and Copy lines up across units on touch. **P1-8** "— pick —" for Working in survives the next import
+  (`curUnitTouched`). **P1-9** "Quarters" opens on the dates; closing before the end date is a fold.
+- **P2** 10 (verb agreement, "older" only when it's news, "kept from an earlier export"), 11 (ticked units survive a
+  date change), 12 (44 px chips), 13 (two tiles per row ≤ 900 px), 14 (`fitSkillHeads` cached per unit), 15 (legend
+  announced, `aria-pressed` on seat flags), 16 (board sizes; single league fills the board; one completion figure per
+  card), 17 (the name column drops the "· On-level" the subtitle already says), 18 (`printFontCss()` returns only `@font-face`), 19
+  (subtitles use the column's full width, full text in a tooltip), 20 (class average over the roster-matched students, with a unit), 21 (one
+  wording: "No IXL account"), 22 (Guide text), 23 (storage advice names the real cause), 24 (dead code; the seating
+  test counts `.lockmark`), 25 (local date), 26 ("every quarter is closed").
+
+Still open (small, none blocks use):
+
+- The Guide prints on three pages (retitled "Tally — guide"; it was three pages before this round too).
+- Data Lab tool bar on a portrait tablet with a skill selected wraps to three rows inside a pill shape.
+- The stem-and-leaf key is 20 px at 1080p (the rest of the board is ≥ 25 px).
+- `lastBackup` is stamped when Backup is tapped; a browser doesn't report whether the file was written.
+
+### Build 3 candidates (behind the contract suite, and Croix's decision)
+
+Four components (button, segmented, card, table); one weight scale (900 is used 97 times); spacing/radius tokens
+(17 radii, 8 control heights); the toolbar/IA redesign (Classes / Students / Board + Import); Focus check split into
+setup vs weekly diff; Settings by scope; the engineering memo cache.
 
 ## Croix's calls (recorded decisions the reviewers would revisit — not changed without him)
 
@@ -101,14 +133,18 @@ evidence, what it withdrew, and what all four would sign.
 - 4 Oct: Build 1 shipped (all eleven rows above). 20 suites, 587 checks. Also fixed on the way: the Close Quarter caution
   now says "hasn't ended yet" before the end date instead of "exported before it ended"; the landing after a course-only
   drop says what landed and asks for the gradebooks instead of "Drop your IXL Score Grid here" again.
-- Next: Build 2, starting with the quarter-close alert list and cards (before 9 Oct), then clearable alerts.
+- 4 Oct: Build 2 shipped in seven commits (`78e3092` … `3725bec`), model switched to Opus part-way. 21 suites, 632
+  checks at `3725bec`. New suite `tests/round6.js`; `tests/contract.js` raised its floors (laptop 13 / 11 rows).
+- 4 Oct: independent verifier run against Build 2 — 26 findings, report in `review/round6-build2-verify.md`. Both
+  P0s and all seven P1s fixed, 17 P2s fixed or noted above. Full suite green after the fixes: 21 suites, 640 checks.
+- Next: nothing owed from this round. Build 3 candidates and "Croix's calls" wait for him.
 
 ## Handoff for the next session (any model)
 
 1. `git clone https://github.com/croix18/Tally.git` into `/home/claude/Tally`, `npm install`, read `NOTES.md` then this file.
 2. Croix pastes a GitHub token; store it as described in `GITHUB_FROM_A_CLAUDE_SESSION.md` (never in a URL, commit or
    message) and push with the `extraheader` recipe there. Commit as Croix with the two trailers NOTES.md shows.
-3. Work order: Build 2 rows above, one commit each, `npm test` green (20 suites; `tests/contract.js` is the visual net),
+3. Work order (Build 2 is done — Build 3 only on Croix's word): one commit per change, `npm test` green (21 suites; `tests/contract.js` is the visual net, `tests/round6.js` covers Build 2),
    `python3 build.py` before every commit (`grep -c window.__tally Tally.html` → 0), push, verify `ls-remote` equals
    `git rev-parse HEAD`, update this build log, deliver `Tally.html` into the chat.
 4. Don't change anything under "Croix's calls" without asking him. Test with the scrubbed fixtures only; he can't upload
