@@ -1,4 +1,4 @@
-const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900},hasTouch:true}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
@@ -9,14 +9,14 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
   const tmps=[]; for(const [a,b] of [['7T3A','7T4A'],['7T3A','7T5A'],['7T1A','7T2A']]){ const src=main.find(f=>f.includes(a)); const dst=path.resolve('fixtures','tmp_'+path.basename(src).replace(a,b)); fs.copyFileSync(src,dst); tmps.push(dst);} await p.setInputFiles('#file',tmps); await p.waitForTimeout(800); tmps.forEach(f=>fs.unlinkSync(f));
   for(const k of ['1205050-7T2A','1205050-7T4A','1205050-7T5A']){ await p.click('[data-k="'+k+'"]'); await p.waitForTimeout(120); await p.click('#rpSkip'); await p.waitForTimeout(120); }
-  await p.click('[data-k="1205050-7T2A"]'); await p.click('#btnSettings'); await p.click('[data-prep="on"]'); await p.fill('#secLabel','2nd Period'); await p.click('#mSave'); await p.waitForTimeout(200);
+  await p.click('[data-k="1205050-7T2A"]'); await more(p,'#btnSettings'); await p.click('[data-prep="on"]'); await p.fill('#secLabel','2nd Period'); await p.click('#mSave'); await p.waitForTimeout(200);
   const hist=await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].history.map(h=>[h.date,Object.keys(h.per).length]));
   check(hist.length===2 && hist[0][0]==='2026-09-01' && hist[1][0]==='2026-09-25','two snapshots kept: '+JSON.stringify(hist));
   // team names
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await p.click('#rpSkip'); await p.waitForTimeout(150);
-  await p.click('#btnSettings'); await p.fill('#secLabel','The Integers'); await p.click('#mSave'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); await p.fill('#secLabel','The Integers'); await p.click('#mSave'); await p.waitForTimeout(200);
   await p.click('[data-k="1205050-7T3A"]'); await p.waitForTimeout(150); await p.click('#rpSkip'); await p.waitForTimeout(150);
-  await p.click('#btnSettings'); await p.fill('#secLabel','Fraction Action'); await p.click('#mSave'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); await p.fill('#secLabel','Fraction Action'); await p.click('#mSave'); await p.waitForTimeout(200);
   const data=await p.evaluate(()=>window.__tally.leaderboardData());
   console.log(JSON.stringify(data.map(r=>({n:r.name,rank:r.rank,c:+r.completion.toFixed(3),gain:r.gain,active:r.active,assigned:r.assignedSkills})),null,0));
   check(data.length===5 && data.filter(r=>r.prep==='acc').length===1 && data.filter(r=>r.prep==='on').map(r=>r.rank).sort().join()=='1,2,2,2' && data.every(r=>r.completion>=0 && r.completion<=1),'five classes; identical clones share rank 2; ranked on completion');
@@ -62,7 +62,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   check(await p.locator('#lb.hidden').count()===0,'leaderboard survives reload (panel-safe)');
   // standalone download
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
-  await p.click('#btnSettings'); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#saveRace')]); const fp=await dl.path(); const html=fs.readFileSync(fp,'utf8'); await p.click('#mCancel'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#saveRace')]); const fp=await dl.path(); const html=fs.readFileSync(fp,'utf8'); await p.click('#mCancel'); await p.waitForTimeout(200);
   await p.click('#btnLb'); await p.waitForTimeout(300);
   check(/Race/.test(html) && !/Nguyen|Smith|Garcia|localStorage/.test(html) && /The Integers/.test(html),'standalone page has no names, has class names');
   fs.copyFileSync(fp,path.join(tmp,'race.html')); const p2=await ctx.newPage(); await p2.goto('file://'+path.join(tmp,'race.html')); await p2.waitForTimeout(1500); await p2.screenshot({path:path.join(tmp,'shot13.png')}); await p2.close();

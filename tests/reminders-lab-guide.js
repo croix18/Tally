@@ -1,10 +1,10 @@
 // Export age + reminder, Data Lab values, receipt viewer, guide, header button kinds
-const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
   await p.goto('file://'+path.resolve(APP)); await unskip(p);
-  check(await p.locator('#btnGuide').isVisible(),'Guide is available before anything is imported');
+  check(await p.locator('#btnGuide0').isVisible(),'Guide is available before anything is imported');
   // --- reminder: an export from 2026-09-01 is old; default reminder is 7 days
   const old=fs.readdirSync('fixtures').filter(f=>f.startsWith('old_')).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', old); await p.waitForTimeout(500); await p.click('#rpSkip'); await p.waitForTimeout(300);
@@ -18,11 +18,11 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   check(/\(\d+ (days|weeks) ago\)/.test(await p.textContent('#bar')),'bar shows how old the export is');
   await p.screenshot({path:path.join(tmp,'shot25.png')});
   // turn the reminder off → notice gone; 30 days → still fine for a 25-day-old file
-  await p.click('#btnSettings'); await p.click('[data-remind="0"]'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await p.click('[data-remind="0"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   check(!/days old/.test(await p.textContent('#notices')) && await p.locator('.tab .age').count()===0,'reminder Off silences the notice');
-  await p.click('#btnSettings'); await p.click('[data-remind="30"]'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await p.click('[data-remind="30"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   check(!/days old/.test(await p.textContent('#notices')),'30-day reminder does not fire for a 25-day-old export');
-  await p.click('#btnSettings'); await p.click('[data-remind="7"]'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await p.click('[data-remind="7"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   // a fresh export replaces it → notice gone
   const main=fs.readdirSync('fixtures').filter(f=>/^f1473588.*7T1A/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
@@ -60,11 +60,11 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   const saved=fs.readFileSync(await dl.path(),'utf8'); check(/labValues/.test(saved) && /labChips/.test(saved),'saved Data Lab page includes the values');
   await p.click('#mCancel'); await p.waitForTimeout(200);
   // --- guide
-  const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#btnGuide')]); await pop.waitForLoadState(); await pop.waitForTimeout(300);
+  const [pop]=await Promise.all([ctx.waitForEvent('page'), more(p,'#btnGuide')]); await pop.waitForLoadState(); await pop.waitForTimeout(300);
   const g=await pop.textContent('body'); check(/Every week or two/.test(g) && /Words on the screen/.test(g) && /co-teacher/i.test(g) && /accelerated 67/.test(g),'guide opens with the weekly flow, glossary, co-teacher section and the live goals');
   await pop.emulateMedia({media:'print'}); await pop.screenshot({path:path.join(tmp,'shot28.png'),fullPage:true}); await pop.close();
-  // --- header: every secondary action is a ghost; Import is the one filled button
-  const kinds=await p.evaluate(()=>[...document.querySelectorAll('#top button')].filter(b=>!b.classList.contains('hidden')).map(b=>b.id+':'+(b.classList.contains('ghost')?'ghost':'primary')));
+  // --- header: Import is the one filled button; the places, the names switch and the menu are quiet
+  const kinds=await p.evaluate(()=>[...document.querySelectorAll('#top button')].filter(b=>!b.classList.contains('hidden')).map(b=>b.id+':'+(b.classList.contains('pill')&&!b.classList.contains('ghost')?'primary':'quiet')));
   check(kinds.filter(k=>k.endsWith('primary')).length===1 && kinds.find(k=>k.startsWith('btnImport')).endsWith('primary'),'one primary button in the header: '+kinds.join(' '));
   await p.screenshot({path:path.join(tmp,'shot29.png')});
   // backup carries the reminder

@@ -1,4 +1,4 @@
-const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); let dialogAnswer=true; p.on('dialog', d=>dialogAnswer?d.accept():d.dismiss());
@@ -32,13 +32,13 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   // copy notes modified list, raw points (no scaling)
   await p.click('#copyUnit'); await p.waitForTimeout(300); check(/1 student on a modified list/.test(await p.textContent('#toast')),'copy toast flags the modified list');
   // names mode shows own out-of
-  await p.click('#btnSettings'); await p.click('[data-cm="names"]'); await p.click('#mSave'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); await p.click('[data-cm="names"]'); await p.click('#mSave'); await p.waitForTimeout(200);
   await p.click('#copyUnit'); await p.waitForTimeout(300); const clip=await p.evaluate(()=>navigator.clipboard.readText());
   check(/\t\/22$/m.test(clip) && clip.split('\n').filter(l=>/\t\//.test(l)).length===1,'name mode appends /22 only for the modified student');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   // 3. ID copy + CSV
   const roster=fs.readFileSync('fixtures/roster.txt','utf8').split('\n').map((l,i)=>`${100000+i}\t${l}`).join('\n');
-  await p.click('#btnSettings'); await p.fill('#roster', roster); await p.click('[data-cm="ids"]'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await p.fill('#roster', roster); await p.click('[data-cm="ids"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   await p.click('th.unit .copy'); await p.waitForTimeout(300); const clip2=await p.evaluate(()=>navigator.clipboard.readText());
   check(/^100000\t\d+/.test(clip2),'ID ⇥ points copy: '+clip2.split('\n')[0]);
   await p.click('th.unit .ulink'); await p.waitForTimeout(250);
@@ -56,7 +56,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   await p.click('#printOwed'); await p.waitForTimeout(200); const [pop2]=await Promise.all([ctx.waitForEvent('page'), p.click('[data-owed="slips"]')]); await pop2.waitForLoadState(); await pop2.waitForTimeout(300);
   check(/Nguyen, Ava/.test(await pop2.textContent('body')) && await pop2.evaluate(()=>getComputedStyle(document.querySelectorAll('.stu')[1]).breakBefore==='page'),'slips: full names, one page per student'); await pop2.close();
   // 5. custom data set
-  await p.click('#btnSettings'); await p.click('#addCustom'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); await p.click('#addCustom'); await p.waitForTimeout(200);
   await p.fill('#cLabel','Minutes to school'); await p.fill('#cUnit','minutes');
   const tas=p.locator('.cVals'); const n=await tas.count(); check(n===1,'editor lists the one accelerated class: '+n);
   await tas.first().fill('5, 10 12 8 30 15 7 22 9 11'); await p.click('#cSave'); await p.waitForTimeout(300);
@@ -69,15 +69,15 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide');
   // 6. course settings export/import
   await p.click('[data-k="1205050-7T3A"]'); await p.waitForTimeout(150); await p.click('th.unit .ulink'); await p.waitForTimeout(200); await p.click('th.skill button'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  await p.click('#btnSettings'); await p.fill('#thr','55'); await p.click('#mSave'); await p.waitForTimeout(200);
-  await p.click('#btnSettings'); const [dl2]=await Promise.all([p.waitForEvent('download'), p.click('#exportCourse')]); const course=JSON.parse(fs.readFileSync(await dl2.path(),'utf8')); await p.click('#mCancel');
+  await more(p,'#btnSettings'); await p.fill('#thr','55'); await p.click('#mSave'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); const [dl2]=await Promise.all([p.waitForEvent('download'), p.click('#exportCourse')]); const course=JSON.parse(fs.readFileSync(await dl2.path(),'utf8')); await p.click('#mCancel');
   check(course.tally==='course' && course.prep==='on' && course.goal===55 && course.skipped.length===1 && !JSON.stringify(course).includes('Nguyen'),'course file: goal, skipped skill, no names');
   fs.writeFileSync('/tmp/course.json', JSON.stringify(course));
-  await p.click('[data-k="1205050-7T4A"]'); await p.waitForTimeout(150); await p.click('#btnSettings'); await p.setInputFiles('#courseFile','/tmp/course.json'); await p.waitForTimeout(400);
+  await p.click('[data-k="1205050-7T4A"]'); await p.waitForTimeout(150); await more(p,'#btnSettings'); await p.setInputFiles('#courseFile','/tmp/course.json'); await p.waitForTimeout(400);
   const applied=await p.evaluate(()=>{const s=window.__tally.state.sections['1205050-7T4A']; return [s.threshold, Object.keys(s.excluded).length];});
   check(applied[0]===55 && applied[1]===1,'course settings applied to the other on-level class: '+applied);
   // backup roundtrip carries studentSkips + assigned + custom
-  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await p.click('#btnSettings'); const [dl3]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const bk=JSON.parse(fs.readFileSync(await dl3.path(),'utf8')); await p.click('#mCancel');
+  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await more(p,'#btnSettings'); const [dl3]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const bk=JSON.parse(fs.readFileSync(await dl3.path(),'utf8')); await p.click('#mCancel');
   check(bk.custom.length===1 && Object.keys(bk.sections['1205050-7T1A'].studentSkips).length===1 && bk.assigned.on,'backup carries custom sets, student skips, assignment marks');
   await p.reload(); await p.waitForTimeout(500); check((await p.evaluate(()=>Object.keys(window.__tally.state.sections['1205050-7T1A'].studentSkips).length))===1,'student skips persist');
   console.log('errors:',errs); check(errs.length===0,'no errors');

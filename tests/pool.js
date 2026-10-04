@@ -1,6 +1,6 @@
 // Course-wide IXL exports (no section code, every student of the course in one file) become pools; Focus gradebooks
 // make period classes carved from them. Fixtures: two real scrubbed course exports + two synthetic gradebooks of pool names.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -54,7 +54,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib'
   const dflt=await p.evaluate(()=>{const T=window.__tally; const u=k=>T.unitsOf(T.state.sections[k]).filter(u=>!u.assigned).map(u=>u.short); return {acc:u('period-1'), on:u('period-2'), race:T.leaderboardData().map(r=>r.key+':'+r.assignedUnits[0]), rc:T.reconcile(T.state.sections['period-1']).map(c=>c.unit.short)};});
   check(!dflt.acc.includes('Unit 1') && dflt.on.includes('Unit 1') && !dflt.on.includes('Unit 2'),'by default only Unit 1 (on-level) is not assigned; accelerated Unit 1 counts: '+JSON.stringify([dflt.acc,dflt.on]));
   check(dflt.race.some(x=>/^period-2:/.test(x) && !/:Unit 1$/.test(x)),'unassigned units are out of the Race');
-  await p.click('[data-k="period-2"]'); await p.waitForTimeout(200); await p.click('#btnSettings'); await p.waitForTimeout(200); await p.click('[data-skip="3"]'); await p.click('#mSave'); await p.waitForTimeout(400);
+  await p.click('[data-k="period-2"]'); await p.waitForTimeout(200); await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('[data-skip="3"]'); await p.click('#mSave'); await p.waitForTimeout(400);
   check((await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['period-2']).filter(u=>!u.assigned).map(u=>u.short))).includes('Unit 3'),'Settings: "First 3" unassigns Unit 3 for the on-level course');
   await p.evaluate(()=>{ const T=window.__tally; T.state.assigned.on['Unit 2 Probability']=true; T.save(); T.render(); });
   check((await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['period-2']).find(u=>u.short==='Unit 2').assigned))===true,'a unit marked Assigned by hand overrides the default');

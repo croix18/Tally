@@ -24,4 +24,4 @@ Croix asked for a mockup before deciding (this is under "Croix's calls" in `ROUN
   **Just Unit N**, and the 25 % auto-assign rule.
 - Cost: `unitsOf` is under every point Tally copies into Focus, so this is the riskiest change on the list (8–12 h).
 
-Status: header — waiting for "go". Ahead column — waiting for keep / change.
+Status (4 Oct): Croix approved both. Header — built. Ahead column — being built next.

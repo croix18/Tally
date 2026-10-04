@@ -1091,6 +1091,19 @@ function pickSection(fileName, gb, mt) {
   });
 }
 
+// A ⋯ button and its menu (the class bar's and the header's). An invisible overlay swallows the tap that dismisses the
+// menu (on the panel "outside" is a student's cell); Escape closes and returns focus; arrows move between items.
+// Choosing an item closes the menu and puts focus back on the button first, so a dialog the item opens returns there.
+function wireMenu(mb, menu) {
+  const closeMenu = () => { menu.classList.add('hidden'); mb.setAttribute('aria-expanded', 'false'); const ov = $('#menuOverlay'); if (ov) ov.remove(); document.removeEventListener('keydown', onKey, true); };
+  const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(); mb.focus(); } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const items = [...menu.querySelectorAll('button')]; const i = items.indexOf(document.activeElement); e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); } else if (e.key === 'Tab') { setTimeout(() => { if (!menu.contains(document.activeElement)) closeMenu(); }, 0); } };
+  mb.onclick = e => { e.stopPropagation(); if (!menu.classList.contains('hidden')) { closeMenu(); return; } menu.classList.remove('hidden'); mb.setAttribute('aria-expanded', 'true'); const ov = document.createElement('div'); ov.id = 'menuOverlay'; ov.onclick = ev => { ev.stopPropagation(); closeMenu(); }; document.body.appendChild(ov); document.addEventListener('keydown', onKey, true); const first = menu.querySelector('button'); if (first) first.focus(); };
+  menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { const open = !menu.classList.contains('hidden'); closeMenu(); if (open) mb.focus(); }, true));   // capture: before the item's own handler
+  return closeMenu;
+}
+const EYE_ON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
 /* ---------- render ---------- */
 let lastViewKey = '';
 function render() {
@@ -1107,19 +1120,21 @@ function render() {
     let r = d.querySelector('.himport'); if (li && (li.lines.length || li.fails.length)) { if (!r) { r = document.createElement('div'); r.className = 'himport'; d.appendChild(r); } r.classList.toggle('warn', !!li.fails.length); r.innerHTML = `<h3>Last import <small>${esc(fmtTime(li.at))}</small></h3><ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}</ul>`; } else if (r) r.remove(); }
   else { const r = $('#drop .himport'); if (r) r.remove(); }
   $('#app').classList.toggle('hidden', !has);
+  // Header: three places (Classes, Students, Board), search, the names switch, a More menu, Import. Before the first
+  // import there is nowhere to go yet, so only the Guide and Import show.
   $('#search').classList.toggle('hidden', !has);
-  $('#btnHide').classList.toggle('hidden', !has);
-  $('#btnSettings').classList.toggle('hidden', !has);
-  $('#btnLb').classList.toggle('hidden', !has);
+  $('#nav').classList.toggle('hidden', !has); $('#btnHide').classList.toggle('hidden', !has); $('#topMore').classList.toggle('hidden', !has); $('#btnGuide0').classList.toggle('hidden', has);
   renderLeaderboard();
-  $('#btnHide').setAttribute('aria-pressed', String(!state.settings.hideNames));   // pressed = names showing
-  $('#btnHide').title = state.settings.hideNames ? 'Names are hidden (initials only) — tap to show them' : 'Names are showing — tap to hide them before projecting';
-  $('#btnHide').textContent = 'Names';
-  $('#btnHome').classList.toggle('hidden', !has);
-  $('#btnHome').setAttribute('aria-pressed', String(view.mode === 'home'));
-  $('#btnStudents').classList.toggle('hidden', !has); $('#btnStudents').setAttribute('aria-pressed', String(view.mode === 'students' || view.mode === 'student'));
-  $('#btnDetails').classList.toggle('hidden', !has);
+  const hb = $('#btnHide'), hidden = !!state.settings.hideNames;
+  hb.setAttribute('aria-pressed', String(!hidden));   // pressed = names showing
+  hb.title = hidden ? 'Names are hidden (initials only) — tap to show them' : 'Names are showing — tap to hide them before projecting';
+  hb.setAttribute('aria-label', hidden ? 'Student names: hidden' : 'Student names: showing');
+  hb.innerHTML = hidden ? EYE_OFF : EYE_ON;
+  const inStudents = view.mode === 'students' || view.mode === 'student';
+  [['#btnHome', !inStudents], ['#btnStudents', inStudents], ['#btnLb', false]].forEach(([id, on]) => { const b = $(id); b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  $('#btnHome').setAttribute('aria-pressed', String(view.mode === 'home')); $('#btnStudents').setAttribute('aria-pressed', String(inStudents));
   $('#btnDetails').setAttribute('aria-pressed', String(!!state.settings.details));
+  { const lb = state.lastBackup, el = $('#topBk'), d = lb ? ageDays(localDay(lb)) : null; el.textContent = lb == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`; el.classList.toggle('due', backupBehind()); }
   if (seatSolving && !(view.mode === 'seating')) seatAbort();
   document.body.classList.toggle('details', !!state.settings.details);
   document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && (view.mode === 'grades' || view.mode === 'students' || view.mode === 'student')); document.body.classList.toggle('seating', has && view.mode === 'seating');
@@ -1195,7 +1210,7 @@ function renderBar() {
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
       <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are listed as upcoming">Working in <select id="curUnit"><option value="">— pick —</option>${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
-      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid && !state.settings.onlyCurrent[s.prep] ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}<button id="mDetails">${state.settings.details ? 'Calm view' : 'Details view'}</button></div></div>
+      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid && !state.settings.onlyCurrent[s.prep] ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>
       <div class="legend det"><span>Tap a unit for skill scores</span></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
@@ -1220,13 +1235,8 @@ function renderBar() {
   const oc = $('#onlyCur'); if (oc) oc.onclick = () => { state.settings.onlyCurrent[s.prep] = !state.settings.onlyCurrent[s.prep]; save(); render(); };
   const hu = $('#hideUnit'); if (hu) hu.onclick = () => { const u = units.find(u => u.name === view.unit); state.assigned[s.prep][u.name] = !u.assigned; save(); render(); toast(`${esc(u.short)} ${!u.assigned ? 'assigned' : 'unassigned'} for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); };
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
-  const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu');
-    // An invisible overlay swallows the tap that dismisses the menu (on the panel "outside" is a student's cell); Escape closes and returns focus.
-    const closeMenu = () => { menu.classList.add('hidden'); mb.setAttribute('aria-expanded', 'false'); const ov = $('#menuOverlay'); if (ov) ov.remove(); document.removeEventListener('keydown', onKey, true); };
-    const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(); mb.focus(); } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const items = [...menu.querySelectorAll('button')]; const i = items.indexOf(document.activeElement); e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); } else if (e.key === 'Tab') { setTimeout(() => { if (!menu.contains(document.activeElement)) closeMenu(); }, 0); } };
-    mb.onclick = e => { e.stopPropagation(); if (!menu.classList.contains('hidden')) { closeMenu(); return; } menu.classList.remove('hidden'); mb.setAttribute('aria-expanded', 'true'); const ov = document.createElement('div'); ov.id = 'menuOverlay'; ov.onclick = ev => { ev.stopPropagation(); closeMenu(); }; document.body.appendChild(ov); document.addEventListener('keydown', onKey, true); const first = menu.querySelector('button'); if (first) first.focus(); };
-    menu.querySelectorAll('button').forEach(b => b.addEventListener('click', closeMenu));
-    const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const so = $('#mStillOwed'); if (so) so.onclick = () => openStillOwed(s); const mr = $('#mReports'); if (mr) mr.onclick = () => openStudentReports(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; const md = $('#mDetails'); if (md) md.onclick = () => { state.settings.details = !state.settings.details; save(); render(); }; }
+  const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu'); wireMenu(mb, menu);
+    const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const so = $('#mStillOwed'); if (so) so.onclick = () => openStillOwed(s); const mr = $('#mReports'); if (mr) mr.onclick = () => openStudentReports(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; }
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
   const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.settings.curUnitTouched = { ...(state.settings.curUnitTouched || {}), [s.prep]: true }; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}; later units are upcoming.` : 'No current unit — units count once a quarter of the class has started them.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
@@ -1560,10 +1570,10 @@ dd{margin:0}
 <ol>
 <li><b>Export</b> from IXL: Analytics → Score Grid → This school year → Export — one file per course (every student in it) or one per class, both work. From Focus: gradebook → Export, one per period.</li>
 <li><b>Import</b> all of them at once (button or drag onto the page). Newer exports replace older; best scores are kept.</li>
-<li>Look at <b>Needs attention</b> on the Overview (and the "N to fix" count beside a class's name): roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}). A student who has no IXL account: tap their flag → <b>No IXL account</b>, and the flag goes.</li>
+<li>Look at <b>Needs attention</b> on the Overview — <b>Classes</b> in the header — (and the "N to fix" count beside a class's name): roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}). A student who has no IXL account: tap their flag → <b>No IXL account</b>, and the flag goes.</li>
 <li>Tap <b>Copy</b> on a unit → paste into that unit's Focus column (rows are already in Focus order). The unit header then shows <i>copied ‹date›</i>.</li>
 <li>After the next Focus export, each unit's <b>Focus badge</b> says ${ico('check', 'a check')}, "N up since copy", or "N off" — tap it to see who, and <b>Copy corrections</b>.</li>
-<li><b>Save a backup</b> to your school Drive (Overview → <i>Back up</i>, or Settings). It is how the laptop and the tablet stay in step, and the only copy if this browser's storage is cleared.</li>
+<li><b>Save a backup</b> to your school Drive (the header's ⋯ menu → <b>Save backup</b>; it says how long ago the last one was). It is how the laptop and the tablet stay in step, and the only copy if this browser's storage is cleared.</li>
 </ol>
 <h2>Once per class</h2>
 <ol>
@@ -1588,15 +1598,17 @@ dd{margin:0}
 <dt>Focus ${ico('check', 'check')} / off</dt><dd>Whether the Focus column matches what Tally counts today.</dd>
 <dt>Seating</dt><dd>Draw the room once (templates, drag, rotate — shared by every class), then generate seating for a class: the solver weighs talkers, front-seat and near-teacher flags, keep-apart (hard) and seat-near links, and each student's standing — Priorities → Place by chooses the blend, FAST only, the Focus grade, assessments only, or IXL progress. Tap a student to see why they're there, lock them, or tap a second desk to swap — every move reports what it fixes and breaks. Print a teacher copy or a student/sub copy.</dd>
 <dt>Still owed</dt><dd>Printable black-and-white list of what each student is missing, by unit.</dd>
-<dt>Race</dt><dd>Student screen: classes ranked by the share of students who reached at least one more skill since last week (average gain breaks ties), so a class that starts behind can still win and one student can't swing it. The bar shows assigned work at goal. Names never show. Hold the exit button to leave.</dd>
-<dt>Data Lab</dt><dd>Student screen: box plot, dot plot, histogram, stem-and-leaf, bar, circle or line graph of any unit, skill, assignment, or class-collected data set, in points or percents — no names, and Focus scores only as aggregates.</dd>
-<dt>Names</dt><dd>Header toggle. Off = initials only, for projecting.</dd>
+<dt>Board</dt><dd>Header button: the student screen, with the Race and the Data Lab. Names never show on it. Hold the exit button to leave.</dd>
+<dt>Race</dt><dd>On the Board: classes ranked by the share of students who reached at least one more skill since last week (average gain breaks ties), so a class that starts behind can still win and one student can't swing it. The bar shows assigned work at goal.</dd>
+<dt>Data Lab</dt><dd>On the Board: box plot, dot plot, histogram, stem-and-leaf, bar, circle or line graph of any unit, skill, assignment, or class-collected data set, in points or percents — no names, and Focus scores only as aggregates.</dd>
+<dt>Names</dt><dd>The eye button in the header. Crossed out = initials only, for projecting.</dd>
+<dt>⋯ (header)</dt><dd>Details view (every count, notice and legend at once), Settings, this Guide and Save backup.</dd>
 </dl>
 <h2>For a co-teacher</h2>
 <ul>
 <li>Open the class chip, tap <b>Still owed</b>, choose initials or names, print. That's the whole job.</li>
-<li>Turn <b>Names</b> off before projecting anything.</li>
-<li>On a shared computer: Settings → <b>Clear all Tally data</b> when done.</li>
+<li>Turn names off (the eye button in the header) before projecting anything.</li>
+<li>On a shared computer: ⋯ → Settings → <b>Clear all Tally data</b> when done.</li>
 </ul>
 <div class="box"><b>If something looks wrong:</b> the file name tells Tally the class and date, so don't rename IXL exports. "Points possible differ" means Focus and Tally disagree on how many skills count — skip or un-skip until they match, or fix the points in Focus.</div>
 </div>
@@ -1915,7 +1927,9 @@ $('#btnImport').onclick = () => $('#file').click();
 $('#launch').onclick = () => $('#file').click();
 $('#file').onchange = e => { importFiles([...e.target.files]); e.target.value = ''; };
 $('#btnSettings').onclick = () => openSettings();
-$('#btnGuide').onclick = openGuide;
+$('#btnGuide').onclick = openGuide; $('#btnGuide0').onclick = openGuide;
+$('#btnBackup').onclick = () => { saveBackup(); render(); };
+wireMenu($('#btnMore'), $('#topMenu'));
 $('#btnHide').onclick = () => { state.settings.hideNames = !state.settings.hideNames; save(); render(); };
 $('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
 $('#btnStudents').onclick = () => { view = { mode: 'students', unit: null }; render(); };

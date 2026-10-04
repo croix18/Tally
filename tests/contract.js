@@ -1,7 +1,7 @@
 // Layout contract (round 6): the things the other 548 checks can't see. Measured, not asserted from the DOM alone —
 // a build with magenta ink, no sticky header or no font would pass every functional suite and fail here.
 // Viewports: laptop 1400×900, Chromebox 1366×768, tablet 1280×800; plus 200 % zoom (emulated as 700×450) for reachability.
-const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
+const { chromium, fs, path, exe, check, done, APP, pick, more } = require('./lib');
 const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }; const a = L(fg), b = L(bg); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };
 (async()=>{
   const b=await chromium.launch({executablePath:exe});
@@ -43,9 +43,11 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
     const sk=await p.evaluate(()=>{ const r=[...document.querySelectorAll('th.skill .rot')]; return { n:r.length, cut:r.filter(e=>e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+1).length, legendInBar:!!document.querySelector('#bar .legend') }; });
     check(sk.n>0 && sk.cut===0 && !sk.legendInBar,label+': no skill name is cut ('+sk.n+' skills) and the legend is in the table corner, not the bar');
     // focus ring on header pills ≥ 3:1 against the header
-    const ring=await p.evaluate(()=>{ const b=document.querySelector('#top .pill'); b.focus(); const cs=getComputedStyle(b); return { oc:cs.outlineColor, bg:getComputedStyle(document.querySelector('#top')).backgroundColor, img:getComputedStyle(document.querySelector('#top')).backgroundImage }; });
+    await p.keyboard.press('Tab');   // keyboard modality, so :focus-visible applies to the focus() calls below (after a mouse click it would not, and the check would measure the text colour instead)
+    const ring=await p.evaluate(()=>{ const b=document.querySelector('#btnHome'); b.focus(); const cs=getComputedStyle(b); return { oc:cs.outlineColor, os:cs.outlineStyle, bg:getComputedStyle(document.querySelector('#top')).backgroundColor, img:getComputedStyle(document.querySelector('#top')).backgroundImage }; });
     // header is a navy gradient; measure the ring against #16213A
-    check(ratio(ring.oc,'rgb(22,33,58)')>=3,label+': header focus ring ≥ 3:1 ('+ring.oc+')');
+    check(ring.os==='solid' && ratio(ring.oc,'rgb(22,33,58)')>=3,label+': header focus ring is drawn and ≥ 3:1 ('+ring.oc+')');
+    const ring2=await p.evaluate(()=>['#btnHide','#btnMore','#btnImport'].map(s=>{ const b=document.querySelector(s); b.focus(); const cs=getComputedStyle(b); return cs.outlineStyle==='solid' ? cs.outlineColor : 'rgb(22,33,58)'; })); check(ring2.every(c=>ratio(c,'rgb(22,33,58)')>=3),label+': …and on the names switch, More and Import');
     // warning line is a block
     check((await p.evaluate(()=>{ const d=document.createElement('span'); d.className='warnline'; document.body.appendChild(d); const v=getComputedStyle(d).display; d.remove(); return v; }))==='block',label+': .warnline lays out as a block');
     await p.click('#back'); await p.waitForTimeout(300);
@@ -69,7 +71,7 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   await pl.click('th.unit .ulink'); await pl.waitForTimeout(300); await look('unit'); await pl.click('#back'); await pl.waitForTimeout(200);
   await pl.click('#openGrades'); await pl.waitForTimeout(300); await look('grades'); await pl.locator('.gstu tr[data-stu]').first().click(); await pl.waitForTimeout(400); await look('student page'); await pl.click('#back'); await pl.waitForTimeout(200); await pl.click('#back'); await pl.waitForTimeout(200);
   await pl.click('#openSeating'); await pl.waitForTimeout(400); await look('seating'); await pl.click('#back'); await pl.waitForTimeout(200);
-  await pl.click('#btnHome'); await pl.waitForTimeout(300); await look('overview'); await pl.click('#btnSettings'); await pl.waitForTimeout(300); await look('settings'); await pl.keyboard.press('Escape'); await pl.waitForTimeout(200);
+  await pl.click('#btnHome'); await pl.waitForTimeout(300); await look('overview'); await more(pl,'#btnSettings'); await pl.waitForTimeout(300); await look('settings'); await pl.keyboard.press('Escape'); await pl.waitForTimeout(200);
   await pl.click('[data-k="period-1"]'); await pl.waitForTimeout(300); await pl.click('th.unit .ulink'); await pl.waitForTimeout(300);
   check(seen.length===0,'no character on any main screen falls back to a device font'+(seen.length?': '+seen.join(' | '):''));
   // 3. Race: keyboard exit works, chip contrast

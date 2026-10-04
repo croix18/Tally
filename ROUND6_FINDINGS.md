@@ -123,7 +123,8 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - Upcoming unit columns / Just Unit N / the 25 % rule vs a single "Ahead" column (product 5; 8–12 h, high risk).
 - The 92 per-row seating toggles (built on request in round 4).
 - Android/browser Back handling (a naive version lets Back exit Show student or Race).
-- The nine-pill header → a four-item one.
+- ~~The nine-pill header → a four-item one.~~ Done 4 Oct on Croix's go from the mockup: Classes · Students · Board, search,
+  the names switch, ⋯, Import (NOTES.md, `tests/header.js`).
 
 ## Build log
 
@@ -143,7 +144,11 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 4 Oct: Croix picked "Simplify the header" as the next build and asked for a mockup of the single "Ahead" column
   before deciding on it; both mockups are in `review/mockups/` with what each would take. The Focus export's file
   name is generic, so a new class still asks period and course once.
-- Next: build the header once Croix says go on the mockup; the Ahead column only if he chooses it. Build 3 candidates and "Croix's calls" wait for him.
+- 4 Oct: Croix said go on both mockups. The header shipped first (its own commit): three places in one segmented
+  control, an eye for names, a ⋯ menu for Details view / Settings / Guide / Save backup. Also fixed on the way: the
+  contract suite's focus-ring check was measuring text colour after a mouse click (it now focuses by keyboard and
+  requires the ring to be drawn).
+- Next: the Ahead column (its own commit). Build 3 candidates and "Croix's calls" wait for him.
 
 ## Handoff for the next session (any model)
 

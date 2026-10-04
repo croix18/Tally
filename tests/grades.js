@@ -1,5 +1,5 @@
 // Grades: the Focus formula, category fitting, what-ifs, history, the screens, and privacy — against the scrubbed real export.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -80,7 +80,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib'
   // 7. persistence + backup
   await p.reload(); await p.waitForTimeout(500);
   check(await p.evaluate(K=>{ const s=window.__tally.state.sections[K]; return s.grades.assignments.length===13 && s.gradeHistory.length===2 && window.__tally.gradingFor('acc').how['Unit 1 IXL']==='fit'; }, K),'gradebook, history and category map survive a reload');
-  await p.click('#btnSettings'); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8'));
+  await more(p,'#btnSettings'); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8'));
   check(cfg.grading && cfg.grading.acc && cfg.grading.acc.cats[0].w===70 && cfg.sections[K].gradeHistory.length===2 && !JSON.stringify(cfg).includes('"values"'),'backup carries weights, category map and grade history, not raw scores');
   await p.click('#mCancel');
   // 8. no Grade column → guesses flagged; the asker appears for new assignments

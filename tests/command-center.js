@@ -1,5 +1,5 @@
 // Overview (home), calm-by-default with a Details toggle, and the Data Lab graph types.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -26,9 +26,9 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib'
   await p.click('#moreBtn'); await p.waitForTimeout(200); check(await p.locator('#moreMenu:not(.hidden) #mStillOwed').count()===1,'menu opens with Still owed');
   await p.mouse.click(600, 700); await p.waitForTimeout(200); check(await p.locator('#moreMenu.hidden').count()===1 && await p.locator('body.details').count()===0 && await p.locator('#menuOverlay').count()===0,'a tap outside only dismisses the menu (nothing underneath fires)');
   await p.click('#moreBtn'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(100); check(await p.locator('#moreMenu.hidden').count()===1 && await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='moreBtn','Escape closes the menu and returns focus to ⋯');
-  await p.click('#btnDetails'); await p.waitForTimeout(400);
+  await more(p,'#btnDetails'); await p.waitForTimeout(400);
   check(await p.locator('#printOwed').isVisible() && await p.locator('#nToggle').count()===0 && await p.locator('.notice').count()>=1,'Details view restores the full notices and controls');
-  await p.click('#btnDetails'); await p.waitForTimeout(300); check(await p.locator('#nToggle').count()===1,'and Calm folds them again');
+  await more(p,'#btnDetails'); await p.waitForTimeout(300); check(await p.locator('#nToggle').count()===1,'and Calm folds them again');
   await p.click('#btnHome'); await p.waitForTimeout(300); check(await p.locator('#gridwrap .home').count()===1,'Overview button returns home');
   // --- What changed digest (fabricate last week for the first class)
   await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections[T.state.order[0]]; const cur=s.history[s.history.length-1]; const per={}; const pu=JSON.parse(JSON.stringify(cur.pu)); Object.keys(cur.per).forEach((k,i)=>{ let d=Math.min(cur.per[k], i%3===0?3:i%3===1?1:0); per[k]=cur.per[k]-d; for(const u in pu){ const take=Math.min(d,pu[u][k]||0); pu[u][k]-=take; d-=take; } }); s.history=[{...cur,date:'2026-09-19',per,pu},cur];

@@ -130,7 +130,22 @@ h1,h2,h3{margin:0;font-weight:900}
 #top .brand h1{color:var(--turq);font-weight:900;letter-spacing:.14em;font-size:22px;text-transform:uppercase}
 #top .brand small{color:var(--white);opacity:.55;font-weight:700;letter-spacing:.05em;font-size:var(--t-s)}
 #top .spacer{flex:1}
-#search{background:transparent;border:2px solid var(--sand);color:var(--white);border-radius:999px;padding:6px 16px;width:220px;outline:none;font-weight:500}
+/* the three places: one segmented control, the current one filled */
+#top .nav{display:flex;background:rgba(255,255,255,.12);border-radius:999px;padding:4px;gap:2px;margin-left:10px;flex:none}
+#top .nav button{border:none;background:none;color:var(--white);font:inherit;font-weight:700;font-size:var(--t-m);padding:6px 20px;border-radius:999px;cursor:pointer;white-space:nowrap;min-height:36px}
+#top .nav button:hover{background:rgba(255,255,255,.1)}#top .nav button.on{background:var(--white);color:var(--navy)}
+/* round icon buttons: the names switch (filled = names showing) and More */
+#top .ibtn{flex:none;width:44px;height:44px;border-radius:50%;border:2px solid var(--sand);background:none;color:var(--white);display:grid;place-items:center;cursor:pointer;padding:0}
+#top .ibtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}#top .ibtn svg.dots{fill:currentColor;stroke:none}
+#top .ibtn[aria-pressed="true"],#top .ibtn[aria-expanded="true"]{background:var(--white);color:var(--navy);border-color:var(--white)}#top .ibtn[aria-pressed="false"]{color:var(--sand)}
+#topMenu{min-width:280px;top:calc(100% + 12px);padding:8px}
+#topMenu button{display:flex;align-items:center;gap:12px;min-height:46px;font-size:var(--t-m)}
+#topMenu svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#topMenu small{margin-left:auto;font-weight:600;color:var(--ink-soft);font-size:var(--t-s)}#topMenu small.due{color:var(--navy);font-weight:800}
+#topMenu hr{border:none;border-top:1px solid var(--grid);margin:6px 8px;width:auto;align-self:stretch}
+#topMenu .sw{margin-left:auto;flex:none;width:42px;height:24px;border-radius:999px;background:var(--sand);position:relative;transition:background .15s}#topMenu .sw::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--white);box-shadow:0 1px 2px rgba(22,33,58,.3);transition:transform .15s}
+#topMenu [aria-pressed="true"] .sw{background:var(--teal)}#topMenu [aria-pressed="true"] .sw::after{transform:translateX(18px)}
+#search{background:transparent;border:2px solid var(--sand);color:var(--white);border-radius:999px;padding:6px 16px;width:240px;flex:0 1 240px;min-width:110px;outline:none;font-weight:500}
 #search::placeholder{color:var(--sand)}
 #search:focus{border-color:var(--turq)}
 .pill{background:var(--turq);color:var(--navy);border:none;font-weight:700;font-size:var(--t-m);padding:8px 18px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;min-height:38px}
@@ -141,7 +156,7 @@ h1,h2,h3{margin:0;font-weight:900}
 .pill.ghost[aria-pressed="true"]{background:var(--white);color:var(--navy);border-color:var(--white)}
 .pill.ghost[aria-pressed="false"]{color:var(--sand)}
 .pill.danger{background:var(--white);color:var(--navy);border:2px solid var(--coral);padding:6px 16px}
-.pill:focus-visible{outline:3px solid var(--navy);outline-offset:2px}#top .pill:focus-visible,#top #search:focus-visible,#modal header button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
+.pill:focus-visible{outline:3px solid var(--navy);outline-offset:2px}#top .pill:focus-visible,#top .nav button:focus-visible,#top .ibtn:focus-visible,#top #search:focus-visible,#modal header button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
 button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
 #menuOverlay{position:fixed;inset:0;z-index:29;background:transparent}.more .menu{z-index:30}
 .tundo{margin-left:10px;background:var(--white);color:var(--navy);border:none;border-radius:999px;padding:4px 12px;font-weight:800;font:inherit;cursor:pointer;pointer-events:auto}
@@ -404,8 +419,9 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 #toast.err{background:var(--coral);color:var(--navy);border-color:var(--coral)}
 #toast b{color:var(--turq)}
 #toast.err b{color:var(--navy)}
-@media (max-width:1420px){#top{gap:8px;padding:12px 18px}#top .brand small{display:none}#search{width:150px}#top .pill{padding:6px 12px}#top .pill.ghost{padding:4px 12px}}
-@media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px}#tabs,#notices{padding-left:14px;padding-right:14px}#board{margin:14px 14px 24px}#search{width:160px}}
+@media (max-width:1420px){#top{gap:10px;padding:12px 18px}#top .brand small{display:none}}
+@media (min-width:700px){#top{flex-wrap:nowrap}}   /* one row: the search field gives way first */
+@media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px;gap:8px}#tabs,#notices{padding-left:14px;padding-right:14px}#board{margin:14px 14px 24px}#top .nav{margin-left:4px}#top .nav button{padding:6px 13px}}
 /* ---- seating ---- */
 .seat{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:14px 16px 24px;align-items:start}
 @media (max-width:1000px){.seat{grid-template-columns:1fr}}
@@ -462,6 +478,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   table.grid td{height:44px}
   .gasg select,.gstu td button,.gstu td .nm{min-height:44px}
   #search{min-height:44px}
+  #top .nav button{min-height:44px}#topMenu button{min-height:50px}
   .more .menu button{min-height:48px}
   .nchip{min-height:44px;padding:8px 16px}.ib{min-width:44px;min-height:44px}.mini{min-height:44px}.seg.tiny button{min-width:38px;min-height:38px}.ft{min-width:40px;min-height:40px}.seatOpen{min-height:44px}.notice button{min-height:44px}.seatSide summary{min-height:44px;display:flex;align-items:center}.chip.rel{min-height:44px}
 }
@@ -471,18 +488,26 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 
 <div id="top">
   <div class="brand"><h1>Tally</h1><small>IXL → FOCUS</small></div>
+  <!-- Three places and one action. Classes = the Overview and everything inside a class; Board = Race and Data Lab. -->
+  <nav class="nav hidden" id="nav" aria-label="Go to">
+    <button id="btnHome" title="Every class at a glance — and every class from there">Classes</button>
+    <button id="btnStudents" title="Every student: grades, trends, what-ifs (teacher only)">Students</button>
+    <button id="btnLb" title="Student screen: Race and Data Lab">Board</button>
+  </nav>
   <div class="spacer"></div>
   <input id="search" type="search" placeholder="Find a student…" aria-label="Find a student" class="hidden">
-  <button class="pill ghost hidden" id="btnHome" title="Every class at a glance">Overview</button>
-  <button class="pill ghost hidden" id="btnStudents" title="Every student: grades, trends, what-ifs (teacher only)">Students</button>
-  <button class="pill ghost" id="btnGuide" title="A printable guide: the weekly flow and what the words mean">Guide</button>
-  <button class="pill ghost hidden" id="btnLb" title="Student screen: Race and Data Lab">Race</button>
-  <button class="pill ghost hidden" id="btnHide" aria-pressed="true">Names</button>
-  <button class="pill ghost hidden" id="btnDetails" aria-pressed="false" title="Show everything: full notices, counts, legends">Details</button>
-  <button class="pill ghost hidden" id="btnSettings" title="Settings, roster, threshold">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-    Settings
-  </button>
+  <button class="pill ghost" id="btnGuide0" title="A printable guide: the weekly flow and what the words mean">Guide</button>
+  <button class="ibtn hidden" id="btnHide" aria-pressed="true" aria-label="Student names"></button>
+  <div class="more hidden" id="topMore">
+    <button class="ibtn" id="btnMore" aria-haspopup="true" aria-expanded="false" aria-label="More" title="Details view, Settings, Guide, backup"><svg viewBox="0 0 24 24" class="dots"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></button>
+    <div class="menu hidden" id="topMenu">
+      <button id="btnDetails" aria-pressed="false" title="Show everything: full notices, counts, legends"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Details view<span class="sw" aria-hidden="true"></span></button>
+      <button id="btnSettings" title="Settings, roster, threshold"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+      <button id="btnGuide" title="A printable guide: the weekly flow and what the words mean"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16l-8-4-8 4z"/></svg>Guide</button>
+      <hr>
+      <button id="btnBackup" title="Download a backup file — keep it in your school Drive"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Save backup<small id="topBk"></small></button>
+    </div>
+  </div>
   <button class="pill" id="btnImport">
     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     Import

@@ -48,6 +48,15 @@ per-section-file era and many items in them are now done).
   have" as the way back. The import card says "placed by its names (23 of 23)". There is no override when a file is
   plainly one class; if that is ever wrong, the fix is to make the dialog reachable from the import card.
   `tests/auto-place.js`.
+- **The header is three places and one action** (4 Oct, Croix chose it from a mockup — `review/mockups/`). `#nav` holds
+  **Classes** (`#btnHome`: the Overview, and "on" for everything inside a class), **Students** (`#btnStudents`) and
+  **Board** (`#btnLb`: Race + Data Lab). Then search, the names switch (`#btnHide`, an eye; filled = names showing,
+  crossed out = initials — kept one tap away because the grid gets projected), a ⋯ menu (`#btnMore` / `#topMenu`:
+  Details view as a switch, Settings, Guide, Save backup with "3 days ago") and Import, the only filled button. The
+  ids are the old ones, so handlers and tests kept working; tests reach the menu items through `more(p, sel)` in
+  `tests/lib.js`. `wireMenu(button, menu)` is the one menu behaviour (overlay, Escape, arrows, focus back to the
+  button) for this menu and the class bar's. Before the first import the header is just Guide (`#btnGuide0`) and
+  Import. One row from 700 px up (the search field gives way first); below that it wraps. `tests/header.js`.
 - **Roster = the gradebook's student column** (Focus order, with IDs). Filled in automatically when a class
   has no roster and at least half the names match its IXL students; offered when a pasted roster differs.
 - **"Working in" unit per course** (`settings.currentUnit[prep]`): everything up to it is assigned; later

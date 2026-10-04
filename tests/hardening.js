@@ -1,7 +1,7 @@
 // Round-3 hardening: numbers that must not drift (snapshots vs skips, class average, neededOn, plural, duplicate
 // skill rows, "nearly all"), pool/storage edges (same-name pool students, empty roster, old backups, old saves),
 // and the touch/keyboard manners (menu overlay, dialog focus, undo toast).
-const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -57,15 +57,15 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib'
   const lbt=await p.textContent('#lb'); check(!/nearly all/i.test(lbt) && /0% moved up|first week|fresh start/.test(lbt),'two measured students, none moved → not "nearly all"');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(200);
   // 9. empty roster on a pool class → no students, notice; not all 91
-  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#btnSettings'); await p.fill('#roster',''); await p.click('#mSave'); await p.waitForTimeout(400);
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await more(p,'#btnSettings'); await p.fill('#roster',''); await p.click('#mSave'); await p.waitForTimeout(400);
   const empt=await p.evaluate(K=>{ const s=window.__tally.state.sections[K]; return s.students.length; }, K);
   check(empt===0 && /No roster, so no students/.test(await p.textContent('#notices')),'emptying a pool class roster leaves it empty with a notice (not the whole course): '+empt);
   const gbNames=await p.evaluate(K=>window.__tally.state.sections[K].grades.students.join('\n'), K);
-  await p.click('#btnSettings'); await p.fill('#roster', gbNames); await p.click('#mSave'); await p.waitForTimeout(400);
+  await more(p,'#btnSettings'); await p.fill('#roster', gbNames); await p.click('#mSave'); await p.waitForTimeout(400);
   check(await p.evaluate(K=>window.__tally.state.sections[K].students.length, K)>=20,'pasting the roster back re-carves the class');
   // 10. old backup without skipFirstV2 must not drag skipFirst back to on:2
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.skipFirst={acc:0,on:1}; T.save(); });
-  const [dl]=await Promise.all([p.waitForEvent('download'), (async()=>{ await p.click('[data-k="period-1"]'); await p.waitForTimeout(200); await p.click('#btnSettings'); await p.waitForTimeout(200); await p.click('#exportCfg'); })()]);
+  const [dl]=await Promise.all([p.waitForEvent('download'), (async()=>{ await p.click('[data-k="period-1"]'); await p.waitForTimeout(200); await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('#exportCfg'); })()]);
   const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8')); check(cfg.settings.skipFirstV2===true,'backup marks skipFirstV2');
   const old={...cfg, settings:{...cfg.settings, skipFirst:{acc:0,on:2}}}; delete old.settings.skipFirstV2; const oldPath=path.join(tmp,'old-backup.json'); fs.writeFileSync(oldPath, JSON.stringify(old));
   await p.setInputFiles('#cfgFile', oldPath); await p.waitForTimeout(600);
@@ -76,11 +76,13 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib'
   const boot=await p.evaluate(()=>{ const T=window.__tally; return {err:!!T.bootError, gb:!!T.state.sections['period-1'].grades, n:T.state.order.length}; });
   check(!boot.err && !boot.gb && boot.n===2,'broken gradebook shape dropped, null section dropped, app boots: '+JSON.stringify(boot));
   // 12. dialog focus: opening Settings moves focus into the panel and Escape returns it
-  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.focus('#btnSettings'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.focus('#btnMore'); await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='btnDetails','the header menu opens from the keyboard with focus on its first item');
+  await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
   const inModal=await p.evaluate(()=>document.querySelector('#modal').contains(document.activeElement)); check(inModal,'focus moves into the dialog on open');
   check(await p.getAttribute('#modal','aria-labelledby')==='mTitle','dialog is named by its own heading');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='btnSettings','focus returns to the opener on close');
+  check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='btnMore','focus returns to the menu button on close');
   // 13. unit-view cells are keyboard reachable
   await p.click('th.unit .ulink'); await p.waitForTimeout(300);
   check(await p.locator('td.sc[data-cell][tabindex="0"][role="button"]').count()>0 && await p.locator('td.pts[tabindex="0"]').count()===0,'score cells are focusable buttons in the unit view');

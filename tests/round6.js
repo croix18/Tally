@@ -1,6 +1,6 @@
 // Round 6, Build 2: alerts that can be cleared ("No IXL account" is a state), one attention line per cause above the
 // cards, the notice band as a count in the class bar, the backup line, Working in defaulted from Focus's IXL columns.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900},acceptDownloads:true}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -23,8 +23,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib'
   const cfg=JSON.parse(fs.readFileSync(await bk.path(),'utf8'));
   check(cfg.tally===4 && Object.keys(cfg.sections).length===2 && await p.locator('#hBackup').count()===0 && /backed up today/.test(await p.textContent('#bar .meta')),'one tap saves the backup; the line goes and the bar says "backed up today"');
   await p.reload(); await p.waitForTimeout(600); check(await p.locator('#hBackup').count()===0 && /^\d{4}-/.test(await p.evaluate(()=>window.__tally.state.lastBackup)),'the backup date survives a reload');
-  await p.click('#btnSettings'); await p.waitForTimeout(200); check(/Last saved today/.test(await p.textContent('#lastBk')),'Settings shows when the backup was last saved'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  const [gd]=await Promise.all([ctx.waitForEvent('page'), p.click('#btnGuide')]); await gd.waitForLoadState(); check(/Save a backup/.test(await gd.evaluate(()=>document.body.innerText)),'the Guide\'s weekly list includes the backup'); await gd.close();
+  await more(p,'#btnSettings'); await p.waitForTimeout(200); check(/Last saved today/.test(await p.textContent('#lastBk')),'Settings shows when the backup was last saved'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  const [gd]=await Promise.all([ctx.waitForEvent('page'), more(p,'#btnGuide')]); await gd.waitForLoadState(); check(/Save a backup/.test(await gd.evaluate(()=>document.body.innerText)),'the Guide\'s weekly list includes the backup'); await gd.close();
   // 1. "No IXL account" is an answer: the flag, the count, the tab dot and the Overview line all go
   await p.click(`[data-k="${K}"]`); await p.waitForTimeout(400);
   const before=await p.evaluate(K=>{ const T=window.__tally; return { warn:T.sectionWarn(T.state.sections[K]), chip:(document.querySelector('#nToggle')||{}).textContent||'', flags:document.querySelectorAll('button.flag:not(.quiet)').length }; },K);
@@ -81,7 +81,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib'
   await p.reload(); await p.waitForTimeout(700);
   const st1=await p.evaluate(()=>{ const T=window.__tally; const u=T.unitsOf(T.state.sections['period-1']); T.save(); return { live:T.state.sections['period-1'].skills===T.state.pools.acc.skills, units:u.length, chars:localStorage.getItem('tally.v1').length, rows:T.buildRows(T.state.sections['period-1']).length }; });
   check(st1.live && st1.units>10 && st1.rows>20 && st1.chars<fat*0.9,'an older save with its own copies loads the same and shrinks on the next save ('+Math.round(fat/1000)+'K → '+Math.round(st1.chars/1000)+'K)');
-  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#btnSettings'); await p.waitForTimeout(300);
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await more(p,'#btnSettings'); await p.waitForTimeout(300);
   check(/Storage: \d+\.\d of about 5\.0 MB/.test(await p.textContent('#storeLine')) && await p.locator('#storeLine.full').count()===0,'Settings says how much of the browser\'s storage is used: '+(await p.textContent('#storeLine')).trim().slice(0,60));
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   await p.evaluate(()=>{ localStorage.setItem('other-tool','x'.repeat(4300000)); window.__tally.render(); }); await p.click('#btnHome'); await p.waitForTimeout(300);

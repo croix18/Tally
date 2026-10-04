@@ -1,6 +1,6 @@
 // Focus-check overrides ("Keep Focus"): a kept difference is noted with date and reason, stops being flagged, copies
 // Focus's number, comes back if Focus changes, survives reload and backup; plus the what-if card's deltas.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -36,7 +36,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib'
   // 4. flag again (undo) and backup round-trip
   await p.evaluate(([K,d])=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const a=gb.assignments.find(a=>/Unit 1 IXL/i.test(a.name)); const i=gb.students.indexOf(d); a.values[i]-=2; T.save(); T.render(); }, [K,before.first.display]);
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(300);
-  await p.click('#btnSettings'); await p.waitForTimeout(200); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8'));
+  await more(p,'#btnSettings'); await p.waitForTimeout(200); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8'));
   check(cfg.sections[K].overrides && Object.keys(cfg.sections[K].overrides).length===1,'the Tally backup carries overrides'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   await p.click('.fcheck'); await p.waitForTimeout(400); await p.click('.kept summary'); await p.click('[data-unkeep]'); await p.waitForTimeout(400);
   check(await p.locator(`[data-keep="${before.first.display}"]`).count()===1,'"Flag again" puts the row back');

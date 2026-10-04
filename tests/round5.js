@@ -1,7 +1,7 @@
 // Round-5 regressions: projected Data Lab keeps Focus scores aggregate; prototype-pollution and XSS through backups;
 // course change with a unit open; save failures not masked; Overview search; pool replacement guard; view scroll reset;
 // Working-in choices; percent axis; CSV formula guard; older-dated import; contrast token.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); let dialogs=[]; p.on('dialog',d=>{ dialogs.push(d.message()); d.accept(); });
@@ -24,22 +24,22 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib'
   // 2. prototype pollution and XSS through a Tally backup
   const evil={tally:4,sections:{'__proto__':{label:'x',polluted:1},'period-1':{label:'ok'}},assigned:{acc:{'__proto__':{z:1}}},grading:{acc:{cats:[{name:'A',w:100}],map:{'__proto__':{q:1}},how:{}}},custom:[{id:'c1',label:'evil',unit:'',prep:'acc',values:{'period-1':['</textarea><img src=x onerror=window.__x5=1>',5]}}]};
   const ep=path.join(tmp,'evil-backup.json'); fs.writeFileSync(ep, JSON.stringify(evil));
-  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#btnSettings'); await p.waitForTimeout(200); await p.setInputFiles('#cfgFile', ep); await p.waitForTimeout(800);
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.setInputFiles('#cfgFile', ep); await p.waitForTimeout(800);
   const pol=await p.evaluate(()=>({ proto:!!({}).polluted, order:window.__tally.state.order.includes('__proto__'), x:!!window.__x5, vals:JSON.stringify((window.__tally.state.custom.find(c=>c.id==='c1')||{}).values) }));
   check(!pol.proto && !pol.order && !pol.x,'a backup with __proto__ keys pollutes nothing and lists no ghost class');
-  await p.click('#btnSettings'); await p.waitForTimeout(200); await p.click('[data-editc="c1"], #editCustom, [data-edit="c1"]').catch(()=>{}); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('[data-editc="c1"], #editCustom, [data-edit="c1"]').catch(()=>{}); await p.waitForTimeout(300);
   check(!(await p.evaluate(()=>!!window.__x5)) && /\[5\]/.test(pol.vals),'custom values are numbers only; the editor can\'t be scripted: '+pol.vals);
   await p.keyboard.press('Escape'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   await p.reload(); await p.waitForTimeout(700); check(await p.locator('#tabs .tab').count()===2 && errs.length===0,'app boots clean afterwards');
   // 3. course change while a unit view is open
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('th.unit .ulink'); await p.waitForTimeout(300);
-  await p.click('#btnSettings'); await p.waitForTimeout(200); await p.click('#prepSeg [data-prep="on"], [data-prep="on"]'); await p.click('#mSave'); await p.waitForTimeout(500);
+  await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('#prepSeg [data-prep="on"], [data-prep="on"]'); await p.click('#mSave'); await p.waitForTimeout(500);
   check(errs.length===0 && await p.locator('#bar h2').count()===1,'changing the course with a unit open falls back to the grid, no throw');
-  await p.click('#btnSettings'); await p.waitForTimeout(200); await p.click('[data-prep="acc"]'); await p.click('#mSave'); await p.waitForTimeout(500);
+  await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('[data-prep="acc"]'); await p.click('#mSave'); await p.waitForTimeout(500);
   check((await p.evaluate(()=>window.__tally.state.settings.skipFirst.on))===1,'switching a class\'s course does not drag the review-unit count across courses');
   // 4. a failed save is not hidden by the success toast
   await p.evaluate(()=>{ const o=localStorage.setItem.bind(localStorage); window.__origSet=o; localStorage.setItem=()=>{ const e=new Error('QuotaExceededError'); e.name='QuotaExceededError'; throw e; }; });
-  await p.click('#btnSettings'); await p.waitForTimeout(200); await p.click('#mSave'); await p.waitForTimeout(400);
+  await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('#mSave'); await p.waitForTimeout(400);
   check(/storage is full|Could not save/.test(await p.textContent('#toast')) && await p.locator('#toast.err').count()===1,'the quota error stays on screen instead of "Saved"');
   await p.evaluate(()=>{ localStorage.setItem=window.__origSet; });
   // 5. Overview search opens the Students list properly (was the class grid before Students existed)

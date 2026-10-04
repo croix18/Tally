@@ -1,11 +1,11 @@
-const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}});
   await ctx.grantPermissions(['clipboard-read','clipboard-write']);
   const p=await ctx.newPage(); const errs=[]; p.on('framenavigated',f=>console.log('NAV',f.url().slice(-30))); p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{ if(m.type()==='error' && !/ERR_TUNNEL|fonts|net::/.test(m.text())) errs.push(m.text()); });
   let dialogs=[], dialogAnswer=true; p.on('dialog', async d=>{ dialogs.push(d.message()); await (dialogAnswer? d.accept(): d.dismiss()); });
   await p.goto('file://'+path.resolve(APP)); await unskip(p);
-  check(await p.locator('#btnSettings.hidden').count()===1,'settings hidden on landing');
+  check(await p.locator('#topMore.hidden').count()===1 && await p.locator('#nav.hidden').count()===1 && await p.locator('#btnGuide0:not(.hidden)').count()===1,'on landing the header is the Guide and Import — no places, no More menu yet');
   const main=fs.readdirSync('fixtures').filter(f=>f.endsWith('.xlsx') && /^f1473588/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
   check((await p.evaluate(()=>window.__tally.state.order.length))===2,'two sections imported');
@@ -29,7 +29,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   await p.click('#mCancel'); await p.waitForTimeout(200);
   await p.click('button.flag[data-ignore]'); await p.waitForTimeout(250); await p.click('#nrSkip'); await p.waitForTimeout(250);
   check(await p.locator('button.flag[data-ignore]').count()===0,'ignored IXL-only student hidden');
-  await p.click('#btnSettings'); check(/Skipped IXL accounts/.test(await p.textContent('#matchReport')),'ignored listed in settings');
+  await more(p,'#btnSettings'); check(/Skipped IXL accounts/.test(await p.textContent('#matchReport')),'ignored listed in settings');
   await p.click('#matchReport [data-unign]'); await p.waitForTimeout(100); await p.click('#mCancel'); await p.waitForTimeout(150);
   check(await p.locator('button.flag[data-ignore]').count()===1,'un-ignore restores');
   // fixer: tap NOT IN IXL flag on "Aiden, Carter", pick Aiden Harris
@@ -81,18 +81,18 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   await p.click('#hideUnit'); await p.waitForTimeout(200); check((await p.textContent('#hideUnit')).includes('Not assigned'),'manual unassign unit');
   await p.click('#hideUnit'); await p.waitForTimeout(200);
   // Esc + dirty modal
-  await p.click('#btnSettings'); await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+  await more(p,'#btnSettings'); await p.keyboard.press('Escape'); await p.waitForTimeout(150);
   check(await p.locator('#modal.hidden').count()===1 && await p.locator('#bar.detail').count()===1,'Esc closes modal, keeps detail view');
-  await p.click('#btnSettings'); await p.fill('#roster','Zzz, Q'); dialogs=[]; dialogAnswer=false; await p.mouse.click(5,5); await p.waitForTimeout(150);
+  await more(p,'#btnSettings'); await p.fill('#roster','Zzz, Q'); dialogs=[]; dialogAnswer=false; await p.mouse.click(5,5); await p.waitForTimeout(150);
   check(dialogs.length===1 && await p.locator('#modal.hidden').count()===0,'dirty roster: backdrop asks');
   dialogAnswer=true; await p.keyboard.press('Escape'); await p.waitForTimeout(150); await p.keyboard.press('Escape'); await p.waitForTimeout(150);
   check(await p.locator('#bar.detail').count()===0,'second Esc pops view');
   // threshold per period
-  await p.click('#btnSettings'); await p.fill('#thr',''); await p.click('#mSave'); await p.waitForTimeout(150);
+  await more(p,'#btnSettings'); await p.fill('#thr',''); await p.click('#mSave'); await p.waitForTimeout(150);
   check((await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].threshold))===67,'blank threshold keeps 67');
-  await p.click('#btnSettings'); await p.fill('#thr','0'); await p.click('#mSave'); await p.waitForTimeout(150);
+  await more(p,'#btnSettings'); await p.fill('#thr','0'); await p.click('#mSave'); await p.waitForTimeout(150);
   check((await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].threshold))===1,'threshold 0 clamps to 1');
-  await p.click('#btnSettings'); await p.fill('#thr','67'); await p.click('#mSave'); await p.waitForTimeout(150);
+  await more(p,'#btnSettings'); await p.fill('#thr','67'); await p.click('#mSave'); await p.waitForTimeout(150);
   // older export guard
   dialogs=[]; dialogAnswer=false; await p.setInputFiles('#file', fs.readdirSync('fixtures').filter(f=>f.startsWith('old_')).map(f=>path.resolve('fixtures',f))); await p.waitForTimeout(500);
   check(dialogs.length===1 && /older/.test(dialogs[0]) && (await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].date))==='2026-09-25','older export asks; declined keeps newer');
@@ -100,7 +100,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   await p.click('#btnHide'); await p.waitForTimeout(150);
   const nm=await p.textContent('tbody td.stu .nm'); check(/^[A-Z]\. [A-Z]\.$/.test(nm.trim()),'hide names -> initials');
   check(!/Zed, Withdrawn/.test(await p.textContent('#notices')),'banner hides names');
-  await p.click('#btnSettings'); check(await p.locator('#roster').count()===0 && !/Zed, Withdrawn/.test(await p.textContent('#matchReport')),'settings hides roster + names'); await p.click('#mCancel');
+  await more(p,'#btnSettings'); check(await p.locator('#roster').count()===0 && !/Zed, Withdrawn/.test(await p.textContent('#matchReport')),'settings hides roster + names'); await p.click('#mCancel');
   await p.click('#btnHide'); await p.waitForTimeout(150);
   // text-typed scores xlsx + csv sci ids
   const extra=fs.readdirSync('fixtures').filter(f=>f.startsWith('text_')||f.startsWith('csv_')).map(f=>path.resolve('fixtures',f));
@@ -120,7 +120,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   check(mm.d[0][1]==='ambiguous' && mm.d2[0][1]==='ok' && mm.d2.length===1,'duplicate account: ambiguous, then resolved by ignoring one');
   check(mm.lf[0][1]==='ok','IXL "Last, First" form matches');
   // backup: hand-edited garbage tolerated
-  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await p.click('#btnSettings');
+  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await more(p,'#btnSettings');
   const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfgPath=await dl.path(); const cfg=JSON.parse(fs.readFileSync(cfgPath,'utf8'));
   check(cfg.sections['1205050-7T1A'].threshold===67 && cfg.sections['1205050-7T1A'].aliases['Aiden, Carter'],'backup carries threshold + alias');
   cfg.sections['1205050-7T1A'].threshold='sixty'; cfg.sections['NEW-1']={}; fs.writeFileSync('/tmp/bad.json',JSON.stringify(cfg));
