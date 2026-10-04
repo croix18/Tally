@@ -308,3 +308,25 @@ roster part (first names per period, seating) can ride the Drive file; nothing f
 Quarters ever goes in the room — the reader and the schema refuse it. Later: exit-ticket results from
 Cadence into the heat map, a heat map over time on the Overview, the nightly digest. Storage keys stay
 as they are; the room is written beside Tally's own store, never read from `tally.v1` by any other tool.
+
+**The plan moves now (4 Oct 2026) — what that changes in this tool's part.** Croix: *"I need the plan
+to be fluid and adjust on the fly."* The year's plan is no longer a table of dates: it is a sequence
+of lessons laid onto the school days that are left, by one engine (Windmill `kit/lib/flow.py` for the
+calendar tools, `kit/lib/flow.js` for a browser; the spine carries each course's sequence as `flow`).
+A lost day is one line in a course's as-run log and everything after it moves; his rule is push
+everything back, flex and spiral days absorbing first, then tests to the next allowed day. On the
+panel the unit console records what each period actually did (`panel.asRun` in the room) and offers
+the period's next lesson; on his phone a plan page (a claude.ai artifact, link in Windmill's
+`HANDOFF.md`) shows the laid year and takes a logged day. Windmill's `HANDOFF.md`, "The plan follows
+the class", is the whole of it; the *Room Coordination Plan* doc has a dated amendment.
+
+This tool does not read the plan yet, so nothing here changed. When its part is built:
+- Publish is unchanged: the unit per course (`settings.currentUnit[prep]`) and the heat;
+- anything that places a lesson on a date — the heat map over time, the digest, "taught so far" —
+  takes it from `room.asRun(course, period)` where the panel part is present and from the spine's
+  `days` otherwise, never from a date table of Tally's own;
+- a day's plan entry may be of kind `extra` (a review or catch-up day) or `off` (no class): both
+  mean "no lesson that day";
+- **a unit's test can now cross a quarter's end** (A7's Unit 3 test moved from Q1 to Q2 on 4 Oct):
+  nothing in Tally may assume a unit's test falls in the quarter the plan first gave it. The
+  quarter ends themselves are unchanged.
