@@ -65,7 +65,8 @@ body.home #board,body.grades #board{background:transparent;border:none;box-shado
 .hhead b{font-size:var(--t-xl);font-weight:900;display:block}.hhead small{color:var(--ink-soft);font-size:var(--t-s)}
 .hnums{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.hnums small{display:block;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:900}
 .hnums b{font-size:24px;font-weight:900;line-height:1.1}.hnums span{display:block;font-size:var(--t-xs);color:var(--ink-soft)}
-.hchips{display:flex;gap:6px;flex-wrap:wrap}.hchip{font-size:var(--t-xs);font-weight:900;border-radius:999px;padding:3px 10px;background:var(--paleturq)}.hchip.warn{background:var(--coral)}.hchip.ok{background:var(--paleturq)}.hchip.muted{background:var(--grid);color:var(--ink-soft)}
+.hchips{display:flex;gap:6px;flex-wrap:wrap}.hchip{font-size:var(--t-xs);font-weight:900;border-radius:999px;padding:3px 10px;background:var(--paleturq)}.hchip.warn{background:var(--coral)}.hchip.ok{background:var(--paleturq)}.hchip.muted{background:var(--grid);color:var(--ink-soft)}.hchip.stale{background:var(--sand);color:var(--navy)}
+.himport{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:12px 16px;margin-bottom:14px;box-shadow:var(--shadow-1)}.himport.warn{border-color:var(--coral)}.himport h3{display:flex;align-items:baseline;gap:10px;font-size:var(--t-l)}.himport h3 small{font-weight:500;color:var(--ink-soft);font-size:var(--t-s)}.himport h3 .linkbtn{margin-left:auto;font-size:var(--t-s)}.himport ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}.himport li.bad{color:var(--bad)}.himport li.muted{color:var(--ink-soft)}#drop .himport{text-align:left;margin:18px auto 0;max-width:640px}
 .hchip.letters{display:inline-flex;gap:6px;background:transparent;padding:0}.hchip.letters i{font-style:normal;display:inline-flex;gap:3px;align-items:baseline;background:var(--paleturq);border-radius:8px;padding:2px 7px}.hchip.letters i em{font-style:normal;font-weight:900}.hchip.letters i.D,.hchip.letters i.F{background:var(--sand)}
 .hatt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.hatt li button{width:100%;text-align:left;background:var(--paleturq);border:none;border-radius:10px;padding:8px 12px;font:inherit;color:var(--navy);cursor:pointer;font-size:var(--t-s)}.hatt li.warn button{background:var(--coral)}
 
@@ -103,8 +104,12 @@ html,body{margin:0;height:100%}
 body{
   font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);font-size:var(--t-m);line-height:1.4;
   background:var(--cream);
-  display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;-webkit-font-smoothing:antialiased;
 }
+/* The board is the scroller (sticky header, name column and footer need it); the page scrolls only when the window is
+   too short to give the board a floor — short windows, browser zoom, the Chromebox. */
+:root{--board-min:min(460px,calc(100vh - 16px))}
+#lb,#show,#modal .panel{overscroll-behavior:contain}
 button{font:inherit;color:inherit;cursor:pointer;-webkit-user-select:none;user-select:none}
 input,textarea,select{font:inherit;color:inherit}
 h1,h2,h3{margin:0;font-weight:900}
@@ -131,7 +136,7 @@ h1,h2,h3{margin:0;font-weight:900}
 .pill.ghost[aria-pressed="true"]{background:var(--white);color:var(--navy);border-color:var(--white)}
 .pill.ghost[aria-pressed="false"]{color:var(--sand)}
 .pill.danger{background:var(--white);color:var(--navy);border:2px solid var(--coral);padding:6px 16px}
-.pill:focus-visible{outline:3px solid var(--navy);outline-offset:2px}header .pill:focus-visible,#lb .pill:focus-visible{outline-color:var(--white)}
+.pill:focus-visible{outline:3px solid var(--navy);outline-offset:2px}#top .pill:focus-visible,#top #search:focus-visible,#modal header button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
 button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
 #menuOverlay{position:fixed;inset:0;z-index:29;background:transparent}.more .menu{z-index:30}
 .tundo{margin-left:10px;background:var(--white);color:var(--navy);border:none;border-radius:999px;padding:4px 12px;font-weight:800;font:inherit;cursor:pointer;pointer-events:auto}
@@ -166,8 +171,8 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 .notice button{margin-left:auto;background:var(--navy);color:var(--white);border:none;border-radius:999px;padding:5px 14px;font-weight:700;font-size:var(--t-s);white-space:nowrap;min-height:32px}
 
 /* ---- board card ---- */
-#app{flex:1;min-height:0;display:flex;flex-direction:column}
-#board{margin:18px 28px 32px;background:var(--white);border:1px solid var(--grid);border-radius:var(--r);box-shadow:var(--shadow-1);display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0}
+#app{flex:1 0 auto;min-height:0;display:flex;flex-direction:column}
+#board{margin:18px 28px 32px;background:var(--white);border:1px solid var(--grid);border-radius:var(--r);box-shadow:var(--shadow-1);display:flex;flex-direction:column;overflow:hidden;flex:1 1 var(--board-min);min-height:var(--board-min)}
 #bar{background:var(--white);color:var(--navy);border-bottom:1px solid var(--grid);padding:10px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;min-height:56px;flex-shrink:0}
 #bar.detail{background:var(--white);color:var(--navy)}
 #bar h2{font-weight:900;letter-spacing:0;font-size:20px;text-transform:none}
@@ -180,7 +185,7 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 .legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px;border:2px solid transparent}
 .legend .lp{background:var(--turq);border-color:var(--white)} .legend .ll{background:var(--sand);border-color:var(--white)} .legend .ln{background:var(--white);border-color:var(--grid)} .legend .lx{background:repeating-linear-gradient(45deg,var(--grid),var(--grid) 3px,var(--white) 3px,var(--white) 6px);border-color:var(--grid)}
 #bar .pill.onbar{background:var(--navy);color:var(--white)}
-#bar.detail .pill.onbar{background:var(--white);color:var(--navy)}
+#bar.detail .pill.onbar{background:var(--navy);color:var(--white)}
 #bar .pill.toggle{background:var(--white);color:var(--navy);border:2px solid var(--navy);padding:3px 14px;min-height:32px;font-size:var(--t-s)}
 #bar .pill.toggle[aria-pressed="true"]{background:var(--navy);color:var(--white)}
 
@@ -342,7 +347,7 @@ th.skill .rot{white-space:normal;width:32px;max-height:176px;line-height:1.15;fo
 .rpanel textarea:focus-visible{outline:3px solid var(--turq);outline-offset:1px}
 .rp-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
 .rp-actions.col{flex-direction:column;align-items:stretch}.rp-actions.col .pill{justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:2px;min-height:52px}.rp-actions.col .pill small{font-weight:600;opacity:.75;font-size:12px}
-.warnline{color:var(--navy);background:var(--sand);border-radius:10px;padding:8px 12px;font-weight:700}
+.warnline{display:block;color:var(--navy);background:var(--sand);border-radius:10px;padding:8px 12px;font-weight:700;margin:6px 0}p.warnline{margin:8px 0}.checkTable small.stale{color:var(--bad);font-weight:700}
 #modal .panel.narrow{width:min(560px,94vw)}
 #modal .body.one{display:block}
 #modal .body.one p{color:var(--navy);font-size:var(--t-m);font-weight:500;margin:0 0 12px}
@@ -386,7 +391,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 .lbChips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .lbChip{background:rgba(255,255,255,.7);color:var(--navy);border-radius:999px;font-weight:700;font-size:clamp(12px,1.2vw,15px);padding:4px 12px}
 .lbCard.r3 .lbChip{background:var(--paleturq)}
-.lbChip.gain{background:var(--navy);color:var(--turq)}
+.lbChip.gain,.lbCard.r3 .lbChip.gain{background:var(--navy);color:var(--turq)}
 .lbPct{font-weight:900;font-size:clamp(40px,5vw,72px);line-height:1;color:var(--navy);font-variant-numeric:tabular-nums}
 .lbPct small{font-size:.45em;font-weight:900;opacity:.7}
 .lbTie{display:inline-block;vertical-align:middle;font-size:.45em;font-weight:900;letter-spacing:.08em;text-transform:uppercase;background:var(--paleturq);color:var(--teal);border-radius:999px;padding:3px 10px;margin-left:8px}
@@ -462,6 +467,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 #toast.err{background:var(--coral);color:var(--navy);border-color:var(--coral)}
 #toast b{color:var(--turq)}
 #toast.err b{color:var(--navy)}
+@media (max-width:1420px){#top{gap:8px;padding:12px 18px}#top .brand small{display:none}#search{width:150px}#top .pill{padding:6px 12px}#top .pill.ghost{padding:4px 12px}}
 @media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px}#tabs,#notices{padding-left:14px;padding-right:14px}#board{margin:14px 14px 24px}#search{width:160px}}
 /* ---- seating ---- */
 .seat{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:14px 16px 24px;align-items:start}
@@ -547,7 +553,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   <input type="file" id="file" multiple class="hidden">   <!-- no accept: some pickers (Android, Drive) grey out files it can't map to a type, and every file is sniffed anyway -->
 </div>
 
-<div id="empty">
+<div id="empty" class="hidden">
   <div id="drop">
     <h2>Drop your IXL Score Grid here<span>.</span></h2>
     <p>Per-period exports make a class each. A course-wide export (all your students in one file) is kept as the course's pool, and each Focus gradebook you drop makes a period's class from it.</p>

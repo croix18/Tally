@@ -16,7 +16,7 @@ assert '/*__QUARTERS__*/' in app and '/*__STUDENTS__*/' in app
 app = app.replace('/*__GRADES__*/', grades).replace('/*__CHARTS__*/', (root / 'charts.js').read_text()).replace('/*__HOME__*/', (root / 'home.js').read_text()).replace('/*__SEATING__*/', (root / 'seating.js').read_text()).replace('/*__QUARTERS__*/', (root / 'quarters.js').read_text()).replace('/*__STUDENTS__*/', (root / 'students.js').read_text())
 # DM Sans (SIL OFL, fonts/LICENSE-DM-Sans.txt) is embedded so the page makes no network request at all.
 woff = base64.b64encode((root / 'fonts' / 'dm-sans-latin.woff2').read_bytes()).decode()
-font = ("@font-face{font-family:'DM Sans';font-style:normal;font-weight:100 1000;font-display:swap;"
+font = ("@font-face{font-family:'DM Sans';font-style:normal;font-weight:100 1000;font-display:block;"
         "src:url(data:font/woff2;base64,%s) format('woff2');}" % woff)
 if not test:
     app, n = re.subn(r"^window\.__tally = \{.*$", '', app, flags=re.M)
@@ -32,6 +32,10 @@ def build(src, out, **parts):
     (root / out).write_text(html)
     print(out, len(html), 'bytes', '(test build)' if test else '')
 
-build('app.html', 'Tally.html', PARSER=parser, APP=app, FONT=font)
-(root / 'index.html').write_bytes((root / 'Tally.html').read_bytes())   # GitHub Pages serves the app at the repo root
-build('scrub.src.html', 'Scrub.html', PARSER=parser, FONT=font)
+if test:   # the test build is its own file, so a test run can never leave window.__tally in the shipped pages
+    build('app.html', 'Tally.test.html', PARSER=parser, APP=app, FONT=font)
+    build('scrub.src.html', 'Scrub.test.html', PARSER=parser, FONT=font)
+else:
+    build('app.html', 'Tally.html', PARSER=parser, APP=app, FONT=font)
+    (root / 'index.html').write_bytes((root / 'Tally.html').read_bytes())   # GitHub Pages serves the app at the repo root
+    build('scrub.src.html', 'Scrub.html', PARSER=parser, FONT=font)

@@ -331,7 +331,6 @@ function openShow(sec, name) {
   const ixlCols = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && (a.values[i] == null || a.values[i] < a.max));
   const nx = nextSize(s);
   const ownAvg = base.cats.Assessments && base.cats.Assessments.pct != null ? base.cats.Assessments.pct / 100 : 0.8; const nxStart = Math.round(nx * ownAvg * 2) / 2;
-  const hist = (sec.gradeHistory || []).filter(h => snapQ(h) === snapBasis(sec).q).map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.grade[j] : null; });
   const plan = quickestPath(sec, s, i, findStudent(sec, name).ixl);
   const H = state.settings.hideNames; const who = H ? mask(name) : firstName(name);
   // state of every control: missing → { on, pts }, retake/ixl → pts, next → { on, max, pts }
@@ -342,13 +341,11 @@ function openShow(sec, name) {
       <div class="shS ${kind === 'miss' ? 'off' : ''}"><input type="range" class="shPts" min="${lo}" max="${a.max}" step="0.5" value="${kind === 'miss' ? a.max : now}" aria-label="${esc(a.name)} score"><output>${fmtN(kind === 'miss' ? a.max : now)} / ${a.max}</output></div></div>`;
   const el = document.createElement('div'); el.id = 'show'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'What-ifs for ' + who);
   el.innerHTML = `<div class="shTop"><div><div class="shWho">${esc(who)}</div><div class="shSub">${esc(sec.label)} · ${esc(Q_NAMES[currentQuarter() - 1])} · Focus of ${esc(fmtDate(gb.importedAt.slice(0, 10)))}</div></div>
-      <div class="shTools"><button class="pill pale" id="shReset">Start over</button><button class="pill small exitPill" id="shExit" title="Teacher: press and hold to exit"><span class="ring"></span>Hold to exit</button></div></div>
-    <div class="shBody">
+      <div class="shTools"><button class="pill pale" id="shReset">Start over</button><button class="pill small exitPill" id="shExit" title="Teacher: press and hold to exit"><span class="ring"></span>Hold to exit</button></div>
       <div class="shGrade"><div class="shNow"><small>Your grade now</small><b>${base.rounded}<span>%</span></b><em class="lt ${base.letter}">${base.letter}</em></div>
         <div class="shArrow" aria-hidden="true">→</div>
-        <div class="shIf"><small>If you do the things you picked</small><b id="shIfV">${base.rounded}<span>%</span></b><em class="lt ${base.letter}" id="shIfL">${base.letter}</em><div class="shDelta" id="shDelta">Pick something below</div></div></div>
-      <div class="shCats" id="shCats"></div><p class="shHint shKey">Bars show each part of the grade after the changes you picked; the dark line is where it is now.</p>
-      ${hist.filter(v => v != null).length >= 2 ? `<div class="shTrend"><small>Your grade at each check this quarter</small>${sparkline(hist, 640, 90)}</div>` : ''}
+        <div class="shIf"><small>If you do the things you picked</small><b id="shIfV">${base.rounded}<span>%</span></b><em class="lt ${base.letter}" id="shIfL">${base.letter}</em><div class="shDelta" id="shDelta">Pick something below</div></div></div></div>
+    <div class="shBody">
       <div class="shQuick">${quickestCard(plan, true)}</div>
       <div class="shTry">
         ${missing.length ? `<section><h3>Turn in missing work</h3>${missing.map(a => row('miss', a, 0, 0)).join('')}</section>` : ''}
@@ -358,6 +355,7 @@ function openShow(sec, name) {
           <div class="shS off"><input type="range" class="shPts" id="shNextPts" min="0" max="${nx}" step="0.5" value="${st.next.pts}" aria-label="Next assessment score"><output>${st.next.pts} / ${nx}</output></div></div>
           <p class="shHint" id="shNeed"></p></section>
       </div>
+      <div class="shCats" id="shCats"></div><p class="shHint shKey">Bars show each part of the grade after the changes you picked; the dark line is where it is now.</p>
     </div>`;
   document.body.appendChild(el); document.body.classList.add('showMode'); $('#toast').classList.remove('show');
   const catBars = (a, b) => cats.map(c => { const x = a.cats[c.name], y = b.cats[c.name]; const w = v => v == null ? 0 : Math.max(0, Math.min(100, v)); return `<div class="shCat"><span>${esc(c.name)} <small>counts ${c.w}%</small></span><div class="shBar"><i class="if" style="width:${w(y && y.pct)}%"></i><i class="now" style="left:calc(${w(x && x.pct)}% - 2px)" title="now ${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}"></i></div><b>${y && y.pct != null ? Math.round(y.pct) + '%' : '—'}</b></div>`; }).join('');
@@ -370,7 +368,8 @@ function openShow(sec, name) {
     $('#shDelta').className = 'shDelta ' + (d > 0 ? 'up' : d < 0 ? 'down' : '');
     $('#shCats').innerHTML = catBars(base, r);
     const mx = st.next.max; const n = [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => base.rounded < t).map(([t, w]) => { const v = neededOn(s, i, 'Assessments', mx, t); return v == null ? null : `<b>${fmtN(v)} of ${mx}</b> gets you ${w}`; }).filter(Boolean);
-    $('#shNeed').innerHTML = n.length ? 'On its own: ' + n.join(' · ') + '.' : base.rounded >= 90 ? 'You have an A — keep it up.' : `One test alone can't get you to a C from here${missing.length ? ' — turning in the missing work is the biggest help' : ''}.`;
+    const nextUp = [[90, 'an A'], [80, 'a B'], [70, 'a C']].filter(([t]) => base.rounded < t).pop();
+    $('#shNeed').innerHTML = n.length ? 'On its own: ' + n.join(' · ') + '.' : !nextUp ? 'You have an A — keep it up.' : `One test alone can't get you to ${nextUp[1]} from here${missing.length ? ' — turning in the missing work is the biggest help' : ''}.`;
   };
   el.querySelectorAll('.shRow').forEach(rw => { const k = rw.dataset.k, nm = rw.dataset.n; const rg = rw.querySelector('.shPts'), on = rw.querySelector('.shOn'), out = rw.querySelector('output'), box = rw.querySelector('.shS');
     const mxOf = () => k === 'next' ? st.next.max : Number(rg.max);
@@ -396,15 +395,15 @@ document.addEventListener('keydown', e => { const el = $('#show'); if (!el) retu
   if (e.key === 'Tab') { const items = [...el.querySelectorAll('button,input')].filter(x => !x.disabled && x.offsetParent !== null); if (!items.length) return; const k = items.indexOf(document.activeElement); if (e.shiftKey && k <= 0) { e.preventDefault(); items[items.length - 1].focus(); } else if (!e.shiftKey && (k === -1 || k === items.length - 1)) { e.preventDefault(); items[0].focus(); } } }, true);
 
 const STU_CSS = `
-.qcard{display:flex;flex-direction:column;gap:6px}.qcard .qhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}.qcard>b,.qcard .qhead>b{font-size:var(--t-l);color:var(--navy)}.qcard>span{color:var(--ink-soft);font-size:var(--t-s)}.qres{font-size:var(--t-m,15px)}.qres b{color:var(--teal)}
+.qcard{display:flex;flex-direction:column;gap:6px}.qcard .qhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}.qcard>b,.qcard .qhead>b{font-size:var(--t-l);color:var(--navy)}.qcard>span{color:var(--ink-soft);font-size:var(--t-s)}.qres{font-size:var(--t-l)}.qres b{color:var(--teal)}
 .qpath{margin:4px 0 2px;padding-left:22px;display:flex;flex-direction:column;gap:6px}.qpath li small{color:var(--ink-soft)}.qsk{font-size:var(--t-s);margin-top:2px}.qsk small{color:var(--bad);font-weight:700}
 #pQuick{border-left:5px solid var(--teal)}.qcol{font-size:var(--t-s);white-space:nowrap}.qcol b{color:var(--teal)}
-.shQuick .qcard{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:16px 22px;border-left:6px solid var(--teal)}.shQuick .qcard>b,.shQuick .qhead>b{font-size:clamp(20px,2.4vw,28px)}.shQuick .qpath{font-size:var(--t-m,17px)}.shQuick #shPlan{align-self:flex-start;margin-top:6px}
+.shQuick .qcard{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:16px 22px;border-left:6px solid var(--teal)}.shQuick .qcard>b,.shQuick .qhead>b{font-size:clamp(20px,2.4vw,28px)}.shQuick .qpath{font-size:17px}.shQuick #shPlan{align-self:flex-start;margin-top:6px}
 .qdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cc);margin-right:6px;vertical-align:baseline}
 .sdir tr[data-open]{cursor:pointer}.sdir tr[data-open]:hover td{background:var(--paleturq)}.sdir tr.sgroup th{text-align:left;padding:14px 8px 6px;font-size:var(--t-s);color:var(--navy);border-bottom:3px solid var(--cc)}
 .qfin{display:inline-flex;gap:2px;align-items:baseline;font-weight:900;font-size:var(--t-s);padding:1px 8px;border-radius:999px;background:var(--grid);margin-right:4px}.qfin small{font-size:10px}
 .profile .gcards{margin-bottom:14px}.gcard b em.lt,.shGrade em.lt{font-style:normal;font-size:.55em;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--paleturq);vertical-align:middle}
-em.lt.D,em.lt.F{background:var(--sand)}em.lt.F{background:var(--coral)}.gcard.big b{font-size:34px}
+.gcard b em.lt.D,.shGrade em.lt.D,em.lt.D{background:var(--sand)}.gcard b em.lt.F,.shGrade em.lt.F,em.lt.F{background:var(--coral);color:var(--bad)}.gcard.big b{font-size:34px}
 .pcols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}.pmain,.pside{display:flex;flex-direction:column;gap:16px;min-width:0}
 @media (max-width:1100px){.pcols{grid-template-columns:1fr}}
 .subh{margin:14px 0 4px;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}.subh small{color:var(--teal)}
@@ -413,7 +412,7 @@ em.lt.D,em.lt.F{background:var(--sand)}em.lt.F{background:var(--coral)}.gcard.bi
 .catline .bar,.iu .bar{height:10px;border-radius:6px;background:var(--grid);overflow:hidden}.catline .bar i,.iu .bar i{display:block;height:100%;background:var(--teal);border-radius:6px}
 .sasg tr.miss td{background:#fdeeea}.nhi{color:var(--bad)}.qold td{color:var(--ink-soft)}
 details.qbook>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}details.qbook>summary::-webkit-details-marker{display:none}details.qbook>summary h3{margin:0}details.qbook>summary h3::before{content:'▸ ';color:var(--teal)}details.qbook[open]>summary h3::before{content:'▾ '}details.qbook>summary small{color:var(--ink-soft)}
-.iu{padding:8px 0;border-bottom:1px solid var(--grid)}.iu:last-child{border-bottom:none}.iuh{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;margin-bottom:4px}.iuh span{color:var(--ink-soft);font-size:var(--t-s)}.iup{margin-left:auto;font-weight:900;color:var(--navy)!important;font-size:var(--t-m,15px)!important}
+.iu{padding:8px 0;border-bottom:1px solid var(--grid)}.iu:last-child{border-bottom:none}.iuh{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;margin-bottom:4px}.iuh span{color:var(--ink-soft);font-size:var(--t-s)}.iup{margin-left:auto;font-weight:900;color:var(--navy)!important;font-size:var(--t-l)!important}
 .iul{font-size:var(--t-s);margin-top:3px}.iul span{font-weight:700}.iul small{color:var(--bad);font-weight:700}.iul.done{font-style:italic;color:var(--teal)}.iu.closed{opacity:.75}
 .gtag.muted{background:var(--grid);color:var(--ink-soft)}.qunitsold summary{cursor:pointer;font-size:var(--t-s);color:var(--ink-soft);padding:8px 0}
 .wnow{font-size:var(--t-s);display:flex;gap:8px;align-items:center;color:var(--ink-soft)}
@@ -426,17 +425,16 @@ details.qbook>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap
 th.unit.qclosed .uh{opacity:.7}
 body.showMode #top,body.showMode #app,body.showMode #empty,body.showMode #toast{display:none!important}
 #show{position:fixed;inset:0;z-index:60;background:var(--cream,#F6F5F0);overflow:auto;padding:24px clamp(16px,4vw,56px) 60px;color:var(--navy)}
-#show .shTop{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;position:sticky;top:-24px;z-index:3;background:var(--cream,#F6F5F0);padding:12px 0 10px}.shWho{font-size:clamp(30px,4vw,46px);font-weight:900;line-height:1.05}.shSub{color:var(--ink-soft);font-size:var(--t-s);margin-top:4px}
-.shTools{display:flex;gap:8px;align-items:center}#shExit{position:relative;overflow:hidden}#shExit .ring{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--sand);opacity:.6}#shExit.holding .ring{width:100%;transition:width 1.5s linear}
+#show .shTop{display:grid;grid-template-columns:1fr auto;align-items:start;gap:8px 16px;position:sticky;top:-24px;z-index:3;background:var(--cream,#F6F5F0);padding:12px 0 10px;max-width:1100px;margin:0 auto;box-shadow:0 12px 12px -12px rgba(22,33,58,.18)}#show .shTop .shGrade{grid-column:1 / -1}.shWho{font-size:clamp(30px,4vw,46px);font-weight:900;line-height:1.05}.shSub{color:var(--ink-soft);font-size:var(--t-s);margin-top:4px}
+.shTools{display:flex;gap:8px;align-items:center}#shExit{position:relative;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}#shExit .ring{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--sand);opacity:.6}#shExit.holding .ring{width:100%;transition:width 1.5s linear}
 .shBody{max-width:1100px;margin:18px auto 0;display:flex;flex-direction:column;gap:18px}
-.shGrade{display:flex;align-items:center;gap:clamp(12px,3vw,40px);flex-wrap:wrap;background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:20px 28px}
-.shGrade small{display:block;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal);font-weight:900}.shGrade b{font-size:clamp(56px,8vw,96px);font-weight:900;line-height:1}.shGrade b span{font-size:.4em}.shGrade em.lt{font-size:clamp(22px,3vw,34px)}
-.shArrow{font-size:clamp(34px,5vw,60px);color:var(--teal);font-weight:900}.shIf>b{color:var(--teal)}.shDelta{font-size:var(--t-l);margin-top:6px;color:var(--ink-soft)}.shGrade .shDelta b{font-size:inherit;line-height:inherit}.shDelta.up{color:var(--teal)}.shDelta.down{color:var(--bad)}
-.shCats{display:flex;flex-direction:column;gap:8px;background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:14px 22px}.shCat{display:grid;grid-template-columns:200px 1fr 60px;gap:12px;align-items:center;font-size:var(--t-m,16px)}.shCat small{color:var(--ink-soft)}
+.shGrade{display:flex;align-items:center;gap:clamp(12px,3vw,36px);flex-wrap:wrap;background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:10px 22px}.shNow,.shIf{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.shNow small,.shIf small{flex-basis:100%}
+.shGrade small{display:block;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal);font-weight:900}.shGrade b{font-size:clamp(36px,5vw,52px);font-weight:900;line-height:1;min-width:2.2ch;text-align:right}.shGrade b span{font-size:.45em}.shGrade em.lt{font-size:clamp(18px,2.2vw,24px);font-weight:900;margin-left:0}
+.shArrow{font-size:clamp(28px,3.6vw,40px);color:var(--teal);font-weight:900}.shIf>b{color:var(--teal)}.shDelta{font-size:var(--t-l);color:var(--ink-soft);white-space:nowrap}.shGrade .shDelta b{font-size:inherit;line-height:inherit}.shDelta.up{color:var(--teal)}.shDelta.down{color:var(--bad)}
+.shCats{display:flex;flex-direction:column;gap:8px;background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:14px 22px}.shCat{display:grid;grid-template-columns:200px 1fr 60px;gap:12px;align-items:center;font-size:16px}.shCat small{color:var(--ink-soft)}
 .shBar{position:relative;height:16px;border-radius:9px;background:var(--grid);overflow:hidden}.shBar i{position:absolute;top:0;bottom:0}.shBar i.if{left:0;background:var(--teal);border-radius:9px}.shBar i.now{width:4px;background:var(--navy);border-radius:2px;z-index:1}
-.shTrend{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:12px 22px}.shTrend small{display:block;color:var(--ink-soft);font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.08em;font-weight:900}
 .shTry{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px}.shTry section{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:14px 20px}.shTry h3{margin:0 0 8px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
-.shRow{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--grid)}.shRow:last-child{border-bottom:none}.shL b{display:block;font-size:var(--t-m,16px)}.shL small{color:var(--ink-soft)}.shL input{width:64px;font:inherit}
+.shRow{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--grid)}.shRow:last-child{border-bottom:none}.shL b{display:block;font-size:16px}.shL small{color:var(--ink-soft)}.shL input{width:64px;font:inherit}
 .shS{grid-column:1/-1;display:flex;gap:12px;align-items:center}.shS.off{display:none}.shS input{flex:1;min-height:36px;accent-color:var(--teal)}.shS output{font-weight:900;min-width:78px;text-align:right}
 .shSw{display:flex;gap:8px;align-items:center;font-weight:700;cursor:pointer;min-height:44px}.shSw input{width:24px;height:24px;accent-color:var(--teal)}.shHint{color:var(--ink-soft);font-size:var(--t-s);margin:4px 0}
 @media (max-width:700px){.shTry{grid-template-columns:1fr}.shCat{grid-template-columns:120px 1fr 50px}.catline .catbar{grid-template-columns:110px 1fr 48px}.catline .catbar small:last-child{display:none}}

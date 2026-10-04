@@ -1,8 +1,8 @@
-const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html')); await unskip(p);
+  await p.goto('file://'+path.resolve(APP)); await unskip(p);
   const main=fs.readdirSync('fixtures').filter(f=>/^f1473588/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
   for(const k of ['1205050-7T1A','1205050-7T3A']){ await p.click('[data-k="'+k+'"]'); await p.waitForTimeout(120); await p.click('#rpSkip'); await p.waitForTimeout(120); }
@@ -18,7 +18,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   check(hard && JSON.stringify(hard.assignments[0].values)==='[17,0,20]' && hard.assignments[0].max===20,'17/20 → 17 of 20; Z → 0');
   check(hard && hard.assignments[2].excused===2 && hard.assignments[2].values[2]===19,'NG/X excused, not missing');
   check(hard && hard.assignments[3].percent && hard.assignments[3].max===100,'% column → max 100');
-  check(/Gradebook imported/.test(await p.textContent('#toast')),'gradebook toast');
+  check(/Imported 1 file/.test(await p.textContent('#toast')) && /Focus gradebook/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'gradebook toast and a stored import result');
   // html-as-xls and tab-as-xls -> same parse, 7T1A
   await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus_html.xls')]); await p.waitForTimeout(400); await p.click('[data-sec="1205050-7T1A"]'); await p.waitForTimeout(300);
   await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus_tab.xls')]); await p.waitForTimeout(400); await p.click('[data-sec="1205050-7T1A"]'); await p.waitForTimeout(300);
@@ -54,7 +54,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./l
   // gradebook (and its grade history) persist with everything else, and a leftover session-only copy from the older build is folded in
   const store=await p.evaluate(()=>({ ls: localStorage.getItem('tally.v1') }));
   check(/"grades"/.test(store.ls) && /"gradeHistory"/.test(store.ls),'gradebook and grade history are in localStorage');
-  const ctx2=await b.newContext({viewport:{width:1400,height:900}}); const q=await ctx2.newPage(); await q.goto('file://'+path.resolve('Tally.html'));
+  const ctx2=await b.newContext({viewport:{width:1400,height:900}}); const q=await ctx2.newPage(); await q.goto('file://'+path.resolve(APP));
   await q.evaluate(v=>{ const s=JSON.parse(v); const g={}; for(const k in s.sections){ if(s.sections[k].grades){ g[k]=s.sections[k].grades; delete s.sections[k].grades; } } localStorage.setItem('tally.v1',JSON.stringify(s)); sessionStorage.setItem('tally.v1.gradebooks',JSON.stringify(g)); }, store.ls); await q.reload(); await q.waitForTimeout(500);
   check((await q.evaluate(()=>{ const s=window.__tally.state.sections['1205050-7T3A']; return [!!(s.grades&&s.grades.assignments.length===5), sessionStorage.getItem('tally.v1.gradebooks')]; })).join()==='true,','a session-only gradebook from the older build is folded in and the session copy removed');
   await ctx2.close();

@@ -45,6 +45,7 @@ function migrate() {
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && typeof c.id === 'string' && typeof c.label === 'string').map(c => { const values = {}; if (c.values && typeof c.values === 'object') for (const k of Object.keys(c.values)) if (SAFE_KEY(k) && Array.isArray(c.values[k])) values[k] = c.values[k].map(Number).filter(Number.isFinite); return { ...c, label: c.label.slice(0, 80), unit: typeof c.unit === 'string' ? c.unit.slice(0, 40) : '', prep: c.prep === 'acc' ? 'acc' : 'on', values }; }) : [];
   state.grading = state.grading && typeof state.grading === 'object' ? state.grading : {};
   state.pools = state.pools && typeof state.pools === 'object' ? state.pools : {};
+  const li = state.lastImport; state.lastImport = li && typeof li === 'object' && typeof li.at === 'string' ? { at: li.at.slice(0, 30), lines: (Array.isArray(li.lines) ? li.lines : []).filter(l => l && typeof l === 'object').map(l => ({ label: String(l.label || '').slice(0, 80), text: String(l.text || '').slice(0, 300), pool: l.pool === 'acc' || l.pool === 'on' ? l.pool : null })).slice(0, 20), fails: (Array.isArray(li.fails) ? li.fails : []).map(x => String(x).slice(0, 300)).slice(0, 20), skipped: Number(li.skipped) || 0 } : null;
   roomOK(); state.seatWeights = state.seatWeights && typeof state.seatWeights === 'object' ? state.seatWeights : {};
   state.seatBasis = typeof state.seatBasis === 'string' ? state.seatBasis : 'blend'; state.seatPairs = typeof state.seatPairs === 'string' ? state.seatPairs : 'mix';
   if (!state.settings.skipFirstV2) { state.settings.skipFirst = { acc: 0, on: 1 }; state.settings.skipFirstV2 = true; }   // one-time: the earlier default hid on-level Unit 2 too
@@ -235,8 +236,8 @@ async function importFiles(files) {
     try {
       if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts) — a Tally backup goes through Settings
         let obj = null; try { obj = JSON.parse(await f.text()); } catch (e) {}
-        if (obj && obj.tally) { fails.push(esc(f.name) + ': that is a Tally backup — load it from Settings → Load backup'); continue; }
-        if (!looksLikeSeatingBackup(obj)) { fails.push(esc(f.name) + ': not a Seating Chart backup'); continue; }
+        if (obj && obj.tally) { fails.push(f.name + ': that is a Tally backup — load it from Settings → Load backup'); continue; }
+        if (!looksLikeSeatingBackup(obj)) { fails.push(f.name + ': not a Seating Chart backup'); continue; }
         const r = await importSeatingBackup(obj); save();
         toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).map(n => shown(n)).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
         render(); continue;
@@ -261,7 +262,7 @@ async function importFiles(files) {
         state.pools[prep] = { students: g.students, skills: g.skills, scores: g.scores, date: meta.date, file: f.name, importedAt: new Date().toISOString() };
         const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === prep);
         fed.forEach(x => { materialize(x); ok.push(x); });
-        poolImported.push(`<b>${prep === 'acc' ? 'Accelerated' : 'On-level'}</b>: ${plural(g.students.length, 'student')}, ${plural(g.skills.length, 'skill')}${fed.length ? ` → ${plural(fed.length, 'class')} updated` : ' — import a Focus gradebook for each period to make its class'}`);
+        poolImported.push({ prep, students: g.students.length, skills: g.skills.length });
         continue;
       }
       let students = g.students, placeholder = false;
@@ -301,7 +302,7 @@ async function importFiles(files) {
       delete state.pendingCfg[meta.key];
       if (!state.order.includes(meta.key)) state.order.push(meta.key);
       state.active = meta.key; ok.push(state.sections[meta.key]);
-    } catch (e) { fails.push(esc(f.name) + ': ' + esc(e.message)); console.error(e); }
+    } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); }
   }
   for (const { f, gb } of deferred) { try {
     let target = await pickSection(f.name, gb);
@@ -322,17 +323,29 @@ async function importFiles(files) {
       if (sec.pool || okN >= Math.max(3, gb.students.length / 2)) { sec.roster = text; sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }   // only when its names really are this class
     }
     if (sec.pool) { materialize(sec); if (!ok.includes(sec)) ok.push(sec); }
-    gbImported.push(`<b>${esc(sec.label)}</b>: ${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}${keptNote}${qNote}`);
-  } catch (e) { fails.push(esc(f.name) + ': ' + esc(e.message)); console.error(e); } }
+    gbImported.push({ key: sec.key, label: sec.label, text: `${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}${keptNote}${qNote}` });
+  } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); } }
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
-  search = ''; $('#search').value = ''; view = { mode: 'units', unit: null };
+  // The result stays on the Overview until the next import (one line per file, failures in red); the toast is one line.
+  const poolLine = p => { const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === p.prep && !x.awaitingPool).length; return { label: p.prep === 'acc' ? 'Accelerated IXL' : 'On-level IXL', pool: p.prep, text: `${plural(p.students, 'student')}, ${plural(p.skills, 'skill')}${fed ? ` → ${plural(fed, 'class')} updated` : ' — no class uses it yet: import a Focus gradebook for each period'}` }; };
+  const pools = poolImported.map(poolLine);
+  const classes = ok.filter(s => !s.pool).map(s => ({ label: s.label, text: `IXL export — goal ${s.threshold}, ${plural(s.students.length, 'student')}` }));
+  const lines = [...pools, ...classes, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook — ' + g.text }))];
+  if (lines.length || fails.length || skipped) {   // files dropped within a quarter of an hour read as one import; a newer line for the same class replaces the older
+    const prev = state.lastImport && Date.now() - new Date(state.lastImport.at) < 15 * 60000 ? state.lastImport : { lines: [], fails: [], skipped: 0 };
+    const fresh = lines.map(l => ({ label: String(l.label).slice(0, 80), text: String(l.text).replace(/<[^>]+>/g, '').slice(0, 300), pool: l.pool || null }));
+    const kept = prev.lines.filter(l => !fresh.some(f => f.label === l.label)).map(l => { const pl = l.pool && state.pools[l.pool]; return pl ? { ...poolLine({ prep: l.pool, students: pl.students.length, skills: pl.skills.length }) } : l; });   // a course line's "N classes updated" follows the gradebooks dropped after it
+    state.lastImport = { at: new Date().toISOString(), lines: [...kept, ...fresh].slice(-20), fails: [...prev.fails, ...fails.map(x => String(x).slice(0, 300))].slice(-20), skipped: (prev.skipped || 0) + skipped }; }
+  // A drop that touched several classes lands on the Overview, where the result is; a single file for one class lands on
+  // that class (the roster panel or the Focus badges are the next step), and a class still needing its roster always does.
+  const needRoster = ok.find(s => !s.pool && !rosterState(s).count); if (needRoster) state.active = needRoster.key;
+  const touched = new Set([...ok.map(s => s.key), ...gbImported.map(g => g.key)]).size;
+  search = ''; $('#search').value = ''; view = (touched > 1 || pools.length) && !needRoster ? { mode: 'home', unit: null } : { mode: 'units', unit: null };
   save(); render();
-  if (gbImported.length) toast(`Gradebook imported — ${gbImported.join(' · ')}`, false, 5000);
-  const poolMsg = poolImported.length ? `IXL course export — ${poolImported.join(' · ')}` : '';
-  if (ok.length) toast(`${poolMsg ? poolMsg + '<br>' : ''}Imported ${ok.map(s => `<b>${esc(s.label)}</b> (goal ${s.threshold}, ${plural(s.students.length, 'student')})`).join(' · ')}${skipped ? ` · ${skipped} skipped` : ''}`, false, poolMsg ? 7000 : 5000);
-  else if (poolMsg) toast(poolMsg, false, 7000);
-  else if (skipped && !fails.length && !gbImported.length) toast('Nothing imported.', false);
-  if (fails.length) setTimeout(() => toast(fails.join(' — '), true), ok.length || gbImported.length ? 5200 : 0);
+  const n = lines.length;
+  if (fails.length) toast(`${n ? `${plural(n, 'file')} imported, ` : ''}${plural(fails.length, 'file')} couldn't be read — ${esc(fails[0])}${fails.length > 1 ? ' …' : ''}`, true);
+  else if (n) toast(`Imported ${plural(n, 'file')}${skipped ? ` · ${skipped} skipped` : ''} — the result is on the Overview.`, false, 3500);
+  else if (skipped) toast('Nothing imported.', false);
 }
 
 /* ---------- history snapshots (aggregates only: per-skill counts + per-student totals) ---------- */
@@ -778,6 +791,7 @@ function renderLeaderboard() {
   let hold; const start = e => { e.preventDefault(); $('#lbExit').classList.add('holding'); hold = setTimeout(() => { state.settings.leaderboard = false; view = { mode: 'home', unit: null }; noticesOpen = false; save(); render(); }, 1500); };   // always land on the Overview: it carries no student names
   const stop = () => { clearTimeout(hold); const b = $('#lbExit'); if (b) b.classList.remove('holding'); };
   const b = $('#lbExit'); b.onpointerdown = start; b.onpointerup = stop; b.onpointerleave = stop; b.onpointercancel = stop;
+  b.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) start(e); }; b.onkeyup = stop; b.onblur = stop;
   // A long press on a touch screen otherwise opens the copy/paste or context menu and cancels the pointer — swallow it.
   b.oncontextmenu = e => e.preventDefault(); b.addEventListener('touchstart', e => e.preventDefault(), { passive: false }); b.onselectstart = e => e.preventDefault();
 }
@@ -995,6 +1009,12 @@ function render() {
   const focusId = document.activeElement && document.activeElement.id && !document.activeElement.closest('#modal') ? document.activeElement.id : null;
   const viewKey = view.mode + '|' + (view.unit || '') + '|' + (view.sub || '') + '|' + (view.q || '') + '|' + (view.stu ? view.stu.key + '/' + view.stu.name : '') + '|' + state.active; if (viewKey !== lastViewKey) { lastViewKey = viewKey; const gw = $('#gridwrap'); if (gw) gw.scrollTop = 0; }
   $('#empty').classList.toggle('hidden', has);
+  if (!has) {   // the landing: after a course export with no class yet, say what landed and what comes next instead of "Drop here" again
+    const li = state.lastImport, pools = ['acc', 'on'].filter(p => state.pools[p]); const d = $('#drop');
+    d.querySelector('h2').innerHTML = pools.length ? `${pools.length === 2 ? 'Both course exports are in' : (pools[0] === 'acc' ? 'Accelerated' : 'On-level') + ' course export is in'}<span>.</span>` : 'Drop your IXL Score Grid here<span>.</span>';
+    d.querySelector('p').innerHTML = pools.length ? `Now drop a Focus gradebook for each period${pools.length === 1 ? ` (and the ${pools[0] === 'acc' ? 'on-level' : 'accelerated'} IXL export when you have it)` : ''} — each one makes that period's class from the course pool.` : 'Per-period exports make a class each. A course-wide export (all your students in one file) is kept as the course\'s pool, and each Focus gradebook you drop makes a period\'s class from it.';
+    let r = d.querySelector('.himport'); if (li && (li.lines.length || li.fails.length)) { if (!r) { r = document.createElement('div'); r.className = 'himport'; d.appendChild(r); } r.classList.toggle('warn', !!li.fails.length); r.innerHTML = `<h3>Last import <small>${esc(fmtTime(li.at))}</small></h3><ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}</ul>`; } else if (r) r.remove(); }
+  else { const r = $('#drop .himport'); if (r) r.remove(); }
   $('#app').classList.toggle('hidden', !has);
   $('#search').classList.toggle('hidden', !has);
   $('#btnHide').classList.toggle('hidden', !has);

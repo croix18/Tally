@@ -106,6 +106,18 @@ per-section-file era and many items in them are now done).
 - **Quickest way to the next letter** (1 Oct): asked for after Students — fewest steps to F→D, D→C, …, missing work (NHI)
   and IXL first because that's what failing students lack; retakes only if needed. `quickestPath` in students.js, §8.1 of GRADES_SPEC.
 - **Find a student** on the Overview now opens the Students list (every class) instead of the active class grid.
+- **Round 6 — the Apple review** (3–4 Oct): four reviewers with opposed lenses (visual, interaction/accessibility,
+  product, engineering) each wrote `review/round6-*.md`, then read each other and traded in a crit (each file's
+  `## Crit response`). `ROUND6_FINDINGS.md` is the consensus and the running build log. **Build 1 shipped:** the false
+  "can't get you to a C" sentence on Show student; `.warnline` as a block; focus rings that can be seen (`#top .pill`,
+  dialog ×) and a keyboard exit from the Race; four CSS specificity bugs (F chip, Race chip, unit-view Copy, dead header
+  rule); the Overview chip reads "Focus: N up since copy" instead of ✓ over a stale unit; the shell has a floor
+  (`--board-min`) and a one-row header to ~1,070 px so the Chromebox and 150–200 % zoom show rows; an import's result
+  is a card on the Overview (`state.lastImport`, drops within 15 min merge) and multi-class drops land there; the
+  landing is hidden until boot decides; Show student pins name + grade and lost the trend card; `--test` builds
+  `Tally.test.html` (git-ignored) so a test run can never ship `window.__tally`; `tests/contract.js` measures layout
+  (one-row header, rows visible, sticky header, ring contrast, chip colours, font applied, no overflow, no debug handle).
+  Build 2 and the items that are Croix's call are listed in the findings file.
 
 ## Weekly routine
 
@@ -141,7 +153,7 @@ primary once the end date has passed). Tick the IXL units that were that quarter
 
 - Source: `app.html` (markup + CSS), `parser.js`, `grades.js`, `charts.js`, `home.js`, `seating.js`, `app.js` (an IIFE; the
   four are spliced into it at `/*__GRADES__*/`, `/*__CHARTS__*/`, `/*__HOME__*/`, `/*__SEATING__*/` so they share state), `scrub.src.html`. `python3 build.py` writes
-  `Tally.html`, `index.html` and `Scrub.html`; `--test` keeps the debug handle.
+  `Tally.html`, `index.html` and `Scrub.html`; `--test` builds `Tally.test.html` / `Scrub.test.html` (git-ignored) with the debug handle instead.
 - Tests: `npm test` (builds the test build, runs every `tests/*.js`, restores the shipped build). Suites
   write only to a temp dir. Fixtures are synthetic or scrubbed; never commit unscrubbed exports.
   `tests/lib.js` has `unskip(p)` (every unit counts + Details view) and `dense(p)` (Details view) for suites written before calm mode.

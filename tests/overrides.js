@@ -1,10 +1,10 @@
 // Focus-check overrides ("Keep Focus"): a kept difference is noted with date and reason, stops being flagged, copies
 // Focus's number, comes back if Focus changes, survives reload and backup; plus the what-if card's deltas.
-const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html'));
+  await p.goto('file://'+path.resolve(APP));
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(500);
   await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(300);

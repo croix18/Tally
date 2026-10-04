@@ -1,14 +1,14 @@
 // Grades: the Focus formula, category fitting, what-ifs, history, the screens, and privacy — against the scrubbed real export.
-const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html'));
+  await p.goto('file://'+path.resolve(APP));
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(500);
   await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(300);
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await p.click('[data-sec]'); await p.waitForTimeout(600);
-  check(/every category confirmed by the Focus grade column/.test(await p.textContent('#toast')),'import toast reports the categories were proved');
+  check(/every category confirmed by the Focus grade column/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'the import result reports the categories were proved');
   const K='1205050-7T1A';
   // 1. formula + fit
   const m=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const fit=T.fitCategories(s); const g=T.gradingFor(s.prep);
@@ -84,7 +84,7 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   check(cfg.grading && cfg.grading.acc && cfg.grading.acc.cats[0].w===70 && cfg.sections[K].gradeHistory.length===2 && !JSON.stringify(cfg).includes('"values"'),'backup carries weights, category map and grade history, not raw scores');
   await p.click('#mCancel');
   // 8. no Grade column → guesses flagged; the asker appears for new assignments
-  const p2=await ctx.newPage(); p2.on('dialog',d=>d.accept()); await p2.goto('file://'+path.resolve('Tally.html')); await p2.evaluate(()=>localStorage.clear()); await p2.reload(); await p2.waitForTimeout(300);
+  const p2=await ctx.newPage(); p2.on('dialog',d=>d.accept()); await p2.goto('file://'+path.resolve(APP)); await p2.evaluate(()=>localStorage.clear()); await p2.reload(); await p2.waitForTimeout(300);
   const csv=fs.readFileSync('fixtures/focus_gradebook_scrubbed.csv','utf8').split('\n'); const noGrade=csv.map((l,i)=>i===0? l.replace('"Grade",','') : l.replace(/^("[^"]*","[^"]*","[^"]*"),"[^"]*",/,'$1,')).join('\n');
   fs.writeFileSync(path.join(tmp,'nograde.csv'),noGrade);
   await p2.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p2.waitForTimeout(500); await p2.click('#rpSkip'); await p2.waitForTimeout(200);

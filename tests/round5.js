@@ -1,11 +1,11 @@
 // Round-5 regressions: projected Data Lab keeps Focus scores aggregate; prototype-pollution and XSS through backups;
 // course change with a unit open; save failures not masked; Overview search; pool replacement guard; view scroll reset;
 // Working-in choices; percent axis; CSV formula guard; older-dated import; contrast token.
-const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); let dialogs=[]; p.on('dialog',d=>{ dialogs.push(d.message()); d.accept(); });
-  await p.goto('file://'+path.resolve('Tally.html'));
+  await p.goto('file://'+path.resolve(APP));
   const acc=fs.readdirSync('fixtures').find(f=>f.startsWith('course_acc')), on=fs.readdirSync('fixtures').find(f=>f.startsWith('course_on'));
   await p.setInputFiles('#file',[path.resolve('fixtures',acc), path.resolve('fixtures',on)]); await p.waitForTimeout(800);
   for (const [f,per,pr] of [['focus_gradebook_pool_p1.csv','1','acc'],['focus_gradebook_pool_p2.csv','2','on']]) { await p.setInputFiles('#file',[path.resolve('fixtures',f)]); await p.waitForTimeout(600); await p.click('[data-sec="__new__"]'); await p.waitForTimeout(200); await p.click(`#ncPeriod [data-p="${per}"]`); await p.click(`#ncPrep [data-prep="${pr}"]`); await p.click('#ncMake'); await p.waitForTimeout(800); if (await p.locator('#askSave').count()) { await p.click('#askSave'); await p.waitForTimeout(300); } }

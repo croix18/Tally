@@ -1,9 +1,9 @@
 // Export age + reminder, Data Lab values, receipt viewer, guide, header button kinds
-const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html')); await unskip(p);
+  await p.goto('file://'+path.resolve(APP)); await unskip(p);
   check(await p.locator('#btnGuide').isVisible(),'Guide is available before anything is imported');
   // --- reminder: an export from 2026-09-01 is old; default reminder is 7 days
   const old=fs.readdirSync('fixtures').filter(f=>f.startsWith('old_')).map(f=>path.resolve('fixtures',f));

@@ -1,8 +1,8 @@
-const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html')); await unskip(p);
+  await p.goto('file://'+path.resolve(APP)); await unskip(p);
   const main=fs.readdirSync('fixtures').filter(f=>/^f1473588/.test(f)).map(f=>path.resolve('fixtures',f));
   const old=fs.readdirSync('fixtures').filter(f=>f.startsWith('old_')).map(f=>path.resolve('fixtures',f));
   // best-score: import NEWER first (higher scores), then OLDER (lower) confirmed → grid shows best from history

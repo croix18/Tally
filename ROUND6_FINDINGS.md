@@ -57,17 +57,17 @@ evidence, what it withdrew, and what all four would sign.
 
 | # | change | where | status |
 |---|---|---|---|
-| 1 | False "can't get you to a C" sentence for B/C students | `students.js` `recompute` | |
-| 2 | `.warnline` as a block; the quarter caution said once | `app.html`, `quarters.js` `openQuarters` | |
-| 3 | Focus rings on header pills, dialog ×, Race/Lab pills; keys on `#lbExit`; `touch-action:none` on `#shExit` | `app.html`, `app.js`, `students.js` | |
-| 4 | Specificity leftovers and the `--t-m` fallbacks | `app.html`, `students.js` `STU_CSS` | |
-| 5 | Stale units in `focusChip`, `attentionItems`, the notice chain — no "Focus ✓" over a stale unit | `home.js`, `app.js` | |
-| 6 | Shell A + B: board floor, one-row header to ~1,070 px | `app.html` | |
-| 7 | Import: one result line on the Overview that stays; land on `home`; fix the stale first-run sentence | `app.js` | |
-| 8 | `#empty` hidden at start (no landing flash on slow devices) | `app.html` | |
-| 9 | `--test` builds `Tally.test.html`; tests load it | `build.py`, `tests/lib.js`, `tests/run.js` | |
-| 10 | Show student: sticky compact result, trend card out | `students.js` | |
-| 11 | Layout-contract suite (`tests/contract.js`): one-row header; ≥ 9 grid / ≥ 5 unit rows at 1366×768; sticky header + name column; ring ≥ 3:1; F chip coral; DM Sans applied; no horizontal overflow; shipped build has no `__tally` | `tests/` | |
+| 1 | False "can't get you to a C" sentence for B/C students | `students.js` `recompute` | done |
+| 2 | `.warnline` as a block; the quarter caution said once | `app.html`, `quarters.js` `openQuarters` | done |
+| 3 | Focus rings on header pills, dialog ×, Race/Lab pills; keys on `#lbExit`; `touch-action:none` on `#shExit` | `app.html`, `app.js`, `students.js` | done |
+| 4 | Specificity leftovers and the `--t-m` fallbacks | `app.html`, `students.js` `STU_CSS` | done |
+| 5 | Stale units in `focusChip`, `attentionItems`, the notice chain — no "Focus ✓" over a stale unit | `home.js`, `app.js` | done |
+| 6 | Shell A + B: board floor, one-row header to ~1,070 px | `app.html` | done (floor 460 px so a 7-class tab strip still fits a 900 px laptop) |
+| 7 | Import: one result line on the Overview that stays; land on `home`; fix the stale first-run sentence | `app.js` | done — one card, merges drops within 15 min, a single file for one class still lands on that class; the landing also reports course exports |
+| 8 | `#empty` hidden at start (no landing flash on slow devices) | `app.html` | done (+ `font-display:block` so the embedded face never paints the fallback) |
+| 9 | `--test` builds `Tally.test.html`; tests load it | `build.py`, `tests/lib.js`, `tests/run.js` | done |
+| 10 | Show student: sticky compact result, trend card out | `students.js` | done — the sticky band is name + grade (~190 px on the tablet); category bars moved below the switches |
+| 11 | Layout-contract suite (`tests/contract.js`): one-row header; ≥ 9 grid / ≥ 5 unit rows at 1366×768; sticky header + name column; ring ≥ 3:1; F chip coral; DM Sans applied; no horizontal overflow; shipped build has no `__tally` | `tests/` | done — `tests/contract.js`, 39 checks; tablet unit view floor is 4 rows until the skill header is redesigned |
 
 ## Build 2 (next, needs a design pass each)
 
@@ -98,3 +98,7 @@ evidence, what it withdrew, and what all four would sign.
 ## Build log
 
 - 4 Oct: reviews and crit complete; this file and `ROUND6_CONTEXT.md` committed with the four reports.
+- 4 Oct: Build 1 shipped (all eleven rows above). 20 suites, 587 checks. Also fixed on the way: the Close Quarter caution
+  now says "hasn't ended yet" before the end date instead of "exported before it ended"; the landing after a course-only
+  drop says what landed and asks for the gradebooks instead of "Drop your IXL Score Grid here" again.
+- Next: Build 2, starting with the quarter-close alert list and cards (before 9 Oct), then clearable alerts.

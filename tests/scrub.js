@@ -1,7 +1,7 @@
-const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, APP, SCRUB } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext(); const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  await p.goto('file://'+path.resolve('Scrub.html'));
+  await p.goto('file://'+path.resolve(SCRUB));
   // name shapes preserved
   const shapes=await p.evaluate(()=>{const S=window.__scrub.scrubName; return ['Olivia De La Cruz','De La Cruz, Olivia M','Ben Taylor Jr.','Taylor, Ben Jr.',"Seán O'Brien","Smith-Jones, Mary Ann",'JOSE GARCIA','Ava Nguyen','Nguyen, Ava'].map(n=>[n,S(n)]);});
   console.log(JSON.stringify(shapes));
@@ -23,7 +23,7 @@ const { chromium, fs, path, exe, check, done, tmp, need } = require('./lib');
   const gbTxt=fs.readFileSync(outs[1],'utf8'); check(!/De La Cruz, Olivia|O'Brien, Seán|Smith-Jones, Mary Ann|Taylor, Ben Jr|1000234|olivia\.delacruz/.test(gbTxt) &&   /* full originals, since a random fake surname can legitimately be "Taylor" */ /Unit 1 Test 100 pts 09\/12/.test(gbTxt) && /17\/20/.test(gbTxt) && /@example\.org/.test(gbTxt),'gradebook CSV: names, IDs, emails replaced; everything else intact');
   const htmlTxt=fs.readFileSync(outs[2],'utf8'); check(!/Olivia|Brien/.test(htmlTxt) && /<table>/.test(htmlTxt) && /Jr\./.test(htmlTxt),'HTML-as-xls scrubbed in place');
   // Tally round trip
-  const t=await ctx.newPage(); await t.goto('file://'+path.resolve('Tally.html')); t.on('dialog',d=>d.accept());
+  const t=await ctx.newPage(); await t.goto('file://'+path.resolve(APP)); t.on('dialog',d=>d.accept());
   await t.setInputFiles('#file',[path.resolve('fixtures/'+ixl)]); await t.waitForTimeout(500);
   const orig=await t.evaluate(()=>{const s=window.__tally.state.sections['1205050-7T1A']; return {students:s.students.slice(), sum:s.scores.flat().reduce((a,b)=>a+(b||0),0), n:s.skills.length};});
   await t.evaluate(()=>localStorage.clear()); await t.reload(); await t.waitForTimeout(300);

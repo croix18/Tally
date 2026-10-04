@@ -1,8 +1,8 @@
-const { chromium, fs, path, exe, check, done, tmp, need, unskip } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html')); await unskip(p);
+  await p.goto('file://'+path.resolve(APP)); await unskip(p);
   const main=fs.readdirSync('fixtures').filter(f=>/^f1473588/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
   // 1. old-format state: ignored keyed by normalized name, thrOn/thrAcc globals, bare labUnit, snapshots with mastered/touched

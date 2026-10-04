@@ -59,6 +59,6 @@ npm test              # test build → every suite → shipped build restored
 node tests/run.js grid scrub   # just those suites
 ```
 
-The shipped `Tally.html` carries no `window.__tally`; `python3 build.py --test` keeps it for the suites (`npm test` does this for you). Suites write screenshots and scrub output to a temp folder, never into the repo.
+The shipped `Tally.html` carries no `window.__tally`; `python3 build.py --test` writes `Tally.test.html` / `Scrub.test.html` (git-ignored) with it for the suites (`npm test` does this for you). Suites write screenshots and scrub output to a temp folder, never into the repo.
 
 `real-class`, `focus-export` and `focus-check` run against the scrubbed real-class exports. Seven of that roster's names are scrubber artifacts (IXL and Focus were given different fake names), so a 16-of-23 match is the expected result there.

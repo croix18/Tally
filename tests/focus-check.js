@@ -1,11 +1,11 @@
 // Focus check against a real class (scrubbed): IXL export of 2026-09-26, the Focus roster, and the Focus
 // gradebook whose "Unit 1 IXL" (15 pts) and "Unit 2 IXL" (17 pts) columns must map back to the IXL units.
 // Seven roster names are scrubber artifacts (the scrubber gave IXL and Focus different fake names) and stay unmatched.
-const { chromium, fs, path, exe, check, done, tmp, unskip } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, unskip, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html')); await unskip(p);
+  await p.goto('file://'+path.resolve(APP)); await unskip(p);
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(600);
   await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(400);

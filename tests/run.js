@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-// Runs every suite in this folder against a fresh test build of Tally.html / Scrub.html.
+// Runs every suite in this folder against a fresh test build (Tally.test.html / Scrub.test.html, git-ignored).
 //   node tests/run.js            all suites
 //   node tests/run.js grid scrub  only those
-// The test build keeps the window.__tally handle the suites poke; `python3 build.py`
-// (no flag) rebuilds the shipped files without it afterwards.
+// The test build keeps the window.__tally handle the suites poke; the shipped Tally.html is never touched.
 const { spawnSync } = require('child_process'); const fs = require('fs'); const path = require('path');
 const root = path.resolve(__dirname, '..'); process.chdir(root);
 const only = process.argv.slice(2);
@@ -31,6 +30,4 @@ for (const f of suites) {
 const tp = rows.reduce((a, r) => a + r.pass, 0), tf = rows.reduce((a, r) => a + r.fail, 0);
 console.log(`\n${rows.length} suites · ${tp} passed · ${tf} failed · ${rows.filter(r => r.status === 'skip').length} skipped`);
 
-// Leave the shipped build in place, not the test build.
-spawnSync('python3', ['build.py'], { stdio: 'ignore' });
 process.exit(failed ? 1 : 0);

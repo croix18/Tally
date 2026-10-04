@@ -14,4 +14,6 @@ const need = (...files) => { const missing = files.filter(f => !fs.existsSync(pa
 // Suites written when every unit counted: turn off "first N units aren't assigned" right after the page loads.
 const unskip = p => p.evaluate(() => { const T = window.__tally; T.state.settings.skipFirst = { acc: 0, on: 0 }; T.state.settings.details = true; T.save(); });   // also the dense (Details) view these suites were written against
 const dense = p => p.evaluate(() => { const T = window.__tally; T.state.settings.details = true; T.save(); T.render(); });
-module.exports = { chromium, fs, path, exe, check, done, tmp, need, unskip, dense };
+// The suites drive the test build (keeps window.__tally); the shipped Tally.html / index.html are never touched by a test run.
+const APP = 'Tally.test.html', SCRUB = 'Scrub.test.html';
+module.exports = { chromium, fs, path, exe, check, done, tmp, need, unskip, dense, APP, SCRUB };

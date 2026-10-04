@@ -1,16 +1,16 @@
 // Course-wide IXL exports (no section code, every student of the course in one file) become pools; Focus gradebooks
 // make period classes carved from them. Fixtures: two real scrubbed course exports + two synthetic gradebooks of pool names.
-const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html'));
+  await p.goto('file://'+path.resolve(APP));
   const acc=fs.readdirSync('fixtures').find(f=>f.startsWith('course_acc')), on=fs.readdirSync('fixtures').find(f=>f.startsWith('course_on'));
   // pools
   await p.setInputFiles('#file',[path.resolve('fixtures',acc), path.resolve('fixtures',on)]); await p.waitForTimeout(800);
   const pools=await p.evaluate(()=>{const P=window.__tally.state.pools; return {acc:[P.acc.students.length,P.acc.skills.length], on:[P.on.students.length,P.on.skills.length], sections:window.__tally.state.order.length};});
   check(pools.acc.join()==='91,219' && pools.on.join()==='91,177' && pools.sections===0,'both course exports become pools, no class yet: '+JSON.stringify(pools));
-  check(/Accelerated.*91 students/.test(await p.textContent('#toast')) && /import a Focus gradebook for each period/.test(await p.textContent('#toast')),'toast explains the next step');
+  const li=await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport)); check(/Accelerated IXL[^}]*91 students/.test(li) && /import a Focus gradebook for each period/.test(li) && await p.locator('.himport').count()===1,'the Overview\'s import result explains the next step');
   check(await p.locator('#empty:not(.hidden)').count()===1,'landing still shown until a class exists');
   // gradebook → new class (period + course)
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_pool_p1.csv')]); await p.waitForTimeout(600);
@@ -73,12 +73,12 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   await p.click('#back').catch(()=>{}); await p.waitForTimeout(200);
   // re-import the accelerated pool → the class refreshes and the toast says so
   await p.setInputFiles('#file',[path.resolve('fixtures',acc)]); await p.waitForTimeout(800);
-  check(/IXL course export/.test(await p.textContent('#toast')) && /1 class updated/.test(await p.textContent('#toast')),'re-importing the pool refreshes its classes');
+  check(/Imported 1 file/.test(await p.textContent('#toast')) && /Accelerated IXL[^}]*1 class updated/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'re-importing the pool refreshes its classes');
   // reload persists pools and classes
   await p.reload(); await p.waitForTimeout(500);
   check(await p.evaluate(()=>{const T=window.__tally; return T.state.order.length===2 && !!T.state.pools.acc && T.state.sections['period-1'].students.length===23;}),'pools and classes survive a reload');
   // a gradebook before its pool: class exists, waits, then fills when the pool arrives
-  const q=await ctx.newPage(); q.on('dialog',d=>d.accept()); await q.goto('file://'+path.resolve('Tally.html')); await q.evaluate(()=>localStorage.clear()); await q.reload(); await q.waitForTimeout(300);
+  const q=await ctx.newPage(); q.on('dialog',d=>d.accept()); await q.goto('file://'+path.resolve(APP)); await q.evaluate(()=>localStorage.clear()); await q.reload(); await q.waitForTimeout(300);
   await q.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_pool_p2.csv')]); await q.waitForTimeout(600); await q.click('[data-sec="__new__"]'); await q.waitForTimeout(300);
   await q.click('#ncPeriod [data-p="2"]'); await q.click('#ncPrep [data-prep="on"]'); await q.click('#ncMake'); await q.waitForTimeout(800);
   if ((await q.textContent('#modal')).trim()) { await q.click('#mCancel').catch(()=>{}); await q.waitForTimeout(300); }

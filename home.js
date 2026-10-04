@@ -22,6 +22,7 @@ function attentionItems(sec) {
   if (ro || am || io) out.push({ level: 'warn', text: [ro ? `${ro} on the roster not in IXL` : '', am ? `${am} with two IXL matches` : '', io ? `${io} in IXL not on the roster` : ''].filter(Boolean).join(' · '), go: 'grid' });
   if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings' });
   if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally — ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid' });
+    const stale = off.length ? [] : checks.filter(c => c.counts.stale > 0); if (stale.length) out.push({ level: 'info', text: 'moved up since you copied — ' + stale.map(c => `${c.unit.short}: ${plural(c.counts.stale, 'student')}`).join(' · ') + ' — copy again', go: 'grid' });
     const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' }); if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' });
     if (!hasOpenGrades(sec) && anyClosed()) out.push({ level: 'info', text: `waiting for the first ${Q_NAMES[currentQuarter() - 1]} gradebook`, go: 'import' }); }
   // Without a "Working in" unit, assignment is guessed from who has touched what — on a course-wide export that can pick Unit 8.
@@ -37,9 +38,9 @@ function renderHome() {
   const secs = state.order.map(k => state.sections[k]); const race = leaderboardData(); const byKey = new Map(race.map(r => [r.key, r]));
   const H = state.settings.hideNames;
   const card = s => { const r = byKey.get(s.key); const g = gradeSummary(s); const att = attentionItems(s); const warn = att.filter(a => a.level === 'warn').length;
-    const checks = s.grades ? reconcile(s) : []; const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK).length;
+    const checks = s.grades ? reconcile(s) : []; const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK).length; const staleN = off ? 0 : checks.reduce((n, c) => n + (c.counts.stale || 0), 0);
     const ixlCols = s.grades ? s.grades.assignments.filter(a => gbUnitFor(s, a)) : [];
-    const focusChip = !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? (ixlCols.length ? `<span class="hchip muted">Focus IXL column${ixlCols.length === 1 ? '' : 's'} (${esc(ixlCols.map(a => gbUnitFor(s, a).short).join(', '))}) not assigned in Tally${(state.settings.currentUnit || {})[s.prep] ? '' : ' — pick Working in'}</span>` : '<span class="hchip muted">no IXL columns in Focus</span>') : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : '<span class="hchip ok">Focus ✓</span>';
+    const focusChip = !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? (ixlCols.length ? `<span class="hchip muted">Focus IXL column${ixlCols.length === 1 ? '' : 's'} (${esc(ixlCols.map(a => gbUnitFor(s, a).short).join(', '))}) not assigned in Tally${(state.settings.currentUnit || {})[s.prep] ? '' : ' — pick Working in'}</span>` : '<span class="hchip muted">no IXL columns in Focus</span>') : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : staleN ? `<span class="hchip stale">Focus: ${staleN} up since copy</span>` : '<span class="hchip ok">Focus ✓</span>';
     return `<article class="hcardW" style="--cc:${classColor(s)}"><button class="hcard ${warn ? 'warn' : ''}" data-go="${esc(s.key)}" aria-label="Open ${esc(s.label)}">
       <div class="hhead"><b>${esc(s.label)}</b><small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small></div>
       <div class="hnums">
@@ -63,7 +64,11 @@ function renderHome() {
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
   $('#bar').classList.remove('detail');
+  const li = state.lastImport; const liAge = li ? ageDays(li.at) : null;
+  const importLine = li && (li.lines.length || li.fails.length) ? `<section class="himport ${li.fails.length ? 'warn' : ''}"><h3>Last import <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(li.at.slice(0, 10)))}, ${esc(fmtTime(li.at))}</small><button class="linkbtn" id="liHide" title="Hide until the next import">Hide</button></h3>
+    <ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}${li.skipped ? `<li class="muted">${plural(li.skipped, 'file')} skipped</li>` : ''}</ul></section>` : '';
   $('#gridwrap').innerHTML = `<div class="home">
+    ${importLine}
     <div class="hcards">${secs.map(card).join('')}</div>
     <div class="gtwo">
       <section class="gsec"><h3>Needs attention</h3>${attList}</section>
@@ -75,6 +80,7 @@ function renderHome() {
       <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
     </div>
   </div>`;
+  const lh = $('#liHide'); if (lh) lh.onclick = () => { state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;
   $('#gridwrap').querySelectorAll('[data-digest]').forEach(b => b.onclick = e => { e.stopPropagation(); openDigest(state.sections[b.dataset.digest]); });
   $('#gridwrap').querySelectorAll('[data-go]').forEach(b => b.onclick = e => { e.stopPropagation(); const where = b.dataset.where || 'grid'; state.active = b.dataset.go;

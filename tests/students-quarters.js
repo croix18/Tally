@@ -1,11 +1,11 @@
 // Students and quarters: the Students directory, a student's page (trends, what-ifs, Q1 final), the Show-student screen,
 // and closing a quarter — its record is kept, its alerts stop, the next quarter's exports start fresh.
 // Runs against the scrubbed real class; focus_gradebook_scrubbed_q2.csv is the same class with Quarter 2 dates.
-const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000},acceptDownloads:true}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
-  await p.goto('file://'+path.resolve('Tally.html'));
+  await p.goto('file://'+path.resolve(APP));
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(500);
   await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(300);
@@ -130,14 +130,14 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   check(await p.locator('.profile .qmark').count()>=1,'the year chart marks where Q2 starts');
   // a late Q1 export (the final one) refreshes the record
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); const ds2=await p.$('[data-sec]'); if(ds2){ await ds2.click(); await p.waitForTimeout(500); }
-  check(/updated the closed-quarter record/.test(await p.textContent('#toast')),'a Q1 export imported after closing updates the kept Q1 record');
+  check(/updated the closed-quarter record/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'a Q1 export imported after closing updates the kept Q1 record');
 
   // 7. Backup carries the quarter record; reopen/close
   await p.click('#btnSettings'); await p.waitForTimeout(300);
   const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const f=path.join(tmp,'bk.json'); await dl.saveAs(f); await p.keyboard.press('Escape');
   const bk=JSON.parse(fs.readFileSync(f,'utf8'));
   check(bk.quarters && bk.quarters.closed['1'] && bk.sections[K].qArchive['1'].gb.assignments.length===13,'the backup carries the closed quarters and each class\'s Q1 record');
-  const p2=await ctx.newPage(); await p2.goto('file://'+path.resolve('Tally.html')); await p2.evaluate(()=>localStorage.clear()); await p2.reload();
+  const p2=await ctx.newPage(); await p2.goto('file://'+path.resolve(APP)); await p2.evaluate(()=>localStorage.clear()); await p2.reload();
   p2.on('dialog',d=>d.accept());
   await p2.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p2.waitForTimeout(500);
   await p2.click('#btnSettings'); await p2.waitForTimeout(300); await p2.setInputFiles('#cfgFile',f); await p2.waitForTimeout(600);
@@ -147,7 +147,7 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   const ro=await p.evaluate(K=>{ const T=window.__tally; T.reopenQuarter(1); const a=T.currentQuarter(); T.closeQuarter(1,{acc:[],on:[]}); return [a, T.currentQuarter()]; }, K);
   check(ro[0]===1 && ro[1]===2,'reopen and close again');
   // 9. Review round: the orders and inputs that could lose or leak the Q1 record
-  const fresh=async()=>{ const q=await ctx.newPage(); q.on('pageerror',e=>errs.push(e.message)); q.on('dialog',d=>d.accept()); await q.goto('file://'+path.resolve('Tally.html')); await q.evaluate(()=>localStorage.clear()); await q.reload();
+  const fresh=async()=>{ const q=await ctx.newPage(); q.on('pageerror',e=>errs.push(e.message)); q.on('dialog',d=>d.accept()); await q.goto('file://'+path.resolve(APP)); await q.evaluate(()=>localStorage.clear()); await q.reload();
     await q.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await q.waitForTimeout(500); await q.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await q.click('#rpSave'); await q.waitForTimeout(300);
     await q.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await q.waitForTimeout(500); await q.click('[data-sec]'); await q.waitForTimeout(600); return q; };
   const imp=async(q,f)=>{ await q.setInputFiles('#file',[f]); await q.waitForTimeout(500); const d=await q.$('[data-sec]'); if(d){ await d.click(); await q.waitForTimeout(500);} const a=await q.$('#askApply'); if(a){ await a.click(); await q.waitForTimeout(300);} };
@@ -187,7 +187,7 @@ const { chromium, fs, path, exe, check, done, tmp } = require('./lib');
   check(await q.locator('#bar h2').count()>=1,'with every quarter closed, Grades still opens');
   await q.close();
   // 8. His real setup: course-wide IXL pools carved into periods by Focus gradebooks
-  const p3=await ctx.newPage(); p3.on('pageerror',e=>errs.push(e.message)); p3.on('dialog',d=>d.accept()); await p3.goto('file://'+path.resolve('Tally.html')); await p3.evaluate(()=>localStorage.clear()); await p3.reload();
+  const p3=await ctx.newPage(); p3.on('pageerror',e=>errs.push(e.message)); p3.on('dialog',d=>d.accept()); await p3.goto('file://'+path.resolve(APP)); await p3.evaluate(()=>localStorage.clear()); await p3.reload();
   const acc=fs.readdirSync('fixtures').find(f=>f.startsWith('course_acc')), on=fs.readdirSync('fixtures').find(f=>f.startsWith('course_on'));
   await p3.setInputFiles('#file',[path.resolve('fixtures',acc), path.resolve('fixtures',on)]); await p3.waitForTimeout(800);
   for (const [f,per,prep] of [['focus_gradebook_pool_p1.csv',1,'acc'],['focus_gradebook_pool_p2.csv',2,'on']]) {
