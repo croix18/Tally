@@ -1,0 +1,72 @@
+const { open, w, path, S } = require('./lib'); const OUT = path.resolve(S, '..', 'mock');
+const EYE = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const DOTS = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
+const newHeader = (p, o) => p.evaluate(({ EYE, DOTS, o }) => {
+  const top = document.querySelector('#top'); window.__m = window.__m || { imp: document.querySelector('#btnImport').outerHTML, gear: document.querySelector('#btnSettings svg').outerHTML }; const { imp, gear } = window.__m; const old = document.getElementById('mockCss'); if (old) old.remove();
+  const st = document.createElement('style'); st.id = 'mockCss'; st.textContent = `
+    #top .nav{display:flex;background:rgba(255,255,255,.12);border-radius:999px;padding:4px;gap:2px;margin-left:18px}
+    #top .nav button{border:none;background:none;color:#fff;font:inherit;font-weight:700;font-size:15px;padding:8px 20px;border-radius:999px;cursor:pointer;white-space:nowrap}
+    #top .nav button.on{background:#fff;color:var(--navy)}
+    #top .ibtn{flex:none;width:42px;height:42px;border-radius:50%;border:1.5px solid rgba(255,255,255,.6);background:none;color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
+    #top .ibtn.on{background:#fff;color:var(--navy);border-color:#fff}
+    #top{flex-wrap:nowrap}#top .brand small{display:none}
+    #top #search{flex:0 1 240px;min-width:0;width:auto}
+    #top .mwrap{position:relative}
+    #top .mmenu{position:absolute;right:0;top:52px;z-index:50;background:#fff;color:var(--navy);border-radius:16px;box-shadow:0 12px 40px rgba(22,33,58,.28);padding:8px;width:290px;font-weight:700;font-size:15px}
+    #top .mmenu div{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;min-height:48px}
+    #top .mmenu div small{margin-left:auto;font-weight:600;color:var(--ink-soft);font-size:13px}
+    #top .mmenu hr{border:none;border-top:1px solid var(--grid);margin:6px 8px}
+    #top .mmenu svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+    #top .sw{margin-left:auto;width:42px;height:24px;border-radius:999px;background:#d9d6cd;position:relative}#top .sw::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+    @media (max-width:900px){#top .nav{margin-left:8px}#top .nav button{padding:8px 13px;font-size:14px}#top .ibtn{width:40px;height:40px}}`;
+  document.head.appendChild(st);
+  top.innerHTML = `<div class="brand"><h1>Tally</h1></div>
+    <div class="nav" role="tablist"><button class="${o.at === 'classes' ? 'on' : ''}">Classes</button><button class="${o.at === 'students' ? 'on' : ''}">Students</button><button class="${o.at === 'board' ? 'on' : ''}">Board</button></div>
+    <div class="spacer"></div>
+    <input id="search" type="search" placeholder="Find a student…">
+    <button class="ibtn on" title="Names are showing — tap to hide them before projecting">${EYE}</button>
+    <div class="mwrap"><button class="ibtn" title="More">${DOTS}</button>${o.menu ? `<div class="mmenu">
+      <div><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Details view<span class="sw"></span></div>
+      <div>${gear}Settings</div>
+      <div><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16l-8-4-8 4z"/></svg>Guide</div>
+      <hr>
+      <div><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Save backup<small>3 days ago</small></div></div>` : ''}</div>
+    ${imp}`;
+  return top.scrollWidth > top.clientWidth + 1 || top.getBoundingClientRect().height;
+}, { EYE, DOTS, o });
+const ahead = p => p.evaluate(() => {
+  const ths = [...document.querySelectorAll('#gridwrap thead th')]; const up = ths.map((t, i) => t.classList.contains('upcoming') ? i : -1).filter(i => i >= 0);
+  const names = up.map(i => ths[i].querySelector('.t') ? ths[i].querySelector('.t').textContent.replace(/[^\dA-Za-z ]/g, '').trim() : 'Unit');
+  const st = document.createElement('style'); st.textContent = `#gridwrap th.aheadH{width:230px;min-width:230px;text-align:left!important;padding:12px 18px!important;vertical-align:top!important;border-left:2px solid var(--grid)}#gridwrap th.aheadH b{display:block;font-weight:900;font-size:var(--t-xl);color:var(--ink-soft);line-height:1.2}#gridwrap th.aheadH span{display:block;font-size:var(--t-xs);color:var(--ink-soft);font-weight:600;line-height:1.3;margin-top:4px;text-transform:none;letter-spacing:0}
+    #gridwrap td.aheadC{text-align:left!important;padding:0 18px!important;font-weight:700;color:var(--navy);font-size:var(--t-s);border-left:2px solid var(--grid);white-space:nowrap}#gridwrap td.aheadC small{color:var(--ink-soft);font-weight:600}
+    #gridwrap table{width:auto!important;min-width:0!important}`; document.head.appendChild(st);
+  let n = 0;
+  document.querySelectorAll('#gridwrap tr').forEach(tr => { const cells = [...tr.children]; if (!cells.length) return; const isHead = tr.parentElement.tagName === 'THEAD'; const isFoot = !isHead && !tr.querySelector('td.stu .nm');
+    let sum = 0; const where = []; up.forEach((i, j) => { const c = cells[i]; if (!c) return; const v = parseFloat((c.querySelector('.v') ? c.querySelector('.v').childNodes[0].textContent : c.textContent)) || 0; if (!isHead && !isFoot && v > 0) { sum += v; where.push(names[j]); } c.remove(); });
+    const el = document.createElement(isHead ? 'th' : 'td');
+    if (isHead) { el.className = 'aheadH'; el.innerHTML = '<b>Ahead</b><span>Skills at goal past Unit 3</span>'; }
+    else if (isFoot) { el.className = 'aheadC'; el.dataset.foot = '1'; }
+    else { el.className = 'aheadC'; if (sum) { n++; el.innerHTML = `${sum} skill${sum === 1 ? '' : 's'} <small>· ${where.length > 2 ? where[0] + '–' + where[where.length - 1].replace('Unit ', '') : where.join(', ')}</small>`; } }
+    tr.appendChild(el); });
+  const f = document.querySelector('td.aheadC[data-foot]'); if (f) f.innerHTML = `<small>${n} student${n === 1 ? '' : 's'} ahead</small>`;
+  const oc = document.querySelector('#onlyCur'); if (oc) oc.remove();
+  return n;
+});
+module.exports = { newHeader, ahead, OUT };
+if (require.main === module) (async () => {
+  const { chromium, exe } = require('/home/claude/Tally/tests/lib'); const fs = require('fs');
+  const st = JSON.parse(fs.readFileSync(path.resolve(S, '..', 'state-pool5s.json'), 'utf8'));
+  const page = async (W, H) => { const b = await chromium.launch({ executablePath: exe }); const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2 });
+    await ctx.addInitScript(st => { if (!localStorage.getItem('__seeded')) { for (const k in st) localStorage.setItem(k, st[k]); localStorage.setItem('__seeded', '1'); } }, st);
+    const p = await ctx.newPage(); await p.goto('file:///home/claude/Tally/Tally.test.html'); await w(p, 600); await p.click('[data-k="period-1"]'); await w(p, 500); return { b, p }; };
+  for (const [vp, W, H] of [['cbox', 1366, 768], ['tabP', 800, 1280]]) {
+    let { b, p } = await page(W, H);
+    await p.screenshot({ path: OUT + `/h-${vp}-now.png`, clip: { x: 0, y: 0, width: W, height: 160 } });
+    if (vp === 'cbox') { await p.screenshot({ path: OUT + '/g-now.png' }); console.log('ahead', await ahead(p)); await w(p, 300); await p.screenshot({ path: OUT + '/g-new.png' }); await b.close(); ({ b, p } = await page(W, H)); }
+    console.log(vp, 'header height', await newHeader(p, { at: 'classes' })); await w(p, 300);
+    await p.screenshot({ path: OUT + `/h-${vp}-new.png`, clip: { x: 0, y: 0, width: W, height: 160 } });
+    await newHeader(p, { at: 'classes', menu: true }); await w(p, 300);
+    await p.screenshot({ path: OUT + `/h-${vp}-menu.png`, clip: { x: 0, y: 0, width: W, height: 350 } });
+    await b.close();
+  }
+})();

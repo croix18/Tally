@@ -140,7 +140,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   `tests/auto-place.js`. Same commit: the Data Lab tool bar is a rounded panel when it wraps (portrait tablet), the
   stem-and-leaf key is 26 px at 1080p, and `[hidden]{display:none!important}` — `.warnline` as a block had been
   showing the New-class dialog's empty warning as a beige bar since Build 1.
-- Next: nothing owed from this round. Build 3 candidates and "Croix's calls" wait for him.
+- 4 Oct: Croix picked "Simplify the header" as the next build and asked for a mockup of the single "Ahead" column
+  before deciding on it; both mockups are in `review/mockups/` with what each would take. The Focus export's file
+  name is generic, so a new class still asks period and course once.
+- Next: build the header once Croix says go on the mockup; the Ahead column only if he chooses it. Build 3 candidates and "Croix's calls" wait for him.
 
 ## Handoff for the next session (any model)
 
