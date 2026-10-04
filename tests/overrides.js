@@ -31,6 +31,11 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   // 2. copying the column carries Focus's number for the kept student
   const col=await p.evaluate(([K,d])=>{ const T=window.__tally; const s=T.state.sections[K]; const u=T.unitsOf(s).find(u=>u.short==='Unit 1'); return T.unitColumn(s,u,'names').find(l=>l.startsWith(d)); }, [K,before.first.display]);
   check(col && col.split('\t')[1]===String(before.first.focus),'Copy carries the kept Focus number, not Tally\'s: '+col);
+  // 2b. a kept BLANK stays blank: "Keep Focus" on an empty cell must not paste Tally's number over it
+  const blank=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const u=T.unitsOf(s).find(u=>u.short==='Unit 1'); const c=T.reconcile(s).find(c=>c.unit.short==='Unit 1'); const row=c.rows.find(r=>r.status==='match' || r.status==='differ'); const a=s.grades.assignments.find(a=>/Unit 1 IXL/i.test(a.name)); const i=s.grades.students.indexOf(row.display); const was=a.values[i]; a.values[i]=null;
+    s.overrides[u.name][row.display]={ focus:null, tally:row.tally, at:new Date().toISOString(), why:'absent' }; const st=T.reconcile(s).find(c=>c.unit.short==='Unit 1').rows.find(r=>r.display===row.display).status; const line=T.unitColumn(s,u,'names').find(l=>l.startsWith(row.display+'\t')); const pts=T.unitColumn(s,u,'points')[T.unitColumn(s,u,'names').findIndex(l=>l.startsWith(row.display+'\t'))];
+    a.values[i]=was; delete s.overrides[u.name][row.display]; return { st, line, pts, tally:row.tally }; }, K);
+  check(blank.st==='accepted' && blank.line.split('\t')[1]==='' && blank.pts==='' && blank.tally>0,'a kept blank copies as a blank line, not as Tally\'s '+blank.tally+': '+JSON.stringify(blank.line));
   // 3. survives reload; comes back if Focus changes
   await p.reload(); await p.waitForTimeout(700);
   const r2=await p.evaluate(K=>{ const T=window.__tally; const c=T.reconcile(T.state.sections[K]).find(c=>c.unit.short==='Unit 1'); return c.counts.accepted; }, K); check(r2===1,'override survives a reload');

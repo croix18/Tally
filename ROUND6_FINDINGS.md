@@ -165,6 +165,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   short windows (the Windows laptop at 150 %) got a row back. **Not done:** reducing how often weight 900 is used,
   and merging the button / card / table families into single components — both change how things look and are
   Croix's call. The "memo cache" was dropped: the class grid renders in 12 ms.
+- 4 Oct: a second independent verifier went over those two commits (`review/verify-4oct-b.md`): no wrong number
+  from either, but 1 older P0 (a kept blank was overwritten by "Copy the whole column"), 4 P1 in the new Settings
+  picker and the Focus check's folds, 12 P2. All fixed in the next commit; the laptop is now also measured as a
+  browser window (1536×735, 1280×595), not only full screen.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

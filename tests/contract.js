@@ -87,6 +87,9 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   // Croix's Windows laptop: a 1920×1080 panel at Windows' 125 % and 150 % display scale
   const pw1=await measure(1536,864,'Windows laptop at 125 %',13,11); await pw1.context().close();
   const pw2=await measure(1280,720,'Windows laptop at 150 %',10,8); await pw2.context().close();
+  // …and the same laptop with the browser as a window, not full screen (taskbar, tab strip, address bar take ~125 px)
+  const pw3=await measure(1536,735,'125 % in a browser window',10,9); check(await pw3.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),'125 % in a browser window: the page itself does not scroll'); await pw3.context().close();
+  const pw4=await measure(1280,595,'150 % in a browser window',7,6); check(await pw4.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),'150 % in a browser window: the page itself does not scroll'); await pw4.context().close();
   // 3b. the board at 1920×1080: nothing a class has to read is small, and the Race fills the panel
   const { ctx: cb, p: pb } = await open(1920,1080,{hasTouch:true}); await pb.evaluate(([k,v])=>localStorage.setItem(k,v),[lsKey,saved]); await pb.reload(); await pb.waitForTimeout(700);
   await pb.click('#btnLb'); await pb.waitForTimeout(600);

@@ -14,7 +14,10 @@ const { chromium, fs, path, exe, check, done, tmp, pick, more, APP } = require('
   const lit=(re)=>[...css.matchAll(re)].map(m=>m[0]);
   const radii=lit(/border-radius:\s*\d+(?:\.\d+)?px/g); check(radii.length===0,'no corner radius is a bare number — all come from --r-* ('+(radii.slice(0,5).join(', ')||'none')+')');
   const weights=lit(/font-weight:\s*(?:\d{3}|bold)\b/g); check(weights.length===0,'no font weight is a bare number — all come from --w-* ('+(weights.slice(0,5).join(', ')||'none')+')');
-  const heights=lit(/min-height:\s*(?:30|32|36|38|40|44|48|50|52)px/g); check(heights.length===0,'no control height is a bare number — all come from --h-* ('+(heights.slice(0,5).join(', ')||'none')+')');
+  const heights=lit(/min-height:\s*(?:3\d|4\d|5[0-2])px/g); check(heights.length===0,'no control height (30–52 px) is a bare number — all come from --h-* ('+(heights.slice(0,5).join(', ')||'none')+')');
+  // fixed-size round buttons use the same scale (width and height are not caught by the min-height rule above)
+  const round=[...css.matchAll(/(#top \.ibtn|#modal header button)\{([^}]*)\}/g)].map(m=>m[2]); check(round.length>=2 && round.every(d=>!/(?:^|;)(?:width|height):\s*\d+px/.test(d)),'the round header buttons and the dialog × take their size from --h-touch');
+  // not covered, on purpose: inline style="…" in templates, and printed pages
   const used=new Set([...css.matchAll(/var\((--(?:r|h|w|t)-[a-z0-9-]+|--r)\b/g)].map(m=>m[1])); const missing=[...used].filter(t=>!defined.has(t));
   check(used.size>=14 && missing.length===0,'every scale token the CSS uses is defined ('+used.size+' in use'+(missing.length?'; missing '+missing.join(', '):'')+')');
   const count=k=>[...css.matchAll(new RegExp('var\\(--'+k+'\\)','g'))].length;

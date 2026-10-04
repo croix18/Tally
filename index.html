@@ -145,11 +145,11 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 #top .nav button{border:none;background:none;color:var(--white);font:inherit;font-weight:var(--w-bold);font-size:var(--t-m);padding:6px 20px;border-radius:var(--r-pill);cursor:pointer;white-space:nowrap;min-height:calc(var(--h-touch) - 8px)}   /* the track (4px padding each side) is as tall as the round buttons beside it */
 #top .nav button:hover{background:rgba(255,255,255,.1)}#top .nav button.on{background:var(--white);color:var(--navy)}
 /* round icon buttons: the names switch (filled = names showing) and More */
-#top .ibtn{flex:none;width:44px;height:44px;border-radius:50%;border:2px solid var(--sand);background:none;color:var(--white);display:grid;place-items:center;cursor:pointer;padding:0}
+#top .ibtn{flex:none;width:var(--h-touch);height:var(--h-touch);border-radius:50%;border:2px solid var(--sand);background:none;color:var(--white);display:grid;place-items:center;cursor:pointer;padding:0}
 #top .ibtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}#top .ibtn svg.dots{fill:currentColor;stroke:none}
 #top .ibtn[aria-pressed="true"],#top .ibtn[aria-expanded="true"]{background:var(--white);color:var(--navy);border-color:var(--white)}#top .ibtn[aria-pressed="false"]{color:var(--sand)}
 #topMenu{min-width:280px;top:calc(100% + 12px);padding:8px}
-#topMenu button{display:flex;align-items:center;gap:12px;min-height:46px;font-size:var(--t-m)}
+#topMenu button{display:flex;align-items:center;gap:12px;min-height:var(--h-touch);font-size:var(--t-m)}
 #topMenu svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #topMenu small{margin-left:auto;font-weight:var(--w-med);color:var(--ink-soft);font-size:var(--t-s)}#topMenu small.due{color:var(--navy);font-weight:var(--w-heavy)}
 #topMenu hr{border:none;border-top:1px solid var(--grid);margin:6px 8px;width:auto;align-self:stretch}
@@ -348,7 +348,7 @@ body.dragging::after{content:'Drop IXL exports anywhere';position:fixed;inset:0;
 #modal .panel{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);width:min(940px,94vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
 #modal header{background:var(--navy);color:var(--white);padding:14px 26px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 #modal header h2{font-weight:var(--w-black);letter-spacing:.02em;font-size:var(--t-xl)}#modal header h2 .hsub{display:block;font-size:var(--t-s);font-weight:var(--w-med);letter-spacing:0;text-transform:none;color:var(--ink-soft);margin:2px 0 0}
-#modal header button{background:none;border:none;color:var(--white);font-size:26px;font-weight:var(--w-black);width:44px;height:44px;line-height:1;opacity:.8;border-radius:var(--r-pill)}
+#modal header button{background:none;border:none;color:var(--white);font-size:26px;font-weight:var(--w-black);width:var(--h-touch);height:var(--h-touch);line-height:1;opacity:.8;border-radius:var(--r-pill)}
 #modal header button:hover{opacity:1;background:rgba(255,255,255,.1)}
 #modal .body{padding:20px 26px;display:grid;grid-template-columns:1fr 1.15fr;gap:22px;overflow:auto}
 #modal section h3{font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-size:var(--t-m);margin-bottom:8px}
@@ -445,6 +445,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 
 /* ---- toast ---- */
 #toast{position:fixed;right:24px;bottom:22px;transform:translateY(12px);background:var(--navy);color:var(--white);border:2px solid var(--turq);padding:12px 24px;border-radius:var(--r-pill);box-shadow:var(--shadow-2);opacity:0;transition:all .18s;z-index:80;font-weight:var(--w-bold);font-size:15px;max-width:min(720px,80vw);pointer-events:none}#toast.show{pointer-events:auto;cursor:pointer}
+body:has(#modal:not(.hidden)) #toast{bottom:auto;top:18px}   /* while a dialog is open the message goes to the top, clear of the dialog's Save / Cancel row */
 #toast.show{opacity:1;transform:translateY(0)}
 #toast.err{background:var(--coral);color:var(--navy);border-color:var(--coral)}
 #toast b{color:var(--turq)}
@@ -452,6 +453,8 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 @media (max-width:1420px){#top{gap:10px;padding:12px 18px}#top .brand small{display:none}}
 /* a short window (a 1080p laptop at Windows' 150 % scale is 720 px tall; the Chromebox is 768): give the table the room */
 @media (max-height:800px) and (min-width:760px){#top{margin-top:12px}#tabs{padding-top:12px}#board{margin-top:12px;margin-bottom:14px}}
+/* …and a browser window on that laptop is shorter still (taskbar, tab strip, address bar): about 600 px at 150 % */
+@media (max-height:680px) and (min-width:760px){:root{--board-min:min(400px,calc(100vh - 16px))}#top{margin-top:8px;padding-top:8px;padding-bottom:8px}#tabs{padding-top:8px}#board{margin-top:8px;margin-bottom:10px}#bar{min-height:var(--h-l);padding-top:6px;padding-bottom:6px}}
 @media (min-width:760px){#top{flex-wrap:nowrap}}   /* one row from the smallest tablet up: the search field gives way first; below that it wraps */
 @media (max-width:840px){#search{padding:6px 12px}#top .nav button{padding:6px 11px}}
 @media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px;gap:8px}#tabs,#notices{padding-left:14px;padding-right:14px}#board{margin:14px 14px 24px}#top .nav{margin-left:4px}#top .nav button{padding:6px 13px}}
@@ -3724,7 +3727,7 @@ const LAB_CSS = CHART_CSS + LAB_ONLY_CSS;
 // One copy of the board's styles: the app injects it here, and the saved Race / Data Lab pages embed the same strings.
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: LB_CSS + LAB_ONLY_CSS }));
 function dotsDefault(id) { return !(id || '').startsWith('gb:'); }
-const parseNums = txt => String(txt || '').split(/[\s,;]+/).map(Number).filter(Number.isFinite);
+const parseNums = txt => String(txt || '').split(/[\s,;]+/).filter(x => x !== '').map(Number).filter(Number.isFinite);   // an empty box is no numbers, not one zero
 function renderLeaderboard() {
   const el = $('#lb'); const on = !!state.settings.leaderboard;
   el.classList.toggle('hidden', !on); document.body.classList.toggle('lbMode', on);
@@ -4243,7 +4246,7 @@ function renderGrid() {
     // One slot per line so every title in the header row sits on the same baseline: title, one-line subtitle, one status
     // (the Focus badge, else when it was copied, else a closed-quarter / now tag), then Copy for assigned units.
     shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; const rc = checks.find(x => x.unit.name === u.name); const bad = rc ? rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1) : 0;
-      const stat = rc ? `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ${ico('check', 'matches')} · ${rc.counts.accepted} kept` : `Focus ${ico('check', 'matches')}`}</button>`
+      const stat = rc ? `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" id="fc${ui}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ${ico('check', 'matches')} · ${rc.counts.accepted} kept` : `Focus ${ico('check', 'matches')}`}</button>`
         : uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span>`
         : u.current && !s.receipts[u.name] ? '<span class="utag now">now</span>' : '';
       // when it was copied stays in the header whatever the badge says (the slot holds both; Copy sits on the row's bottom line)
@@ -4383,7 +4386,7 @@ function unitColumn(sec, unit, mode) {
   const rows = buildRows(sec).filter(r => r.status !== 'ixlOnly');
   const rc = sec.grades ? reconcile(sec).find(c => c.unit.name === unit.name) : null; const kept = rc ? new Map(rc.rows.filter(x => x.status === 'accepted').map(x => [x.display, x.focus])) : new Map();
   return rows.map(r => {
-    const p = r.ixl == null ? '' : String(kept.has(r.display) && kept.get(r.display) != null ? kept.get(r.display) : points(sec, unit, r.ixl));
+    const p = r.ixl == null ? '' : kept.has(r.display) ? (kept.get(r.display) == null ? '' : String(kept.get(r.display))) : String(points(sec, unit, r.ixl));   // "Keep Focus" on a blank means the cell stays blank
     const own = r.ixl != null && totalFor(sec, unit, r.ixl) !== unit.total ? '\t/' + totalFor(sec, unit, r.ixl) : '';
     if (mode === 'names') return r.display + '\t' + p + own;
     if (mode === 'ids') return (r.id || '') + '\t' + p + own;
@@ -4539,7 +4542,7 @@ li{margin:3px 0}
 <div>
 <h2>Once per class</h2>
 <ol>
-<li>With a course-wide IXL export, a gradebook whose students are in no class yet asks for the <b>period and course</b>. The roster comes from that gradebook, with IDs.</li>
+<li>With a course-wide IXL export, a gradebook whose students are in no class yet asks for the <b>period and course</b>. The roster comes from that gradebook, with IDs (you can still paste one in ⋯ → Settings).</li>
 <li>Fix any flag on a name: <b>Not in IXL</b>, <b>Two matches</b>, <b>Not on roster</b>. No IXL account? Tap the flag → <b>No IXL account</b>.</li>
 <li>If a unit's Focus badge says <b>points differ</b>, tap it: Tally asks which skills don't count.</li>
 </ol>
@@ -4560,15 +4563,15 @@ li{margin:3px 0}
 <div class="words">
 <p><b>Goal</b> — the SmartScore a skill must reach to earn its point.</p>
 <p><b>Skip</b> — a skill that doesn't count: for the course (tap the skill in the unit view) or for one student (tap their cell).</p>
-<p><b>Working in</b> — the unit each course is on (class bar). The first import sets it and says so on the Overview; until you pick one yourself it follows Focus's latest IXL column. Units up to it are the grid's columns and count toward the Race and the Focus check.</p>
+<p><b>Working in</b> — the unit each course is on (class bar). The first import sets it and says so on the Overview; until you pick one yourself it follows Focus's latest IXL column; your own pick is never changed. Units up to it are the grid's columns and count toward the Race and the Focus check.</p>
 <p><b>Ahead</b> — the grid's last column: skills at goal past the current unit, only for students who have some. Tap <b>Ahead</b> to open a later unit; <b>Not assigned → Assigned</b> there counts it early.</p>
-<p><b>Assigned</b> — a unit's button (open the unit). It overrides the rule for that unit, either way, for the whole course. On-level's first unit is review and never counts (⋯ → Settings).</p>
+<p><b>Assigned</b> — a unit's button (open the unit). It overrides the rule for that unit, either way, for the whole course. A unit you unassign leaves the grid; the "N unassigned unit" button on the class bar brings it back. On-level's first unit is review and never counts (⋯ → Settings).</p>
 <p><b>Best</b> — a score from an earlier export that was higher than today's. A point once earned is kept.</p>
 <p><b>Copied</b> — a receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</p>
 <p><b>Focus ${ico('check', 'check')} / off</b> — whether the Focus column matches what Tally counts today.</p>
 <p><b>Grades</b> — with a Focus gradebook loaded: the real course grade (weighted categories, proved against Focus's Grade column), the change since the last import, sliding students, and what-ifs.</p>
 <p><b>Students</b> — every student of every class. Tap one for their page: grades by quarter, missing work, IXL still owed, and the quickest way to the next letter. <b>Show student</b> turns the screen toward them; hold the exit button to leave.</p>
-<p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks.</p>
+<p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
 <p><b>Seating</b> — draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
 <p><b>Still owed</b> — a printable list of what each student is missing, by unit.</p>
 <p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill or assignment). Names never show. Hold the exit button to leave.</p>
@@ -4650,7 +4653,7 @@ function reconcile(sec) {
 }
 function openFocusCheck(sec, unitName) {
   const all = reconcile(sec); const rc = all.find(x => x.unit.name === unitName); if (!rc) return;
-  const m = $('#modal'); const openFolds = m.dataset.fc === sec.key + '|' + unitName ? [...m.querySelectorAll('details.fold[open]')].map(d => d.className) : [];   // acting on a row redraws the dialog: a fold the teacher opened stays open
+  const m = $('#modal'); const openFolds = m.dataset.fc === sec.key + '|' + unitName ? [...m.querySelectorAll('details.fold[open]')].map(d => d.className) : []; openFolds.redraw = m.dataset.fc === sec.key + '|' + unitName && !m.classList.contains('hidden');   // acting on a row redraws the dialog: a fold the teacher opened stays open
   m.classList.remove('hidden');
   const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : d);
   const bad = rc.rows.filter(r => r.status !== 'match' && r.status !== 'accepted'); const kept = rc.rows.filter(r => r.status === 'accepted');
@@ -4673,8 +4676,8 @@ function openFocusCheck(sec, unitName) {
       ${diff > 0 ? `<div class="skipPick"><p class="ghint">The ${diff} that the fewest students have touched are ticked — usually the "also consider" extras. This applies to every ${course} class.</p>
           <div class="skipList">${all.map(c => `<label><input type="checkbox" data-sk="${c.k}" ${sug.has(c.k) ? 'checked' : ''}> ${esc(sec.skills[c.k].name)} <small>${c.n} of ${pop.length}</small></label>`).join('')}</div>
           <p class="ghint" id="skipCount"></p></div>`
-        : `<p>Count ${plural(-diff, 'skill')} again in the unit view (tap a hatched skill), or change the assignment's points in Focus to ${rc.unit.total}.</p>`}
-      <div class="rp-actions">${diff > 0 ? '<button class="pill" id="skipCand">Skip the ticked skills</button>' : `<button class="pill" id="fcOpenUnit">Open ${esc(rc.unit.short)}</button>`}<button class="pill pale" id="mCancel">Close</button></div>
+        : (rc.unit.idx.length > rc.unit.total ? `<p>Count ${plural(Math.min(-diff, rc.unit.idx.length - rc.unit.total), 'skill')} again in the unit view (tap a hatched skill)${rc.unit.idx.length < rc.assignment.max ? `; IXL has only ${rc.unit.idx.length} in this unit, so` : ', or'} change the assignment's points in Focus${rc.unit.idx.length < rc.assignment.max ? '' : ` to ${rc.unit.total}`}.</p>` : `<p>IXL has only ${plural(rc.unit.total, 'skill')} in ${esc(rc.unit.short)} and none is skipped: change the assignment's points in Focus to ${rc.unit.total}, or see <b>Wrong column?</b> below.</p>`)}
+      <div class="rp-actions">${diff > 0 ? '<button class="pill" id="skipCand">Skip the ticked skills</button>' : `${rc.unit.idx.length > rc.unit.total ? `<button class="pill" id="fcOpenUnit">Open ${esc(rc.unit.short)}</button>` : ''}`}<button class="pill pale" id="mCancel">Close</button></div>
       <details class="fold fcrows"><summary>Student by student <small>(every row differs until the points agree)</small></summary><p class="checkSummary">${summary}</p>${table}<div id="keepForm" class="keepForm hidden"></div>${keptFold}
         <div class="rp-actions">${bad.length ? `<button class="pill pale small" id="copyFix" title="${state.settings.copyMode === 'ids' ? 'ID' : 'Name'} and Tally points, one student per line">Copy ${plural(bad.filter(r => r.tally != null).length, 'correction')}</button>` : ''}<button class="pill pale small" id="copyCol">Copy the whole column</button></div></details>
       ${mapFold}`;
@@ -4689,13 +4692,17 @@ function openFocusCheck(sec, unitName) {
       ${mapFold}`;
   }
   m.innerHTML = `<div class="panel"><header><h2>${setup ? `Set up ${esc(rc.unit.short)} for Focus` : `Focus check · ${esc(rc.unit.short)}`}</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one fc ${setup ? 'setup' : ''}">${body}</div></div>`;
+  if (openFolds.redraw) { const panel = m.querySelector('.panel'); panel.tabIndex = -1; panel.focus({ preventScroll: true }); }
   m.dataset.fc = sec.key + '|' + unitName; openFolds.forEach(c => { const d = m.querySelector('details.' + c.trim().split(/\s+/).join('.')); if (d) d.open = true; });
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; delete m.dataset.fc; render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  $('#gbMap').onchange = () => { sec.gbUnitMap = sec.gbUnitMap || {}; sec.gbUnitMap[rc.assignment.name] = $('#gbMap').value; save(); close(); if ($('#gbMap') === null && sec.gbUnitMap[rc.assignment.name]) openFocusCheck(sec, sec.gbUnitMap[rc.assignment.name]); };
+  $('#gbMap').onchange = () => { const v = $('#gbMap').value; const to = v ? (unitsOf(sec).find(u => u.name === v) || {}).short : null;
+    // this takes the column out of the check (or points it at another unit) for good, so it asks, and says where the way back is
+    if (!confirm(v ? `Check Focus's "${rc.assignment.name}" against ${to} instead of ${rc.unit.short}?\n\nYou can undo this in Settings → This class → Focus gradebook.` : `Stop checking Focus's "${rc.assignment.name}" against Tally?\n\nIts badge will go. You can undo this in Settings → This class → Focus gradebook.`)) { $('#gbMap').value = rc.unit.name; return; }
+    sec.gbUnitMap = sec.gbUnitMap || {}; sec.gbUnitMap[rc.assignment.name] = v; save(); close(); toast(v ? `Focus's "${esc(rc.assignment.name)}" is now checked against ${esc(to)}.` : `Focus's "${esc(rc.assignment.name)}" is no longer checked — undo in Settings → This class → Focus gradebook.`, false, 7000); if (v && reconcile(sec).some(x => x.unit.name === v)) openFocusCheck(sec, v); };
   const put = async (text, msg) => { let ok = legacyCopy(text); if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} } if (ok) toast(msg, false); else showCopyBox(text, rc.assignment.name); };
   const sc = $('#skipCand'); if (sc) {
-    const count = () => { const n = m.querySelectorAll('[data-sk]:checked').length; const left = rc.unit.total - n; $('#skipCount').innerHTML = `${plural(n, 'skill')} ticked → ${esc(rc.unit.short)} out of <b>${left}</b>${left === rc.assignment.max ? ' — matches Focus' : ` (Focus: ${rc.assignment.max})`}`; };
+    const count = () => { const n = m.querySelectorAll('[data-sk]:checked').length; const left = rc.unit.total - n; $('#skipCount').innerHTML = `${plural(n, 'skill')} ticked → ${esc(rc.unit.short)} out of <b>${left}</b>${left === rc.assignment.max ? ' — matches Focus' : ` (Focus: ${rc.assignment.max})`}`; sc.disabled = n === 0; };
     m.querySelectorAll('[data-sk]').forEach(cb => cb.onchange = count); count();
     sc.onclick = () => { const ks = [...m.querySelectorAll('[data-sk]:checked')].map(cb => Number(cb.dataset.sk)); ks.forEach(k => { sec.excluded[skillKey(sec.skills[k])] = true; }); resnapshotPrep(sec.prep); save(); toast(`Skipped ${plural(ks.length, 'skill')} in ${esc(rc.unit.short)} for every ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); openFocusCheck(sec, unitName); };
   }
@@ -4708,7 +4715,7 @@ function openFocusCheck(sec, unitName) {
   });
   m.querySelectorAll('[data-unkeep]').forEach(b => b.onclick = () => { if (sec.overrides && sec.overrides[rc.unit.name]) { delete sec.overrides[rc.unit.name][b.dataset.unkeep]; if (!Object.keys(sec.overrides[rc.unit.name]).length) delete sec.overrides[rc.unit.name]; } save(); openFocusCheck(sec, unitName); });
   const ou = $('#fcOpenUnit'); if (ou) ou.onclick = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; view = { mode: 'unit', unit: rc.unit.name }; render(); };
-  const cf = $('#copyFix'); if (cf) cf.onclick = () => { const lines = bad.filter(r => r.tally != null).map(r => (state.settings.copyMode === 'ids' ? (r.id || '') : r.display) + '\t' + r.tally); put(lines.join('\n'), `Copied ${plural(lines.length, 'correction')} for ${esc(rc.unit.short)}`); };
+  const cf = $('#copyFix'); if (cf) cf.onclick = () => { const lines = bad.filter(r => r.tally != null).map(r => (state.settings.copyMode === 'ids' ? (r.id || r.display) : r.display) + '\t' + r.tally); put(lines.join('\n'), `Copied ${plural(lines.length, 'correction')} for ${esc(rc.unit.short)}`); };
   $('#copyCol').onclick = () => copyUnit(sec, rc.unit);
 }
 
@@ -4745,8 +4752,8 @@ function storageUse() { const quota = 5242880; let total = 0, tally = 0; try { f
 // The newest thing imported (an IXL export or a gradebook), to tell whether the last backup is behind it.
 function latestImportAt() { let m = ''; for (const k of state.order) { const s = state.sections[k]; [s.importedAt, s.grades && s.grades.importedAt].forEach(v => { if (typeof v === 'string' && v > m) m = v; }); } return m || null; }
 const backupBehind = () => { const li = latestImportAt(); return !!(li && (!state.lastBackup || state.lastBackup < li)); };
-function openSettings() {
-  const s = state.sections[state.active]; if (!s) return;
+function openSettings(key) {
+  const s = state.sections[key && state.sections[key] ? key : state.active]; if (!s) return;   // `key`: the class picked inside the dialog — the page behind stays where it was
   const m = $('#modal'); m.classList.remove('hidden'); const H = state.settings.hideNames;
   // Three scopes, each under its own heading, so nothing reaches past the title it sits under: this class, this course
   // (every class of it), and all of Tally. The class is chosen here — Settings opened from the Overview used to be
@@ -4764,12 +4771,12 @@ function openSettings() {
         <div class="field"><label>Roster — paste from FOCUS, one student per line</label>${H ? '<p class="warnline">Names are hidden. Turn on Show names to view or edit the roster.</p>' : `<textarea id="roster" placeholder="Doe, Jane&#10;Smith, John&#10;…&#10;&#10;Pasting straight from the FOCUS gradebook works, ID columns and all.">${esc(s.roster)}</textarea>`}</div>
         <div class="report" id="matchReport">${matchReport(s, s.roster)}</div>
         <p>${esc(s.file)} · imported ${fmtTime(s.importedAt)}</p>
-        ${s.grades ? `<h3 class="mt">Focus gradebook</h3><p>${plural(s.grades.assignments.length, 'assignment')} · ${plural(s.grades.students.length, 'student')} · imported ${fmtDate(s.grades.importedAt.slice(0, 10))} from ${esc(s.grades.file || 'file')}</p><button class="pill danger small" id="dropGrades">Remove this gradebook</button>` : ''}
+        ${s.grades ? `<h3 class="mt">Focus gradebook</h3><p>${plural(s.grades.assignments.length, 'assignment')} · ${plural(s.grades.students.length, 'student')} · imported ${fmtDate(s.grades.importedAt.slice(0, 10))} from ${esc(s.grades.file || 'file')}</p><button class="pill danger small" id="dropGrades">Remove this gradebook</button>${Object.keys(s.gbUnitMap || {}).length ? `<div id="gbMaps"><p style="margin:12px 0 4px">Focus columns you changed in a Focus check ("Wrong column?"):</p>${Object.keys(s.gbUnitMap).map(n => `<div class="customRow"><b>${esc(n)}</b> <span>${s.gbUnitMap[n] ? 'checked against ' + esc((unitsOf(s).find(u => u.name === s.gbUnitMap[n]) || { short: s.gbUnitMap[n] }).short) : 'not checked against any unit'}</span> <button class="pill pale small" data-unmap="${esc(n)}">Reset</button></div>`).join('')}</div>` : ''}` : ''}
         <h3 class="mt">Remove</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="forget">Remove this class</button></div>
       </section>
       <section class="scope">
-        <div class="scopeHead"><b>This course</b><span>every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class</span></div>
+        <div class="scopeHead"><b>This course</b><span id="courseOf">every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class</span></div>
         <div class="field"><label>Units not assigned at the start</label><div class="seg small" id="skipFirst">${[0, 1, 2, 3].map(n => `<button data-skip="${n}" class="${(state.settings.skipFirst || {})[s.prep] === n ? 'on' : ''}">${n === 0 ? 'None' : 'First ' + n}</button>`).join('')}</div><p style="margin-top:4px">Review units students don't do. They leave the Race, Data Lab, Focus check and copies. A unit you mark Assigned by hand still wins.</p></div>
         <h3 class="mt">Course settings file</h3>
         <p>Goal, skipped skills and assigned units — no rosters, no names. Another teacher loads it to run on the same rules.</p>
@@ -4797,15 +4804,20 @@ function openSettings() {
     <footer><div class="spacer"></div><button class="pill pale" id="mCancel">Cancel</button><button class="pill" id="mSave">Save</button></footer>
   </div>`;
   let copyMode = state.settings.copyMode; m.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { copyMode = b.dataset.cm; m.querySelectorAll('[data-cm]').forEach(x => x.classList.toggle('on', x === b)); });
-  let prep = s.prep; m.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { prep = b.dataset.prep; m.querySelectorAll('[data-prep]').forEach(x => x.classList.toggle('on', x === b)); });
-  let skipFirst = (state.settings.skipFirst || {})[s.prep] || 0, skipTouched = false; m.querySelectorAll('[data-skip]').forEach(b => b.onclick = () => { skipFirst = +b.dataset.skip; skipTouched = true; m.querySelectorAll('[data-skip]').forEach(x => x.classList.toggle('on', x === b)); });
+  let skipFirst = (state.settings.skipFirst || {})[s.prep] || 0, skipTouched = false;
+  let prep = s.prep; m.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { prep = b.dataset.prep; m.querySelectorAll('[data-prep]').forEach(x => x.classList.toggle('on', x === b));
+    // "This course" now means the course just chosen: its heading, and its own review-unit count
+    const co = $('#courseOf'); if (co) co.textContent = `every ${prep === 'acc' ? 'accelerated' : 'on-level'} class`; skipFirst = (state.settings.skipFirst || {})[prep] || 0; skipTouched = false; m.querySelectorAll('[data-skip]').forEach(x => x.classList.toggle('on', +x.dataset.skip === skipFirst)); }); m.querySelectorAll('[data-skip]').forEach(b => b.onclick = () => { skipFirst = +b.dataset.skip; skipTouched = true; m.querySelectorAll('[data-skip]').forEach(x => x.classList.toggle('on', x === b)); });
   let remind = state.settings.remindDays; m.querySelectorAll('[data-remind]').forEach(b => b.onclick = () => { remind = +b.dataset.remind; m.querySelectorAll('[data-remind]').forEach(x => x.classList.toggle('on', x === b)); });
   const rosterEl = $('#roster');
   const dirty = () => rosterEl && rosterEl.value !== s.roster;
+  // anything typed or tapped but not saved — asked about before the picker shows another class (Cancel still just cancels)
+  const unsaved = () => dirty() || ($('#secLabel').value.trim() || s.autoLabel) !== s.label || String($('#thr').value) !== String(s.threshold) || prep !== s.prep || skipTouched || remind !== state.settings.remindDays || copyMode !== state.settings.copyMode || $('#useBest').checked !== !!state.settings.useBest;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
   const cancel = () => { if (dirty() && !confirm('Discard the roster changes you pasted?')) return; close(); };
   m._cancel = cancel;
-  const sc = $('#setClass'); if (sc) sc.onchange = () => { if (dirty() && !confirm('Discard the roster changes you pasted?')) { sc.value = s.key; return; } state.active = sc.value; save(); openSettings(); };
+  m.querySelectorAll('[data-unmap]').forEach(b => b.onclick = () => { if (unsaved() && !confirm('Discard the changes you haven\'t saved?')) return; delete s.gbUnitMap[b.dataset.unmap]; save(); toast(`Focus's "${esc(b.dataset.unmap)}" is matched to its unit by name again.`, false, 5000); openSettings(s.key); });
+  const sc = $('#setClass'); if (sc) sc.onchange = () => { if (unsaved() && !confirm(dirty() ? 'Discard the roster changes you pasted?' : `Discard the changes to ${s.label} you haven't saved?`)) { sc.value = s.key; return; } const to = sc.value; openSettings(to); const again = $('#setClass'); if (again) again.focus(); };
   $('#mClose').onclick = cancel; $('#mCancel').onclick = cancel;
   m.onclick = e => { if (e.target === m) cancel(); };
   const wireReport = () => {
@@ -4835,7 +4847,7 @@ function openSettings() {
   };
   $('#addCustom').onclick = () => { close(); openCustomEditor(null, s.prep); };
   m.querySelectorAll('[data-editc]').forEach(b => b.onclick = () => { close(); openCustomEditor(b.dataset.editc); });
-  m.querySelectorAll('[data-delc]').forEach(b => b.onclick = () => { const c = state.custom.find(x => x.id === b.dataset.delc); if (!confirm(`Delete "${c.label}"?`)) return; state.custom = state.custom.filter(x => x.id !== c.id); save(); close(); openSettings(); });
+  m.querySelectorAll('[data-delc]').forEach(b => b.onclick = () => { const c = state.custom.find(x => x.id === b.dataset.delc); if (!confirm(`Delete "${c.label}"?`)) return; state.custom = state.custom.filter(x => x.id !== c.id); save(); close(); openSettings(s.key); });
   $('#exportCourse').onclick = () => {
     const skipped = Object.keys(s.excluded).map(k => { const sk = s.skills.find(x => skillKey(x) === k); return { key: k, name: sk ? sk.name : k, unit: sk ? sk.unit : '' }; });
     const cfg = { tally: 'course', prep: s.prep, goal: s.threshold, assigned: state.assigned[s.prep], skipped, exported: new Date().toISOString() };
@@ -4932,7 +4944,9 @@ document.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; docu
 // Every dialog goes through #modal, so one observer gives them all the same manners: focus moves into the panel on
 // open (to the panel itself — never an input, which would raise the tablet's keyboard), Tab stays inside, the dialog is
 // named by its own heading, and focus goes back to whatever opened it on close.
-const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
+// really reachable: rendered, and not tucked inside a closed <details> (its own <summary> is)
+const tabbable = el => { if (el.type === 'file' || el.classList.contains('hidden')) return false; const d = el.closest('details:not([open])'); if (d && !(el.tagName === 'SUMMARY' && el.parentElement === d)) return false; return el.checkVisibility ? el.checkVisibility() : el.offsetParent !== null; };
 let modalOpener = null, modalOpenerId = null, lastOutside = null;
 document.addEventListener('focusin', e => { if (!e.target.closest('#modal')) lastOutside = e.target; });   // the observer runs after the opener may have focused an input, so remember the last focus outside the dialog
 new MutationObserver(() => {
@@ -4942,7 +4956,7 @@ new MutationObserver(() => {
 }).observe($('#modal'), { attributes: true, attributeFilter: ['class'] });
 document.addEventListener('keydown', e => {
   const m = $('#modal'); const open = !m.classList.contains('hidden');
-  if (e.key === 'Tab' && open) { const items = [...m.querySelectorAll(FOCUSABLE)].filter(el => el.offsetParent !== null); if (!items.length) return; const i = items.indexOf(document.activeElement); if (e.shiftKey && (i <= 0)) { e.preventDefault(); items[items.length - 1].focus(); } else if (!e.shiftKey && (i === -1 || i === items.length - 1)) { e.preventDefault(); items[0].focus(); } return; }
+  if (e.key === 'Tab' && open) { const items = [...m.querySelectorAll(FOCUSABLE)].filter(tabbable); if (!items.length) return; const i = items.indexOf(document.activeElement); if (e.shiftKey && (i <= 0)) { e.preventDefault(); items[items.length - 1].focus(); } else if (!e.shiftKey && (i === -1 || i === items.length - 1)) { e.preventDefault(); items[0].focus(); } return; }
   if (e.key !== 'Escape') return;
   if (open) { (m._cancel || (() => m.classList.add('hidden')))(); return; }
   if (view.mode === 'seating' && (seatSel || seatPending)) { seatSel = null; seatPending = null; seatHover = null; render(); return; }

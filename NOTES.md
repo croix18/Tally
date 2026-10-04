@@ -112,7 +112,10 @@ per-section-file era and many items in them are now done).
   open the saved five-class state at 1536×864, 1280×720, 1366×768, a touch tablet and the touch panel; visit twenty
   screens; save a screenshot and, for every button / select / tab / cell / card, the style it computes to. Compare
   two builds pixel by pixel and style by style. The exact-token pass and the dead-declaration pass were both 0
-  pixels and 0 styles different over 143 screenshots; snapping near-misses onto the scale moved things by ≤ 2 px.
+  pixels and 0 styles different over 143 screenshots. Snapping near-misses onto the scale did move things: most
+  controls by 2 px, but "Generate seating" went 52 → 48 (the list under it rises 4–5 px), the roster-fixer chips
+  40 → 38 (the list is 9 px shorter), and three corners changed by 3–8 px (`.lbTools` 28 → 20, `#drop` 24 → 20, the
+  seating photo placeholder 5 → 8). No colour or weight changed (a second reviewer checked 72 more screens).
 - **`body.home` / `body.grades` collided with `.home` / `.grades`** (found 4 Oct by that comparison): the page body
   wears those classes as mode flags, and the containers' rules (`padding:4px 0 40px; gap:16px`) were styling the
   body too — the Overview, Grades and Students sat 20 px lower than a class page and wasted 40 px at the bottom. The
@@ -120,6 +123,15 @@ per-section-file era and many items in them are now done).
 - **Short windows** (`@media (max-height:800px)`): tighter margins around the header, tabs and board. A 1080p Windows
   laptop at 150 % scale is 1280×720 CSS px: 10 student rows (was 9), and the Overview's class cards are whole on the
   first screen. `tests/contract.js` now measures 1536×864 (125 %) and 1280×720 (150 %) with row floors.
+- **What the second verifier found in that batch** (`review/verify-4oct-b.md`) and what changed because of it: the
+  Settings picker no longer moves the page behind the dialog (`openSettings(key)`) and asks before dropping *any*
+  unsaved field (`unsaved()`); flipping the course in the dialog re-points "This course"; the dialog focus trap
+  counts `<summary>` and skips what is inside a closed fold (`tabbable`), so Shift+Tab and the copy buttons work
+  again in the Focus check; "Wrong column?" asks first and Settings → This class lists changed columns with Reset
+  (`#gbMaps`); a kept **blank** copies as blank (`unitColumn` — pre-existing, and the one item that could have put a
+  wrong number in Focus); while a dialog is open the toast goes to the top; Focus-check badges have ids so focus
+  returns to them. A browser *window* on the laptop is shorter than the screen: `@media (max-height:680px)` and the
+  contract suite's 1536×735 and 1280×595 cases (7 student rows at 150 %, no page scroll).
 - **Menus** (`wireMenu(button, menu, place)`): one open at a time (`closeOpenMenu`), closed by any `render()` so a
   key listener or overlay never outlives its screen; `role="menu"`, arrows / Home / End / Escape; a floating menu
   (`place`) closes on resize or page scroll; `keepInside()` keeps the header's menu in the window when the header
