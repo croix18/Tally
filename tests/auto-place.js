@@ -25,7 +25,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
 
   // 2. A second class's first gradebook: none of its students are in a class, so again straight to "New class"
   await drop([P2]);
-  check(await modal()==='New class from this gradebook' && /only 1 of them in a class already/.test(await p.textContent('#modal')),'students who are in no class (one shared name aside): one dialog, and it says so');
+  check(await modal()==='New class from this gradebook' && /only 1 of them in 1st Period · Accelerated/.test(await p.textContent('#modal')),'students who are in no class (one shared name aside): one dialog, and it says so');
   check(await p.locator('#ncExisting').count()===1,'…with a way back to an existing class');
   await p.click('#ncPeriod [data-p="2"]'); await p.click('#ncPrep [data-prep="on"]'); await p.click('#ncMake'); await p.waitForTimeout(800); await closeAsk();
   check(await p.evaluate(()=>{ const s=window.__tally.state.sections['period-2']; return !!s && s.prep==='on' && s.grades.students.length===24; }),'period 2 made as on-level with its 24 students');
@@ -36,10 +36,10 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   check(await modal()==='','the weekly drop of both gradebooks asks nothing');
   const wk=await p.evaluate(()=>{ const T=window.__tally; return { f1:T.state.sections['period-1'].grades.file, f2:T.state.sections['period-2'].grades.file, lines:T.state.lastImport.lines.map(l=>l.label+' — '+l.text) }; });
   check(/pool_p1/.test(wk.f1) && /pool_p2/.test(wk.f2),'each file landed on its own class: '+wk.f1+' / '+wk.f2);
-  check(wk.lines.filter(l=>/placed by its names \(2[34] of 2[34]\)/.test(l)).length===2,'the import result says where each went and on what evidence: '+wk.lines.filter(l=>/placed/.test(l)).join(' | '));
+  check(wk.lines.filter(l=>/placed by its students \(2[34] of 2[34]\)/.test(l)).length===2,'the import result says where each went and on what evidence: '+wk.lines.filter(l=>/placed/.test(l)).join(' | '));
   await p.click('#btnHome').catch(()=>{}); await p.waitForTimeout(300);
   const card=await p.evaluate(()=>{ const d=document.querySelector('.himport'); if (d && d.tagName==='DETAILS') d.open=true; return d ? d.textContent : ''; });
-  check(/placed by its names/.test(card),'…and it is on the Overview\'s import card');
+  check(/placed by its students/.test(card),'…and it is on the Overview\'s import card');
 
   // 4. The class changed a little (two left, one joined): still plainly that class
   const moved=write('p1_changed.csv', g1.head, [...g1.rows.slice(2), '"1111199999","","NEWCOMER, RILEY","80% B","17.0 - 81 % - B"']);
@@ -59,12 +59,17 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const cells=g1.rows[0].split('","').slice(3).join('","');   // the score cells of a period-1 row, reused under period-2 names
   const split=write('split.csv', g1.head, [...g1.rows.slice(0,12), ...g2.rows.slice(0,12).map(r=>r.split('","').slice(0,3).join('","')+'","'+cells)]);
   await drop([split]);
+  check(await p.locator('[data-sec="__new__"].on').count()===0 && !/no class has these students/.test(await p.textContent('.picks')),'a split file does not offer "+ New class · no class has these students" under a sentence that names two classes');
   check(await modal()==='Which class is this gradebook?' && /split between 1st Period · Accelerated \(1[23]\) and 2nd Period · On-level \(12\)/.test(await p.textContent('#pickWhy')),'half one class, half another: asks — '+(await p.textContent('#pickWhy').catch(()=>'')).slice(0,90));
   await p.click('#mCancel'); await p.waitForTimeout(300);
   const few=write('few.csv', g1.head, g1.rows.slice(0,5));
   await drop([few]);
   check(await modal()==='Which class is this gradebook?' && /only 5 of the 23 students in 1st Period/.test(await p.textContent('#pickWhy')),'five students of a class of 23: asks rather than replace the class with a fragment');
   check(await p.locator('[data-sec="period-1"].on').count()===1,'…with period 1 offered as the likely one');
+  await p.click('#mCancel'); await p.waitForTimeout(300);
+  const two=write('two.csv', g1.head, g1.rows.slice(0,2));
+  await drop([two]);
+  check(await modal()==='Which class is this gradebook?' && /It has only 2 students — too few to place by itself/.test(await p.textContent('#pickWhy')) && await p.locator('[data-sec="period-1"].on').count()===1,'a two-student file whose students are both in one class: asks, says why truthfully, offers that class');
   await p.click('#mCancel'); await p.waitForTimeout(300);
   const mixed=write('mostly.csv', g1.head, [...g1.rows.slice(0,14), ...Array.from({length:9},(_,i)=>`"11112000${10+i}","","STRANGER${i}, PAT","70% C","15.0 - 71 % - C"`)]);
   await drop([mixed]);
@@ -77,7 +82,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   check(await modal()==='Which class is this gradebook?' && /None of its students are in a class yet/.test(await p.textContent('#pickWhy')) && await p.locator('[data-sec="__new__"].on').count()===1 && await p.locator('.picks [data-sec]:not([data-sec="__new__"])').count()===2,'"It belongs to a class I already have" opens the class list');
   await p.click('#mCancel'); await p.waitForTimeout(300);
   const after=await p.evaluate(()=>JSON.stringify(Object.values(window.__tally.state.sections).map(s=>[s.grades.file, s.grades.students.length])));
-  check(before===after,'four skipped files changed nothing');
+  check(before===after,'five skipped files changed nothing');
 
   // 7. Two files for the same class in one drop: the first is placed, the second asks
   const copy=write('p1_copy.csv', g1.head, g1.rows);
@@ -97,8 +102,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
     const title=(await q.locator('#modal:not(.hidden)').count()) ? await q.textContent('#modal .panel header h2').catch(()=>'') : '';
     check(title!=='Which class is this gradebook?','a class with only its IXL export: the gradebook is placed by matching its names to the IXL names');
     const a=await q.$('#askApply'); if (a) { await a.click(); await q.waitForTimeout(300); }
-    const r=await q.evaluate(()=>{ const T=window.__tally; const s=T.state.sections[T.state.order[0]]; return { gb:!!(s.grades&&s.grades.students.length), roster:!!s.roster, line:(T.state.lastImport.lines.find(l=>/placed by its names/.test(l.text))||{}).text||'' }; });
-    check(r.gb && r.roster && /placed by its names/.test(r.line),'…its roster is filled from the file and the result line says so: '+r.line.slice(-60));
+    const r=await q.evaluate(()=>{ const T=window.__tally; const s=T.state.sections[T.state.order[0]]; return { gb:!!(s.grades&&s.grades.students.length), roster:!!s.roster, line:(T.state.lastImport.lines.find(l=>/placed by its students/.test(l.text))||{}).text||'' }; });
+    check(r.gb && r.roster && /placed by its students/.test(r.line),'…its roster is filled from the file and the result line says so: '+r.line.slice(-60));
   } else console.log('SKIP per-period fixtures missing');
   check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();

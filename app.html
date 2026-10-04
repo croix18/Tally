@@ -144,7 +144,7 @@ h1,h2,h3{margin:0;font-weight:900}
 #topMenu small{margin-left:auto;font-weight:600;color:var(--ink-soft);font-size:var(--t-s)}#topMenu small.due{color:var(--navy);font-weight:800}
 #topMenu hr{border:none;border-top:1px solid var(--grid);margin:6px 8px;width:auto;align-self:stretch}
 #topMenu .sw{margin-left:auto;flex:none;width:42px;height:24px;border-radius:999px;background:var(--sand);position:relative;transition:background .15s}#topMenu .sw::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--white);box-shadow:0 1px 2px rgba(22,33,58,.3);transition:transform .15s}
-#topMenu [aria-pressed="true"] .sw{background:var(--teal)}#topMenu [aria-pressed="true"] .sw::after{transform:translateX(18px)}
+#topMenu [aria-checked="true"] .sw{background:var(--teal)}#topMenu [aria-checked="true"] .sw::after{transform:translateX(18px)}
 #search{background:transparent;border:2px solid var(--sand);color:var(--white);border-radius:999px;padding:6px 16px;width:240px;flex:0 1 240px;min-width:110px;outline:none;font-weight:500}
 #search::placeholder{color:var(--sand)}
 #search:focus{border-color:var(--turq)}
@@ -255,7 +255,7 @@ th.ahead .ustat{display:block}th.ahead .utag{color:var(--ink-soft)}
 .menu.floating{position:fixed;z-index:31;background:var(--white);border-radius:14px;box-shadow:var(--shadow-2);border:2px solid var(--grid);display:flex;flex-direction:column;padding:6px;overflow-y:auto}.menu.floating button{background:none;border:none;text-align:left;padding:10px 14px;font:inherit;color:var(--navy);border-radius:10px;cursor:pointer;flex:none}.menu.floating button:hover{background:var(--paleturq)}
 #aheadMenu{min-width:300px;max-width:min(440px,calc(100vw - 20px))}
 #aheadMenu button{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;font-weight:600;font-size:var(--t-s)}#aheadMenu button b{font-weight:800;white-space:nowrap}#aheadMenu button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-soft)}#aheadMenu button small{color:var(--teal);font-weight:700;white-space:nowrap}
-table.grid td.aheadc{text-align:left;padding:0 16px;border-left:2px solid var(--grid);white-space:nowrap;font-size:var(--t-s);color:var(--navy);cursor:pointer}td.aheadc.none{cursor:default}td.aheadc b{font-weight:800}td.aheadc small{color:var(--ink-soft);font-weight:600;font-size:var(--t-xs)}
+table.grid td.aheadc{text-align:left;padding:0 16px;border-left:2px solid var(--grid);white-space:nowrap;font-size:var(--t-s);color:var(--navy);cursor:pointer}table.grid td.aheadc.none{cursor:default}td.aheadc b{font-weight:800}td.aheadc small{color:var(--ink-soft);font-weight:600;font-size:var(--t-xs)}
 table.grid tfoot td.aheadc{color:var(--teal);font-weight:700;font-size:var(--t-xs);cursor:default}
 .curUnit{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:var(--t-s);color:var(--ink-soft)}.curUnit select{border:1px solid var(--grid);border-radius:999px;padding:4px 10px;background:var(--white);color:var(--navy);font:inherit;font-weight:700}
 td.pts{text-align:center;padding:0 8px;cursor:pointer}
@@ -432,7 +432,8 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 #toast b{color:var(--turq)}
 #toast.err b{color:var(--navy)}
 @media (max-width:1420px){#top{gap:10px;padding:12px 18px}#top .brand small{display:none}}
-@media (min-width:700px){#top{flex-wrap:nowrap}}   /* one row: the search field gives way first */
+@media (min-width:760px){#top{flex-wrap:nowrap}}   /* one row from the smallest tablet up: the search field gives way first; below that it wraps */
+@media (max-width:840px){#search{padding:6px 12px}#top .nav button{padding:6px 11px}}
 @media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px;gap:8px}#tabs,#notices{padding-left:14px;padding-right:14px}#board{margin:14px 14px 24px}#top .nav{margin-left:4px}#top .nav button{padding:6px 13px}}
 /* ---- seating ---- */
 .seat{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:14px 16px 24px;align-items:start}
@@ -490,7 +491,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   table.grid td{height:44px}
   .gasg select,.gstu td button,.gstu td .nm{min-height:44px}
   #search{min-height:44px}
-  #top .nav button{min-height:44px}#topMenu button{min-height:50px}
+  #top .nav button{min-height:44px}#topMenu button{min-height:50px}th.ahead .ulink{min-height:44px;justify-content:center}
   .more .menu button,.menu.floating button{min-height:48px}
   .nchip{min-height:44px;padding:8px 16px}.ib{min-width:44px;min-height:44px}.mini{min-height:44px}.seg.tiny button{min-width:38px;min-height:38px}.ft{min-width:40px;min-height:40px}.seatOpen{min-height:44px}.notice button{min-height:44px}.seatSide summary{min-height:44px;display:flex;align-items:center}.chip.rel{min-height:44px}
 }
@@ -513,7 +514,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   <div class="more hidden" id="topMore">
     <button class="ibtn" id="btnMore" aria-haspopup="true" aria-expanded="false" aria-label="More" title="Details view, Settings, Guide, backup"><svg viewBox="0 0 24 24" class="dots"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></button>
     <div class="menu hidden" id="topMenu">
-      <button id="btnDetails" aria-pressed="false" title="Show everything: full notices, counts, legends"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Details view<span class="sw" aria-hidden="true"></span></button>
+      <button id="btnDetails" role="menuitemcheckbox" aria-checked="false" title="Show everything: full notices, counts, legends"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Details view<span class="sw" aria-hidden="true"></span></button>
       <button id="btnSettings" title="Settings, roster, threshold"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
       <button id="btnGuide" title="A printable guide: the weekly flow and what the words mean"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16l-8-4-8 4z"/></svg>Guide</button>
       <hr>
@@ -536,7 +537,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
   <div class="how">
     <div class="strip">How it works</div>
     <div class="body">One point per skill, one grade per unit. A skill is at goal when its SmartScore reaches the class goal (60 on-level, 67 accelerated, set from the file name; change it any time). Tap a skill in a unit to skip it for every class of that course. Paste each class's roster from FOCUS once and every Copy comes out in FOCUS order, with blanks where a student is missing from IXL.
-    <div class="fine">Student data never leaves this device. It stays in this browser until you clear it, so on a shared computer use <b>Names</b> off while projecting and clear it when you're done.</div>
+    <div class="fine">Student data never leaves this device. It stays in this browser until you clear it, so on a shared computer hide names (the eye button) while projecting and clear it when you're done.</div>
     </div>
   </div>
 </div>

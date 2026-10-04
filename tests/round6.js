@@ -11,8 +11,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   const K='period-1';
   // 0. Working in, when nobody picked it, comes from Focus's IXL columns (never a review unit) and the import says so
   const wi=await p.evaluate(()=>{ const T=window.__tally; return { cur:T.state.settings.currentUnit, skip:T.state.settings.skipFirst, li:JSON.stringify(T.state.lastImport) }; });
-  check(wi.cur.acc===1 && wi.cur.on>1 && wi.skip.on===1,'accelerated Working in is the unit Focus has an IXL column for; on-level (its only Focus column is the review unit) gets the last unit the course has really started: '+JSON.stringify(wi.cur));
-  check(/Working in set to Unit 1 — the latest unit Focus has an IXL column for/.test(wi.li) && new RegExp('Working in set to Unit '+wi.cur.on+' — the last unit a quarter of the course has started').test(wi.li),'the import result says Working in was set, and on what evidence');
+  check(wi.cur.acc===3 && wi.cur.on===3 && wi.skip.on===1,'Working in is the later of Focus\'s latest IXL column (Unit 1 here) and the unbroken run the course has started (Units 1–3): '+JSON.stringify(wi.cur));
+  check(/Accelerated[^}]*Working in set to Unit 3 — a quarter of the course has started every unit up to it/.test(wi.li) && /On-level[^}]*Working in set to Unit 3 — a quarter of the course has started every unit up to it/.test(wi.li),'the import result says Working in was set, and on what evidence');
   await p.click('#btnHome'); await p.waitForTimeout(300);
   const l0=await p.evaluate(()=>[...document.querySelectorAll('.hatt li:not(.more)')].map(l=>l.textContent.replace(/\s+/g,' ').trim()));
   check(!l0.some(t=>/assigned by guess/.test(t)) && !l0.some(t=>/pick the unit you're working in/.test(t)),'nothing is assigned by guess and nobody is asked to pick a unit: every course has one ('+l0.length+' lines)');

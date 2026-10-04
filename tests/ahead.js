@@ -61,11 +61,33 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   await p.selectOption('#curUnit','3'); await p.waitForTimeout(300);
   // 7. search and hidden names leave the column intact
   await p.fill('#search','zzzz'); await p.waitForTimeout(300); check(/No students match/.test(await p.textContent('#gridwrap tbody')) && await p.evaluate(()=>{ const td=document.querySelector('tr.nomatch td[colspan]'); return +td.getAttribute('colspan')===document.querySelectorAll('#gridwrap thead th').length-1; }),'the "no match" row spans the new column too'); await p.fill('#search',''); await p.waitForTimeout(200);
+  // 7b. one list of later units, however the grid was redrawn; it never stays behind on another screen
+  for (const ch of 'abcdef') { await p.type('#search', ch); await p.waitForTimeout(60); } await p.fill('#search',''); await p.waitForTimeout(200);
+  check(await p.locator('#aheadMenu').count()===1,'typing in the search box leaves exactly one list of later units behind the Ahead button');
+  await p.click('#aheadBtn'); await p.waitForTimeout(150); await p.setViewportSize({width:1200,height:768}); await p.waitForTimeout(250);
+  check(await p.locator('#aheadMenu.hidden').count()===1 && await p.locator('#menuOverlay').count()===0,'resizing the window (rotating the tablet) closes the open list instead of leaving it adrift');
+  await p.setViewportSize({width:1366,height:768}); await p.click('#btnHome'); await p.waitForTimeout(200); check(await p.locator('#aheadMenu').count()===0,'…and nothing is left on the Overview');
+  await p.click(`[data-k="${K}"]`); await p.waitForTimeout(300);
+  // 7c. Details view pushes the grid down: the list still opens inside the window with room to read it
+  await p.evaluate(()=>{ const T=window.__tally; T.state.settings.details=true; T.save(); T.render(); }); await p.waitForTimeout(300);
+  for (const [w,h] of [[1366,768],[1024,768],[911,512]]) { await p.setViewportSize({width:w,height:h}); await p.waitForTimeout(250); await p.evaluate(()=>document.querySelector('#aheadBtn').scrollIntoView({block:'nearest',inline:'nearest'})); await p.click('#aheadBtn'); await p.waitForTimeout(200);
+    const r=await p.evaluate(()=>{ const m=document.querySelector('#aheadMenu').getBoundingClientRect(); return { t:Math.round(m.top), b:Math.round(m.bottom), ok:m.top>=0 && m.bottom<=innerHeight && m.left>=0 && m.right<=innerWidth && m.height>=Math.min(280, innerHeight-40) }; });
+    check(r.ok,'Details view at '+w+'×'+h+': the list is inside the window and tall enough to use ('+r.t+'…'+r.b+')'); await p.keyboard.press('Escape'); await p.waitForTimeout(100); }
+  await p.evaluate(()=>{ const T=window.__tally; T.state.settings.details=false; T.save(); T.render(); }); await p.setViewportSize({width:1366,height:768}); await p.waitForTimeout(200);
+  // 7d. when the grid is only a little too wide, landing on the current unit must not cut a column in half under the names
+  for (const [w,h] of [[911,512],[800,1280],[600,900]]) { await p.setViewportSize({width:w,height:h}); await p.click('#btnHome'); await p.waitForTimeout(150); await p.click(`[data-k="${K}"]`); await p.waitForTimeout(400);
+    const cut=await p.evaluate(()=>{ const g=document.querySelector('#gridwrap'); const edge=document.querySelector('thead th.stu').getBoundingClientRect().right; const ths=[...document.querySelectorAll('thead th.unit, thead th.ahead')].map(th=>th.getBoundingClientRect()); const a=document.querySelector('th.ahead').getBoundingClientRect(); return { scrolled:Math.round(g.scrollLeft), half:ths.some(r=>r.left<edge-1.5 && r.right>edge+1.5), ahead:a.right<=g.getBoundingClientRect().right+1.5 }; });
+    check(!cut.half && cut.ahead,w+' px: no unit column is cut in half beside the names and Ahead is fully in view (scrolled '+cut.scrolled+' px)'); }
+  await p.setViewportSize({width:1366,height:768}); await p.waitForTimeout(200);
   // 8. an older save that ran on the guess rule gets a unit when it opens — and says so
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.currentUnit={ acc:null, on:null }; T.state.settings.curUnitTouched={ acc:true, on:false }; T.save(); });
   await p.reload(); await p.waitForTimeout(900);
   const after=await p.evaluate(()=>({ cur:window.__tally.state.settings.currentUnit, toast:document.querySelector('#toast').textContent }));
-  check(after.cur.acc===1 && after.cur.on>1 && /Accelerated classes: Working in set to Unit 1 — the latest unit Focus has an IXL column for/.test(after.toast) && /On-level classes: Working in set to Unit \d+ — the last unit a quarter of the course has started/.test(after.toast),'a save with no Working in gets one at start-up, with the reason: '+JSON.stringify(after.cur));
+  check(after.cur.acc===3 && after.cur.on===3 && /Accelerated: Working in set to Unit 3 — a quarter of the course has started every unit up to it/.test(after.toast) && /On-level: Working in set to Unit 3/.test(after.toast),'a save with no Working in gets one at start-up, with the reason: '+JSON.stringify(after.cur));
+  await p.click('#btnHome'); await p.waitForTimeout(300);
+  const card=await p.evaluate(()=>{ const d=document.querySelector('.himport'); if (d && d.tagName==='DETAILS') d.open=true; return d ? d.textContent.replace(/\s+/g,' ') : ''; });
+  check(/Accelerated — Working in set to Unit 3/.test(card) && /On-level — Working in set to Unit 3/.test(card),'…and the note stays on the Overview after the toast has gone');
+  await p.click(`[data-k="${K}"]`); await p.waitForTimeout(300);
   await p.reload(); await p.waitForTimeout(700); check(!/Working in/.test(await p.textContent('#toast')),'…once: the next start says nothing');
   // 9. the rule itself (pure): numbered units count up to Working in; a plan without "Unit N" sections falls back to "a quarter has started it"
   const pure=await p.evaluate(()=>{ const T=window.__tally; const mk=(units,scores)=>({ prep:'acc', threshold:60, excluded:{}, studentSkips:{}, students:['A','B','C','D'], skills:units.map((u,i)=>({ unit:u, name:'s'+i, id:'i'+i, lesson:'' })), scores });
@@ -95,7 +117,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   await q.evaluate(()=>{ const g=document.querySelector('#gridwrap'); g.scrollLeft=g.scrollWidth; }); await q.waitForTimeout(150);
   await q.tap('#aheadBtn'); await q.waitForTimeout(250);
   check(await q.evaluate(()=>{ const r=document.querySelector('#aheadMenu').getBoundingClientRect(); return r.left>=0 && r.right<=innerWidth && r.bottom<=innerHeight+1 && r.height>200; }),'tablet upright: the list of later units opens inside the screen');
-  check(await q.evaluate(()=>[...document.querySelectorAll('#aheadMenu button')].every(x=>x.getBoundingClientRect().height>=44)),'…with rows at least 44 px tall');
+  check(await q.evaluate(()=>[...document.querySelectorAll('#aheadMenu button')].every(x=>x.getBoundingClientRect().height>=44) && document.querySelector('#aheadBtn').getBoundingClientRect().height>=44),'…with rows, and the Ahead button itself, at least 44 px tall');
   const firstLater=(await q.textContent('#aheadMenu button:nth-child(1) b')).trim();
   await q.tap('#aheadMenu button:nth-child(1)'); await q.waitForTimeout(400); check((await q.textContent('#bar h2')).trim()===firstLater,'…and a tap opens the unit ('+firstLater+')');
   await tctx.close();

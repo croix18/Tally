@@ -152,6 +152,9 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 4 Oct: the Ahead column shipped (its own commit). What the reviewer's fuller version asked for and was NOT done:
   moving "Assigned / Not assigned" into a unit ⋯ menu, and removing the "N unassigned unit" toggle and Settings'
   "Units not assigned at the start".
+- 4 Oct: an independent verifier went over the import, header and Ahead commits (`review/verify-4oct.md`): 1 P0
+  (an older save could lose a copied unit when Working in was set at start-up), 4 P1, 8 P2. All fixed in the next
+  commit except two small focus/switch items listed there; `tests/working-in.js` holds the regressions.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles and Back-button handling. Build 3 candidates and "Croix's calls" wait for him.
 
 ## Handoff for the next session (any model)

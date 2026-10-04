@@ -23,7 +23,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   check(/Imported 1 file/.test(await p.textContent('#toast')) && /Focus gradebook/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'gradebook toast and a stored import result');
   // html-as-xls and tab-as-xls -> same parse; the same students again, so both are placed on 7T3A without the picker
   await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus_html.xls')]); await p.waitForTimeout(500);
-  check(await p.locator('.picks [data-sec]').count()===0 && /gb_focus_html/.test(await p.evaluate(()=>window.__tally.state.sections['1205050-7T3A'].grades.file)),'the same class\'s gradebook again: placed by its names, no picker');
+  check(await p.locator('.picks [data-sec]').count()===0 && /gb_focus_html/.test(await p.evaluate(()=>window.__tally.state.sections['1205050-7T3A'].grades.file)),'the same class\'s gradebook again: placed by its students, no picker');
   await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus_tab.xls')]); await p.waitForTimeout(500);
   const g2=await p.evaluate(()=>{ const g=window.__tally.state.sections['1205050-7T3A'].grades; return g.assignments.length+' '+g.file; }); check(/^5 gb_focus_tab/.test(g2),'html and tab .xls both parse: '+g2);
   // binary xls -> clear error

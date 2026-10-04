@@ -45,7 +45,7 @@ per-section-file era and many items in them are now done).
   students in…", "another file in this drop already went to…"). A file whose students are in no class (fewer than 3
   or under 15 %) goes straight to "New class" — period and course can't be read from a Focus file, and both course
   exports list every student, so the course can't be read from IXL either — with "It belongs to a class I already
-  have" as the way back. The import card says "placed by its names (23 of 23)". There is no override when a file is
+  have" as the way back. The import card says "placed by its students (23 of 23)". There is no override when a file is
   plainly one class; if that is ever wrong, the fix is to make the dialog reachable from the import card.
   `tests/auto-place.js`.
 - **The header is three places and one action** (4 Oct, Croix chose it from a mockup — `review/mockups/`). `#nav` holds
@@ -70,12 +70,25 @@ per-section-file era and many items in them are now done).
   points, copying, the Race and the Focus check are untouched. **"Just Unit N" is gone**; instead the grid lands
   scrolled to the current unit and Ahead (`landOnCurrent`). **The 25 % rule is gone for numbered units**: it used to
   assign whatever a quarter of the class had started when no unit was picked, which gave scattered units (2, 3, 8
-  and 10). Now a course always has a "Working in": `defaultWorkingIn()` sets it at import *and at start-up* (older
-  saves) to the latest unit Focus has an IXL column for, else the last unit of the unbroken run a quarter of the
-  course has started, else the first counted unit — and says which (`WI_WHY`). A pick is never changed, and the
-  selector has no "— pick —" once set. Only a skill plan whose sections aren't "Unit N" keeps the old rule
-  (`startedShare`), because it can't be put in order. `settings.onlyCurrent` and `curUnitTouched` are still read by
-  `migrate()` but no longer used. `tests/ahead.js`.
+  and 10). Now a course always has a "Working in". `defaultWorkingIn()` runs at import, at start-up (older saves),
+  after a backup is loaded and when Settings is saved, and:
+  - with no unit yet, takes the **later** of the latest unit Focus has an IXL column for and the last unit of the
+    unbroken run a quarter of the course has started (Focus lags: its column appears when the unit is graded), else
+    the first counted unit;
+  - moves a unit **it** set forward when Focus gets an IXL column for a later unit; never moves a unit Croix picked
+    (`settings.curUnitTouched`); re-seats one that Settings' review-unit count has swallowed;
+  - marks a unit that was already **copied to Focus** but lies past the result as Assigned, so an older save never
+    silently drops a copied unit (the verifier's P0 — `review/verify-4oct.md`);
+  - is reported by `noteWorkingIn()` as a line on the Overview's import card ("Working in set to / moved from … —
+    why"), because a toast is gone in seconds and never shows when Tally reopens on the Board.
+  The selector has no "— pick —" once set. The unit toggle (Assigned / Not assigned) deletes its mark when it returns
+  to what the course would do anyway, so a later unit toggled twice goes back under Ahead. Only a skill plan whose
+  sections aren't "Unit N" keeps the old rule (`startedShare`), because it can't be put in order.
+  `settings.onlyCurrent` is still read by `migrate()` but no longer used. `tests/ahead.js`, `tests/working-in.js`.
+- **Menus** (`wireMenu(button, menu, place)`): one open at a time (`closeOpenMenu`), closed by any `render()` so a
+  key listener or overlay never outlives its screen; `role="menu"`, arrows / Home / End / Escape; a floating menu
+  (`place`) closes on resize or page scroll; `keepInside()` keeps the header's menu in the window when the header
+  wraps. The header is one row from 760 px.
 - **Skill skips are course-wide** (`state.skips[prep]`, shared as `sec.excluded` by every class of the
   course). Per-student skips (tap a cell) stay per student.
 - **Race ranks on movement**: share of the class that reached ≥1 more skill since the league's shared

@@ -36,7 +36,7 @@ const { chromium, fs, path, exe, check, done, dense, APP, pick } = require('./li
   const realIxl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p3.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv'), path.resolve('fixtures',realIxl), path.resolve('fixtures', fs.readdirSync('fixtures').find(f=>/^f1473588.*7T3A/.test(f)))]); await p3.waitForTimeout(900);
   check(await p3.locator('.picks [data-sec]').count()===0,'the gradebook was first in the drop and still found its class by its names — no picker');
-  check(/1st Period[^}]*placed by its names \(16 of 23\)/.test(await p3.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'the import result names the class and the evidence');
+  check(/1st Period[^}]*placed by its students \(16 of 23\)/.test(await p3.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'the import result names the class and the evidence');
   check(await p3.evaluate(()=>{const s=window.__tally.state.sections['1205050-7T1A']; return !!(s.grades && s.grades.assignments.length===13);}),'gradebook attached to the class whose IXL names match');
   await p3.close();
   // a class with no pasted roster gets one from the gradebook (Focus order, with IDs); a differing pasted roster gets an offer

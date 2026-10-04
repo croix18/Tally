@@ -18,7 +18,7 @@ const { chromium, fs, path, exe, check, done, tmp, unskip, APP, pick } = require
   check(/7 IXL students not on the roster — left out/.test(ct),'copy toast counts the students left out: '+ct.replace(/\s+/g,' ').slice(0,160));
   // Focus gradebook: the class has a pasted roster, the file is those students — placed without a question
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500);
-  check(await p.locator('.picks [data-sec]').count()===0 && /placed by its names/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'the Focus export goes to its class by its names — no picker');
+  check(await p.locator('.picks [data-sec]').count()===0 && /placed by its students/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'the Focus export goes to its class by its names — no picker');
   const g=await p.evaluate(()=>{const s=Object.values(window.__tally.state.sections)[0].grades; return {n:s.students.length, a:s.assignments.map(a=>[a.name,a.max,a.category,a.missing,a.excused,a.unread])};});
   check(g.n===23 && g.a.length===13,'Focus export: 23 students, 13 assignments');
   check(JSON.stringify(g.a.find(a=>a[0]==='Unit 1 Assessment'))==='["Unit 1 Assessment",21,"Assessments",0,1,0]','Unit 1 Assessment: 21 points, Assessments, 1 excused (NG), nothing unread');

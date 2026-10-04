@@ -9,7 +9,7 @@ IXL Score Grid → one grade per unit in Focus. A single HTML file: no server, n
 
 ## Command center
 
-Tally opens on an **Overview**: one card per class (IXL work at goal with change since the last import, Focus average, missing work, sliding students, Focus check, letter counts), a *needs attention* list that jumps to the class, and charts across classes — IXL work at goal, Focus class average by import, letter grades, missing assignments by import. The grid is **calm by default**: notices fold into one status line, secondary controls sit behind a ⋯ menu, and a **Details** button in the header brings everything back. The Data Lab draws each class as a **box plot, dot plot, histogram, stem-and-leaf, bar graph, circle graph, or line graph** (class average by import, all classes on one chart). See `COMMAND_CENTER.md`.
+Tally opens on an **Overview**: one card per class (IXL work at goal with change since the last import, Focus average, missing work, sliding students, Focus check, letter counts), a *needs attention* list that jumps to the class, and charts across classes — IXL work at goal, Focus class average by import, letter grades, missing assignments by import. The grid is **calm by default**: notices fold into one status line, secondary controls sit behind a ⋯ menu, and **Details view** in the header's ⋯ menu brings everything back. The Data Lab draws each class as a **box plot, dot plot, histogram, stem-and-leaf, bar graph, circle graph, or line graph** (class average by import, all classes on one chart). See `COMMAND_CENTER.md`.
 
 ## Two ways to get classes
 
