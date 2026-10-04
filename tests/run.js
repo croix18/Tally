@@ -24,10 +24,11 @@ for (const f of suites) {
   if (status === 'FAIL') failed++;
   rows.push({ f, status, pass, fail, ms: Date.now() - t0 });
   console.log(`${status.padEnd(4)} ${f.padEnd(30)} ${String(pass).padStart(3)} pass ${String(fail).padStart(2)} fail  ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-  if (status === 'FAIL') console.log(out.split('\n').filter(l => /^FAIL |Error|error/.test(l) || crashed).join('\n').slice(0, 4000));
+  if (status === 'FAIL') console.log((crashed ? out.split('\n').filter(l => !/^PASS /.test(l)) : out.split('\n').filter(l => /^FAIL |Error|error/.test(l))).join('\n').slice(0, 4000));
   else if (skipped) console.log('     ' + out.match(/^SKIP .*/m)[0]);
 }
 const tp = rows.reduce((a, r) => a + r.pass, 0), tf = rows.reduce((a, r) => a + r.fail, 0);
-console.log(`\n${rows.length} suites · ${tp} passed · ${tf} failed · ${rows.filter(r => r.status === 'skip').length} skipped`);
+const crashedN = rows.filter(r => r.status === 'FAIL' && !r.fail).length;   // a suite that died (timeout, exception) fails no check — say so, or the summary reads "0 failed"
+console.log(`\n${rows.length} suites · ${tp} passed · ${tf} failed${crashedN ? ` · ${crashedN} suite${crashedN === 1 ? '' : 's'} crashed` : ''} · ${rows.filter(r => r.status === 'skip').length} skipped`);
 
 process.exit(failed ? 1 : 0);

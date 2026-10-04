@@ -60,6 +60,18 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   await pl.fill('#search',''); await pl.click('[data-k="period-1"]'); await pl.waitForTimeout(300); await pl.click('th.unit .ulink'); await pl.waitForTimeout(400);
   const copy=await pl.evaluate(()=>{ const c=document.querySelector('#bar .pill.onbar'); if (!c) return null; const cs=getComputedStyle(c); return { fg:cs.color, bg:cs.backgroundColor }; });
   check(copy && ratio(copy.fg,copy.bg)>=4.5,'the unit view\'s on-bar pill is readable: '+JSON.stringify(copy));
+  // 2b. every character on screen comes from the embedded font (or is a drawn icon): a missing glyph falls back to
+  // whatever the device has, so the same check mark is three different shapes on three machines
+  const fallback=()=>pl.evaluate(()=>{ const c=document.createElement('canvas').getContext('2d'); const w=(ch,fb)=>{ c.font='700 40px "DM Sans",'+fb; return c.measureText(ch).width; }; const bad=new Set(); const tw=document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
+    while((n=tw.nextNode())) { const el=n.parentElement; if (!el || el.closest('script,style,title') || !(el.offsetParent || el.closest('svg'))) continue; for (const ch of n.nodeValue) { if (ch.charCodeAt(0)<128 || /\s/.test(ch)) continue; if (Math.abs(w(ch,'monospace')-w(ch,'serif'))>0.5) bad.add(ch); } } return [...bad].join(' '); });
+  const seen=[]; const look=async label=>{ const b=await fallback(); if (b) seen.push(label+': '+b); };
+  await pl.click('#back'); await pl.waitForTimeout(200); await look('grid'); await pl.click('#nToggle').catch(()=>{}); await pl.waitForTimeout(200); await look('notices');
+  await pl.click('th.unit .ulink'); await pl.waitForTimeout(300); await look('unit'); await pl.click('#back'); await pl.waitForTimeout(200);
+  await pl.click('#openGrades'); await pl.waitForTimeout(300); await look('grades'); await pl.locator('.gstu tr[data-stu]').first().click(); await pl.waitForTimeout(400); await look('student page'); await pl.click('#back'); await pl.waitForTimeout(200); await pl.click('#back'); await pl.waitForTimeout(200);
+  await pl.click('#openSeating'); await pl.waitForTimeout(400); await look('seating'); await pl.click('#back'); await pl.waitForTimeout(200);
+  await pl.click('#btnHome'); await pl.waitForTimeout(300); await look('overview'); await pl.click('#btnSettings'); await pl.waitForTimeout(300); await look('settings'); await pl.keyboard.press('Escape'); await pl.waitForTimeout(200);
+  await pl.click('[data-k="period-1"]'); await pl.waitForTimeout(300); await pl.click('th.unit .ulink'); await pl.waitForTimeout(300);
+  check(seen.length===0,'no character on any main screen falls back to a device font'+(seen.length?': '+seen.join(' | '):''));
   // 3. Race: keyboard exit works, chip contrast
   await pl.click('#btnLb'); await pl.waitForTimeout(500);
   const lines=await pl.evaluate(()=>[...document.querySelectorAll('.lbLine,.lbDone,.lbPct small')].map(c=>getComputedStyle(c).color));

@@ -10,6 +10,25 @@ const coarse = () => window.matchMedia && window.matchMedia('(hover: none), (poi
 function cleanOverrides(o) { const out = {}; if (o && typeof o === 'object') for (const u of Object.keys(o)) { if (!SAFE_KEY(u) || !o[u] || typeof o[u] !== 'object') continue; const m = {}; for (const d of Object.keys(o[u])) { const v = o[u][d]; if (!SAFE_KEY(d) || !v || typeof v !== 'object') continue; m[d] = { focus: v.focus == null ? null : +v.focus, tally: v.tally == null ? null : +v.tally, at: typeof v.at === 'string' ? v.at.slice(0, 30) : '', why: typeof v.why === 'string' ? v.why.slice(0, 200) : '' }; } if (Object.keys(m).length) out[u] = m; } return out; }
 const overrideFor = (sec, unitName, display) => (sec.overrides && sec.overrides[unitName] && sec.overrides[unitName][display]) || null;
 const SAFE_KEY = k => typeof k === 'string' && !['__proto__', 'constructor', 'prototype'].includes(k);   // object keys that come from files
+// Icons: one small stroked family, inline, so no device substitutes its own check mark, warning sign or padlock for a
+// character the embedded font doesn't have. ico(name[, label]) is self-contained (works in the popup print pages too).
+const ICO = {
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  warn: '<path d="M12 4L2.8 20h18.4L12 4z"/><path d="M12 10v4.5M12 17.5v.1"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  unlock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.6-1.8"/>',
+  trash: '<path d="M4 7h16M10 7V4.5h4V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>',
+  more: '<circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
+  undo: '<path d="M9 6L4 11l5 5"/><path d="M4 11h10a5 5 0 0 1 0 10h-3"/>',
+  rotl: '<path d="M4 5v5h5"/><path d="M5.2 10A8 8 0 1 1 7 17.6"/>',
+  rotr: '<path d="M20 5v5h-5"/><path d="M18.8 10A8 8 0 1 0 17 17.6"/>',
+  dup: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  left: '<path d="M15.5 5l-8 7 8 7z" fill="currentColor"/>', right: '<path d="M8.5 5l8 7-8 7z" fill="currentColor"/>',
+  up: '<path d="M5 15.5l7-8 7 8z" fill="currentColor"/>', down: '<path d="M5 8.5l7 8 7-8z" fill="currentColor"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+};
+const ico = (name, label) => `<svg class="ico" viewBox="0 0 24 24" width="1.05em" height="1.05em" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.16em;flex:none" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}>${ICO[name] || ''}</svg>`;
 const plural = (n, w) => n + ' ' + (n === 1 ? w : w + (/s$/.test(w) ? 'es' : 's'));
 
 let state = null;
@@ -745,13 +764,13 @@ const LAB_ONLY_CSS = `
 .labStats div.wide{grid-column:span 3;align-items:flex-start;padding-left:10px;text-align:left}
 .labStats div.wide b{font-size:calc(var(--bu)*.95);line-height:1.3}
 .labStats span{font-size:calc(var(--bu)*.8);font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
-.labStats b{font-weight:900;font-size:calc(var(--bu)*1.3);font-variant-numeric:tabular-nums}
+.labStats b{font-weight:900;font-size:calc(var(--bu)*1.3)}
 .labHint{font-weight:700;color:var(--teal);font-size:calc(var(--bu)*1.3);padding:4px 6px}
 .labValues{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-start;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labHalf{display:flex;flex-direction:column;gap:4px}
 .labHalf small{font-size:calc(var(--bu)*1);font-weight:700;color:var(--teal);letter-spacing:.02em}
 .labChips{display:flex;flex-wrap:wrap;gap:4px}
-.labChips span{min-width:2.2em;padding:.2em .5em;border-radius:8px;background:var(--cream);border:2px solid var(--grid);font-weight:700;font-size:calc(var(--bu)*1.3);text-align:center;font-variant-numeric:tabular-nums}
+.labChips span{min-width:2.2em;padding:.2em .5em;border-radius:8px;background:var(--cream);border:2px solid var(--grid);font-weight:700;font-size:calc(var(--bu)*1.3);text-align:center}
 .labChips span.q{background:var(--paleturq);border-color:var(--turq);font-weight:900}
 .labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:900}
 .labChips span.m.gap{background:var(--white);color:var(--navy);border-style:dashed}
@@ -1082,22 +1101,22 @@ function renderNotices() {
   const rs = rosterState(s); const H = state.settings.hideNames;
   const list = arr => H ? '' : ': ' + esc(arr.map(r => r.display).join('; '));
   const ro = rows.filter(r => r.status === 'rosterOnly'), am = rows.filter(r => r.status === 'ambiguous'), io = rows.filter(r => r.status === 'ixlOnly'), loose = rows.filter(r => r.tier === 'loose');
-  if (s.placeholder) el.innerHTML += `<div class="notice"><span>⚠︎</span><span>This export had <b>no student names</b> in its header row, so Copy is disabled. Re-export from IXL with names included.</span></div>`;
-  else if (s.allBlank) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>No scores were found in this export</b> — every cell is empty. If IXL shows scores for this class, the file may be in a format Tally doesn't recognize; try the .csv export.</span></div>`;
-  if (rs.hasText && !rs.count) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>The pasted roster couldn't be read</b> — no names found. Rows are in IXL order, which is probably not FOCUS order.</span><button data-open="roster">Fix roster</button></div>`;
-  else if (!rs.count && s.skipRoster) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>No roster.</b> Rows are sorted by last name; Copy includes names so you can check the order.</span><button data-open="roster">Paste roster</button></div>`;
-  if (s.pool && !s.awaitingPool && !rosterState(s).count) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>No roster, so no students.</b> Import this period's Focus gradebook or paste the roster in Settings; Tally picks the class out of the course-wide IXL export by name.</span><button data-import="1">Import</button></div>`;
-  if (s.pool && s.awaitingPool) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>Waiting for the ${s.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export.</b> This class was made from its Focus gradebook; import the course-wide IXL Score Grid and its ${plural(parseRosterText(s.roster).length, 'student')} will be matched from it.</span><button data-import="1">Import</button></div>`;
+  if (s.placeholder) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span>This export had <b>no student names</b> in its header row, so Copy is disabled. Re-export from IXL with names included.</span></div>`;
+  else if (s.allBlank) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>No scores were found in this export</b> — every cell is empty. If IXL shows scores for this class, the file may be in a format Tally doesn't recognize; try the .csv export.</span></div>`;
+  if (rs.hasText && !rs.count) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>The pasted roster couldn't be read</b> — no names found. Rows are in IXL order, which is probably not FOCUS order.</span><button data-open="roster">Fix roster</button></div>`;
+  else if (!rs.count && s.skipRoster) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>No roster.</b> Rows are sorted by last name; Copy includes names so you can check the order.</span><button data-open="roster">Paste roster</button></div>`;
+  if (s.pool && !s.awaitingPool && !rosterState(s).count) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>No roster, so no students.</b> Import this period's Focus gradebook or paste the roster in Settings; Tally picks the class out of the course-wide IXL export by name.</span><button data-import="1">Import</button></div>`;
+  if (s.pool && s.awaitingPool) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>Waiting for the ${s.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export.</b> This class was made from its Focus gradebook; import the course-wide IXL Score Grid and its ${plural(parseRosterText(s.roster).length, 'student')} will be matched from it.</span><button data-import="1">Import</button></div>`;
   const rvg = rosterVsGradebook(s);
-  if (rvg) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>The Focus gradebook's class list differs from the pasted roster</b> — ${rvg.added.length ? `${plural(rvg.added.length, 'student')} in the gradebook but not on the roster${list(rvg.added.map(d => ({ display: d })))}` : ''}${rvg.added.length && rvg.gone.length ? '; ' : ''}${rvg.gone.length ? `${plural(rvg.gone.length, 'student')} on the roster but not in the gradebook${list(rvg.gone.map(d => ({ display: d })))}` : ''}.</span><button data-gbroster="1">Use the gradebook's list</button></div>`;
-  if ((ro.length || am.length || io.length) && !(s.pool && s.awaitingPool)) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>Roster mismatch</b> — ${ro.length ? `${ro.length} on the roster but not in IXL${list(ro)}. ` : ''}${am.length ? `${am.length} with two IXL matches${list(am)}. ` : ''}${io.length ? `${plural(io.length, 'IXL account')} not on the roster${list(io)}. ` : ''}${io.length ? 'IXL students not on the roster are left out of copies — tap their flag: re-paste the roster for a new student, skip for one who left. ' : ''}Tap a flag to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.</span></div>`;
+  if (rvg) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>The Focus gradebook's class list differs from the pasted roster</b> — ${rvg.added.length ? `${plural(rvg.added.length, 'student')} in the gradebook but not on the roster${list(rvg.added.map(d => ({ display: d })))}` : ''}${rvg.added.length && rvg.gone.length ? '; ' : ''}${rvg.gone.length ? `${plural(rvg.gone.length, 'student')} on the roster but not in the gradebook${list(rvg.gone.map(d => ({ display: d })))}` : ''}.</span><button data-gbroster="1">Use the gradebook's list</button></div>`;
+  if ((ro.length || am.length || io.length) && !(s.pool && s.awaitingPool)) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>Roster mismatch</b> — ${ro.length ? `${ro.length} on the roster but not in IXL${list(ro)}. ` : ''}${am.length ? `${am.length} with two IXL matches${list(am)}. ` : ''}${io.length ? `${plural(io.length, 'IXL account')} not on the roster${list(io)}. ` : ''}${io.length ? 'IXL students not on the roster are left out of copies — tap their flag: re-paste the roster for a new student, skip for one who left. ' : ''}Tap a flag to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.</span></div>`;
   const od = overdue(s); const gbOd = s.grades && state.settings.remindDays && ageDays(s.grades.importedAt) > state.settings.remindDays ? ageDays(s.grades.importedAt) : null;
-  if (od || gbOd) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span>${od ? `<b>This IXL export is ${plural(od, 'day')} old</b> (${fmtDate(dataDate(s))}). ` : ''}${gbOd ? `<b>The Focus gradebook is ${plural(gbOd, 'day')} old</b> (${fmtDate(s.grades.importedAt.slice(0, 10))}). ` : ''}You asked to be reminded after ${state.settings.remindDays} days — export ${od && gbOd ? 'fresh copies' : 'a fresh copy'} and import ${od && gbOd ? 'them' : 'it'}.</span><button data-import="1">Import</button></div>`;
-  if (rs.count && s.rosterAt && s.date && s.rosterAt.slice(0, 10) < s.date && (Date.now() - new Date(s.rosterAt)) > 21 * 86400000) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>Roster pasted ${fmtDate(s.rosterAt.slice(0, 10))}</b> — older than this export. If anyone enrolled or left since, re-paste it before you copy.</span><button data-open="roster">Re-paste</button></div>`;
+  if (od || gbOd) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span>${od ? `<b>This IXL export is ${plural(od, 'day')} old</b> (${fmtDate(dataDate(s))}). ` : ''}${gbOd ? `<b>The Focus gradebook is ${plural(gbOd, 'day')} old</b> (${fmtDate(s.grades.importedAt.slice(0, 10))}). ` : ''}You asked to be reminded after ${state.settings.remindDays} days — export ${od && gbOd ? 'fresh copies' : 'a fresh copy'} and import ${od && gbOd ? 'them' : 'it'}.</span><button data-import="1">Import</button></div>`;
+  if (rs.count && s.rosterAt && s.date && s.rosterAt.slice(0, 10) < s.date && (Date.now() - new Date(s.rosterAt)) > 21 * 86400000) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>Roster pasted ${fmtDate(s.rosterAt.slice(0, 10))}</b> — older than this export. If anyone enrolled or left since, re-paste it before you copy.</span><button data-open="roster">Re-paste</button></div>`;
   if (s.grades) { const checks = reconcile(s); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); const stale = checks.filter(c => c.counts.stale > 0 && !off.includes(c));
-    if (off.length) el.innerHTML += `<div class="notice"><span>⚠︎</span><span><b>Focus doesn't match Tally</b> — ${off.map(c => `${esc(c.unit.short)}: ${!c.maxOK ? 'points possible differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(' · ')}. Tap the unit's Focus badge to see who.</span></div>`;
-    else if (checks.length && !stale.length) el.innerHTML += `<div class="notice soft"><span>✓</span><span><b>Focus matches Tally</b> for ${checks.map(c => esc(c.unit.short)).join(', ')} (gradebook from ${fmtDate(s.grades.importedAt.slice(0, 10))}).</span></div>`;
-    else if (stale.length) el.innerHTML += `<div class="notice info"><span>ⓘ</span><span><b>Focus matches what you copied</b>, but ${stale.map(c => `${esc(c.unit.short)}: ${plural(c.counts.stale, 'student')}`).join(' · ')} have moved up since. Copy again when you're ready.</span></div>`; }
+    if (off.length) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>Focus doesn't match Tally</b> — ${off.map(c => `${esc(c.unit.short)}: ${!c.maxOK ? 'points possible differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(' · ')}. Tap the unit's Focus badge to see who.</span></div>`;
+    else if (checks.length && !stale.length) el.innerHTML += `<div class="notice soft"><span>${ico('check')}</span><span><b>Focus matches Tally</b> for ${checks.map(c => esc(c.unit.short)).join(', ')} (gradebook from ${fmtDate(s.grades.importedAt.slice(0, 10))}).</span></div>`;
+    else if (stale.length) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>Focus matches what you copied</b>, but ${stale.map(c => `${esc(c.unit.short)}: ${plural(c.counts.stale, 'student')}`).join(' · ')} have moved up since. Copy again when you're ready.</span></div>`; }
   if (loose.length) el.innerHTML += `<div class="notice soft"><span>≈</span><span><b>${plural(loose.length, 'name')} matched loosely</b> (nickname or extra name)${H ? '' : ': ' + esc(loose.map(r => r.display + ' → ' + r.ixlName).join('; '))}. Check once; tap the name to change it.</span></div>`;
   noticeCount = { warn: 0, info: 0 };
   if (!state.settings.details) {   // calm: no band — the class bar carries a small "N to fix" chip that opens these (renderBar)
@@ -1127,7 +1146,7 @@ function renderBar() {
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
       <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are listed as upcoming">Working in <select id="curUnit"><option value="">— pick —</option>${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
-      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More">⋯</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid && !state.settings.onlyCurrent[s.prep] ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}<button id="mDetails">${state.settings.details ? 'Calm view' : 'Details view'}</button></div></div>
+      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid && !state.settings.onlyCurrent[s.prep] ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}<button id="mDetails">${state.settings.details ? 'Calm view' : 'Details view'}</button></div></div>
       <div class="legend det"><span>Tap a unit for skill scores</span></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
@@ -1220,7 +1239,7 @@ function renderGrid() {
     // One slot per line so every title in the header row sits on the same baseline: title, one-line subtitle, one status
     // (the Focus badge, else when it was copied, else a closed-quarter / now / upcoming tag), then Copy for assigned units.
     shownUnits.forEach(u => { const ui = units.indexOf(u); const uq = unitClosed(s, u) ? unitQuarter(s, u) : null; const rc = checks.find(x => x.unit.name === u.name); const bad = rc ? rc.counts.differ + rc.counts.missing + (rc.maxOK ? 0 : 1) : 0;
-      const stat = rc ? `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ✓ · ${rc.counts.accepted} kept` : 'Focus ✓'}</button>`
+      const stat = rc ? `<button class="fcheck ${bad ? 'bad' : rc.counts.stale ? 'stale' : 'ok'}" data-fc="${esc(u.name)}" title="Compare with the Focus column">${!rc.maxOK ? 'Focus: points differ' : bad ? `Focus: ${plural(rc.counts.differ + rc.counts.missing, 'student')} off` : rc.counts.stale ? `Focus: ${rc.counts.stale} up since copy` : rc.counts.accepted ? `Focus ${ico('check', 'matches')} · ${rc.counts.accepted} kept` : `Focus ${ico('check', 'matches')}`}</button>`
         : uq ? `<span class="qtag" title="Quarter ${uq} is closed: this unit is still tracked but raises no alerts">Q${uq} closed</span>`
         : s.receipts[u.name] ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>`
         : u.upcoming ? '<span class="utag">upcoming</span>' : u.current ? '<span class="utag now">now</span>' : '';
@@ -1490,7 +1509,7 @@ dd{margin:0}
 <li><b>Import</b> all of them at once (button or drag onto the page). Newer exports replace older; best scores are kept.</li>
 <li>Look at the <b>notices</b> under the class chips: roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}).</li>
 <li>Tap <b>Copy</b> on a unit → paste into that unit's Focus column (rows are already in Focus order). The unit header then shows <i>copied ‹date›</i>.</li>
-<li>After the next Focus export, each unit's <b>Focus badge</b> says ✓, "N up since copy", or "N off" — tap it to see who, and <b>Copy corrections</b>.</li>
+<li>After the next Focus export, each unit's <b>Focus badge</b> says ${ico('check', 'a check')}, "N up since copy", or "N off" — tap it to see who, and <b>Copy corrections</b>.</li>
 <li><b>Save a backup</b> to your school Drive (Overview → <i>Back up</i>, or Settings). It is how the laptop and the tablet stay in step, and the only copy if this browser's storage is cleared.</li>
 </ol>
 <h2>Once per class</h2>
@@ -1513,7 +1532,7 @@ dd{margin:0}
 <dt>Assigned</dt><dd>Tap a unit's Assigned button to override the rule for that unit either way. Units you unassign leave the grid; the unassigned-units button brings them back.</dd>
 <dt>Best</dt><dd>A score from an earlier export that was higher than today's. Points once earned are kept.</dd>
 <dt>Copied</dt><dd>A receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</dd>
-<dt>Focus ✓ / off</dt><dd>Whether the Focus column matches what Tally counts today.</dd>
+<dt>Focus ${ico('check', 'check')} / off</dt><dd>Whether the Focus column matches what Tally counts today.</dd>
 <dt>Seating</dt><dd>Draw the room once (templates, drag, rotate — shared by every class), then generate seating for a class: the solver weighs talkers, front-seat and near-teacher flags, keep-apart (hard) and seat-near links, and each student's standing — Priorities → Place by chooses the blend, FAST only, the Focus grade, assessments only, or IXL progress. Tap a student to see why they're there, lock them, or tap a second desk to swap — every move reports what it fixes and breaks. Print a teacher copy or a student/sub copy.</dd>
 <dt>Still owed</dt><dd>Printable black-and-white list of what each student is missing, by unit.</dd>
 <dt>Race</dt><dd>Student screen: classes ranked by the share of students who reached at least one more skill since last week (average gain breaks ties), so a class that starts behind can still win and one student can't swing it. The bar shows assigned work at goal. Names never show. Hold the exit button to leave.</dd>
@@ -1623,7 +1642,7 @@ function openFocusCheck(sec, unitName) {
       ${bad.length ? `<table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th></th><th></th></tr></thead><tbody>${bad.map(line).join('')}</tbody></table>` : `<p class="ok">Every student matches${kept.length ? ' or is kept on purpose' : ''}. Nothing to fix.</p>`}
       <div id="keepForm" class="keepForm hidden"></div>
       ${kept.length ? `<details class="kept"><summary>${plural(kept.length, 'difference')} kept on purpose</summary><table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th>Why</th><th></th></tr></thead><tbody>${kept.map(r => `<tr class="accepted"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${fmtN(r.tally)}</td><td><small>${esc(fmtDate((r.override.at || '').slice(0, 10)))}${r.override.why ? ' · ' + esc(r.override.why) : ''}</small></td><td><button class="pill pale small" data-unkeep="${esc(r.display)}">Flag again</button></td></tr>`).join('')}</tbody></table><p class="ghint">Kept rows copy Focus's number, not Tally's, when you copy the column. If Focus changes for that student, the row is flagged again.</p></details>` : ''}
-      <div class="rp-actions">${bad.length ? `<button class="pill" id="copyFix">Copy corrections (${state.settings.copyMode === 'ids' ? 'ID' : 'name'} ⇥ Tally points)</button>` : ''}<button class="pill pale" id="copyCol">Copy the whole column</button><button class="pill pale" id="mCancel">Close</button></div>
+      <div class="rp-actions">${bad.length ? `<button class="pill" id="copyFix">Copy corrections (${state.settings.copyMode === 'ids' ? 'ID' : 'name'} + Tally points)</button>` : ''}<button class="pill pale" id="copyCol">Copy the whole column</button><button class="pill pale" id="mCancel">Close</button></div>
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
@@ -1699,7 +1718,7 @@ function openSettings() {
       </section>
       <section>
         <h3>Copy</h3>
-        <div class="seg" id="copyMode">${[['points', 'Points only'], ['names', 'Name ⇥ points'], ['ids', 'ID ⇥ points']].map(([k, n]) => `<button data-cm="${k}" class="${state.settings.copyMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+        <div class="seg" id="copyMode">${[['points', 'Points only'], ['names', 'Name + points'], ['ids', 'ID + points']].map(([k, n]) => `<button data-cm="${k}" class="${state.settings.copyMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         <p>Roster students missing from IXL get a blank line so the column stays aligned. Students on a modified list get their own "out of" after the points.</p>
         <h3 class="mt">Our own data (Data Lab)</h3>
         <p>Numbers the classes collected themselves — minutes to school, letters in a first name. One list per class; no names.</p>

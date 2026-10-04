@@ -39,7 +39,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   check(/Matches the Focus Grade column for all 23 students/.test(txt),'overview states the formula matches Focus');
   check(await p.locator('.gasg tbody tr').count()===13 && await p.locator('.gstu tbody tr').count()===23,'assignments and students tables');
   check(/r = 0\.\d\d/.test(txt) && await p.locator('.scatter .pt').count()===16,'IXL vs assessments scatter with r, IXL columns excluded');
-  check((await p.locator('.gasg small').allTextContents()).every(t=>/✓/.test(t)),'every assignment shows the proved tick');
+  check(await p.locator('.gasg small').count()>0 && await p.locator('.gasg small').count()===await p.locator('.gasg small svg.ico[aria-label="confirmed"]').count(),'every assignment shows the proved tick');
   // 4. move a category → user, Focus disagrees, not overridden by a re-fit
   await p.selectOption('.gasg select[data-cat="Unit 1 Notebook Check"]','Classwork'); await p.waitForTimeout(500);
   const mv=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const g=T.gradingFor(s.prep); const fit=T.fitCategories(s); return {how:g.how['Unit 1 Notebook Check'], map:g.map['Unit 1 Notebook Check'], exact:fit.exact, dis:fit.disagree['Unit 1 Notebook Check']}; }, K);

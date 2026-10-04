@@ -196,7 +196,9 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const similarAvg=await partnerDiffs();
   check(tutorAvg!=null && similarAvg!=null && tutorAvg>similarAvg+20,'tutor pairs sit far-apart standings together; similar level sits close ones: avg gap '+Math.round(tutorAvg)+' vs '+Math.round(similarAvg));
   check(/partners: Similar level/.test(await p.textContent('.seatLegend')),'legend names the partner mode');
-  await p.locator('.cdesk').first().click(); await p.waitForTimeout(300); check(/Similar level: standing/.test(await p.textContent('.seatWhy')),'why-here explains the pairing in the chosen mode');
+  // an occupied desk with a partner: the solver sometimes leaves the first desk empty, and an empty desk has no "why"
+  let why=''; const occ=p.locator('.cdesk:not([aria-label$="(empty)"])'); for (let k=0;k<await occ.count() && !/Similar level: standing/.test(why);k++) { await occ.nth(k).click(); await p.waitForTimeout(250); why=await p.locator('.seatWhy').count() ? await p.textContent('.seatWhy') : ''; }
+  check(/Similar level: standing/.test(why),'why-here explains the pairing in the chosen mode');
   await p.click('#seatWeights'); await p.waitForTimeout(200); check(await p.locator('[data-pairs]').count()===3,'Priorities offers the three partner modes');
   await p.click('[data-pairs="mix"]'); await p.click('#mCancel'); await p.waitForTimeout(300);
   await p.evaluate(()=>{ window.__tally.state.seatWeights={}; window.__tally.save(); });
