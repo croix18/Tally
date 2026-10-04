@@ -50,6 +50,20 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const order=await p.evaluate(()=>{ const n=document.querySelector('.hneeds'), c=document.querySelector('.hcards'); return n && c ? n.getBoundingClientRect().top < c.getBoundingClientRect().top : null; });
   check(order===true,'Needs attention sits above the class cards');
   check((await p.evaluate(()=>{ const ls=[...document.querySelectorAll('.hatt li')].map(l=>l.classList.contains('warn')); return ls.every((w,i)=>i===0 || !w || ls[i-1]); })),'warnings come before notes');
+  // 3b. storage: a pool class no longer saves its own copy of the course's skills; Settings shows how full the browser is
+  const st0=await p.evaluate(()=>{ const T=window.__tally; const raw=JSON.parse(localStorage.getItem('tally.v1')); const s=raw.sections['period-1']; return { flag:s.poolSkills===true, skills:s.skills, live:T.state.sections['period-1'].skills===T.state.pools.acc.skills, n:T.state.sections['period-1'].skills.length, chars:localStorage.getItem('tally.v1').length }; });
+  check(st0.flag && st0.skills===null && st0.live && st0.n>100,'the saved class points at the pool for its skills ('+st0.n+' skills, not stored twice)');
+  // a save from before the change (its own identical copy) loads, behaves the same, and is slimmed on the next save
+  const fat=await p.evaluate(()=>{ const raw=JSON.parse(localStorage.getItem('tally.v1')); for (const k in raw.sections) { const x=raw.sections[k]; if (x.poolSkills) { x.skills=JSON.parse(JSON.stringify(raw.pools[x.prep].skills)); delete x.poolSkills; } } const str=JSON.stringify(raw); localStorage.setItem('tally.v1', str); return str.length; });
+  await p.reload(); await p.waitForTimeout(700);
+  const st1=await p.evaluate(()=>{ const T=window.__tally; const u=T.unitsOf(T.state.sections['period-1']); T.save(); return { live:T.state.sections['period-1'].skills===T.state.pools.acc.skills, units:u.length, chars:localStorage.getItem('tally.v1').length, rows:T.buildRows(T.state.sections['period-1']).length }; });
+  check(st1.live && st1.units>10 && st1.rows>20 && st1.chars<fat*0.9,'an older save with its own copies loads the same and shrinks on the next save ('+Math.round(fat/1000)+'K → '+Math.round(st1.chars/1000)+'K)');
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#btnSettings'); await p.waitForTimeout(300);
+  check(/Storage: \d+\.\d of about 5\.0 MB/.test(await p.textContent('#storeLine')) && await p.locator('#storeLine.full').count()===0,'Settings says how much of the browser\'s storage is used: '+(await p.textContent('#storeLine')).trim().slice(0,60));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  await p.evaluate(()=>{ localStorage.setItem('other-tool','x'.repeat(4300000)); window.__tally.render(); }); await p.click('#btnHome'); await p.waitForTimeout(300);
+  check(await p.locator('#hStore').count()===1 && /Storage is \d+% full/.test(await p.textContent('#hStore')),'when the browser\'s storage is nearly full the Overview says so, counting other saved pages');
+  await p.evaluate(()=>{ localStorage.removeItem('other-tool'); window.__tally.render(); });
   // 4. the student page and its printout (the scrubbed real class)
   const ctx2=await b.newContext({viewport:{width:1400,height:900}}); const q=await ctx2.newPage(); q.on('pageerror',e=>errs.push(e.message)); q.on('dialog',d=>d.accept());
   await q.goto('file://'+path.resolve(APP));

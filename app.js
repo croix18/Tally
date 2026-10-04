@@ -48,6 +48,10 @@ const GB_KEY = LS_KEY + '.gradebooks';
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(LS_KEY)); if (!s || !s.sections) return null;
+    for (const k in s.sections) { const x = s.sections[k]; if (!x) continue; const pool = s.pools && s.pools[x.prep] && Array.isArray(s.pools[x.prep].skills) ? s.pools[x.prep] : null;
+      if (x.poolSkills) { x.skills = pool ? pool.skills : []; delete x.poolSkills; }
+      // a save from before this change holds its own identical copy: point it at the pool so the next save drops it
+      else if (x.pool && pool && Array.isArray(x.skills) && x.skills !== pool.skills && x.skills.length === pool.skills.length && x.skills.every((sk, i) => sk && pool.skills[i] && sk.id === pool.skills[i].id && sk.name === pool.skills[i].name && sk.unit === pool.skills[i].unit)) x.skills = pool.skills; }
     try { const g = JSON.parse(sessionStorage.getItem(GB_KEY) || '{}'); for (const k in g) if (s.sections[k] && !s.sections[k].grades && g[k] && Array.isArray(g[k].assignments)) s.sections[k].grades = g[k]; sessionStorage.removeItem(GB_KEY); } catch (e) {}
     for (const k in s.sections) if (s.sections[k] && s.sections[k].grades && !s.sections[k].grades.assignments) delete s.sections[k].grades;
     return s;
@@ -99,7 +103,10 @@ function migrate() {
   for (const k of Object.keys(state.sections)) if (!state.order.includes(k)) state.order.push(k);
 }
 function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (fallback != null ? fallback : DEFAULT_THR.on) : Math.max(1, Math.min(100, n)); }
-function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); return true; } catch (e) { lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
+// A pool class reads its skills from the course pool (the same array in memory); writing a copy per class was a quarter
+// of everything stored. The saved class carries poolSkills instead, and load() points it back at the pool.
+function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = state.sections[k]; const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: null, poolSkills: true } : s; } return { ...state, sections: secs }; }
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
 function norm(s) {
@@ -472,7 +479,8 @@ function leaderboardData() {
   out.sort((a, b) => (a.prep > b.prep ? 1 : a.prep < b.prep ? -1 : 0) || a.rank - b.rank);
   return out;
 }
-const fmtDate = d => { if (!d) return ''; const [y, m, dd] = d.split('-').map(Number); return new Date(y, m - 1, dd).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+const FMT_MD = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }); const fmtDateCache = new Map();
+const fmtDate = d => { if (!d) return ''; let v = fmtDateCache.get(d); if (v == null) { const [y, m, dd] = d.split('-').map(Number); v = FMT_MD.format(new Date(y, m - 1, dd)); fmtDateCache.set(d, v); } return v; };
 const fmtTime = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); };
 // Age of a yyyy-mm-dd date (or ISO stamp) in whole days, as of today — local calendar days, so "yesterday" is right at 8 am.
 const ageDays = d => { if (!d) return null; const [y, m, dd] = String(d).slice(0, 10).split('-').map(Number); const then = new Date(y, m - 1, dd); const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); return Math.max(0, Math.round((today - then) / 86400000)); };
@@ -1692,6 +1700,9 @@ function saveBackup() {
   state.lastBackup = new Date().toISOString(); save();
   toast(`Backup saved — it contains student names, weekly skill counts and computed Focus grades${Object.values(state.sections).some(x => x.qArchive && Object.keys(x.qArchive).length) ? ', and the Focus scores of closed quarters' : ''}, so keep it in your school Drive.`, false, 5000);
 }
+// How full this browser's storage is. Pages opened from files (and every project on one Pages site) share one allowance
+// of about five million characters, so "other saved pages" is counted too.
+function storageUse() { const quota = 5242880; let total = 0, tally = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); const n = k.length + (localStorage.getItem(k) || '').length; total += n; if (k.indexOf(LS_KEY) === 0) tally += n; } } catch (e) {} return { quota, total, tally, other: total - tally, pct: Math.round(total / quota * 100), mb: n => (n / 1048576).toFixed(n < 1048576 * 0.95 ? 1 : 1) }; }
 // The newest thing imported (an IXL export or a gradebook), to tell whether the last backup is behind it.
 function latestImportAt() { let m = ''; for (const k of state.order) { const s = state.sections[k]; [s.importedAt, s.grades && s.grades.importedAt].forEach(v => { if (typeof v === 'string' && v > m) m = v; }); } return m || null; }
 const backupBehind = () => { const li = latestImportAt(); return !!(li && (!state.lastBackup || state.lastBackup < li)); };
@@ -1735,6 +1746,7 @@ function openSettings() {
         <p>Rosters, goals, skips, matches, category weights, each student's weekly skill counts (for the race) and their computed Focus grade per import (for trends). Not raw scores. Load it on another computer before or after importing exports.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load backup</button><input type="file" id="cfgFile" accept=".json" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last saved ${esc(ageDays(state.lastBackup) === 0 ? 'today' : fmtDate(state.lastBackup.slice(0, 10)))}.` : 'Never saved from this browser.'}</small></div>
         <h3 class="mt">This computer</h3>
+        ${(() => { const u = storageUse(); return `<p class="storeLine ${u.pct >= 80 ? 'full' : ''}" id="storeLine"><span class="storeBar"><i style="width:${Math.min(100, Math.max(2, u.pct))}%"></i></span>Storage: <b>${u.mb(u.total)} of about ${u.mb(u.quota)} MB</b> used in this browser${u.other > 20000 ? ` — Tally ${u.mb(u.tally)} MB, other saved pages ${u.mb(u.other)} MB` : ''}.${u.pct >= 80 ? ' Nearly full: save a backup, then remove an old class or gradebook.' : ''}</p>`; })()}
         <p>Everything Tally shows — IXL scores, rosters, goals, skips, and the Focus gradebook with its grade history — is saved in this browser. On a shared computer, clear it when you're done.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="forget">Remove this class</button><button class="pill danger small" id="wipe">Clear all Tally data</button></div>
       </section>

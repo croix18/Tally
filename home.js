@@ -67,7 +67,8 @@ function renderHome() {
   const groups = attentionGroups(secs);
   const qdLine = qd ? `<li class="info"><button id="qdGo"><i></i><span><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</span><em>›</em></button></li>` : '';
   const lb = state.lastBackup; const bkLine = backupBehind() ? `<li class="info"><button id="hBackup" title="Download a backup file — keep it in your school Drive"><i></i><span><b>Back up</b> — ${lb ? `new imports since the last backup (${esc(ageDays(lb) === 0 ? 'earlier today' : fmtDate(lb.slice(0, 10)))})` : 'nothing has been backed up from this browser yet'}</span><em>Save backup</em></button></li>` : '';
-  const attList = groups.length || qdLine || bkLine ? `<ul class="hatt">${qdLine}${groups.map(g => g.each ? `<li class="${g.level} each"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div></li>`
+  const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>Storage is ${su.pct}% full</b> — save a backup, then remove an old class or gradebook in Settings</span><em>›</em></button></li>` : '';
+  const attList = groups.length || qdLine || bkLine || stLine ? `<ul class="hatt">${stLine}${qdLine}${groups.map(g => g.each ? `<li class="${g.level} each"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div></li>`
     : `<li class="${g.level}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"><i></i><span><b>${esc(g.who)}</b> — ${esc(g.text)}</span><em>›</em></button></li>`).join('')}${bkLine}</ul>` : '';
   // charts
   const withHist = secs.filter(s => (s.gradeHistory || []).length); const dates = [...new Set(withHist.flatMap(s => s.gradeHistory.map(h => h.date)))].sort();
@@ -95,6 +96,7 @@ function renderHome() {
     <section class="gsec"><h3>Focus class average by import</h3>${avgLines}</section>
     <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
   </div>`;
+  const hs = $('#hStore'); if (hs) hs.onclick = () => openSettings();
   const hb = $('#hBackup'); if (hb) hb.onclick = () => { saveBackup(); render(); };
   const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;
