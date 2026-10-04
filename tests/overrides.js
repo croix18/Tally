@@ -15,9 +15,13 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(before.differ>0 && before.first,'the real class has differences to work with: '+before.differ+' differ');
   // 1. keep one
   await p.click('.fcheck'); await p.waitForTimeout(400);
+  // Unit 1's points don't agree with Focus here, so the dialog is the setup question and the student rows are folded
+  check(await p.locator('details.fcrows:not([open])').count()===1,'points disagree: the student rows start folded under "Student by student"');
+  await p.click('.fcrows > summary'); await p.waitForTimeout(200);
   await p.locator(`[data-keep="${before.first.display}"]`).click(); await p.waitForTimeout(200);
   check(await p.locator('#keepForm:not(.hidden) #keepWhy').count()===1 && /Keep Focus/.test(await p.textContent('#keepForm')),'Keep Focus opens an inline note form');
   await p.fill('#keepWhy','late penalty'); await p.press('#keepWhy','Enter'); await p.waitForTimeout(500);
+  check(await p.locator('details.fcrows[open]').count()===1,'…and stay open after a row is kept (the dialog redraws)');
   const ov=await p.evaluate(([K,d])=>{ const s=window.__tally.state.sections[K]; const u=Object.keys(s.overrides||{})[0]; return s.overrides[u][d]; }, [K,before.first.display]);
   check(ov && ov.why==='late penalty' && ov.focus===before.first.focus && ov.tally===before.first.tally && /^\d{4}-\d{2}-\d{2}T/.test(ov.at),'override stored with Focus value, Tally value, date and reason');
   const after=await p.evaluate(K=>{ const T=window.__tally; const c=T.reconcile(T.state.sections[K]).find(c=>c.unit.short==='Unit 1'); return { differ:c.counts.differ, accepted:c.counts.accepted }; }, K);
@@ -38,7 +42,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(300);
   await more(p,'#btnSettings'); await p.waitForTimeout(200); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8'));
   check(cfg.sections[K].overrides && Object.keys(cfg.sections[K].overrides).length===1,'the Tally backup carries overrides'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  await p.click('.fcheck'); await p.waitForTimeout(400); await p.click('.kept summary'); await p.click('[data-unkeep]'); await p.waitForTimeout(400);
+  await p.click('.fcheck'); await p.waitForTimeout(400); await p.click('.fcrows > summary'); await p.waitForTimeout(150); await p.click('.kept > summary'); await p.click('[data-unkeep]'); await p.waitForTimeout(400);
   check(await p.locator(`[data-keep="${before.first.display}"]`).count()===1,'"Flag again" puts the row back');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   // 5. what-if card: every result carries its change; a no-change retake says so

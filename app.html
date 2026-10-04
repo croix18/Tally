@@ -276,6 +276,10 @@ td.pts.na{color:var(--ink-soft);text-align:center}
 .checkTable tr.down td:nth-child(3){background:var(--sand);font-weight:900}
 .checkTable td small{color:var(--teal);font-weight:700}
 .checkTable .n,.checkTable th.n{text-align:right;white-space:nowrap}
+/* one fold style for "more, if you need it" inside a dialog: a quiet line with a chevron */
+details.fold{border-top:1px solid var(--grid);margin-top:12px}details.fold>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;min-height:44px;font-weight:800;color:var(--teal)}details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"";flex:none;width:7px;height:7px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(-45deg);transition:transform .15s;margin:0 4px 0 2px}details.fold[open]>summary::before{transform:rotate(45deg)}details.fold>summary small{font-weight:600;color:var(--ink-soft)}
+#modal .body.fc .fclead{font-size:var(--t-l);line-height:1.4;margin:0 0 6px}#modal .body.fc .checkSummary.lead{font-size:var(--t-xl);font-weight:800;margin:0 0 4px;line-height:1.6}#modal .body.fc .fcpair{margin:0 0 12px;color:var(--ink-soft);font-size:var(--t-s)}.fc.setup .rp-actions{margin:12px 0 4px}#modal .body.fc .skipPick .ghint{margin:0 0 6px}
 .checkSummary{font-weight:700} .checkSummary .ok{color:var(--teal)} .checkSummary .bad{background:var(--coral);padding:1px 8px;border-radius:999px} .checkSummary .stale{background:var(--sand);padding:1px 8px;border-radius:999px}
 #modal .body.one select{border:2px solid var(--grid);border-radius:10px;padding:8px 10px;background:var(--white);font:inherit;max-width:100%}
 td.pts.own .v small{color:var(--navy);font-weight:900;text-decoration:underline dotted}
@@ -339,6 +343,10 @@ body.dragging::after{content:'Drop IXL exports anywhere';position:fixed;inset:0;
 #modal .body{padding:20px 26px;display:grid;grid-template-columns:1fr 1.15fr;gap:22px;overflow:auto}
 #modal section h3{font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-size:var(--t-m);margin-bottom:8px}
 #modal section h3.mt{margin-top:16px}
+/* Settings: each scope under its own heading — who the options below it reach */
+#modal .scopeHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding-bottom:10px;min-height:56px;box-sizing:border-box;border-bottom:2px solid var(--grid)}#modal .scopeHead.second{margin-top:26px}
+#modal .scopeHead b{font-weight:900;font-size:var(--t-xl);color:var(--navy)}#modal .scopeHead span{color:var(--ink-soft);font-weight:700;font-size:var(--t-s)}
+#modal .scopeHead select{font:inherit;font-weight:700;color:var(--navy);border:2px solid var(--grid);border-radius:999px;padding:4px 12px;background:var(--white);min-height:36px;max-width:100%}
 #modal section p{margin:0 0 10px;color:var(--teal);font-size:var(--t-s);font-weight:500}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
 .field label{font-size:var(--t-s);font-weight:700;color:var(--teal);letter-spacing:.04em}
@@ -466,7 +474,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 .wt{display:grid;grid-template-columns:1fr 140px 28px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--grid)}.wt label{font-weight:700}.wt label small{display:block;font-weight:500;color:var(--ink-soft);font-size:var(--t-xs)}.wt b{text-align:right}
 .seg.wrap{flex-wrap:wrap}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.keepForm{background:var(--paleturq);border-radius:12px;padding:10px 12px;margin:8px 0}.keepForm .two{grid-template-columns:1fr auto;align-items:center;margin-top:6px}.kept{margin-top:10px}.kept summary{cursor:pointer;font-weight:800}.checkTable tr.accepted td{color:var(--ink-soft)}
+.keepForm{background:var(--paleturq);border-radius:12px;padding:10px 12px;margin:8px 0}.keepForm .two{grid-template-columns:1fr auto;align-items:center;margin-top:6px}.checkTable tr.accepted td{color:var(--ink-soft)}
 .txt{border:2px solid var(--grid);border-radius:10px;padding:8px 10px;font:inherit;width:100%;background:var(--white);color:var(--navy)}textarea.txt{font-family:inherit;resize:vertical}.seg button.on.hot{background:var(--bad);color:var(--white)}input[type=range]{accent-color:var(--teal)}
 .chk{display:flex;gap:10px;align-items:center;font-weight:600;padding:8px 0}.chk input{width:20px;height:20px;accent-color:var(--teal)}
 /* room editor */

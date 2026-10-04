@@ -1605,73 +1605,74 @@ function openGuide() {
 <style>${printFontCss()}</style>
 <style>
 @page{margin:.55in}
-body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px auto;max-width:8in;font-size:10.5pt;line-height:1.4}
+body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px auto;max-width:7.4in;font-size:10.5pt;line-height:1.42}
 h1{font-size:20pt;margin:0;letter-spacing:.06em}
-.sub{font-size:10pt;margin:2px 0 14px}
-h2{font-size:11.5pt;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1.5px solid #000;padding-bottom:2px}
+.sub{font-size:10pt;margin:2px 0 12px}
+h2{font-size:11.5pt;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1.5px solid #000;padding-bottom:2px}
 ol,ul{margin:4px 0;padding-left:20px}
-li{margin:2px 0}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
-dl{margin:4px 0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
-dt{font-weight:bold;white-space:nowrap}
-dd{margin:0}
-.box{border:1.5px solid #000;padding:8px 12px;margin-top:6px}
+li{margin:3px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 26px}
+.words{columns:2;column-gap:26px;font-size:10pt}
+.words p{margin:0 0 6px;break-inside:avoid}
+.box{border:1.5px solid #000;padding:8px 12px;margin-top:10px}
+.page2{break-before:page}
 .bar{position:fixed;top:0;right:0;padding:8px;background:#fff}
 .bar button{font:inherit;padding:6px 14px}
-@media print{.bar{display:none}body{margin:0}}
+@media print{.bar{display:none}body{margin:0;max-width:none}}
+@media screen{.page2{margin-top:28px}}
 </style></head><body>
 <div class="bar"><button onclick="window.print()">Print</button></div>
 <h1>TALLY</h1>
 <p class="sub">IXL Score Grid → one grade per unit in Focus. One point per skill at goal (goal SmartScore: ${esc(goalLine)}). Everything stays in this browser; nothing is uploaded anywhere.</p>
 
-<div class="two">
-<div>
 <h2>Every week or two</h2>
 <ol>
-<li><b>Export</b> from IXL: Analytics → Score Grid → This school year → Export — one file per course (every student in it) or one per class, both work. From Focus: gradebook → Export, one per period.</li>
-<li><b>Import</b> all of them at once (button or drag onto the page). Newer exports replace older; best scores are kept.</li>
-<li>Look at <b>Needs attention</b> on the Overview — <b>Classes</b> in the header — (and the "N to fix" count beside a class's name): roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}). A student who has no IXL account: tap their flag → <b>No IXL account</b>, and the flag goes.</li>
+<li><b>Export</b> from IXL: Analytics → Score Grid → This school year → Export — one file per course or one per class, both work. From Focus: gradebook → Export, one per period.</li>
+<li><b>Import</b> all of them at once (the button, or drag them onto the page). Each gradebook goes to its class by its students; Tally asks only when a file isn't plainly one class. Newer exports replace older; best scores are kept.</li>
+<li>Look at <b>Needs attention</b> on the Overview (<b>Classes</b> in the header) and the "N to fix" count beside a class's name: roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}).</li>
 <li>Tap <b>Copy</b> on a unit → paste into that unit's Focus column (rows are already in Focus order). The unit header then shows <i>copied ‹date›</i>.</li>
-<li>After the next Focus export, each unit's <b>Focus badge</b> says ${ico('check', 'a check')}, "N up since copy", or "N off" — tap it to see who, and <b>Copy corrections</b>.</li>
-<li><b>Save a backup</b> to your school Drive (the header's ⋯ menu → <b>Save backup</b>; it says how long ago the last one was). It is how the laptop and the tablet stay in step, and the only copy if this browser's storage is cleared.</li>
+<li>After the next Focus export each unit's <b>Focus badge</b> says ${ico('check', 'a check')}, "N up since copy" or "N off". Tap it to see who, and <b>Copy corrections</b>.</li>
+<li><b>Save a backup</b> to your school Drive (the header's ⋯ menu; it says how long ago the last one was). It is how two computers stay in step, and the only copy if this browser's storage is cleared.</li>
 </ol>
+<div class="two">
+<div>
 <h2>Once per class</h2>
 <ol>
-<li>The <b>roster</b> comes from the Focus gradebook automatically (with IDs). With a course-wide IXL export, a gradebook whose students are in no class yet asks for the <b>period and course</b> once. After that each gradebook goes to its class by its students' names and IDs — Tally only asks when a file isn't plainly one class, and says why. You can still paste a roster in Settings.</li>
-<li>Fix any flag on a name: <b>Not in IXL</b>, <b>Two matches</b>, <b>Not on roster</b>.</li>
-<li>Mark units <b>Not assigned</b> (open the unit, top bar). This applies to every class in the course.</li>
-<li>For a unit where only the lesson skills were required, open the Focus check and accept <b>Skip N skills to match Focus</b>, or tap skills in the unit view to skip them.</li>
+<li>With a course-wide IXL export, a gradebook whose students are in no class yet asks for the <b>period and course</b>. The roster comes from that gradebook, with IDs.</li>
+<li>Fix any flag on a name: <b>Not in IXL</b>, <b>Two matches</b>, <b>Not on roster</b>. No IXL account? Tap the flag → <b>No IXL account</b>.</li>
+<li>If a unit's Focus badge says <b>points differ</b>, tap it: Tally asks which skills don't count.</li>
 </ol>
 </div>
 <div>
-<h2>Words on the screen</h2>
-<dl>
-<dt>Goal</dt><dd>The SmartScore a skill must reach to earn its point.</dd>
-<dt>Skip</dt><dd>A skill that doesn't count — for the class (tap the skill) or one student (tap their cell).</dd>
-<dt>Grades</dt><dd>After a Focus gradebook is loaded: the real course grade (weighted categories, proved against the Focus Grade column), trends since the last import, sliding students, IXL against assessment scores, and per-student what-ifs — turn in, retake, next assessment — with a printable one-student page. Categories are proved from the Grade column where possible; move any assignment from its row.</dd>
-<dt>Students</dt><dd>Header button (teacher only). Every student of every class with their grade, change, missing work and IXL; tap one for their page: this quarter's grade and each closed quarter's final, the grade, categories, missing work and IXL over the year, every assignment and assessment, IXL still owed by unit, and what would move the grade, starting with the <b>quickest way to the next letter</b> — missing work and IXL first. <b>Show student</b> turns the screen toward them: only their numbers, switches and sliders to try turning work in, retakes and the next test. Hold the exit button to leave.</dd>
-<dt>Quarters</dt><dd>When a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28), close it from the Overview. Tally keeps a copy of every class's gradebook for that quarter and goes quiet about it: no missing counts, sliding, Focus checks or still-owed lines for its work or its IXL units. Open it any time under Grades → Q1 and on each student's page. If the next quarter's export arrives first, the old quarter is kept automatically.</dd>
-<dt>Working in</dt><dd>The unit each course is on (the selector on the class bar). The first import sets it — to whichever is further along: the latest unit Focus has an IXL column for, or the last unit the course has really started — and says so on the Overview. Until you pick one yourself it moves forward when Focus gets an IXL column for a later unit; your own pick is never changed. Every unit up to it is a column on the class grid and counts toward the Race and the Focus check. The first on-level unit is a review unit and never counts (change in Settings).</dd>
-<dt>Ahead</dt><dd>The last column of the class grid: skills at goal in units past the one you're working in, shown only for students who have some. Tap <b>Ahead</b> to open a later unit (to look at its skills, or to count it early with <b>Not assigned → Assigned</b>); tap a student's cell to open the unit they're working in.</dd>
-<dt>Assigned</dt><dd>Tap a unit's Assigned button to override the rule for that unit either way. Units you unassign leave the grid; the unassigned-units button brings them back.</dd>
-<dt>Best</dt><dd>A score from an earlier export that was higher than today's. Points once earned are kept.</dd>
-<dt>Copied</dt><dd>A receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</dd>
-<dt>Focus ${ico('check', 'check')} / off</dt><dd>Whether the Focus column matches what Tally counts today.</dd>
-<dt>Seating</dt><dd>Draw the room once (templates, drag, rotate — shared by every class), then generate seating for a class: the solver weighs talkers, front-seat and near-teacher flags, keep-apart (hard) and seat-near links, and each student's standing — Priorities → Place by chooses the blend, FAST only, the Focus grade, assessments only, or IXL progress. Tap a student to see why they're there, lock them, or tap a second desk to swap — every move reports what it fixes and breaks. Print a teacher copy or a student/sub copy.</dd>
-<dt>Still owed</dt><dd>Printable black-and-white list of what each student is missing, by unit.</dd>
-<dt>Board</dt><dd>Header button: the student screen, with the Race and the Data Lab. Names never show on it. Hold the exit button to leave.</dd>
-<dt>Race</dt><dd>On the Board: classes ranked by the share of students who reached at least one more skill since last week (average gain breaks ties), so a class that starts behind can still win and one student can't swing it. The bar shows assigned work at goal.</dd>
-<dt>Data Lab</dt><dd>On the Board: box plot, dot plot, histogram, stem-and-leaf, bar, circle or line graph of any unit, skill, assignment, or class-collected data set, in points or percents — no names, and Focus scores only as aggregates.</dd>
-<dt>Names</dt><dd>The eye button in the header. Crossed out = initials only, for projecting.</dd>
-<dt>⋯ (header)</dt><dd>Details view (every count, notice and legend at once), Settings, this Guide and Save backup.</dd>
-</dl>
 <h2>For a co-teacher</h2>
 <ul>
-<li>Open the class chip, tap <b>Still owed</b>, choose initials or names, print. That's the whole job.</li>
-<li>Turn names off (the eye button in the header) before projecting anything.</li>
+<li>Open the class, ⋯ → <b>Still owed</b>, choose initials or names, print. That's the whole job.</li>
+<li>Hide names (the eye button in the header) before projecting anything.</li>
 <li>On a shared computer: ⋯ → Settings → <b>Clear all Tally data</b> when done.</li>
 </ul>
-<div class="box"><b>If something looks wrong:</b> the file name tells Tally the class and date, so don't rename IXL exports. "Points possible differ" means Focus and Tally disagree on how many skills count — skip or un-skip until they match, or fix the points in Focus.</div>
+</div>
+</div>
+<div class="box"><b>If something looks wrong:</b> the file name tells Tally the class and date, so don't rename IXL exports. "Points differ" means Focus and Tally disagree on how many skills count — skip or un-skip until they match, or fix the points in Focus.</div>
+
+<div class="page2">
+<h2>Words on the screen</h2>
+<div class="words">
+<p><b>Goal</b> — the SmartScore a skill must reach to earn its point.</p>
+<p><b>Skip</b> — a skill that doesn't count: for the course (tap the skill in the unit view) or for one student (tap their cell).</p>
+<p><b>Working in</b> — the unit each course is on (class bar). The first import sets it and says so on the Overview; until you pick one yourself it follows Focus's latest IXL column. Units up to it are the grid's columns and count toward the Race and the Focus check.</p>
+<p><b>Ahead</b> — the grid's last column: skills at goal past the current unit, only for students who have some. Tap <b>Ahead</b> to open a later unit; <b>Not assigned → Assigned</b> there counts it early.</p>
+<p><b>Assigned</b> — a unit's button (open the unit). It overrides the rule for that unit, either way, for the whole course. On-level's first unit is review and never counts (⋯ → Settings).</p>
+<p><b>Best</b> — a score from an earlier export that was higher than today's. A point once earned is kept.</p>
+<p><b>Copied</b> — a receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</p>
+<p><b>Focus ${ico('check', 'check')} / off</b> — whether the Focus column matches what Tally counts today.</p>
+<p><b>Grades</b> — with a Focus gradebook loaded: the real course grade (weighted categories, proved against Focus's Grade column), the change since the last import, sliding students, and what-ifs.</p>
+<p><b>Students</b> — every student of every class. Tap one for their page: grades by quarter, missing work, IXL still owed, and the quickest way to the next letter. <b>Show student</b> turns the screen toward them; hold the exit button to leave.</p>
+<p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks.</p>
+<p><b>Seating</b> — draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
+<p><b>Still owed</b> — a printable list of what each student is missing, by unit.</p>
+<p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill or assignment). Names never show. Hold the exit button to leave.</p>
+<p><b>Names</b> — the eye button in the header. Crossed out = initials only, for projecting.</p>
+<p><b>⋯</b> — Details view (every count, notice and legend at once), Settings, this Guide, Save backup.</p>
 </div>
 </div>
 </body></html>`;
@@ -1748,29 +1749,47 @@ function reconcile(sec) {
 }
 function openFocusCheck(sec, unitName) {
   const all = reconcile(sec); const rc = all.find(x => x.unit.name === unitName); if (!rc) return;
-  const m = $('#modal'); m.classList.remove('hidden');
+  const m = $('#modal'); const openFolds = m.dataset.fc === sec.key + '|' + unitName ? [...m.querySelectorAll('details.fold[open]')].map(d => d.className) : [];   // acting on a row redraws the dialog: a fold the teacher opened stays open
+  m.classList.remove('hidden');
   const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : d);
   const bad = rc.rows.filter(r => r.status !== 'match' && r.status !== 'accepted'); const kept = rc.rows.filter(r => r.status === 'accepted');
-  const line = r => `<tr class="${r.status}"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${r.tally == null ? '—' : fmtN(r.tally) + (r.own !== rc.unit.total ? ` <small>/${r.own}</small>` : '')}</td><td>${r.status === 'match' ? '' : r.status === 'stale' ? `matches what you copied${rc.copiedAt ? ' ' + fmtDate(rc.copiedAt.slice(0, 10)) : ''}; up ${fmtN(r.tally - r.focus)} since` : r.status === 'missing' ? 'nothing in Focus yet' : r.status === 'unmatched' ? 'not found in IXL' : 'Focus differs from Tally'}${r.staleOverride ? ` <small class="ghint">(you kept ${r.staleOverride.focus == null ? 'blank' : fmtN(r.staleOverride.focus)} on ${esc(fmtDate((r.staleOverride.at || '').slice(0, 10)))} — Focus has changed since)</small>` : ''}</td><td>${r.status === 'unmatched' ? '' : `<button class="pill pale small" data-keep="${esc(r.display)}" title="Focus is right for this student — stop flagging it">Keep Focus</button>`}</td></tr>`;
-  m.innerHTML = `<div class="panel"><header><h2>Focus check · ${esc(rc.unit.short)}</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one">
-      <p><b>Focus "${esc(rc.assignment.name)}"</b> (${rc.assignment.max != null ? rc.assignment.max + ' points' : 'points unknown'}) vs <b>Tally ${esc(rc.unit.short)}</b> (out of ${rc.unit.total}${rc.copiedAt ? ', copied ' + fmtDate(rc.copiedAt.slice(0, 10)) : ', never copied'}).
-      ${rc.maxOK ? '' : `<span class="warnline">Points possible don't agree: Focus says ${rc.assignment.max}, Tally counts ${rc.unit.total} skills.</span>`}</p>
-      ${(() => { if (rc.maxOK || rc.assignment.max == null) return ''; const diff = rc.unit.total - rc.assignment.max; if (diff <= 0) return `<p>Tally counts fewer skills than the Focus assignment is worth — un-skip ${plural(-diff, 'skill')} in the unit view, or change the assignment's points in Focus.</p>`;
-        // the skills fewest students touched are almost always the "also consider" extras that weren't required
-        const pop = population(sec); const cand = rc.unit.active.map(k => ({ k, n: pop.filter(x => sec.scores[k][x.i] != null).length })).sort((a, b) => a.n - b.n || a.k - b.k).slice(0, diff);
-        const sug = new Set(cand.map(c => c.k)); const all = rc.unit.active.map(k => ({ k, n: pop.filter(x => sec.scores[k][x.i] != null).length })).sort((a, b) => a.n - b.n || a.k - b.k);
-        return `<div class="report skipPick"><b>Skip ${plural(diff, 'skill')} to match Focus?</b> Tick the skills that weren't required — the ${diff} fewest students touched are pre-ticked (usually the "also consider" extras). Applies to every ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} class.
+  const line = r => `<tr class="${r.status}"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${r.tally == null ? '—' : fmtN(r.tally) + (r.own !== rc.unit.total ? ` <small>/${r.own}</small>` : '')}</td><td>${r.status === 'match' ? '' : r.status === 'stale' ? `matches what you copied${rc.copiedAt ? ' ' + fmtDate(rc.copiedAt.slice(0, 10)) : ''}; up ${fmtN(r.tally - r.focus)} since` : r.status === 'missing' ? 'nothing in Focus yet' : r.status === 'unmatched' ? 'not found in IXL' : `<span class="vh">Focus differs from Tally</span>`}${r.staleOverride ? ` <small class="ghint">(you kept ${r.staleOverride.focus == null ? 'blank' : fmtN(r.staleOverride.focus)} on ${esc(fmtDate((r.staleOverride.at || '').slice(0, 10)))} — Focus has changed since)</small>` : ''}</td><td>${r.status === 'unmatched' ? '' : `<button class="pill pale small" data-keep="${esc(r.display)}" title="Focus is right for this student — stop flagging it">Keep Focus</button>`}</td></tr>`;
+  // Two jobs, never both at once. SETUP (once per unit): Focus's column and Tally disagree on what the unit is out of, so
+  // every student "differs" and the student table is noise — the dialog is only "which skills don't count?". CHECK
+  // (weekly): the count is the headline, then only the students who differ, then one primary button. Which Focus column
+  // this is sits behind "Wrong column?" in both.
+  const setup = !rc.maxOK && rc.assignment.max != null; const diff = setup ? rc.unit.total - rc.assignment.max : 0;
+  const course = sec.prep === 'acc' ? 'accelerated' : 'on-level';
+  const mapFold = `<details class="fold fcmap"><summary>Wrong column?</summary><div class="field"><label for="gbMap">Focus's "${esc(rc.assignment.name)}" is</label><select id="gbMap">${[['', '— not an IXL unit —']].concat(unitsOf(sec).map(u => [u.name, u.short + (u.title ? ' · ' + u.title : '')])).map(([v, l]) => `<option value="${esc(v)}" ${v === rc.unit.name ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div></details>`;
+  const summary = `<span class="ok">${rc.counts.match} match</span>${rc.counts.stale ? ` · <span class="stale">${rc.counts.stale} up since you copied</span>` : ''}${rc.counts.differ ? ` · <span class="bad">${rc.counts.differ} differ</span>` : ''}${rc.counts.missing ? ` · <span class="bad">${rc.counts.missing} blank in Focus</span>` : ''}${rc.counts.unmatched ? ` · ${rc.counts.unmatched} not matched to IXL` : ''}`;
+  const table = bad.length ? `<table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th></th><th></th></tr></thead><tbody>${bad.map(line).join('')}</tbody></table>` : `<p class="ok">Every student matches${kept.length ? ' or is kept on purpose' : ''}. Nothing to fix.</p>`;
+  const keptFold = kept.length ? `<details class="fold kept"><summary>${plural(kept.length, 'difference')} kept on purpose</summary><table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th>Why</th><th></th></tr></thead><tbody>${kept.map(r => `<tr class="accepted"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${fmtN(r.tally)}</td><td><small>${esc(fmtDate((r.override.at || '').slice(0, 10)))}${r.override.why ? ' · ' + esc(r.override.why) : ''}</small></td><td><button class="pill pale small" data-unkeep="${esc(r.display)}">Flag again</button></td></tr>`).join('')}</tbody></table><p class="ghint">Kept rows copy Focus's number, not Tally's, when you copy the column. If Focus changes for that student, the row is flagged again.</p></details>` : '';
+  let body;
+  if (setup) {
+    // the skills fewest students touched are almost always the "also consider" extras that weren't required
+    const pop = population(sec); const all = rc.unit.active.map(k => ({ k, n: pop.filter(x => sec.scores[k][x.i] != null).length })).sort((a, b) => a.n - b.n || a.k - b.k); const sug = new Set(all.slice(0, Math.max(0, diff)).map(c => c.k));
+    body = `<p class="fclead"><b>Focus's "${esc(rc.assignment.name)}" is out of ${rc.assignment.max}.</b> Tally counts ${plural(rc.unit.total, 'skill')} in ${esc(rc.unit.short)}. ${diff > 0 ? `<b>Which ${diff} don't count?</b>` : `That is ${plural(-diff, 'skill')} fewer than Focus.`}</p>
+      ${diff > 0 ? `<div class="skipPick"><p class="ghint">The ${diff} that the fewest students have touched are ticked — usually the "also consider" extras. This applies to every ${course} class.</p>
           <div class="skipList">${all.map(c => `<label><input type="checkbox" data-sk="${c.k}" ${sug.has(c.k) ? 'checked' : ''}> ${esc(sec.skills[c.k].name)} <small>${c.n} of ${pop.length}</small></label>`).join('')}</div>
-          <p class="ghint" id="skipCount"></p><button class="pill small" id="skipCand">Skip the ticked skills</button></div>`; })()}
-      <p class="checkSummary"><span class="ok">${rc.counts.match} match</span>${rc.counts.stale ? ` · <span class="stale">${rc.counts.stale} up since you copied</span>` : ''}${rc.counts.differ ? ` · <span class="bad">${rc.counts.differ} differ</span>` : ''}${rc.counts.missing ? ` · <span class="bad">${rc.counts.missing} blank in Focus</span>` : ''}${rc.counts.unmatched ? ` · ${rc.counts.unmatched} not matched to IXL` : ''}</p>
-      <div class="field"><label>This Focus column is</label><select id="gbMap">${[['', '— not an IXL unit —']].concat(unitsOf(sec).map(u => [u.name, u.short + (u.title ? ' · ' + u.title : '')])).map(([v, l]) => `<option value="${esc(v)}" ${v === rc.unit.name ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
-      ${bad.length ? `<table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th></th><th></th></tr></thead><tbody>${bad.map(line).join('')}</tbody></table>` : `<p class="ok">Every student matches${kept.length ? ' or is kept on purpose' : ''}. Nothing to fix.</p>`}
+          <p class="ghint" id="skipCount"></p></div>`
+        : `<p>Count ${plural(-diff, 'skill')} again in the unit view (tap a hatched skill), or change the assignment's points in Focus to ${rc.unit.total}.</p>`}
+      <div class="rp-actions">${diff > 0 ? '<button class="pill" id="skipCand">Skip the ticked skills</button>' : `<button class="pill" id="fcOpenUnit">Open ${esc(rc.unit.short)}</button>`}<button class="pill pale" id="mCancel">Close</button></div>
+      <details class="fold fcrows"><summary>Student by student <small>(every row differs until the points agree)</small></summary><p class="checkSummary">${summary}</p>${table}<div id="keepForm" class="keepForm hidden"></div>${keptFold}
+        <div class="rp-actions">${bad.length ? `<button class="pill pale small" id="copyFix" title="${state.settings.copyMode === 'ids' ? 'ID' : 'Name'} and Tally points, one student per line">Copy ${plural(bad.filter(r => r.tally != null).length, 'correction')}</button>` : ''}<button class="pill pale small" id="copyCol">Copy the whole column</button></div></details>
+      ${mapFold}`;
+  } else {
+    const nFix = bad.filter(r => r.tally != null).length;
+    body = `<p class="checkSummary lead">${summary}</p>
+      <p class="ghint fcpair">Focus "${esc(rc.assignment.name)}" (${rc.assignment.max != null ? rc.assignment.max + ' points' : 'points unknown'}) against Tally ${esc(rc.unit.short)} (out of ${rc.unit.total}${rc.copiedAt ? ', copied ' + fmtDate(rc.copiedAt.slice(0, 10)) : ', never copied'}).</p>
+      ${table}
       <div id="keepForm" class="keepForm hidden"></div>
-      ${kept.length ? `<details class="kept"><summary>${plural(kept.length, 'difference')} kept on purpose</summary><table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th>Why</th><th></th></tr></thead><tbody>${kept.map(r => `<tr class="accepted"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${fmtN(r.tally)}</td><td><small>${esc(fmtDate((r.override.at || '').slice(0, 10)))}${r.override.why ? ' · ' + esc(r.override.why) : ''}</small></td><td><button class="pill pale small" data-unkeep="${esc(r.display)}">Flag again</button></td></tr>`).join('')}</tbody></table><p class="ghint">Kept rows copy Focus's number, not Tally's, when you copy the column. If Focus changes for that student, the row is flagged again.</p></details>` : ''}
-      <div class="rp-actions">${bad.length ? `<button class="pill" id="copyFix">Copy corrections (${state.settings.copyMode === 'ids' ? 'ID' : 'name'} + Tally points)</button>` : ''}<button class="pill pale" id="copyCol">Copy the whole column</button><button class="pill pale" id="mCancel">Close</button></div>
-    </div></div>`;
-  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
+      ${keptFold}
+      <div class="rp-actions">${nFix ? `<button class="pill" id="copyFix" title="${state.settings.copyMode === 'ids' ? 'ID' : 'Name'} and Tally points, one student per line — paste beside the Focus column">Copy ${plural(nFix, 'correction')}</button>` : ''}<button class="pill pale" id="copyCol">Copy the whole column</button><button class="pill pale" id="mCancel">Close</button></div>
+      ${mapFold}`;
+  }
+  m.innerHTML = `<div class="panel"><header><h2>${setup ? `Set up ${esc(rc.unit.short)} for Focus` : `Focus check · ${esc(rc.unit.short)}`}</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one fc ${setup ? 'setup' : ''}">${body}</div></div>`;
+  m.dataset.fc = sec.key + '|' + unitName; openFolds.forEach(c => { const d = m.querySelector('details.' + c.trim().split(/\s+/).join('.')); if (d) d.open = true; });
+  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; delete m.dataset.fc; render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   $('#gbMap').onchange = () => { sec.gbUnitMap = sec.gbUnitMap || {}; sec.gbUnitMap[rc.assignment.name] = $('#gbMap').value; save(); close(); if ($('#gbMap') === null && sec.gbUnitMap[rc.assignment.name]) openFocusCheck(sec, sec.gbUnitMap[rc.assignment.name]); };
   const put = async (text, msg) => { let ok = legacyCopy(text); if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} } if (ok) toast(msg, false); else showCopyBox(text, rc.assignment.name); };
@@ -1787,6 +1806,7 @@ function openFocusCheck(sec, unitName) {
     $('#keepOk').onclick = () => { sec.overrides = sec.overrides || {}; sec.overrides[rc.unit.name] = sec.overrides[rc.unit.name] || {}; sec.overrides[rc.unit.name][r.display] = { focus: r.focus, tally: r.tally, at: new Date().toISOString(), why: $('#keepWhy').value.trim().slice(0, 200) }; save(); toast(`Kept Focus's number for ${esc(nm(r.display))} in ${esc(rc.unit.short)} — it won't be flagged unless Focus changes.`, false, 5000); openFocusCheck(sec, unitName); };
   });
   m.querySelectorAll('[data-unkeep]').forEach(b => b.onclick = () => { if (sec.overrides && sec.overrides[rc.unit.name]) { delete sec.overrides[rc.unit.name][b.dataset.unkeep]; if (!Object.keys(sec.overrides[rc.unit.name]).length) delete sec.overrides[rc.unit.name]; } save(); openFocusCheck(sec, unitName); });
+  const ou = $('#fcOpenUnit'); if (ou) ou.onclick = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; view = { mode: 'unit', unit: rc.unit.name }; render(); };
   const cf = $('#copyFix'); if (cf) cf.onclick = () => { const lines = bad.filter(r => r.tally != null).map(r => (state.settings.copyMode === 'ids' ? (r.id || '') : r.display) + '\t' + r.tally); put(lines.join('\n'), `Copied ${plural(lines.length, 'correction')} for ${esc(rc.unit.short)}`); };
   $('#copyCol').onclick = () => copyUnit(sec, rc.unit);
 }
@@ -1827,46 +1847,50 @@ const backupBehind = () => { const li = latestImportAt(); return !!(li && (!stat
 function openSettings() {
   const s = state.sections[state.active]; if (!s) return;
   const m = $('#modal'); m.classList.remove('hidden'); const H = state.settings.hideNames;
+  // Three scopes, each under its own heading, so nothing reaches past the title it sits under: this class, this course
+  // (every class of it), and all of Tally. The class is chosen here — Settings opened from the Overview used to be
+  // "1st Period" only because that tab was last active.
   m.innerHTML = `<div class="panel">
-    <header><h2>${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
+    <header><h2>Settings</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body">
-      <section>
+      <section class="scope">
+        <div class="scopeHead"><b>This class</b>${state.order.length > 1 ? `<select id="setClass" aria-label="Class these settings are for">${state.order.map(k => `<option value="${esc(k)}" ${k === s.key ? 'selected' : ''}>${esc(state.sections[k].label)}</option>`).join('')}</select>` : `<span>${esc(s.label)}</span>`}</div>
         <div class="row2">
           <div class="field"><label>Class name (what students see)</label><input type="text" id="secLabel" value="${esc(s.label)}" placeholder="${esc(s.autoLabel)}"></div>
           <div class="field"><label>Goal SmartScore</label><input type="number" id="thr" min="1" max="100" value="${s.threshold}"></div>
         </div>
-        <div class="row2">
-          <div class="field"><label class="check" style="margin:0"><input type="checkbox" id="useBest" ${state.settings.useBest ? 'checked' : ''}> Grade on each student's best score across imports</label><p style="margin-top:4px">SmartScores drop when a student keeps practicing and misses; this keeps a point once it's earned. Applies to every class.</p></div>
-          <div class="field"><label>Course</label><div class="seg"><button data-prep="acc" class="${s.prep === 'acc' ? 'on' : ''}">Accelerated</button><button data-prep="on" class="${s.prep !== 'acc' ? 'on' : ''}">On-level</button></div></div>
-        </div>
-        <div class="field"><label>Units not assigned at the start of the ${s.prep === 'acc' ? 'accelerated' : 'on-level'} course</label><div class="seg small" id="skipFirst">${[0, 1, 2, 3].map(n => `<button data-skip="${n}" class="${(state.settings.skipFirst || {})[s.prep] === n ? 'on' : ''}">${n === 0 ? 'None' : 'First ' + n}</button>`).join('')}</div><p style="margin-top:4px">Review units students don't do. They leave the Race, Data Lab, Focus check and copies for every class of this course. A unit you mark Assigned by hand still wins.</p></div>
-        <div class="field"><label>Remind me when an export gets old</label><div class="seg small" id="remind">${REMIND.map(d => `<button data-remind="${d}" class="${state.settings.remindDays === d ? 'on' : ''}">${d ? d + ' days' : 'Off'}</button>`).join('')}</div><p style="margin-top:4px">A note appears on any class whose IXL export or Focus gradebook is older than this. Applies to every class.</p></div>
-        <p>${esc(s.file)} · imported ${fmtTime(s.importedAt)}</p>
+        <div class="field"><label>Course</label><div class="seg"><button data-prep="acc" class="${s.prep === 'acc' ? 'on' : ''}">Accelerated</button><button data-prep="on" class="${s.prep !== 'acc' ? 'on' : ''}">On-level</button></div></div>
         <div class="field"><label>Roster — paste from FOCUS, one student per line</label>${H ? '<p class="warnline">Names are hidden. Turn on Show names to view or edit the roster.</p>' : `<textarea id="roster" placeholder="Doe, Jane&#10;Smith, John&#10;…&#10;&#10;Pasting straight from the FOCUS gradebook works, ID columns and all.">${esc(s.roster)}</textarea>`}</div>
         <div class="report" id="matchReport">${matchReport(s, s.roster)}</div>
+        <p>${esc(s.file)} · imported ${fmtTime(s.importedAt)}</p>
+        ${s.grades ? `<h3 class="mt">Focus gradebook</h3><p>${plural(s.grades.assignments.length, 'assignment')} · ${plural(s.grades.students.length, 'student')} · imported ${fmtDate(s.grades.importedAt.slice(0, 10))} from ${esc(s.grades.file || 'file')}</p><button class="pill danger small" id="dropGrades">Remove this gradebook</button>` : ''}
+        <h3 class="mt">Remove</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="forget">Remove this class</button></div>
       </section>
-      <section>
-        <h3>Copy</h3>
-        <div class="seg" id="copyMode">${[['points', 'Points only'], ['names', 'Name + points'], ['ids', 'ID + points']].map(([k, n]) => `<button data-cm="${k}" class="${state.settings.copyMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-        <p>Roster students missing from IXL get a blank line so the column stays aligned. Students on a modified list get their own "out of" after the points.</p>
+      <section class="scope">
+        <div class="scopeHead"><b>This course</b><span>every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class</span></div>
+        <div class="field"><label>Units not assigned at the start</label><div class="seg small" id="skipFirst">${[0, 1, 2, 3].map(n => `<button data-skip="${n}" class="${(state.settings.skipFirst || {})[s.prep] === n ? 'on' : ''}">${n === 0 ? 'None' : 'First ' + n}</button>`).join('')}</div><p style="margin-top:4px">Review units students don't do. They leave the Race, Data Lab, Focus check and copies. A unit you mark Assigned by hand still wins.</p></div>
+        <h3 class="mt">Course settings file</h3>
+        <p>Goal, skipped skills and assigned units — no rosters, no names. Another teacher loads it to run on the same rules.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="exportCourse">Save course settings</button><button class="pill pale small" id="importCourse">Load course settings</button><input type="file" id="courseFile" accept=".json" class="hidden"></div>
+        <div class="scopeHead second"><b>All of Tally</b><span>every class, both courses</span></div>
+        <div class="field"><label class="check" style="margin:0"><input type="checkbox" id="useBest" ${state.settings.useBest ? 'checked' : ''}> Grade on each student's best score across imports</label><p style="margin-top:4px">SmartScores drop when a student keeps practicing and misses; this keeps a point once it's earned.</p></div>
+        <div class="field"><label>Remind me when an export gets old</label><div class="seg small" id="remind">${REMIND.map(d => `<button data-remind="${d}" class="${state.settings.remindDays === d ? 'on' : ''}">${d ? d + ' days' : 'Off'}</button>`).join('')}</div><p style="margin-top:4px">A note appears on any class whose IXL export or Focus gradebook is older than this.</p></div>
+        <div class="field"><label>Copy puts on the clipboard</label><div class="seg" id="copyMode">${[['points', 'Points only'], ['names', 'Name + points'], ['ids', 'ID + points']].map(([k, n]) => `<button data-cm="${k}" class="${state.settings.copyMode === k ? 'on' : ''}">${n}</button>`).join('')}</div><p style="margin-top:4px">Roster students missing from IXL get a blank line so the column stays aligned. Students on a modified list get their own "out of" after the points.</p></div>
+        <h3 class="mt">Backup</h3>
+        <p>Rosters, goals, skips, matches, category weights, each student's weekly skill counts (for the race) and their computed Focus grade per import (for trends). Not raw scores. Load it on another computer before or after importing exports.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load backup</button><input type="file" id="cfgFile" accept=".json" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last saved ${esc(ageDays(localDay(state.lastBackup)) === 0 ? 'today' : fmtDate(localDay(state.lastBackup)))}.` : 'Never saved from this browser.'}</small></div>
         <h3 class="mt">Our own data (Data Lab)</h3>
         <p>Numbers the classes collected themselves — minutes to school, letters in a first name. One list per class; no names.</p>
         <div id="customList">${state.custom.map(c => `<div class="customRow"><b>${esc(c.label)}</b> <span>${c.prep === 'acc' ? 'accelerated' : 'on-level'} · ${Object.values(c.values).filter(v => v.length).length} classes</span> <button class="pill pale small" data-editc="${esc(c.id)}">Edit</button> <button class="pill danger small" data-delc="${esc(c.id)}">Delete</button></div>`).join('') || '<p>None yet.</p>'}</div>
         <button class="pill pale small" id="addCustom">Add a data set</button>
-        <h3 class="mt">Course settings</h3>
-        <p>Goal, skipped skills, and assigned units for this class's course — no rosters, no names. Another teacher loads it to run on the same rules.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="exportCourse">Save course settings</button><button class="pill pale small" id="importCourse">Load course settings</button><input type="file" id="courseFile" accept=".json" class="hidden"></div>
         <h3 class="mt">Share</h3>
         <p>Save the Race or the Data Lab as a page. The Race page has class totals only; the Data Lab page has each class's values but no names.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="saveRace">Save Race</button><button class="pill pale small" id="saveLab">Save Data Lab</button></div>
-        ${s.grades ? `<h3 class="mt">Gradebook</h3><p>${plural(s.grades.assignments.length, 'assignment')} · ${plural(s.grades.students.length, 'student')} · imported ${fmtDate(s.grades.importedAt.slice(0, 10))} from ${esc(s.grades.file || 'file')}</p><button class="pill danger small" id="dropGrades">Remove this gradebook</button>` : ''}
-        <h3 class="mt">Backup</h3>
-        <p>Rosters, goals, skips, matches, category weights, each student's weekly skill counts (for the race) and their computed Focus grade per import (for trends). Not raw scores. Load it on another computer before or after importing exports.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load backup</button><input type="file" id="cfgFile" accept=".json" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last saved ${esc(ageDays(localDay(state.lastBackup)) === 0 ? 'today' : fmtDate(localDay(state.lastBackup)))}.` : 'Never saved from this browser.'}</small></div>
         <h3 class="mt">This computer</h3>
         ${(() => { const u = storageUse(); return `<p class="storeLine ${u.pct >= 80 ? 'full' : ''}" id="storeLine"><span class="storeBar"><i style="width:${Math.min(100, Math.max(2, u.pct))}%"></i></span>Storage: <b>${u.mb(u.total)} of about ${u.mb(u.quota)} MB</b> used in this browser${u.other > 20000 ? ` — Tally ${u.mb(u.tally)} MB, other saved pages ${u.mb(u.other)} MB` : ''}.${u.pct >= 80 ? (u.other > u.tally ? ' Nearly full, mostly from other saved pages: save a backup, then clear those pages\' data.' : ' Nearly full: save a backup, then remove an old class or gradebook.') : ''}</p>`; })()}
         <p>Everything Tally shows — IXL scores, rosters, goals, skips, and the Focus gradebook with its grade history — is saved in this browser. On a shared computer, clear it when you're done.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="forget">Remove this class</button><button class="pill danger small" id="wipe">Clear all Tally data</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="wipe">Clear all Tally data</button></div>
       </section>
     </div>
     <footer><div class="spacer"></div><button class="pill pale" id="mCancel">Cancel</button><button class="pill" id="mSave">Save</button></footer>
@@ -1880,6 +1904,7 @@ function openSettings() {
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
   const cancel = () => { if (dirty() && !confirm('Discard the roster changes you pasted?')) return; close(); };
   m._cancel = cancel;
+  const sc = $('#setClass'); if (sc) sc.onchange = () => { if (dirty() && !confirm('Discard the roster changes you pasted?')) { sc.value = s.key; return; } state.active = sc.value; save(); openSettings(); };
   $('#mClose').onclick = cancel; $('#mCancel').onclick = cancel;
   m.onclick = e => { if (e.target === m) cancel(); };
   const wireReport = () => {

@@ -85,6 +85,18 @@ per-section-file era and many items in them are now done).
   to what the course would do anyway, so a later unit toggled twice goes back under Ahead. Only a skill plan whose
   sections aren't "Unit N" keeps the old rule (`startedShare`), because it can't be put in order.
   `settings.onlyCurrent` is still read by `migrate()` but no longer used. `tests/ahead.js`, `tests/working-in.js`.
+- **The Focus check is two dialogs in one function** (4 Oct, `openFocusCheck`). *Setup* — when Focus's column and Tally
+  disagree on what the unit is out of, the dialog is titled "Set up Unit N for Focus" and is only the question "which
+  N don't count?" (the tick-list, one filled button); the student rows, which all differ until the points agree, are
+  folded under "Student by student". *Check* — once the points agree: the count is the headline, then only the
+  students who differ, one filled button "Copy N corrections". "Which Focus column is this" is behind "Wrong column?"
+  in both. A fold the teacher opened stays open when a row action redraws the dialog (`m.dataset.fc`). `details.fold`
+  is the one fold style for dialogs.
+- **Settings is three scopes** (4 Oct, `openSettings`): *This class* (with a class picker `#setClass` — it used to be
+  whichever tab was last open), *This course* (review units, course settings file), *All of Tally* (best score,
+  reminder, copy format, backup, own data, share, storage, clear). Same ids, same Save. `tests/settings.js`.
+- **The Guide is two printed pages** (4 Oct): the routine, then "Words on the screen" in two balanced columns. It was
+  three because a two-column grid does not balance. `tests/reminders-lab-guide.js` counts the pages.
 - **Menus** (`wireMenu(button, menu, place)`): one open at a time (`closeOpenMenu`), closed by any `render()` so a
   key listener or overlay never outlives its screen; `role="menu"`, arrows / Home / End / Escape; a floating menu
   (`place`) closes on resize or page scroll; `keepInside()` keeps the header's menu in the window when the header

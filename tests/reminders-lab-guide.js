@@ -62,6 +62,9 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   // --- guide
   const [pop]=await Promise.all([ctx.waitForEvent('page'), more(p,'#btnGuide')]); await pop.waitForLoadState(); await pop.waitForTimeout(300);
   const g=await pop.textContent('body'); check(/Every week or two/.test(g) && /Words on the screen/.test(g) && /co-teacher/i.test(g) && /accelerated 67/.test(g),'guide opens with the weekly flow, glossary, co-teacher section and the live goals');
+  const gpdf=await pop.pdf({format:'Letter'}); const gpages=(gpdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g)||[]).length;
+  check(gpages===2,'the Guide prints on two pages — the routine, then the words: '+gpages);
+  check(!/Skip N skills to match Focus/.test(g) && /Tally asks which skills don't count/.test(g) && /goes to its class by its students/.test(g),'the Guide describes the import and the Focus check as they are now');
   await pop.emulateMedia({media:'print'}); await pop.screenshot({path:path.join(tmp,'shot28.png'),fullPage:true}); await pop.close();
   // --- header: Import is the one filled button; the places, the names switch and the menu are quiet
   const kinds=await p.evaluate(()=>[...document.querySelectorAll('#top button')].filter(b=>!b.classList.contains('hidden')).map(b=>b.id+':'+(b.classList.contains('pill')&&!b.classList.contains('ghost')?'primary':'quiet')));

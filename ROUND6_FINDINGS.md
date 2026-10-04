@@ -155,7 +155,11 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 4 Oct: an independent verifier went over the import, header and Ahead commits (`review/verify-4oct.md`): 1 P0
   (an older save could lose a copied unit when Working in was set at start-up), 4 P1, 8 P2. All fixed in the next
   commit except two small focus/switch items listed there; `tests/working-in.js` holds the regressions.
-- Next: nothing owed. Remaining "Croix's calls": the seating row toggles and Back-button handling. Build 3 candidates and "Croix's calls" wait for him.
+- 4 Oct: Build 3's visible items, on Croix's word ("the things you see and under the hood"; the Windows laptop is
+  the screen that has to be right): the Focus check split into setup and the weekly check, Settings grouped by scope
+  with a class picker, the Guide down to two printed pages. 26 suites.
+- Next: the under-the-hood cleanup (tokens, shared components) behind a pixel comparison at 1536×864 and 1280×720.
+  Remaining "Croix's calls": the seating row toggles and Back-button handling. Build 3 candidates and "Croix's calls" wait for him.
 
 ## Handoff for the next session (any model)
 
