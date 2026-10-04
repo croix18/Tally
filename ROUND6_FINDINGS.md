@@ -82,7 +82,7 @@ evidence, what it withdrew, and what all four would sign.
 | Student page and report | `6052267` | Tiles with sparklines, answer first, right-aligned numerals, dead `tabular-nums` gone; printed report is one page per student |
 | Glyphs | `d37fc55` | Font re-subset (+ ← → ↔ ≤ ≥ ≈ ≠ ∞, recipe in `fonts/README.md`); check / warning / lock / trash etc. as inline SVG (`ico()`); every print page embeds DM Sans |
 | Storage | `3725bec` | Pool classes don't save a second copy of `skills` (`stateForSave`); gauge in Settings; warning on the Overview when nearly full |
-| Verifier fixes | the commit after `3725bec` | See below |
+| Verifier fixes | `2ab0946` | See below |
 
 ### The independent verifier (`review/round6-build2-verify.md`) — 2 P0, 7 P1, 17 P2
 
