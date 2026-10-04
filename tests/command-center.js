@@ -49,7 +49,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   for (const k of Object.keys(kinds)) { await p.selectOption('#labKind',k); await p.waitForTimeout(350); const n=await p.locator(kinds[k]).count(); check(n>0,`${k}: draws (${n} marks)`); }
   await p.selectOption('#labKind','hist'); await p.waitForTimeout(200); await p.selectOption('#labBin','5'); await p.waitForTimeout(300); check((await p.locator('.chart .bar').count())<=10,'histogram bin size applies');
   check(await p.locator('#labDots').count()===0 && await p.locator('#labTukey').count()===0,'box-only controls hidden for other graph types');
-  await p.selectOption('#labKind','line'); await p.waitForTimeout(300); check(/Needs at least two imports|pick/.test(await p.textContent('#lb')),'line graph explains it needs history');
+  await p.selectOption('#labKind','line'); await p.waitForTimeout(300); check(/Needs at least two imports|Pick /.test(await p.textContent('#lb')),'line graph explains it needs history');
   await p.selectOption('#labUnit','unit:__all__'); await p.waitForTimeout(300); check(await p.locator('.labRow.one .chart .ln').count()>=1,'…and draws once a class has two imports (the digest step gave 1st period a second one)');
   // --- Points / % toggle: values, stats and axis become percent of the maximum
   await p.selectOption('#labUnit', await p.evaluate(()=>document.querySelector('#labUnit option').value)); await p.selectOption('#labKind','box'); await p.waitForTimeout(300);

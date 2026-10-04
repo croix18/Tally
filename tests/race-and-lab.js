@@ -52,7 +52,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   await p.click('#labStats'); await p.waitForTimeout(300); check(/mean/i.test(await p.textContent('.labStats')) && /shape/i.test(await p.textContent('.labStats')) && await p.locator('.labMean').count()>0 && /(mean (above|below|≈) median)/.test(await p.textContent('.labStats')),'reveal step 2: mean diamond appears, shape stated by the mean-vs-median rule');
   await p.click('#labTukey'); await p.waitForTimeout(300); check(/outliers/i.test(await p.textContent('.labStats')) && /outlier/.test(await p.textContent('.labLegend')),'outliers appear only with the toggle'); await p.click('#labTukey'); await p.waitForTimeout(200);
   await p.click('[data-prep="on"]'); await p.waitForTimeout(300); check(await p.locator('.labRow').count()===4,'on-level lab shows 4 classes');
-  await p.selectOption('#labUnit','unit:__all__'); await p.waitForTimeout(300); check(/assigned units/.test(await p.textContent('.lbSub')),'dataset switch');
+  await p.selectOption('#labUnit','unit:__all__'); await p.waitForTimeout(300); check(/assigned units/.test(await p.textContent('.lbTitle')),'dataset switch');
   await p.screenshot({path:path.join(tmp,'shot14.png')}); await p.selectOption('#labUnit', await p.evaluate(()=>document.querySelector('#labUnit option').value)); await p.waitForTimeout(300); await p.screenshot({path:path.join(tmp,'shot15.png')});
   const allScale=await p.textContent('.lbSub'); check(!/0–2\d\d/.test(allScale),'all-skills scale from data, not 220: '+allScale.slice(-14));
   await p.click('[data-tab="race"]'); await p.waitForTimeout(200);
@@ -85,7 +85,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   check(g('7T2A').active===null && g('7T5A').active===null && g('7T2A').rank===3 && g('7T5A').rank===4,'classes without a baseline rank below, by completion');
   await p.click('#btnLb'); await p.waitForTimeout(400); const lbt2=await p.textContent('#lb');
   check(/nearly all\s*moved up/i.test(lbt2) && /48% moved up/.test(lbt2),'headline hides a 1–2 student remainder ("nearly all") and shows the percent otherwise');
-  check(/Ranked by the share of each class that moved up/.test(lbt2) && /furthest along/.test(lbt2),'subtitle states the rule; furthest-along tag shown');
+  check(/Classes ranked by the share of students who moved up this week/.test(lbt2) && /furthest along/.test(lbt2),'subtitle states the rule; furthest-along tag shown');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
   // bunched data: IQR of 0 or 1 switches the outlier rule off
   const bunch=await p.evaluate(()=>{ const S=window.__tally.stats; const a=S([5,5,5,5,5,5,5,5,5,5,5,5,0,10]); const b=S([7,7,7,8,8,8,8,8,8,8,8,8,8,2,14]); const c=S([1,5,6,7,7,8,8,9,9,10,11,12,30]); return {a:[a.iqr,a.bunched,a.outliers.length,a.wLo,a.wHi], b:[b.iqr,b.bunched,b.outliers.length], c:[c.iqr,c.bunched,c.outliers.length]}; });

@@ -546,7 +546,7 @@ function lbMarkup(data, focus) {
       <div class="lbMain">
         <div class="lbName">${esc(shortName(r))}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.lead ? ' <span class="lbTie lead">furthest along</span>' : ''}</div>
         <div class="lbBarRow" title="${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skill-points · ${plural(r.students, 'student')}"><div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div>${r.active == null ? '' : `<span class="lbDone">${pct(r.completion)}% complete</span>`}</div>
-        <div class="lbLine ${r.gain != null && !r.thrChanged && !r.basisChanged ? 'gain' : ''}">${r.thrChanged ? 'goal changed — fresh start this week' : r.basisChanged ? 'skills counted changed — fresh start this week' : r.gain != null ? `${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}` : 'first week in the race'}</div>
+        <div class="lbLine ${r.gain != null && !r.thrChanged && !r.basisChanged ? 'gain' : ''}">${r.thrChanged ? 'goal changed, so a fresh start this week' : r.basisChanged ? 'skills counted changed, so a fresh start this week' : r.gain != null ? `${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}` : 'first week in the race'}</div>
       </div>
       <div class="lbPct">${headline(r)}</div>
     </div>`;
@@ -554,12 +554,12 @@ function lbMarkup(data, focus) {
   const league = l => {
     const clear = l.rows.length > 1 && !l.rows[0].tied;
     const au = l.rows[0].assignedUnits;
-    return `<section class="lbLeague">${multi ? `<div class="lbLeagueHead"><span class="lbLeagueName">${l.name}</span><span class="lbBasis">${au.length ? 'assigned: ' + esc(au.length > 3 && /^Unit \d+$/.test(au[0]) ? au[0] + ' – ' + au[au.length - 1] : au.join(', ')) : 'nothing assigned yet'}</span></div>` : ''}
+    return `<section class="lbLeague">${multi ? `<div class="lbLeagueHead"><span class="lbLeagueName">${l.name}</span><span class="lbBasis">${au.length ? 'counting ' + esc(unitSpan(au)) : 'nothing assigned yet'}</span></div>` : ''}
       <div class="lbList">${l.rows.map(r => card(r, clear && r.rank === 1)).join('')}</div>
     </section>`;
   };
   const one = !multi && leagues[0] ? leagues[0].rows[0].assignedUnits : null;
-  return `<div class="lbHead"><div class="lbTitle">Race</div><div class="lbSub">Ranked by the share of each class that moved up this week${one ? (one.length ? ' · ' + esc(one.join(', ')) : ' · nothing assigned yet') : ''}${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
+  return `${boardHead('Race', ['classes ranked by the share of students who moved up this week', one ? (one.length ? 'counting ' + unitSpan(one) : 'nothing assigned yet') : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
     <div class="lbLeagues ${multi ? 'two' : ''}" style="--rows:${rowsMax}">${leagues.map(league).join('')}</div>`;
 }
 const LB_CSS = `
@@ -570,9 +570,9 @@ const LB_CSS = `
 .lbWrap{--bu0:clamp(11px,min(1vw,1.7778vh),40px);--bu:var(--bu0)}
 .lbLeagues:not(.two){--bu:calc(var(--bu0)*1.3)}   /* one league has the whole width: its cards are a third larger */
 .lbWrap{min-height:100%;display:flex;flex-direction:column;gap:calc(var(--bu)*.85);padding:calc(var(--bu)*1.1) calc(var(--bu)*1.6) 96px;max-width:min(96vw,2600px);margin:0 auto;width:100%}
-.lbHead{display:flex;align-items:baseline;gap:calc(var(--bu)*1);flex-wrap:wrap}
-.lbTitle{font-weight:var(--w-black);font-size:calc(var(--bu)*3.2);letter-spacing:.02em;color:var(--navy);line-height:1}
-.lbSub{font-weight:var(--w-bold);color:var(--teal);font-size:calc(var(--bu)*1.3)}
+.lbHead{display:flex;flex-direction:column;gap:calc(var(--bu)*.2)}
+.lbTitle{margin:0;font-weight:var(--w-heavy);font-size:calc(var(--bu)*2.5);color:var(--navy);line-height:1.15}
+.lbSub{margin:0;font-weight:var(--w-med);color:var(--ink-soft);font-size:calc(var(--bu)*1.3);line-height:1.3}
 .lbLeagues{flex:1;display:flex;flex-direction:column;gap:calc(var(--bu)*1)}
 .lbLeagues.two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--bu)*1.2);align-items:stretch}
 .lbLeague{display:flex;flex-direction:column;gap:calc(var(--bu)*.65);min-height:0;flex:1}
@@ -653,7 +653,7 @@ function labDatasets(prep) {
   add('IXL units (points)', 'unit:__all__', 'All assigned units · skills at goal');
   secs.forEach(s => { const cats = {}; (s.grades ? s.grades.assignments : []).forEach(a => { cats[catOf(s.prep, a.name, a)] = 1; }); Object.keys(cats).sort().forEach(c => (s.grades.assignments.filter(a => catOf(s.prep, a.name, a) === c)).forEach(a => add(c, 'gb:' + a.name, a.name))); });
   state.custom.filter(c => c.prep === prep).forEach(c => add('Our own data', 'custom:' + c.id, c.label));
-  secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden) u.idx.forEach(k => { const sk = s.skills[k]; add('IXL skills (SmartScore) — ' + u.short, 'skill:' + skillKey(sk), u.short + ' · ' + sk.name); }); }));
+  secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden) u.idx.forEach(k => { const sk = s.skills[k]; add('IXL skills (SmartScore), ' + u.short, 'skill:' + skillKey(sk), u.short + ' · ' + sk.name); }); }));
   const list = groups.flatMap(g => g.items);
   return { secs, list, groups };
 }
@@ -727,8 +727,8 @@ function labPlot(kind, x, scale, id, o) {
   if (kind === 'stem') return chartStem(vals, max);
   if (kind === 'bar') return chartFreq(vals, max);
   if (kind === 'circle') {
-    if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', value: x.missing, color: 'var(--grid)' }]); }
-    if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, value: b[k], color: LETTER_COLORS[k] }))); }
+    if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', value: x.missing, color: NEUTRAL_FILL }]); }
+    if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, short: k, value: b[k], color: LETTER_COLORS[k] }))); }
     const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1;
     if (x.pct) return chartCircle([0, 1, 2, 3].map(i => ({ label: ['Under 25%', '25–49%', '50–74%', '75–100%'][i], value: q[i], color: QUARTER_COLORS[i] })));
     // Quarter i holds whole-number scores from ceil(m·i/4) up to the next quarter's start, so no score sits in two ranges.
@@ -737,6 +737,13 @@ function labPlot(kind, x, scale, id, o) {
   }
   return boxSVG(x.st, scale, 800, o);
 }
+// The Board's heading. The title is the thing being shown; the line under it is an ordinary phrase — who, what is
+// measured, as of when — not a chain of fragments.
+const boardHead = (title, facts) => { const line = facts.filter(Boolean).join(', '); return `<div class="lbHead"><h1 class="lbTitle">${esc(title)}</h1>${line ? `<p class="lbSub">${esc(line.charAt(0).toUpperCase() + line.slice(1))}</p>` : ''}</div>`; };
+const dsTitle = label => String(label).replace(/\s+·\s+/g, ': ');   // "Unit 3 · Exponents" reads "Unit 3: Exponents" as a title
+const unitSpan = names => names.length > 1 && names.every((n, i) => /^Unit \d+$/.test(n) && (i === 0 || +n.slice(5) === +names[i - 1].slice(5) + 1)) ? `Units ${names[0].slice(5)}–${names[names.length - 1].slice(5)}` : names.join(', ');
+// What each graph type shows, as a sentence a seventh grader can read from the back of the room.
+const LAB_NOTE = { hist: 'Histogram: each bar counts the students in that range.', dots: 'Dot plot: one dot per student.', stem: 'Stem-and-leaf plot: each leaf is one student.', bar: 'Bar graph: each bar is the number of students with that value.', barGrouped: 'Bar graph: each bar is the number of students in that range (too many values for one bar each).', circle: 'Circle graph: each slice is the share of the class in that group.', line: 'Line graph: one line per class, the class average at each import.' };
 const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph']];
 const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
@@ -751,11 +758,11 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const gbSet = unitName.startsWith('gb:'); if (gbSet) { valuesOn = false; tukey = false; }
   if (kind === 'line') {   // every class on one chart — the comparison is the point
     const asOfL = secs.map(s => s.date).filter(Boolean).sort().pop(); let body = '';
-    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = snapTotals(x.sec, h); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300, w: 900, labelW: 200 }); }
-    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
-    else body = '<div class="labNotYet">A line graph needs data over time — pick <b>All units · skills at goal</b> or a Focus assignment.</div>';
-    return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(list.find(d => d.id === unitName).label)} · class average by import · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOfL ? ' · ' + fmtDate(asOfL) : ''}</div></div>
-      <div class="labLegend"><span class="lgNote">Line graph · one line per class · class average by import date</span></div><div class="labRows"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
+    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = snapTotals(x.sec, h); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300, w: 900, labelW: 200 }); }
+    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
+    else body = '<div class="labNotYet">A line graph needs data over time. Pick <b>All assigned units</b> or a Focus assignment.</div>';
+    return `${boardHead(dsTitle(list.find(d => d.id === unitName).label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, 'class average at each import', asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
+      <div class="labLegend"><span class="lgNote">${LAB_NOTE.line}</span></div><div class="labRows"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
   if (seriesAll[0] && seriesAll[0].pct) scale = 100;
@@ -769,20 +776,21 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
       ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
       ${statsLevel > 0 ? `<div class="labStats">
         ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
-        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)} — too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
+        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)}, too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''}
     </div>`; };
   const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
-  return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(ds.label)} · ${esc(unitLabel)} per student${seriesAll[0] && seriesAll[0].pct ? ' (rounded to whole percents)' : ''} · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
-    ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${esc(LAB_KINDS.find(k => k[0] === kind)[1])} · one row per class · ${kind === 'hist' ? 'bars count students in each range' : kind === 'dots' ? 'one dot per student' : kind === 'stem' ? 'each leaf is one student' : kind === 'bar' ? (scale > 26 ? 'bar height = how many students in each range (values grouped — too many for one bar each)' : 'bar height = how many students got that value') : kind === 'circle' ? 'share of the class in each slice' : 'class average by import date'}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">whiskers stop at the last value inside 1.5 × IQR</span>' : '<span class="lgNote">whiskers: minimum to maximum</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
+  const isPct = !!(seriesAll[0] && seriesAll[0].pct);
+  return `${boardHead(dsTitle(ds.label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+    ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${kind === 'bar' && scale > 26 ? LAB_NOTE.barGrouped : LAB_NOTE[kind]}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
     <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
-    ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">Stats are hidden — read the plots first. Which class has the higher median? The bigger spread?</div>' : ''}`;
+    ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">The stats are hidden. Read the plots first: which class has the higher median? The bigger spread?</div>' : ''}`;
 }
 const LAB_ONLY_CSS = `
 .labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.15);color:var(--navy)}
 .labLegend i{display:inline-block;width:16px;height:12px;vertical-align:-1px;margin-right:6px;border-radius:var(--r-xs)}
-.lgNote{color:var(--teal)}
-.lgBox{background:var(--paleturq);border:2px solid var(--navy)} .lgMed{background:var(--navy);width:4px!important} .lgMean{background:var(--turq);border:2px solid var(--navy);transform:rotate(45deg);width:10px!important;height:10px!important} .lgOut{border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important} .lgDot{background:var(--turq);border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important}
+.lgNote{color:var(--ink-soft);font-weight:var(--w-med)}
+.lgBox{background:#E4E7EC;border:2px solid var(--navy)} .lgMed{background:var(--navy);width:4px!important} .lgMean{background:var(--white);border:2px solid var(--navy);transform:rotate(45deg);width:10px!important;height:10px!important} .lgOut{border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important} .lgDot{background:#9AA3B2;border:2px solid var(--white);outline:1px solid #9AA3B2;border-radius:50%!important;width:12px!important;height:12px!important}
 .labRows{display:flex;flex-direction:column;gap:14px}
 .labRow{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:10px 22px 6px;display:grid;grid-template-columns:calc(var(--bu)*13) 1fr;gap:8px 18px;align-items:center}
 .labRow.thin{opacity:.75}
@@ -793,12 +801,12 @@ const LAB_ONLY_CSS = `
 .labSvg{width:100%;height:auto;display:block;overflow:visible}
 .labTick{stroke:var(--grid);stroke-width:1} .labTickTxt{font-size:14px;font-weight:var(--w-bold);fill:var(--teal);text-anchor:middle}
 .labWhisk{stroke:var(--navy);stroke-width:2;stroke-linecap:round}
-.labBox{fill:var(--paleturq);stroke:var(--navy);stroke-width:2}
+.labBox{fill:color-mix(in srgb,var(--cc,var(--turq)) 22%,var(--white));stroke:var(--navy);stroke-width:2}
 .labMed{stroke:var(--navy);stroke-width:4;stroke-linecap:round}
-.labMean{fill:var(--turq);stroke:var(--navy);stroke-width:2}
+.labMean{fill:var(--white);stroke:var(--navy);stroke-width:2}
 .labMeanLine{stroke:var(--navy);stroke-width:1.5;stroke-dasharray:3 3;opacity:.6}
 .labOut{fill:var(--white);stroke:var(--navy);stroke-width:2}
-.labDot{fill:var(--turq);stroke:var(--white);stroke-width:1.5}
+.labDot{fill:var(--cc,var(--turq));stroke:var(--white);stroke-width:1.5}
 .labLbl{font-size:14px;font-weight:var(--w-black);fill:var(--navy)} .labLbl.mid{text-anchor:middle} .labLbl.end{text-anchor:end}
 .labStats{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(var(--bu)*7),1fr));gap:6px 8px;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labStats div{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--cream);border-radius:var(--r-m);padding:6px 4px}
@@ -806,7 +814,7 @@ const LAB_ONLY_CSS = `
 .labStats div.wide b{font-size:calc(var(--bu)*.95);line-height:1.3}
 .labStats span{font-size:calc(var(--bu)*.95);font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
 .labStats b{font-weight:var(--w-black);font-size:calc(var(--bu)*1.3)}
-.labHint{font-weight:var(--w-bold);color:var(--teal);font-size:calc(var(--bu)*1.3);padding:4px 6px}
+.labHint{font-weight:var(--w-bold);color:var(--navy);font-size:calc(var(--bu)*1.3);padding:4px 6px}
 .labValues{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-start;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labHalf{display:flex;flex-direction:column;gap:4px}
 .labHalf small{font-size:calc(var(--bu)*1);font-weight:var(--w-bold);color:var(--teal);letter-spacing:.02em}
@@ -816,7 +824,7 @@ const LAB_ONLY_CSS = `
 .labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:var(--w-black)}
 .labChips span.m.gap{background:var(--white);color:var(--navy);border-style:dashed}
 .labChips span.out{box-shadow:0 0 0 2px var(--coral)}
-.labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*10 - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
+.labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*11.5 - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
 .lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:var(--r-l);padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}

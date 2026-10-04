@@ -169,6 +169,13 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   from either, but 1 older P0 (a kept blank was overwritten by "Copy the whole column"), 4 P1 in the new Settings
   picker and the Focus check's folds, 12 P2. All fixed in the next commit; the laptop is now also measured as a
   browser window (1536×735, 1280×595), not only full screen.
+- 4 Oct (late): Croix sent a screenshot of the Data Lab circle graph — the title "looks unprofessional and comes off
+  very ai", and the chart colours should be "common sense… not just different shades of aqua". Shipped: the Board
+  heading is a title and one plain line (Race too); letter grades are green / blue / yellow / orange / red everywhere
+  (charts, chips, a student's category bars); done-ness bands run red to green; a class's own plot wears its class
+  colour. Checked for colour-blind readers over every pair, and every grade-coloured mark also carries its letter or
+  count. Rule and numbers in NOTES.md; new suite `tests/colors.js` (28 checks). Fixed on the way: circle-graph slice
+  labels ran into the legend, and the Data Lab line graph's end labels ran off the card. 28 suites, 923 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

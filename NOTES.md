@@ -236,6 +236,37 @@ per-section-file era and many items in them are now done).
   older Tally.html opening a newer save can't drop the class), and Settings shows how full the browser's storage is.
   Two lessons worth keeping: a `//` comment inside a one-line function swallows its closing brace (use `/* */`; the
   ship script now parse-checks), and `${...}` only works inside back-ticks — both broke a build this round.
+- **Chart colours and the Board heading** (4 Oct, late; Croix, with a screenshot of the Data Lab circle graph: *"The
+  title looks unprofessional and comes off very ai… use common sense colors like As should get a green, Fs red… They
+  should not just be different shades of aqua"*). The rule now, in one place (`charts.js` header, `tests/colors.js`):
+  - **Letter grades** are A green `#55b872`, B blue `#1c7abb`, C yellow `#efd127`, D orange `#d88018`, F red
+    `#c51d28` — `LETTER_COLORS` in `charts.js`, the same five as `--g-a … --g-f` in `app.html`, with a pale wash of
+    each (`--g-*-wash`) for chips. Used by: the Data Lab circle graph of a Focus assignment, the Overview's stacked
+    letter bars, letter chips on class cards / Grades / the student page, and a student's category bars (a bar showing
+    a percent grade wears the colour of the letter that percent earns, `gradeFill`).
+  - **How much is done** (a unit's points in quarters of the maximum, at goal / below goal) uses the same scale
+    without blue: red, orange, yellow, green (`QUARTER_COLORS`). "Not started" is grey (`NEUTRAL_FILL`).
+  - **A class's own plot wears that class's colour** (`--cc` on the row: histogram, bar graph, dot plot, box plot
+    tint and dots, the Grades scatter); class against class uses the class colours, as before. Teal is only the
+    fallback where there is no class.
+  - Red and green together are the classic colour-blind trap, so the five were picked by search and checked with the
+    dataviz palette validator over **every pair** (a circle graph can put any two side by side): worst pair under
+    simulated protanopia/deuteranopia ΔE 8.0 (target 8), 19.3 with full colour vision; `tests/colors.js` repeats the
+    maths. What the validator still flags, on purpose: the yellow is lighter than its "chart" band and yellow, green
+    and orange are under 3:1 against white — a yellow that passes those is mustard, not the yellow he asked for. So
+    no mark relies on colour: slices are labelled "A 21%", segments carry their count, every legend names the letter,
+    and each grade-coloured mark has a dark hairline.
+  - **Board heading**: `boardHead(title, facts)` — an `<h1>` naming what is shown ("Unit 1 Assessment", "Unit 2:
+    Probability", "Race") and one ordinary line under it ("On-level classes, points out of 21 per student, as of
+    Sep 26"). No "Data Lab · … · … · …" chain, no scale in the heading (the axis shows it), no dashes. The line above
+    the plots is a sentence (`LAB_NOTE`). Race league lines say "counting Units 1–3" (`unitSpan`). The Data Lab's line
+    graph labels its lines "5th Period", not "5th Period · On-level" (the heading already says which course; the long
+    label was running off the card).
+  - `chartCircle` sets its own type sizes (inline, 19/21 px in its 216-high box) and its own width from the longest
+    legend line, so it no longer depends on the `#lb` overrides (a saved Data Lab page has no `#lb`) and slice
+    labels are anchored away from the circle (they used to run into the legend). On the laptop with three classes
+    the circles are still small because the rows share the height; laying circle graphs side by side instead of
+    stacked would fix that and has not been done.
 
 ## Weekly routine
 

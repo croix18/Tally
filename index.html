@@ -14,7 +14,7 @@ div.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:16px}   /* 
 .gcard span{font-size:var(--t-s);color:var(--ink-soft)}
 .gcard .up{color:var(--teal)}.gcard .down{color:var(--bad)}
 .gcard .letters{display:flex;gap:8px;font-size:15px}.gcard .letters i{font-style:normal;display:flex;flex-direction:column;align-items:center;min-width:26px;border-radius:var(--r-s);padding:2px 4px;background:var(--paleturq)}
-.gcard .letters i em{font-style:normal;font-size:18px}.gcard .letters i.D,.gcard .letters i.F{background:var(--sand)}
+.gcard .letters i em{font-style:normal;font-size:18px}.gcard .letters i.A{background:var(--g-a-wash)}.letters i.B{background:var(--g-b-wash)}.letters i.C{background:var(--g-c-wash)}.letters i.D{background:var(--g-d-wash)}.letters i.F{background:var(--g-f-wash)}
 .gtwo{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media (max-width:900px){.gtwo{grid-template-columns:1fr}}
 .gsec{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);box-shadow:var(--shadow-1);padding:12px 16px 8px}
@@ -28,10 +28,10 @@ div.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:16px}   /* 
 .gstu td.down{color:var(--bad);font-weight:var(--w-black)}.gstu td.up{color:var(--teal);font-weight:var(--w-black)}
 .gtag{font-size:var(--t-xs);font-weight:var(--w-black);letter-spacing:.06em;text-transform:uppercase;background:var(--navy);color:var(--white);border-radius:var(--r-pill);padding:1px 8px;margin-left:6px}
 .gchip{display:inline-flex;align-items:baseline;gap:3px;font-weight:var(--w-black);font-size:var(--t-l);padding:2px 10px;border-radius:var(--r-pill);background:var(--paleturq)}
-.gchip small{font-size:var(--t-xs);letter-spacing:.06em}.gchip.D,.gchip.F{background:var(--sand)}.gchip.F{background:var(--coral)}
+.gchip small{font-size:var(--t-xs);letter-spacing:.06em}.gchip.A{background:var(--g-a-wash)}.gchip.B{background:var(--g-b-wash)}.gchip.C{background:var(--g-c-wash)}.gchip.D{background:var(--g-d-wash)}.gchip.F{background:var(--g-f-wash)}
 .spark{display:block}.spark path{fill:none;stroke:var(--teal);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.spark circle{fill:var(--navy)}
 .scatter{width:100%;height:auto;max-width:520px}.scatter .gl{stroke:var(--grid);stroke-width:1}.scatter .tl{font-size:11px;fill:var(--ink-soft)}.scatter .al{font-size:11px;fill:var(--teal);font-weight:var(--w-bold);letter-spacing:.06em;text-transform:uppercase}
-.scatter .pt{fill:var(--turq);stroke:var(--navy);stroke-width:1.5;opacity:.85}
+.scatter .pt{fill:var(--cc,var(--turq));stroke:var(--navy);stroke-width:1.5;opacity:.85}
 .stucard h3{margin:14px 0 4px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
 .stucard .hsub{font-size:var(--t-s);font-weight:var(--w-reg);color:var(--ink-soft);margin-left:8px}
 
@@ -67,7 +67,7 @@ div.home{display:flex;flex-direction:column;gap:16px;padding:4px 0 40px}
 .hnums b{font-size:24px;font-weight:var(--w-black);line-height:1.1}.hnums span{display:block;font-size:var(--t-xs);color:var(--ink-soft)}
 .hchips{display:flex;gap:6px;flex-wrap:wrap}.hchip{font-size:var(--t-xs);font-weight:var(--w-black);border-radius:var(--r-pill);padding:3px 10px;background:var(--paleturq)}.hchip.warn{background:var(--coral)}.hchip.ok{background:var(--paleturq)}.hchip.muted{background:var(--grid);color:var(--ink-soft)}.hchip.stale{background:var(--sand);color:var(--navy)}
 .himport{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:0 16px;margin-bottom:10px;box-shadow:var(--shadow-1)}.himport.warn{border-color:var(--coral)}.himport summary{display:flex;align-items:baseline;gap:10px;font-size:var(--t-l);cursor:pointer;list-style:none;padding:8px 0;min-height:28px}.himport summary::-webkit-details-marker{display:none}.himport summary::before{content:"";flex:none;width:6px;height:6px;border:solid var(--ink-soft);border-width:0 2px 2px 0;transform:rotate(-45deg);margin:0 2px 2px 0;align-self:center}.himport[open] summary::before{transform:rotate(45deg);margin-bottom:5px}.himport summary b{font-weight:var(--w-black)}.himport summary small{font-weight:var(--w-reg);color:var(--ink-soft);font-size:var(--t-s)}.himport summary .linkbtn{margin-left:auto;font-size:var(--t-s)}.himport ul{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:3px}.himport li.bad{color:var(--bad)}.himport li.muted{color:var(--ink-soft)}#drop .himport{text-align:left;margin:18px auto 0;max-width:640px;padding:12px 16px}#drop .himport h3{font-size:var(--t-l);display:flex;gap:10px;align-items:baseline}#drop .himport h3 small{font-weight:var(--w-reg);color:var(--ink-soft);font-size:var(--t-s)}#drop .himport ul{margin:6px 0 0}
-.hchip.letters{display:inline-flex;gap:6px;background:transparent;padding:0}.hchip.letters i{font-style:normal;display:inline-flex;gap:3px;align-items:baseline;background:var(--paleturq);border-radius:var(--r-s);padding:2px 7px}.hchip.letters i em{font-style:normal;font-weight:var(--w-black)}.hchip.letters i.D,.hchip.letters i.F{background:var(--sand)}
+.hchip.letters{display:inline-flex;gap:6px;background:transparent;padding:0}.hchip.letters i{font-style:normal;display:inline-flex;gap:3px;align-items:baseline;background:var(--paleturq);border-radius:var(--r-s);padding:2px 7px}.hchip.letters i em{font-style:normal;font-weight:var(--w-black)}.hchip.letters i.A,.hchip.letters i.A{background:var(--g-a-wash)}.letters i.B,.hchip.letters i.B{background:var(--g-b-wash)}.letters i.C,.hchip.letters i.C{background:var(--g-c-wash)}.letters i.D,.hchip.letters i.D{background:var(--g-d-wash)}.letters i.F,.hchip.letters i.F{background:var(--g-f-wash)}
 .hatt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}.hatt li+li{border-top:1px solid var(--grid)}.hatt li button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:none;padding:6px 4px;font:inherit;color:var(--navy);cursor:pointer;font-size:var(--t-m)}.hatt li button:hover{background:var(--cream)}.hatt li i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--teal)}.hatt li.warn i{background:var(--bad)}.hatt li span{flex:1}.hatt li em{font-style:normal;color:var(--ink-soft);font-weight:var(--w-bold)}.hatt li #hBackup em{color:var(--teal);font-weight:var(--w-heavy);text-decoration:underline;white-space:nowrap}
 .hatt li.each>div{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:3px 4px;font-size:var(--t-m)}.hatt li.each span{flex:none}.hatt li .hgo{width:auto;border:1px solid var(--grid);background:var(--white);border-radius:var(--r-pill);padding:4px 12px 4px 10px;font:inherit;font-weight:var(--w-heavy);font-size:var(--t-s);color:var(--navy);min-height:var(--h-s);display:inline-flex;align-items:center;gap:6px}.hatt li .hgo::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--cc)}.hatt li .hgo:hover{background:var(--cream)}
 .storeLine{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.storeBar{flex:none;width:120px;height:8px;border-radius:var(--r-pill);background:var(--grid);overflow:hidden}.storeBar i{display:block;height:100%;background:var(--teal);border-radius:var(--r-pill)}.storeLine.full .storeBar i{background:var(--bad)}.storeLine.full b{color:var(--bad)}
@@ -111,6 +111,10 @@ div.home{display:flex;flex-direction:column;gap:16px;padding:4px 0 40px}
   --r-pill:999px;             /* buttons, chips, tabs, bars */
   --h-s:32px; --h-m:38px; --h-touch:44px; --h-l:48px;   /* control heights: compact, default, finger, roomy */
   --w-reg:500; --w-med:600; --w-bold:700; --w-heavy:800; --w-black:900;
+  /* letter grades, good → bad: the colours anyone would guess. Same values as LETTER_COLORS in charts.js; the washes
+     are the quiet version for chips that hold text. */
+  --g-a:#55b872; --g-b:#1c7abb; --g-c:#efd127; --g-d:#d88018; --g-f:#c51d28;
+  --g-a-wash:#DDF2E3; --g-b-wash:#D9E9F5; --g-c-wash:#FBF3C6; --g-d-wash:#F8E4CB; --g-f-wash:#FBDAD2;
 }
 </style>
 <style>
@@ -1080,9 +1084,9 @@ function sparkline(vals, w, h) {
   let d = '', last = null; vals.forEach((x, i) => { if (x == null) return; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x).toFixed(1) + ' '; last = [X(i), Y(x)]; });
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="${d}"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3"/></svg>`;
 }
-function scatterSVG(pts, w, h) {
+function scatterSVG(pts, w, h, color) {
   const X = x => 40 + x / 100 * (w - 56), Y = y => h - 36 - y / 100 * (h - 48);
-  let s = `<svg class="scatter" viewBox="0 0 ${w} ${h}" role="img" aria-label="IXL work at goal against assessment average, one dot per student">`;
+  let s = `<svg class="scatter" viewBox="0 0 ${w} ${h}"${color ? ` style="--cc:${color}"` : ''} role="img" aria-label="IXL work at goal against assessment average, one dot per student">`;
   [0, 50, 100].forEach(v => { s += `<line x1="${X(v)}" y1="${Y(0)}" x2="${X(v)}" y2="${Y(100)}" class="gl"/><text x="${X(v)}" y="${h - 20}" text-anchor="middle" class="tl">${v}%</text>`; s += `<line x1="${X(0)}" y1="${Y(v)}" x2="${X(100)}" y2="${Y(v)}" class="gl"/><text x="${X(0) - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${v}</text>`; });
   s += `<text x="${(X(0) + X(100)) / 2}" y="${h - 4}" text-anchor="middle" class="al">IXL assigned work at goal</text><text transform="translate(10 ${(Y(0) + Y(100)) / 2}) rotate(-90)" text-anchor="middle" class="al">assessments (no IXL)</text>`;
   pts.forEach(p => { s += `<circle cx="${X(p.ixl).toFixed(1)}" cy="${Y(p.tests).toFixed(1)}" r="6" class="pt"><title>${esc(p.label)}: IXL ${Math.round(p.ixl)}% · assessments ${Math.round(p.tests)}%</title></circle>`; });
@@ -1158,7 +1162,7 @@ function renderGrades(s0) {
       <section class="gsec"><h3>Categories</h3><table class="checkTable"><thead><tr><th>Category</th><th>Weight</th><th>Assignments</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th></tr></thead><tbody>
         ${catRows.map(x => `<tr><td>${esc(x.c.name)}</td><td>${x.c.w}%</td><td>${x.n}</td><td>${pct1(x.avg)}</td></tr>`).join('')}</tbody></table>
         <p class="ghint">Course grade = each category's points earned ÷ points possible, weighted. Missing work counts as 0; excused (NG) is left out.${fit && fit.exact ? ` <b>Matches the Focus Grade column for all ${fit.n} students.</b>` : ''}</p></section>
-      <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 ? scatterSVG(pts, 420, 260) + `<p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)} — ${rWord}. Assessment average leaves the IXL columns out so it isn't circular.</p>` : `<p class="ghint">Needs at least 8 students matched to IXL with an assessment on record (${pts.length} so far).</p>`}</section>
+      <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 ? scatterSVG(pts, 420, 260, classColor(s0)) + `<p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)} — ${rWord}. Assessment average leaves the IXL columns out so it isn't circular.</p>` : `<p class="ghint">Needs at least 8 students matched to IXL with an assessment on record (${pts.length} so far).</p>`}</section>
     </div>
     <section class="gsec"><h3>Assignments</h3><table class="checkTable gasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th>Points</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th><th>Missing</th><th>Excused</th><th title="Class average now minus the class average without this assignment — negative means it pulls grades down">Effect</th></tr></thead><tbody>
       ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}" ${closedQ ? 'disabled' : ''}>${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small title="${x.how === 'fit' ? 'proved by the Focus Grade column' : x.how === 'user' ? 'set by you' : x.how === 'file' ? 'stated in the export' : 'guessed from the name'}">${x.how === 'fit' ? ico('check', 'confirmed') : x.how === 'user' ? 'edited' : x.how === 'file' ? 'from file' : 'guess'}${x.disagree ? ' · Focus disagrees' : ''}</small></td><td>${esc(x.a.due || '')}</td><td>${x.a.max != null ? esc(fmtN(x.a.max)) : '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>
@@ -1287,16 +1291,25 @@ function openWeights(sec) {
 }
    // grades.js is spliced in here by build.py (same closure, so it shares state and helpers)
 /* ---------- charts.js — plain-SVG graph primitives (spliced into app.js's closure) ----------
-   Rules (see COMMAND_CENTER.md): single series in the house teal; class-vs-class in a fixed, validated categorical
-   order, always direct-labeled; thin marks; <title> tooltips; text in ink; status colours never used for series. */
+   Rules (see COMMAND_CENTER.md): a class's own plot wears that class's colour (--cc; the house teal where there is no
+   class); class-vs-class in a fixed, validated categorical order, always direct-labeled; anything that means
+   good → bad (letter grades, how much of a unit is done) wears LETTER_COLORS, green to red; thin marks; <title>
+   tooltips; text in ink. */
 const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#008300'];
 const seriesColor = i => SERIES[i % SERIES.length];
-// Letter grades are ordered, so they get one hue light→dark (A darkest) with F in the coral status colour.
-const LETTER_COLORS = { A: '#0F5F6B', B: '#1F8F93', C: '#5FBFB5', D: '#B9E5DF', F: '#D9442F' };
-// Which letter segments are dark enough for white text; the light C/D/F-wash ones take ink.
-const LETTER_DARK = ['A', 'B', 'F'];
-// Ordered quarters (least → most) on the same ramp, for circle graphs of "how much of the unit".
-const QUARTER_COLORS = ['#9ADBD2', '#5FBFB5', '#1F8F93', '#0F5F6B'];   // the lightest step still reads against a white card on a washed-out projector
+// Letter grades wear the colours anyone would guess: A green, B blue, C yellow, D orange, F red (Croix, 4 Oct: "common
+// sense colors… not different shades of aqua"). Red and green are the classic colour-blind trap, and in a circle graph
+// any two slices can touch, so the five were chosen by search to stay apart for every pair under simulated protanopia
+// and deuteranopia (worst pair ΔE 8.0 in OKLab×100; 19 with full colour vision) — and no mark relies on colour alone:
+// slices and legends carry the letter. The same five are the --g-* tokens in app.html (tests/colors.js keeps them equal).
+const LETTER_COLORS = { A: '#55b872', B: '#1c7abb', C: '#efd127', D: '#d88018', F: '#c51d28' };
+// Which letter segments are dark enough for white text; green, yellow and orange take ink.
+const LETTER_DARK = ['B', 'F'];
+// Ordered bands (least → most done) on the same scale: red, orange, yellow, green.
+const QUARTER_COLORS = [LETTER_COLORS.F, LETTER_COLORS.D, LETTER_COLORS.C, LETTER_COLORS.A];
+// A bar that shows a percent grade wears the colour of the letter that percent earns.
+const gradeFill = pct => pct == null ? 'var(--teal)' : LETTER_COLORS[letterOf(Math.round(pct))] || 'var(--teal)';
+const NEUTRAL_FILL = '#C9CED8';   // "not started" and other no-data slices: a grey that still shows on a white card
 // One colour per class, fixed by period when known (1st = slot 1, …) else by position, so every screen agrees.
 function classColor(sec) { const i = sec && Number.isInteger(sec.period) ? sec.period - 1 : Math.max(0, state.order.indexOf(sec ? sec.key : '')); return seriesColor(i); }
 const fmtV = v => v == null ? '—' : (Math.round(v * 10) / 10).toString();
@@ -1320,8 +1333,8 @@ function chartStacked(rows, keys, o) {
   const X = v => lw + (v / max) * (w - lw - 20);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'stacked bar chart')}">`;
   rows.forEach((r, i) => { const y = 8 + i * rowH; let x = 0; s += `<text x="${lw - 10}" y="${y + 15}" text-anchor="end" class="lbl">${esc(r.label)}</text>`;
-    keys.forEach((k, j) => { const v = r.parts[k] || 0; if (!v) return; s += `<rect x="${X(x) + (x ? 1 : 0)}" y="${y + 3}" width="${Math.max(X(x + v) - X(x) - (x ? 1 : 0), 0)}" height="16" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}"><title>${esc(r.label)} · ${esc(k)}: ${v}</title></rect>${v / max > 0.06 ? `<text x="${(X(x) + X(x + v)) / 2}" y="${y + 15}" text-anchor="middle" class="${(o.dark || []).includes(k) ? 'inv' : 'val'}">${v}</text>` : ''}`; x += v; }); });
-  s += `<g class="legend">${keys.map((k, j) => `<rect x="${lw + j * 80}" y="${h - 20}" width="12" height="12" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}"/><text x="${lw + j * 80 + 16}" y="${h - 10}" class="tl">${esc(k)}</text>`).join('')}</g>`;
+    keys.forEach((k, j) => { const v = r.parts[k] || 0; if (!v) return; s += `<rect x="${X(x) + (x ? 1 : 0)}" y="${y + 3}" width="${Math.max(X(x + v) - X(x) - (x ? 1 : 0), 0)}" height="16" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}" stroke="#16213A" stroke-opacity=".18" stroke-width="1"><title>${esc(r.label)}, ${esc(k)}: ${v}</title></rect>${v / max > 0.06 ? `<text x="${(X(x) + X(x + v)) / 2}" y="${y + 15}" text-anchor="middle" class="${(o.dark || []).includes(k) ? 'inv' : 'val'}">${v}</text>` : ''}`; x += v; }); });
+  s += `<g class="legend">${keys.map((k, j) => `<rect x="${lw + j * 80}" y="${h - 20}" width="12" height="12" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}" stroke="#16213A" stroke-opacity=".25" stroke-width="1"/><text x="${lw + j * 80 + 16}" y="${h - 10}" class="tl">${esc(k)}</text>`).join('')}</g>`;
   return s + '</svg>';
 }
 // Line chart over labelled x steps: series [{ name, values: [y|null] }], labels [x]. Direct labels at the line ends + legend.
@@ -1372,7 +1385,7 @@ function chartHist(values, max, bin, o) {
   const top = niceMax(Math.max(...c, 1), c.length && Math.max(...c) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Y = n => h - 30 - n / top * (h - 50);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="histogram">`;
   for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
-  c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--teal)"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
+  c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--cc,var(--teal))"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
   s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${nb * bin}</text>`;
   return s + '</svg>';
 }
@@ -1392,20 +1405,26 @@ function chartFreq(values, max, o) {
   const w = (o && o.w) || 800, h = 200, top = niceMax(Math.max(...items.map(i => i.value), 1), 1); const X = i => 40 + i / items.length * (w - 60), Y = n => h - 30 - n / top * (h - 50);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="bar graph">`;
   for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
-  items.forEach((it, i) => { s += `<rect x="${X(i) + 3}" y="${Y(it.value)}" width="${Math.max(X(i + 1) - X(i) - 6, 2)}" height="${Y(0) - Y(it.value)}" rx="3" class="bar" style="fill:var(--teal)"><title>${it.label}: ${it.value} student${it.value === 1 ? '' : 's'}</title></rect><text x="${(X(i) + X(i + 1)) / 2}" y="${h - 10}" text-anchor="middle" class="tl">${it.label}</text>`; });
+  items.forEach((it, i) => { s += `<rect x="${X(i) + 3}" y="${Y(it.value)}" width="${Math.max(X(i + 1) - X(i) - 6, 2)}" height="${Y(0) - Y(it.value)}" rx="3" class="bar" style="fill:var(--cc,var(--teal))"><title>${it.label}: ${it.value} student${it.value === 1 ? '' : 's'}</title></rect><text x="${(X(i) + X(i + 1)) / 2}" y="${h - 10}" text-anchor="middle" class="tl">${it.label}</text>`; });
   return s + '</svg>';
 }
-// Circle graph: parts [{ label, value }]; percentages direct-labeled outside, legend beside.
+// Circle graph: parts [{ label, value, short? }]. Each slice is labeled outside with its share (and its letter when it
+// has one), anchored away from the circle so a label never runs into the legend beside it. The graph sets its own type
+// sizes and its own width (from the longest legend line), so it reads the same on the Board and on a saved page.
 function chartCircle(parts, o) {
   o = o || {}; const tot = parts.reduce((a, p) => a + p.value, 0); if (!tot) return '<div class="lbEmpty">Nothing to plot yet.</div>';
-  const cx = 130, cy = 110, R = 84; let a0 = -Math.PI / 2; let s = `<svg class="chart circle" viewBox="0 0 ${o.w || 560} 220" role="img" aria-label="circle graph">`;
+  const cx = 156, cy = 108, R = 82, H = 216, lx = 316, pitch = 30; const fs = 'style="font-size:19px"', fl = 'style="font-size:21px"';
+  const w = o.w || Math.max(430, Math.ceil(lx + 24 + Math.max(...parts.map(p => String(p.label).length + String(p.value).length + 1)) * 11.6 + 10));
+  let a0 = -Math.PI / 2; let s = `<svg class="chart circle" viewBox="0 0 ${w} ${H}" role="img" aria-label="circle graph">`;
   parts.forEach((p, i) => { if (!p.value) return; const a1 = a0 + p.value / tot * 2 * Math.PI; const big = a1 - a0 > Math.PI ? 1 : 0;
     const x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0), x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
     const d = p.value === tot ? `M${cx - R} ${cy}A${R} ${R} 0 1 1 ${cx + R} ${cy}A${R} ${R} 0 1 1 ${cx - R} ${cy}` : `M${cx} ${cy}L${x0} ${y0}A${R} ${R} 0 ${big} 1 ${x1} ${y1}Z`;
     s += `<path d="${d}" style="fill:${p.color || seriesColor(i)}" stroke="#fff" stroke-width="2"><title>${esc(p.label)}: ${p.value} (${Math.round(p.value / tot * 100)}%)</title></path>`;
-    const am = (a0 + a1) / 2; if (p.value / tot >= 0.06) s += `<text x="${cx + (R + 18) * Math.cos(am)}" y="${cy + (R + 18) * Math.sin(am) + 4}" text-anchor="middle" class="val">${Math.round(p.value / tot * 100)}%</text>`; a0 = a1; });
+    const am = (a0 + a1) / 2, c = Math.cos(am), sn = Math.sin(am); const side = c > 0.3 ? 'start' : c < -0.3 ? 'end' : 'middle'; const out = R + (side === 'middle' ? 8 : 7);
+    if (p.value / tot >= 0.06) s += `<text x="${(cx + out * c).toFixed(1)}" y="${(cy + out * sn + (side === 'middle' ? (sn > 0 ? 15 : -2) : 6 + sn * 9)).toFixed(1)}" text-anchor="${side}" class="val" ${fs}>${p.short ? esc(p.short) + ' ' : ''}${Math.round(p.value / tot * 100)}%</text>`; a0 = a1; });
   s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/>`;
-  parts.forEach((p, i) => { s += `<rect x="260" y="${40 + i * 26}" width="14" height="14" rx="3" style="fill:${p.color || seriesColor(i)}" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/><text x="280" y="${52 + i * 26}" class="lbl">${esc(p.label)} <tspan class="tl">${p.value}</tspan></text>`; });
+  const ly = cy - parts.length * pitch / 2 + 6;   // the legend sits level with the middle of the circle
+  parts.forEach((p, i) => { s += `<rect x="${lx}" y="${ly + i * pitch}" width="17" height="17" rx="4" style="fill:${p.color || seriesColor(i)}" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/><text x="${lx + 25}" y="${ly + 15.5 + i * pitch}" class="lbl" ${fl}>${esc(p.label)} <tspan class="tl" ${fs}>${p.value}</tspan></text>`; });
   return s + '</svg>';
 }
 const CHART_CSS = `
@@ -1413,9 +1432,9 @@ const CHART_CSS = `
 .chart .tl{font-size:12px;fill:var(--ink-soft)}.chart .lbl{font-size:13px;font-weight:var(--w-bold);fill:var(--navy)}.chart .val{font-size:12px;font-weight:var(--w-black);fill:var(--navy)}.chart .inv{font-size:12px;font-weight:var(--w-black);fill:#fff}
 #lb .chart .tl{font-size:16px}#lb .chart .lbl{font-size:17px}#lb .chart .val{font-size:16px}#lb .chart .inv{font-size:16px}
 .chart .qmark{stroke:var(--ink-soft);stroke-width:1;stroke-dasharray:4 4;opacity:.7}.chart .qmarkl{font-size:11px;font-weight:var(--w-bold)}.chart .ln.ref{stroke-dasharray:5 4;stroke-width:2}
-.chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--teal);stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
+.chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--cc,var(--teal));stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
 .stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
-.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.35);margin:.4em 0 .2em}
+.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px;overflow:visible}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.35);margin:.4em 0 .2em}
 `;
 // The app page gets the chart styles at boot; the standalone Race/Lab export includes CHART_CSS through LAB_CSS.
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: CHART_CSS }));
@@ -2649,7 +2668,7 @@ function renderProfile() {
     const mine = gh.map(h => { const j = h.students.indexOf(name); return j >= 0 ? h.grade[j] : null; }); const cls = gh.map(h => mean(h.grade));
     const gradeChart = mine.filter(v => v != null).length >= 2 ? chartLines(labels, [{ name: H ? mask(name) : firstName(name), values: mine, color: 'var(--teal)' }, { name: 'Class average', values: cls, color: '#8a93a6', ref: true }], { pct: true, min: (lo => lo >= 65 ? 60 : lo >= 25 ? 20 : 0)(Math.min(...mine.filter(v => v != null), ...cls.filter(v => v != null))), max: 100, h: 240, w: 760, marks, aria: 'grade by import against the class average' }) : '';
     const catNames = gradingFor(sec.prep).cats.map(c => c.name); const hc = gh.filter(h => h.cats);
-    const catChart = hc.length >= 2 ? chartLines(hc.map(h => fmtDate(h.date)), catNames.map((c, k) => ({ name: c, values: hc.map(h => { const j = h.students.indexOf(name); return j >= 0 && h.cats[c] ? h.cats[c][j] : null; }), color: ['#0F5F6B', '#2E9E97', '#7A8699', '#B26A00'][k % 4] })).filter(sr => sr.values.some(v => v != null)), { pct: true, min: 0, max: 100, h: 220, w: 760, aria: 'category percent by import' }) : '';
+    const catChart = hc.length >= 2 ? chartLines(hc.map(h => fmtDate(h.date)), catNames.map((c, k) => ({ name: c, values: hc.map(h => { const j = h.students.indexOf(name); return j >= 0 && h.cats[c] ? h.cats[c][j] : null; }), color: seriesColor(k) })).filter(sr => sr.values.some(v => v != null)), { pct: true, min: 0, max: 100, h: 220, w: 760, aria: 'category percent by import' }) : '';
     trends = `<section class="gsec"><h3>Grade over the year</h3>${gradeChart || `<p class="ghint">The line appears after a second Focus import (${plural(mine.filter(v => v != null).length, 'import')} so far).</p>`}
       ${catChart ? `<h4 class="subh">Each category</h4>${catChart}` : ''}</section>`;
   }
@@ -2666,7 +2685,7 @@ function renderProfile() {
   // every assignment, per quarter
   const table = b => { const rows = b.s.grades.assignments.map(a => ({ a, c: cellOf(a, b.i), cat: catIn(b.s, a), avg: avgPct(a) })).sort((x, y) => dueKey(y.a.due).localeCompare(dueKey(x.a.due)) || x.a.name.localeCompare(y.a.name));
     const g = computeGrade(b.s, b.i);
-    return `<div class="catline">${(b.s._cats || gradingFor(sec.prep).cats).map(c => { const x = g && g.cats[c.name]; return `<div class="catbar"><span>${esc(c.name)} <small>${c.w}%</small></span><div class="bar"><i style="width:${x && x.pct != null ? Math.max(0, Math.min(100, x.pct)) : 0}%"></i></div><b>${x && x.pct != null ? pct1(x.pct) : '—'}</b><small>${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible} pts` : ''}</small></div>`; }).join('')}</div>
+    return `<div class="catline">${(b.s._cats || gradingFor(sec.prep).cats).map(c => { const x = g && g.cats[c.name]; return `<div class="catbar"><span>${esc(c.name)} <small>${c.w}%</small></span><div class="bar"><i style="width:${x && x.pct != null ? Math.max(0, Math.min(100, x.pct)) : 0}%;background:${gradeFill(x && x.pct)}"></i></div><b>${x && x.pct != null ? pct1(x.pct) : '—'}</b><small>${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible} pts` : ''}</small></div>`; }).join('')}</div>
       <table class="checkTable sasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th class="n">Score</th><th class="n">%</th><th class="n">Class avg</th></tr></thead><tbody>${rows.map(x => `<tr class="${x.c.st === 'missing' ? 'miss' : ''}"><td>${esc(x.a.name)}</td><td>${esc(x.cat)}</td><td>${esc(x.a.due || '')}</td><td class="n">${scoreTxt(x.c, x.a)}</td><td class="n">${x.c.st === 'score' && x.a.max ? Math.round(x.c.v / x.a.max * 100) + '%' : x.c.st === 'missing' ? '0%' : ''}</td><td class="n">${pct1(x.avg)}</td></tr>`).join('')}</tbody></table>`; };
   const asgSecs = books.slice().reverse().map(b => { const g = computeGrade(b.s, b.i); const miss = b.s.grades.assignments.filter(a => cellOf(a, b.i).st === 'missing').length;
     const head = `${esc(Q_NAMES[b.q - 1])}${b.closed ? (b.final ? ' · final' : ' · kept') : ''} · ${g && g.rounded != null ? `${g.rounded}% ${g.letter}` : '—'} · ${plural(b.s.grades.assignments.length, 'assignment')}${miss ? ` · ${miss} missing` : ''}`;
@@ -2849,7 +2868,7 @@ function openShow(sec, name) {
       <div class="shCats" id="shCats"></div><p class="shHint shKey">Bars show each part of the grade after the changes you picked; the dark line is where it is now.</p>
     </div>`;
   document.body.appendChild(el); document.body.classList.add('showMode'); $('#toast').classList.remove('show');
-  const catBars = (a, b) => cats.map(c => { const x = a.cats[c.name], y = b.cats[c.name]; const w = v => v == null ? 0 : Math.max(0, Math.min(100, v)); return `<div class="shCat"><span>${esc(c.name)} <small>counts ${c.w}%</small></span><div class="shBar"><i class="if" style="width:${w(y && y.pct)}%"></i><i class="now" style="left:calc(${w(x && x.pct)}% - 2px)" title="now ${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}"></i></div><b>${y && y.pct != null ? Math.round(y.pct) + '%' : '—'}</b></div>`; }).join('');
+  const catBars = (a, b) => cats.map(c => { const x = a.cats[c.name], y = b.cats[c.name]; const w = v => v == null ? 0 : Math.max(0, Math.min(100, v)); return `<div class="shCat"><span>${esc(c.name)} <small>counts ${c.w}%</small></span><div class="shBar"><i class="if" style="width:${w(y && y.pct)}%;background:${gradeFill(y && y.pct)}"></i><i class="now" style="left:calc(${w(x && x.pct)}% - 2px)" title="now ${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}"></i></div><b>${y && y.pct != null ? Math.round(y.pct) + '%' : '—'}</b></div>`; }).join('');
   const recompute = () => {
     const over = {}; missing.forEach(a => { if (st.miss[a.name].on) over[a.name] = st.miss[a.name].pts; }); retake.forEach(a => { if (st.re[a.name] !== a.values[i]) over[a.name] = st.re[a.name]; }); ixlCols.forEach(a => { const now = a.status[i] === 'missing' ? 0 : a.values[i]; if (st.ix[a.name] !== now) over[a.name] = st.ix[a.name]; });
     const r = gradeWith(s, i, over, st.next.on ? { max: st.next.max, pts: st.next.pts } : null);
@@ -2893,7 +2912,7 @@ const STU_CSS = `
 .sdir tr[data-open]{cursor:pointer}.sdir tr[data-open]:hover td{background:var(--paleturq)}.sdir tr.sgroup th{text-align:left;padding:14px 8px 6px;font-size:var(--t-s);color:var(--navy);border-bottom:3px solid var(--cc)}
 .qfin{display:inline-flex;gap:2px;align-items:baseline;font-weight:var(--w-black);font-size:var(--t-s);padding:1px 8px;border-radius:var(--r-pill);background:var(--grid);margin-right:4px}.qfin small{font-size:10px}
 .profile .gcards{margin-bottom:14px}.gcard b em.lt,.shGrade em.lt{font-style:normal;font-size:.55em;margin-left:6px;padding:2px 8px;border-radius:var(--r-pill);background:var(--paleturq);vertical-align:middle}
-.gcard b em.lt.D,.shGrade em.lt.D,em.lt.D{background:var(--sand)}.gcard b em.lt.F,.shGrade em.lt.F,em.lt.F{background:var(--coral);color:var(--bad)}.gcard.big b{font-size:34px}
+.gcard b em.lt.A,.shGrade em.lt.A,em.lt.A{background:var(--g-a-wash)}.gcard b em.lt.B,.shGrade em.lt.B,em.lt.B{background:var(--g-b-wash)}.gcard b em.lt.C,.shGrade em.lt.C,em.lt.C{background:var(--g-c-wash)}.gcard b em.lt.D,.shGrade em.lt.D,em.lt.D{background:var(--g-d-wash)}.gcard b em.lt.F,.shGrade em.lt.F,em.lt.F{background:var(--g-f-wash);color:var(--bad)}.gcard.big b{font-size:34px}
 .pcols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}.pmain,.pside{display:flex;flex-direction:column;gap:16px;min-width:0}
 /* one column: the plan and the what-ifs come first, then the trends, then the long lists */
 @media (max-width:1100px){.pcols{display:flex;flex-direction:column;align-items:stretch}.pmain,.pside{display:contents}.pcols #pQuick{order:-3}.pcols #pWhat{order:-2}}
@@ -2905,7 +2924,7 @@ const STU_CSS = `
 .subh{margin:14px 0 4px;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}.subh small{color:var(--teal)}
 .gsec h3 small{font-weight:var(--w-reg);letter-spacing:0;text-transform:none;color:var(--ink-soft);margin-left:6px}
 .catline{display:flex;flex-direction:column;gap:4px;margin:4px 0 10px}.catline .catbar{display:grid;grid-template-columns:150px 1fr 54px 110px;gap:10px;align-items:center;font-size:var(--t-s)}.catline .catbar small{color:var(--ink-soft)}
-.catline .bar,.iu .bar{height:10px;border-radius:var(--r-pill);background:var(--grid);overflow:hidden}.catline .bar i,.iu .bar i{display:block;height:100%;background:var(--teal);border-radius:var(--r-pill)}
+.catline .bar,.iu .bar{height:10px;border-radius:var(--r-pill);background:var(--grid);overflow:hidden}.catline .bar i,.iu .bar i{display:block;height:100%;background:var(--teal);border-radius:var(--r-pill);box-shadow:inset 0 0 0 1px rgba(22,33,58,.2)}
 .sasg tr.miss td{background:#fdeeea}.nhi{color:var(--bad)}.qold td{color:var(--ink-soft)}
 details.qbook>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}details.qbook>summary::-webkit-details-marker{display:none}details.qbook>summary h3{margin:0}details.qbook>summary h3::before{content:"";display:inline-block;width:7px;height:7px;border:solid var(--teal);border-width:0 2px 2px 0;transform:rotate(-45deg);margin:0 10px 2px 2px}details.qbook[open]>summary h3::before{transform:rotate(45deg);margin-bottom:4px}details.qbook>summary small{color:var(--ink-soft)}
 .iu{padding:8px 0;border-bottom:1px solid var(--grid)}.iu:last-child{border-bottom:none}.iuh{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;margin-bottom:4px}.iuh span{color:var(--ink-soft);font-size:var(--t-s)}.iup{margin-left:auto;font-weight:var(--w-black);color:var(--navy)!important;font-size:var(--t-l)!important}
@@ -2930,7 +2949,7 @@ body.showMode #top,body.showMode #app,body.showMode #empty,body.showMode #toast{
 .shGrade small{display:block;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal);font-weight:var(--w-black)}.shGrade b{font-size:clamp(36px,5vw,52px);font-weight:var(--w-black);line-height:1;min-width:2.2ch;text-align:right}.shGrade b span{font-size:.45em}.shGrade em.lt{font-size:clamp(18px,2.2vw,24px);font-weight:var(--w-black);margin-left:0}
 .shArrow{font-size:clamp(28px,3.6vw,40px);color:var(--teal);font-weight:var(--w-black)}.shIf>b{color:var(--teal)}.shDelta{font-size:var(--t-l);color:var(--ink-soft);white-space:nowrap}.shGrade .shDelta b{font-size:inherit;line-height:inherit}.shDelta.up{color:var(--teal)}.shDelta.down{color:var(--bad)}
 .shCats{display:flex;flex-direction:column;gap:8px;background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:14px 22px}.shCat{display:grid;grid-template-columns:200px 1fr 60px;gap:12px;align-items:center;font-size:16px}.shCat small{color:var(--ink-soft)}
-.shBar{position:relative;height:16px;border-radius:var(--r-pill);background:var(--grid);overflow:hidden}.shBar i{position:absolute;top:0;bottom:0}.shBar i.if{left:0;background:var(--teal);border-radius:var(--r-pill)}.shBar i.now{width:4px;background:var(--navy);border-radius:var(--r-xs);z-index:1}
+.shBar{position:relative;height:16px;border-radius:var(--r-pill);background:var(--grid);overflow:hidden}.shBar i{position:absolute;top:0;bottom:0}.shBar i.if{left:0;background:var(--teal);border-radius:var(--r-pill);box-shadow:inset 0 0 0 1px rgba(22,33,58,.2)}.shBar i.now{width:4px;background:var(--navy);border-radius:var(--r-xs);z-index:1}
 .shTry{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px}.shTry section{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:14px 20px}.shTry h3{margin:0 0 8px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
 .shRow{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--grid)}.shRow:last-child{border-bottom:none}.shL b{display:block;font-size:16px}.shL small{color:var(--ink-soft)}.shL input{width:64px;font:inherit}
 .shS{grid-column:1/-1;display:flex;gap:12px;align-items:center}.shS.off{display:none}.shS input{flex:1;min-height:var(--h-m);accent-color:var(--teal)}.shS output{font-weight:var(--w-black);min-width:78px;text-align:right}
@@ -3448,7 +3467,7 @@ function lbMarkup(data, focus) {
       <div class="lbMain">
         <div class="lbName">${esc(shortName(r))}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.lead ? ' <span class="lbTie lead">furthest along</span>' : ''}</div>
         <div class="lbBarRow" title="${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skill-points · ${plural(r.students, 'student')}"><div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div>${r.active == null ? '' : `<span class="lbDone">${pct(r.completion)}% complete</span>`}</div>
-        <div class="lbLine ${r.gain != null && !r.thrChanged && !r.basisChanged ? 'gain' : ''}">${r.thrChanged ? 'goal changed — fresh start this week' : r.basisChanged ? 'skills counted changed — fresh start this week' : r.gain != null ? `${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}` : 'first week in the race'}</div>
+        <div class="lbLine ${r.gain != null && !r.thrChanged && !r.basisChanged ? 'gain' : ''}">${r.thrChanged ? 'goal changed, so a fresh start this week' : r.basisChanged ? 'skills counted changed, so a fresh start this week' : r.gain != null ? `${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}` : 'first week in the race'}</div>
       </div>
       <div class="lbPct">${headline(r)}</div>
     </div>`;
@@ -3456,12 +3475,12 @@ function lbMarkup(data, focus) {
   const league = l => {
     const clear = l.rows.length > 1 && !l.rows[0].tied;
     const au = l.rows[0].assignedUnits;
-    return `<section class="lbLeague">${multi ? `<div class="lbLeagueHead"><span class="lbLeagueName">${l.name}</span><span class="lbBasis">${au.length ? 'assigned: ' + esc(au.length > 3 && /^Unit \d+$/.test(au[0]) ? au[0] + ' – ' + au[au.length - 1] : au.join(', ')) : 'nothing assigned yet'}</span></div>` : ''}
+    return `<section class="lbLeague">${multi ? `<div class="lbLeagueHead"><span class="lbLeagueName">${l.name}</span><span class="lbBasis">${au.length ? 'counting ' + esc(unitSpan(au)) : 'nothing assigned yet'}</span></div>` : ''}
       <div class="lbList">${l.rows.map(r => card(r, clear && r.rank === 1)).join('')}</div>
     </section>`;
   };
   const one = !multi && leagues[0] ? leagues[0].rows[0].assignedUnits : null;
-  return `<div class="lbHead"><div class="lbTitle">Race</div><div class="lbSub">Ranked by the share of each class that moved up this week${one ? (one.length ? ' · ' + esc(one.join(', ')) : ' · nothing assigned yet') : ''}${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
+  return `${boardHead('Race', ['classes ranked by the share of students who moved up this week', one ? (one.length ? 'counting ' + unitSpan(one) : 'nothing assigned yet') : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
     <div class="lbLeagues ${multi ? 'two' : ''}" style="--rows:${rowsMax}">${leagues.map(league).join('')}</div>`;
 }
 const LB_CSS = `
@@ -3472,9 +3491,9 @@ const LB_CSS = `
 .lbWrap{--bu0:clamp(11px,min(1vw,1.7778vh),40px);--bu:var(--bu0)}
 .lbLeagues:not(.two){--bu:calc(var(--bu0)*1.3)}   /* one league has the whole width: its cards are a third larger */
 .lbWrap{min-height:100%;display:flex;flex-direction:column;gap:calc(var(--bu)*.85);padding:calc(var(--bu)*1.1) calc(var(--bu)*1.6) 96px;max-width:min(96vw,2600px);margin:0 auto;width:100%}
-.lbHead{display:flex;align-items:baseline;gap:calc(var(--bu)*1);flex-wrap:wrap}
-.lbTitle{font-weight:var(--w-black);font-size:calc(var(--bu)*3.2);letter-spacing:.02em;color:var(--navy);line-height:1}
-.lbSub{font-weight:var(--w-bold);color:var(--teal);font-size:calc(var(--bu)*1.3)}
+.lbHead{display:flex;flex-direction:column;gap:calc(var(--bu)*.2)}
+.lbTitle{margin:0;font-weight:var(--w-heavy);font-size:calc(var(--bu)*2.5);color:var(--navy);line-height:1.15}
+.lbSub{margin:0;font-weight:var(--w-med);color:var(--ink-soft);font-size:calc(var(--bu)*1.3);line-height:1.3}
 .lbLeagues{flex:1;display:flex;flex-direction:column;gap:calc(var(--bu)*1)}
 .lbLeagues.two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--bu)*1.2);align-items:stretch}
 .lbLeague{display:flex;flex-direction:column;gap:calc(var(--bu)*.65);min-height:0;flex:1}
@@ -3555,7 +3574,7 @@ function labDatasets(prep) {
   add('IXL units (points)', 'unit:__all__', 'All assigned units · skills at goal');
   secs.forEach(s => { const cats = {}; (s.grades ? s.grades.assignments : []).forEach(a => { cats[catOf(s.prep, a.name, a)] = 1; }); Object.keys(cats).sort().forEach(c => (s.grades.assignments.filter(a => catOf(s.prep, a.name, a) === c)).forEach(a => add(c, 'gb:' + a.name, a.name))); });
   state.custom.filter(c => c.prep === prep).forEach(c => add('Our own data', 'custom:' + c.id, c.label));
-  secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden) u.idx.forEach(k => { const sk = s.skills[k]; add('IXL skills (SmartScore) — ' + u.short, 'skill:' + skillKey(sk), u.short + ' · ' + sk.name); }); }));
+  secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden) u.idx.forEach(k => { const sk = s.skills[k]; add('IXL skills (SmartScore), ' + u.short, 'skill:' + skillKey(sk), u.short + ' · ' + sk.name); }); }));
   const list = groups.flatMap(g => g.items);
   return { secs, list, groups };
 }
@@ -3629,8 +3648,8 @@ function labPlot(kind, x, scale, id, o) {
   if (kind === 'stem') return chartStem(vals, max);
   if (kind === 'bar') return chartFreq(vals, max);
   if (kind === 'circle') {
-    if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', value: x.missing, color: 'var(--grid)' }]); }
-    if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, value: b[k], color: LETTER_COLORS[k] }))); }
+    if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', value: x.missing, color: NEUTRAL_FILL }]); }
+    if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, short: k, value: b[k], color: LETTER_COLORS[k] }))); }
     const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1;
     if (x.pct) return chartCircle([0, 1, 2, 3].map(i => ({ label: ['Under 25%', '25–49%', '50–74%', '75–100%'][i], value: q[i], color: QUARTER_COLORS[i] })));
     // Quarter i holds whole-number scores from ceil(m·i/4) up to the next quarter's start, so no score sits in two ranges.
@@ -3639,6 +3658,13 @@ function labPlot(kind, x, scale, id, o) {
   }
   return boxSVG(x.st, scale, 800, o);
 }
+// The Board's heading. The title is the thing being shown; the line under it is an ordinary phrase — who, what is
+// measured, as of when — not a chain of fragments.
+const boardHead = (title, facts) => { const line = facts.filter(Boolean).join(', '); return `<div class="lbHead"><h1 class="lbTitle">${esc(title)}</h1>${line ? `<p class="lbSub">${esc(line.charAt(0).toUpperCase() + line.slice(1))}</p>` : ''}</div>`; };
+const dsTitle = label => String(label).replace(/\s+·\s+/g, ': ');   // "Unit 3 · Exponents" reads "Unit 3: Exponents" as a title
+const unitSpan = names => names.length > 1 && names.every((n, i) => /^Unit \d+$/.test(n) && (i === 0 || +n.slice(5) === +names[i - 1].slice(5) + 1)) ? `Units ${names[0].slice(5)}–${names[names.length - 1].slice(5)}` : names.join(', ');
+// What each graph type shows, as a sentence a seventh grader can read from the back of the room.
+const LAB_NOTE = { hist: 'Histogram: each bar counts the students in that range.', dots: 'Dot plot: one dot per student.', stem: 'Stem-and-leaf plot: each leaf is one student.', bar: 'Bar graph: each bar is the number of students with that value.', barGrouped: 'Bar graph: each bar is the number of students in that range (too many values for one bar each).', circle: 'Circle graph: each slice is the share of the class in that group.', line: 'Line graph: one line per class, the class average at each import.' };
 const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph']];
 const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
@@ -3653,11 +3679,11 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const gbSet = unitName.startsWith('gb:'); if (gbSet) { valuesOn = false; tukey = false; }
   if (kind === 'line') {   // every class on one chart — the comparison is the point
     const asOfL = secs.map(s => s.date).filter(Boolean).sort().pop(); let body = '';
-    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = snapTotals(x.sec, h); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300, w: 900, labelW: 200 }); }
-    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: x.name, color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
-    else body = '<div class="labNotYet">A line graph needs data over time — pick <b>All units · skills at goal</b> or a Focus assignment.</div>';
-    return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(list.find(d => d.id === unitName).label)} · class average by import · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOfL ? ' · ' + fmtDate(asOfL) : ''}</div></div>
-      <div class="labLegend"><span class="lgNote">Line graph · one line per class · class average by import date</span></div><div class="labRows"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
+    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = snapTotals(x.sec, h); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300, w: 900, labelW: 200 }); }
+    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
+    else body = '<div class="labNotYet">A line graph needs data over time. Pick <b>All assigned units</b> or a Focus assignment.</div>';
+    return `${boardHead(dsTitle(list.find(d => d.id === unitName).label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, 'class average at each import', asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
+      <div class="labLegend"><span class="lgNote">${LAB_NOTE.line}</span></div><div class="labRows"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
   if (seriesAll[0] && seriesAll[0].pct) scale = 100;
@@ -3671,20 +3697,21 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
       ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
       ${statsLevel > 0 ? `<div class="labStats">
         ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
-        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)} — too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
+        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)}, too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''}
     </div>`; };
   const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
-  return `<div class="lbHead"><div class="lbTitle">Data Lab</div><div class="lbSub">${esc(ds.label)} · ${esc(unitLabel)} per student${seriesAll[0] && seriesAll[0].pct ? ' (rounded to whole percents)' : ''} · ${prep === 'acc' ? 'accelerated' : 'on-level'} classes${asOf ? ' · ' + fmtDate(asOf) : ''}</div></div>
-    ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${esc(LAB_KINDS.find(k => k[0] === kind)[1])} · one row per class · ${kind === 'hist' ? 'bars count students in each range' : kind === 'dots' ? 'one dot per student' : kind === 'stem' ? 'each leaf is one student' : kind === 'bar' ? (scale > 26 ? 'bar height = how many students in each range (values grouped — too many for one bar each)' : 'bar height = how many students got that value') : kind === 'circle' ? 'share of the class in each slice' : 'class average by import date'}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">whiskers stop at the last value inside 1.5 × IQR</span>' : '<span class="lgNote">whiskers: minimum to maximum</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
+  const isPct = !!(seriesAll[0] && seriesAll[0].pct);
+  return `${boardHead(dsTitle(ds.label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+    ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${kind === 'bar' && scale > 26 ? LAB_NOTE.barGrouped : LAB_NOTE[kind]}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
     <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
-    ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">Stats are hidden — read the plots first. Which class has the higher median? The bigger spread?</div>' : ''}`;
+    ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">The stats are hidden. Read the plots first: which class has the higher median? The bigger spread?</div>' : ''}`;
 }
 const LAB_ONLY_CSS = `
 .labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.15);color:var(--navy)}
 .labLegend i{display:inline-block;width:16px;height:12px;vertical-align:-1px;margin-right:6px;border-radius:var(--r-xs)}
-.lgNote{color:var(--teal)}
-.lgBox{background:var(--paleturq);border:2px solid var(--navy)} .lgMed{background:var(--navy);width:4px!important} .lgMean{background:var(--turq);border:2px solid var(--navy);transform:rotate(45deg);width:10px!important;height:10px!important} .lgOut{border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important} .lgDot{background:var(--turq);border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important}
+.lgNote{color:var(--ink-soft);font-weight:var(--w-med)}
+.lgBox{background:#E4E7EC;border:2px solid var(--navy)} .lgMed{background:var(--navy);width:4px!important} .lgMean{background:var(--white);border:2px solid var(--navy);transform:rotate(45deg);width:10px!important;height:10px!important} .lgOut{border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important} .lgDot{background:#9AA3B2;border:2px solid var(--white);outline:1px solid #9AA3B2;border-radius:50%!important;width:12px!important;height:12px!important}
 .labRows{display:flex;flex-direction:column;gap:14px}
 .labRow{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:10px 22px 6px;display:grid;grid-template-columns:calc(var(--bu)*13) 1fr;gap:8px 18px;align-items:center}
 .labRow.thin{opacity:.75}
@@ -3695,12 +3722,12 @@ const LAB_ONLY_CSS = `
 .labSvg{width:100%;height:auto;display:block;overflow:visible}
 .labTick{stroke:var(--grid);stroke-width:1} .labTickTxt{font-size:14px;font-weight:var(--w-bold);fill:var(--teal);text-anchor:middle}
 .labWhisk{stroke:var(--navy);stroke-width:2;stroke-linecap:round}
-.labBox{fill:var(--paleturq);stroke:var(--navy);stroke-width:2}
+.labBox{fill:color-mix(in srgb,var(--cc,var(--turq)) 22%,var(--white));stroke:var(--navy);stroke-width:2}
 .labMed{stroke:var(--navy);stroke-width:4;stroke-linecap:round}
-.labMean{fill:var(--turq);stroke:var(--navy);stroke-width:2}
+.labMean{fill:var(--white);stroke:var(--navy);stroke-width:2}
 .labMeanLine{stroke:var(--navy);stroke-width:1.5;stroke-dasharray:3 3;opacity:.6}
 .labOut{fill:var(--white);stroke:var(--navy);stroke-width:2}
-.labDot{fill:var(--turq);stroke:var(--white);stroke-width:1.5}
+.labDot{fill:var(--cc,var(--turq));stroke:var(--white);stroke-width:1.5}
 .labLbl{font-size:14px;font-weight:var(--w-black);fill:var(--navy)} .labLbl.mid{text-anchor:middle} .labLbl.end{text-anchor:end}
 .labStats{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(var(--bu)*7),1fr));gap:6px 8px;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labStats div{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--cream);border-radius:var(--r-m);padding:6px 4px}
@@ -3708,7 +3735,7 @@ const LAB_ONLY_CSS = `
 .labStats div.wide b{font-size:calc(var(--bu)*.95);line-height:1.3}
 .labStats span{font-size:calc(var(--bu)*.95);font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
 .labStats b{font-weight:var(--w-black);font-size:calc(var(--bu)*1.3)}
-.labHint{font-weight:var(--w-bold);color:var(--teal);font-size:calc(var(--bu)*1.3);padding:4px 6px}
+.labHint{font-weight:var(--w-bold);color:var(--navy);font-size:calc(var(--bu)*1.3);padding:4px 6px}
 .labValues{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-start;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labHalf{display:flex;flex-direction:column;gap:4px}
 .labHalf small{font-size:calc(var(--bu)*1);font-weight:var(--w-bold);color:var(--teal);letter-spacing:.02em}
@@ -3718,7 +3745,7 @@ const LAB_ONLY_CSS = `
 .labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:var(--w-black)}
 .labChips span.m.gap{background:var(--white);color:var(--navy);border-style:dashed}
 .labChips span.out{box-shadow:0 0 0 2px var(--coral)}
-.labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*10 - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
+.labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*11.5 - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
 .lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:var(--r-l);padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}

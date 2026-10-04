@@ -20,10 +20,12 @@ by class** (bars), **letters by class** (stacked bars). Tap a card to open that 
 - **Details** toggle (`settings.details`) restores the full notices, meta, badges and legend everywhere.
 
 ## Graphs
-Primitives in `charts.js`, plain SVG, house palette for single-series (teal ramp), the validated five-slot
-categorical order for class-vs-class (`#2a78d6 #eb6834 #1baf7a #eda100 #e87ba4`, always direct-labeled),
-thin marks, `<title>` tooltips, a legend for ≥2 series, text in ink never in series colour, status colours
-only for status.
+Primitives in `charts.js`, plain SVG. Colour by meaning (changed 4 Oct 2026, see NOTES.md "Chart colours"):
+letter grades A green / B blue / C yellow / D orange / F red (`LETTER_COLORS`, the `--g-*` tokens); how much is
+done, red → green (`QUARTER_COLORS`); a class's own plot in that class's colour (`--cc`); class-vs-class in the
+validated categorical order (`#2a78d6 #eb6834 #1baf7a #eda100 #e87ba4`, always direct-labeled); teal only where
+there is no class. Thin marks, `<title>` tooltips, a legend for ≥2 series, text in ink never in series colour,
+and no mark that relies on colour alone (`tests/colors.js`).
 
 Data Lab "Show as": **box plot** (existing) · **dot plot** · **histogram** (bin size chooser) · **stem-and-
 leaf** · **bar graph** (how many students at each value) · **circle graph** (share of the class in

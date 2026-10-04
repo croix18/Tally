@@ -1,14 +1,23 @@
 /* ---------- charts.js — plain-SVG graph primitives (spliced into app.js's closure) ----------
-   Rules (see COMMAND_CENTER.md): single series in the house teal; class-vs-class in a fixed, validated categorical
-   order, always direct-labeled; thin marks; <title> tooltips; text in ink; status colours never used for series. */
+   Rules (see COMMAND_CENTER.md): a class's own plot wears that class's colour (--cc; the house teal where there is no
+   class); class-vs-class in a fixed, validated categorical order, always direct-labeled; anything that means
+   good → bad (letter grades, how much of a unit is done) wears LETTER_COLORS, green to red; thin marks; <title>
+   tooltips; text in ink. */
 const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#008300'];
 const seriesColor = i => SERIES[i % SERIES.length];
-// Letter grades are ordered, so they get one hue light→dark (A darkest) with F in the coral status colour.
-const LETTER_COLORS = { A: '#0F5F6B', B: '#1F8F93', C: '#5FBFB5', D: '#B9E5DF', F: '#D9442F' };
-// Which letter segments are dark enough for white text; the light C/D/F-wash ones take ink.
-const LETTER_DARK = ['A', 'B', 'F'];
-// Ordered quarters (least → most) on the same ramp, for circle graphs of "how much of the unit".
-const QUARTER_COLORS = ['#9ADBD2', '#5FBFB5', '#1F8F93', '#0F5F6B'];   // the lightest step still reads against a white card on a washed-out projector
+// Letter grades wear the colours anyone would guess: A green, B blue, C yellow, D orange, F red (Croix, 4 Oct: "common
+// sense colors… not different shades of aqua"). Red and green are the classic colour-blind trap, and in a circle graph
+// any two slices can touch, so the five were chosen by search to stay apart for every pair under simulated protanopia
+// and deuteranopia (worst pair ΔE 8.0 in OKLab×100; 19 with full colour vision) — and no mark relies on colour alone:
+// slices and legends carry the letter. The same five are the --g-* tokens in app.html (tests/colors.js keeps them equal).
+const LETTER_COLORS = { A: '#55b872', B: '#1c7abb', C: '#efd127', D: '#d88018', F: '#c51d28' };
+// Which letter segments are dark enough for white text; green, yellow and orange take ink.
+const LETTER_DARK = ['B', 'F'];
+// Ordered bands (least → most done) on the same scale: red, orange, yellow, green.
+const QUARTER_COLORS = [LETTER_COLORS.F, LETTER_COLORS.D, LETTER_COLORS.C, LETTER_COLORS.A];
+// A bar that shows a percent grade wears the colour of the letter that percent earns.
+const gradeFill = pct => pct == null ? 'var(--teal)' : LETTER_COLORS[letterOf(Math.round(pct))] || 'var(--teal)';
+const NEUTRAL_FILL = '#C9CED8';   // "not started" and other no-data slices: a grey that still shows on a white card
 // One colour per class, fixed by period when known (1st = slot 1, …) else by position, so every screen agrees.
 function classColor(sec) { const i = sec && Number.isInteger(sec.period) ? sec.period - 1 : Math.max(0, state.order.indexOf(sec ? sec.key : '')); return seriesColor(i); }
 const fmtV = v => v == null ? '—' : (Math.round(v * 10) / 10).toString();
@@ -32,8 +41,8 @@ function chartStacked(rows, keys, o) {
   const X = v => lw + (v / max) * (w - lw - 20);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'stacked bar chart')}">`;
   rows.forEach((r, i) => { const y = 8 + i * rowH; let x = 0; s += `<text x="${lw - 10}" y="${y + 15}" text-anchor="end" class="lbl">${esc(r.label)}</text>`;
-    keys.forEach((k, j) => { const v = r.parts[k] || 0; if (!v) return; s += `<rect x="${X(x) + (x ? 1 : 0)}" y="${y + 3}" width="${Math.max(X(x + v) - X(x) - (x ? 1 : 0), 0)}" height="16" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}"><title>${esc(r.label)} · ${esc(k)}: ${v}</title></rect>${v / max > 0.06 ? `<text x="${(X(x) + X(x + v)) / 2}" y="${y + 15}" text-anchor="middle" class="${(o.dark || []).includes(k) ? 'inv' : 'val'}">${v}</text>` : ''}`; x += v; }); });
-  s += `<g class="legend">${keys.map((k, j) => `<rect x="${lw + j * 80}" y="${h - 20}" width="12" height="12" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}"/><text x="${lw + j * 80 + 16}" y="${h - 10}" class="tl">${esc(k)}</text>`).join('')}</g>`;
+    keys.forEach((k, j) => { const v = r.parts[k] || 0; if (!v) return; s += `<rect x="${X(x) + (x ? 1 : 0)}" y="${y + 3}" width="${Math.max(X(x + v) - X(x) - (x ? 1 : 0), 0)}" height="16" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}" stroke="#16213A" stroke-opacity=".18" stroke-width="1"><title>${esc(r.label)}, ${esc(k)}: ${v}</title></rect>${v / max > 0.06 ? `<text x="${(X(x) + X(x + v)) / 2}" y="${y + 15}" text-anchor="middle" class="${(o.dark || []).includes(k) ? 'inv' : 'val'}">${v}</text>` : ''}`; x += v; }); });
+  s += `<g class="legend">${keys.map((k, j) => `<rect x="${lw + j * 80}" y="${h - 20}" width="12" height="12" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}" stroke="#16213A" stroke-opacity=".25" stroke-width="1"/><text x="${lw + j * 80 + 16}" y="${h - 10}" class="tl">${esc(k)}</text>`).join('')}</g>`;
   return s + '</svg>';
 }
 // Line chart over labelled x steps: series [{ name, values: [y|null] }], labels [x]. Direct labels at the line ends + legend.
@@ -84,7 +93,7 @@ function chartHist(values, max, bin, o) {
   const top = niceMax(Math.max(...c, 1), c.length && Math.max(...c) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Y = n => h - 30 - n / top * (h - 50);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="histogram">`;
   for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
-  c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--teal)"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
+  c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--cc,var(--teal))"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
   s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${nb * bin}</text>`;
   return s + '</svg>';
 }
@@ -104,20 +113,26 @@ function chartFreq(values, max, o) {
   const w = (o && o.w) || 800, h = 200, top = niceMax(Math.max(...items.map(i => i.value), 1), 1); const X = i => 40 + i / items.length * (w - 60), Y = n => h - 30 - n / top * (h - 50);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="bar graph">`;
   for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
-  items.forEach((it, i) => { s += `<rect x="${X(i) + 3}" y="${Y(it.value)}" width="${Math.max(X(i + 1) - X(i) - 6, 2)}" height="${Y(0) - Y(it.value)}" rx="3" class="bar" style="fill:var(--teal)"><title>${it.label}: ${it.value} student${it.value === 1 ? '' : 's'}</title></rect><text x="${(X(i) + X(i + 1)) / 2}" y="${h - 10}" text-anchor="middle" class="tl">${it.label}</text>`; });
+  items.forEach((it, i) => { s += `<rect x="${X(i) + 3}" y="${Y(it.value)}" width="${Math.max(X(i + 1) - X(i) - 6, 2)}" height="${Y(0) - Y(it.value)}" rx="3" class="bar" style="fill:var(--cc,var(--teal))"><title>${it.label}: ${it.value} student${it.value === 1 ? '' : 's'}</title></rect><text x="${(X(i) + X(i + 1)) / 2}" y="${h - 10}" text-anchor="middle" class="tl">${it.label}</text>`; });
   return s + '</svg>';
 }
-// Circle graph: parts [{ label, value }]; percentages direct-labeled outside, legend beside.
+// Circle graph: parts [{ label, value, short? }]. Each slice is labeled outside with its share (and its letter when it
+// has one), anchored away from the circle so a label never runs into the legend beside it. The graph sets its own type
+// sizes and its own width (from the longest legend line), so it reads the same on the Board and on a saved page.
 function chartCircle(parts, o) {
   o = o || {}; const tot = parts.reduce((a, p) => a + p.value, 0); if (!tot) return '<div class="lbEmpty">Nothing to plot yet.</div>';
-  const cx = 130, cy = 110, R = 84; let a0 = -Math.PI / 2; let s = `<svg class="chart circle" viewBox="0 0 ${o.w || 560} 220" role="img" aria-label="circle graph">`;
+  const cx = 156, cy = 108, R = 82, H = 216, lx = 316, pitch = 30; const fs = 'style="font-size:19px"', fl = 'style="font-size:21px"';
+  const w = o.w || Math.max(430, Math.ceil(lx + 24 + Math.max(...parts.map(p => String(p.label).length + String(p.value).length + 1)) * 11.6 + 10));
+  let a0 = -Math.PI / 2; let s = `<svg class="chart circle" viewBox="0 0 ${w} ${H}" role="img" aria-label="circle graph">`;
   parts.forEach((p, i) => { if (!p.value) return; const a1 = a0 + p.value / tot * 2 * Math.PI; const big = a1 - a0 > Math.PI ? 1 : 0;
     const x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0), x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
     const d = p.value === tot ? `M${cx - R} ${cy}A${R} ${R} 0 1 1 ${cx + R} ${cy}A${R} ${R} 0 1 1 ${cx - R} ${cy}` : `M${cx} ${cy}L${x0} ${y0}A${R} ${R} 0 ${big} 1 ${x1} ${y1}Z`;
     s += `<path d="${d}" style="fill:${p.color || seriesColor(i)}" stroke="#fff" stroke-width="2"><title>${esc(p.label)}: ${p.value} (${Math.round(p.value / tot * 100)}%)</title></path>`;
-    const am = (a0 + a1) / 2; if (p.value / tot >= 0.06) s += `<text x="${cx + (R + 18) * Math.cos(am)}" y="${cy + (R + 18) * Math.sin(am) + 4}" text-anchor="middle" class="val">${Math.round(p.value / tot * 100)}%</text>`; a0 = a1; });
+    const am = (a0 + a1) / 2, c = Math.cos(am), sn = Math.sin(am); const side = c > 0.3 ? 'start' : c < -0.3 ? 'end' : 'middle'; const out = R + (side === 'middle' ? 8 : 7);
+    if (p.value / tot >= 0.06) s += `<text x="${(cx + out * c).toFixed(1)}" y="${(cy + out * sn + (side === 'middle' ? (sn > 0 ? 15 : -2) : 6 + sn * 9)).toFixed(1)}" text-anchor="${side}" class="val" ${fs}>${p.short ? esc(p.short) + ' ' : ''}${Math.round(p.value / tot * 100)}%</text>`; a0 = a1; });
   s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/>`;
-  parts.forEach((p, i) => { s += `<rect x="260" y="${40 + i * 26}" width="14" height="14" rx="3" style="fill:${p.color || seriesColor(i)}" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/><text x="280" y="${52 + i * 26}" class="lbl">${esc(p.label)} <tspan class="tl">${p.value}</tspan></text>`; });
+  const ly = cy - parts.length * pitch / 2 + 6;   // the legend sits level with the middle of the circle
+  parts.forEach((p, i) => { s += `<rect x="${lx}" y="${ly + i * pitch}" width="17" height="17" rx="4" style="fill:${p.color || seriesColor(i)}" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/><text x="${lx + 25}" y="${ly + 15.5 + i * pitch}" class="lbl" ${fl}>${esc(p.label)} <tspan class="tl" ${fs}>${p.value}</tspan></text>`; });
   return s + '</svg>';
 }
 const CHART_CSS = `
@@ -125,9 +140,9 @@ const CHART_CSS = `
 .chart .tl{font-size:12px;fill:var(--ink-soft)}.chart .lbl{font-size:13px;font-weight:var(--w-bold);fill:var(--navy)}.chart .val{font-size:12px;font-weight:var(--w-black);fill:var(--navy)}.chart .inv{font-size:12px;font-weight:var(--w-black);fill:#fff}
 #lb .chart .tl{font-size:16px}#lb .chart .lbl{font-size:17px}#lb .chart .val{font-size:16px}#lb .chart .inv{font-size:16px}
 .chart .qmark{stroke:var(--ink-soft);stroke-width:1;stroke-dasharray:4 4;opacity:.7}.chart .qmarkl{font-size:11px;font-weight:var(--w-bold)}.chart .ln.ref{stroke-dasharray:5 4;stroke-width:2}
-.chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--teal);stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
+.chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--cc,var(--teal));stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
 .stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
-.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.35);margin:.4em 0 .2em}
+.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px;overflow:visible}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.35);margin:.4em 0 .2em}
 `;
 // The app page gets the chart styles at boot; the standalone Race/Lab export includes CHART_CSS through LAB_CSS.
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: CHART_CSS }));
