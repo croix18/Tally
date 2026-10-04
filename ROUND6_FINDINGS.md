@@ -42,7 +42,7 @@ evidence, what it withdrew, and what all four would sign.
 - Document scroll (interaction) — withdrawn for shell A + B.
 - Pre-commit import sheet (interaction, 10–14 h) and auto-routing gradebooks when "names match" (product) — both
   withdrawn: `pickSection` calls a half-match a match, and a one-level checkpoint undo is overwritten by any save.
-  The confirming tap stays.
+  The confirming tap stays. (Reversed 4 Oct at Croix's request, with a stricter match — see the build log.)
 - Removing the two student-page charts (product) — withdrawn: only the chart carries the class average and NOTES records
   "trends" as the ask. They become small sparklines inside the tiles later.
 - Tabular figures (visual) — DM Sans has no `tnum` upstream either; a digits-only face reads letterspaced. Fix is
@@ -110,8 +110,6 @@ Fixed:
 Still open (small, none blocks use):
 
 - The Guide prints on three pages (retitled "Tally — guide"; it was three pages before this round too).
-- Data Lab tool bar on a portrait tablet with a skill selected wraps to three rows inside a pill shape.
-- The stem-and-leaf key is 20 px at 1080p (the rest of the board is ≥ 25 px).
 - `lastBackup` is stamped when Backup is tapped; a browser doesn't report whether the file was written.
 
 ### Build 3 candidates (behind the contract suite, and Croix's decision)
@@ -137,6 +135,11 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   checks at `3725bec`. New suite `tests/round6.js`; `tests/contract.js` raised its floors (laptop 13 / 11 rows).
 - 4 Oct: independent verifier run against Build 2 — 26 findings, report in `review/round6-build2-verify.md`. Both
   P0s and all seven P1s fixed, 17 P2s fixed or noted above. Full suite green after the fixes: 21 suites, 640 checks.
+- 4 Oct: gradebooks place themselves on import (Croix asked; reverses "the confirming tap stays" under "Opposed and
+  settled" — the strict bar in `matchSection` answers the half-match objection). Details in NOTES.md, tests in
+  `tests/auto-place.js`. Same commit: the Data Lab tool bar is a rounded panel when it wraps (portrait tablet), the
+  stem-and-leaf key is 26 px at 1080p, and `[hidden]{display:none!important}` — `.warnline` as a block had been
+  showing the New-class dialog's empty warning as a beige bar since Build 1.
 - Next: nothing owed from this round. Build 3 candidates and "Croix's calls" wait for him.
 
 ## Handoff for the next session (any model)

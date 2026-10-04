@@ -127,7 +127,7 @@ const CHART_CSS = `
 .chart .qmark{stroke:var(--ink-soft);stroke-width:1;stroke-dasharray:4 4;opacity:.7}.chart .qmarkl{font-size:11px;font-weight:700}.chart .ln.ref{stroke-dasharray:5 4;stroke-width:2}
 .chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--teal);stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
 .stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
-.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.05);margin:.4em 0 .2em}
+.labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.35);margin:.4em 0 .2em}
 `;
 // The app page gets the chart styles at boot; the standalone Race/Lab export includes CHART_CSS through LAB_CSS.
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: CHART_CSS }));

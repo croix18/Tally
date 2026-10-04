@@ -8,6 +8,8 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   for(const k of ['1205050-7T1A','1205050-7T3A']){ await p.click('[data-k="'+k+'"]'); await p.waitForTimeout(120); await p.click('#rpSkip'); await p.waitForTimeout(120); }
   // csv gradebook -> picker -> 7T3A
   await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus.csv')]); await p.waitForTimeout(400);
+  check(/New class from this gradebook/.test(await p.textContent('#modal')) && await p.locator('#ncExisting').count()===1,'a gradebook whose students are in no class asks for a new class, with a way to an existing one');
+  await p.click('#ncExisting'); await p.waitForTimeout(300);
   check(await p.locator('.picks [data-sec]:not([data-sec="__new__"])').count()===2,'period picker appears for a gradebook file');
   await p.click('[data-sec="1205050-7T3A"]'); await p.waitForTimeout(400);
   const g=await p.evaluate(()=>{const g=window.__tally.state.sections['1205050-7T3A'].grades; return {n:g.students.length, a:g.assignments.map(x=>[x.name,x.category,x.max,x.missing,x.values.length])};});
@@ -19,15 +21,16 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   check(hard && hard.assignments[2].excused===2 && hard.assignments[2].values[2]===19,'NG/X excused, not missing');
   check(hard && hard.assignments[3].percent && hard.assignments[3].max===100,'% column → max 100');
   check(/Imported 1 file/.test(await p.textContent('#toast')) && /Focus gradebook/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'gradebook toast and a stored import result');
-  // html-as-xls and tab-as-xls -> same parse, 7T1A
-  await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus_html.xls')]); await p.waitForTimeout(400); await p.click('[data-sec="1205050-7T1A"]'); await p.waitForTimeout(300);
-  await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus_tab.xls')]); await p.waitForTimeout(400); await p.click('[data-sec="1205050-7T1A"]'); await p.waitForTimeout(300);
-  const g2=await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].grades.assignments.length); check(g2===5,'html and tab .xls both parse (merged by name): '+g2);
+  // html-as-xls and tab-as-xls -> same parse; the same students again, so both are placed on 7T3A without the picker
+  await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus_html.xls')]); await p.waitForTimeout(500);
+  check(await p.locator('.picks [data-sec]').count()===0 && /gb_focus_html/.test(await p.evaluate(()=>window.__tally.state.sections['1205050-7T3A'].grades.file)),'the same class\'s gradebook again: placed by its names, no picker');
+  await p.setInputFiles('#file', [path.resolve('fixtures/gb_focus_tab.xls')]); await p.waitForTimeout(500);
+  const g2=await p.evaluate(()=>{ const g=window.__tally.state.sections['1205050-7T3A'].grades; return g.assignments.length+' '+g.file; }); check(/^5 gb_focus_tab/.test(g2),'html and tab .xls both parse: '+g2);
   // binary xls -> clear error
   await p.setInputFiles('#file', [path.resolve('fixtures/gb_biff.xls')]); await p.waitForTimeout(500);
   check(/old binary Excel/.test(await p.textContent('#toast')),'binary .xls gets a clear message');
   // data lab: datasets include skills and assignments
-  await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300);
+  await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300); await p.click('.lbFocus [data-prep="on"]'); await p.waitForTimeout(300);   // the gradebook is on the on-level class
   const groups=await p.evaluate(()=>[...document.querySelectorAll('#labUnit optgroup')].map(g=>[g.label,g.children.length]));
   console.log(JSON.stringify(groups));
   const nOpt=await p.evaluate(()=>document.querySelectorAll('#labUnit option').length);

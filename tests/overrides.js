@@ -1,6 +1,6 @@
 // Focus-check overrides ("Keep Focus"): a kept difference is noted with date and reason, stops being flagged, copies
 // Focus's number, comes back if Focus changes, survives reload and backup; plus the what-if card's deltas.
-const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -8,7 +8,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(500);
   await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(300);
-  await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await p.click('[data-sec]'); await p.waitForTimeout(600);
+  await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await pick(p); await p.waitForTimeout(600);
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.currentUnit={acc:2,on:2}; T.save(); T.render(); });
   const K='1205050-7T1A';
   const before=await p.evaluate(K=>{ const T=window.__tally; const c=T.reconcile(T.state.sections[K]).find(c=>c.unit.short==='Unit 1'); return { differ:c.counts.differ, missing:c.counts.missing, first:c.rows.find(r=>r.status==='differ') }; }, K);

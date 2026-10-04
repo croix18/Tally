@@ -1,7 +1,7 @@
 // Students and quarters: the Students directory, a student's page (trends, what-ifs, Q1 final), the Show-student screen,
 // and closing a quarter — its record is kept, its alerts stop, the next quarter's exports start fresh.
 // Runs against the scrubbed real class; focus_gradebook_scrubbed_q2.csv is the same class with Quarter 2 dates.
-const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000},acceptDownloads:true}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -9,7 +9,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(500);
   await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(300);
-  await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await p.click('[data-sec]'); await p.waitForTimeout(600);
+  await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await pick(p); await p.waitForTimeout(600);
   const K='1205050-7T1A'; const MICAH='DORSEY, MICAH FLYNN-WINTER';
   // an earlier import, so trends have two points (as a second weekly import would)
   await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const h=JSON.parse(JSON.stringify(s.gradeHistory[0])); h.date='2026-09-12'; h.grade=h.grade.map(g=>g==null?null:g-2); s.gradeHistory.unshift(h); T.save(); }, K);
@@ -155,7 +155,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   // 9. Review round: the orders and inputs that could lose or leak the Q1 record
   const fresh=async()=>{ const q=await ctx.newPage(); q.on('pageerror',e=>errs.push(e.message)); q.on('dialog',d=>d.accept()); await q.goto('file://'+path.resolve(APP)); await q.evaluate(()=>localStorage.clear()); await q.reload();
     await q.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await q.waitForTimeout(500); await q.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await q.click('#rpSave'); await q.waitForTimeout(300);
-    await q.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await q.waitForTimeout(500); await q.click('[data-sec]'); await q.waitForTimeout(600); return q; };
+    await q.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await q.waitForTimeout(500); await pick(q); await q.waitForTimeout(600); return q; };
   const imp=async(q,f)=>{ await q.setInputFiles('#file',[f]); await q.waitForTimeout(500); const d=await q.$('[data-sec]'); if(d){ await d.click(); await q.waitForTimeout(500);} const a=await q.$('#askApply'); if(a){ await a.click(); await q.waitForTimeout(300);} };
   // (a) the Q2 export arrives BEFORE Q1 is closed
   let q=await fresh(); await imp(q, path.resolve('fixtures/focus_gradebook_scrubbed_q2.csv'));
@@ -197,7 +197,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const acc=fs.readdirSync('fixtures').find(f=>f.startsWith('course_acc')), on=fs.readdirSync('fixtures').find(f=>f.startsWith('course_on'));
   await p3.setInputFiles('#file',[path.resolve('fixtures',acc), path.resolve('fixtures',on)]); await p3.waitForTimeout(800);
   for (const [f,per,prep] of [['focus_gradebook_pool_p1.csv',1,'acc'],['focus_gradebook_pool_p2.csv',2,'on']]) {
-    await p3.setInputFiles('#file',[path.resolve('fixtures',f)]); await p3.waitForTimeout(600); await p3.click('[data-sec="__new__"]'); await p3.waitForTimeout(200);
+    await p3.setInputFiles('#file',[path.resolve('fixtures',f)]); await p3.waitForTimeout(600); await pick(p3,'[data-sec="__new__"]'); await p3.waitForTimeout(200);
     await p3.click(`#ncPeriod [data-p="${per}"]`); await p3.click(`#ncPrep [data-prep="${prep}"]`); await p3.click('#ncMake'); await p3.waitForTimeout(800);
     if ((await p3.textContent('#modal')).trim()) { await p3.click('#mCancel').catch(()=>{}); await p3.waitForTimeout(300); } }
   const t0=Date.now(); await p3.click('#btnStudents'); await p3.waitForSelector('.sdir'); const ms=Date.now()-t0;

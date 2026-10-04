@@ -1,6 +1,6 @@
 // A real Focus gradebook export (scrubbed): multi-line headers with "N Points / Assigned / Due",
 // cells like "16.5 - 79 % - C", NHI (missing), NG (excused), a "Grade" column and an "Average" row.
-const { chromium, fs, path, exe, check, done, dense, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, dense, APP, pick } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -24,24 +24,25 @@ const { chromium, fs, path, exe, check, done, dense, APP } = require('./lib');
   const ixl=fs.readdirSync('fixtures').filter(f=>/^f1473588.*7T1A/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', ixl); await p.waitForTimeout(500); await p.click('#rpSkip').catch(()=>{}); await p.waitForTimeout(200);
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500);
+  check(await p.locator('#ncExisting').count()===1,'these names are in no class (the fixture class is other students): "New class" opens, with a way to the class list');
+  await p.click('#ncExisting'); await p.waitForTimeout(300);
   check(await p.locator('[data-sec]:not([data-sec="__new__"])').count()===1,'picker offers the imported class');
-  await p.click('[data-sec]'); await p.waitForTimeout(500);
+  await pick(p); await p.waitForTimeout(500);
   const s=await p.evaluate(()=>{ const s=window.__tally.state.sections['1205050-7T1A']; return s.grades && { n:s.grades.assignments.length, students:s.grades.students.length }; });
   check(s && s.n===13 && s.students===23,'gradebook attached to the class: '+JSON.stringify(s));
   // a mixed drop with the gradebook listed FIRST still works: IXL grids import before gradebooks attach,
-  // and the picker points at the class whose IXL names match
+  // and it goes to the class whose IXL names match
   const p3=await ctx.newPage(); p3.on('dialog',d=>d.accept()); await p3.goto('file://'+path.resolve(APP)); await p3.evaluate(()=>{localStorage.clear(); sessionStorage.clear();}); await p3.reload(); await p3.waitForTimeout(300);
   const realIxl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p3.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv'), path.resolve('fixtures',realIxl), path.resolve('fixtures', fs.readdirSync('fixtures').find(f=>/^f1473588.*7T3A/.test(f)))]); await p3.waitForTimeout(900);
-  check(await p3.locator('.picks [data-sec]:not([data-sec="__new__"])').count()===2,'picker offers classes even though the gradebook was first in the drop');
-  const sug=await p3.locator('.picks .chip.on'); check(await sug.count()===1 && /1st Period/.test(await sug.textContent()) && /names match/.test(await sug.textContent()),'picker suggests the class whose names match: '+(await sug.textContent().catch(()=>'')));
-  await sug.click(); await p3.waitForTimeout(400);
-  check(await p3.evaluate(()=>{const s=window.__tally.state.sections['1205050-7T1A']; return !!(s.grades && s.grades.assignments.length===13);}),'gradebook attached to the suggested class');
+  check(await p3.locator('.picks [data-sec]').count()===0,'the gradebook was first in the drop and still found its class by its names — no picker');
+  check(/1st Period[^}]*placed by its names \(16 of 23\)/.test(await p3.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'the import result names the class and the evidence');
+  check(await p3.evaluate(()=>{const s=window.__tally.state.sections['1205050-7T1A']; return !!(s.grades && s.grades.assignments.length===13);}),'gradebook attached to the class whose IXL names match');
   await p3.close();
   // a class with no pasted roster gets one from the gradebook (Focus order, with IDs); a differing pasted roster gets an offer
   const p4=await ctx.newPage(); p4.on('dialog',d=>d.accept()); await p4.goto('file://'+path.resolve(APP)); await p4.evaluate(()=>localStorage.clear()); await p4.reload(); await p4.waitForTimeout(300);
   await p4.setInputFiles('#file',[path.resolve('fixtures',realIxl)]); await p4.waitForTimeout(500); await p4.click('#rpSkip'); await p4.waitForTimeout(200);
-  await p4.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p4.waitForTimeout(500); await p4.click('[data-sec]'); await p4.waitForTimeout(600);
+  await p4.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p4.waitForTimeout(500); await pick(p4); await p4.waitForTimeout(600);
   check(/roster filled in from the gradebook/.test(await p4.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'the import result says the roster came from the gradebook');
   const rs=await p4.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const rows=T.parseRosterText(s.roster); const br=T.buildRows(s); return { n:rows.length, first:rows[0].display, id:rows[0].id, ok:br.filter(r=>r.status==='ok').length }; });
   check(rs.n===23 && rs.first==='SUTTER, HAYDEN SKYLER' && rs.id==='1111860421' && rs.ok===16,'roster has the 23 gradebook students with IDs, in Focus order, matched to IXL: '+JSON.stringify(rs));

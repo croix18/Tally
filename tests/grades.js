@@ -1,5 +1,5 @@
 // Grades: the Focus formula, category fitting, what-ifs, history, the screens, and privacy — against the scrubbed real export.
-const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -7,7 +7,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await p.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p.waitForTimeout(500);
   await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(300);
-  await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await p.click('[data-sec]'); await p.waitForTimeout(600);
+  await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await pick(p); await p.waitForTimeout(600);
   check(/every category confirmed by the Focus grade column/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'the import result reports the categories were proved');
   const K='1205050-7T1A';
   // 1. formula + fit
@@ -88,7 +88,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const csv=fs.readFileSync('fixtures/focus_gradebook_scrubbed.csv','utf8').split('\n'); const noGrade=csv.map((l,i)=>i===0? l.replace('"Grade",','') : l.replace(/^("[^"]*","[^"]*","[^"]*"),"[^"]*",/,'$1,')).join('\n');
   fs.writeFileSync(path.join(tmp,'nograde.csv'),noGrade);
   await p2.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p2.waitForTimeout(500); await p2.click('#rpSkip'); await p2.waitForTimeout(200);
-  await p2.setInputFiles('#file',[path.join(tmp,'nograde.csv')]); await p2.waitForTimeout(500); await p2.click('[data-sec]'); await p2.waitForTimeout(500);
+  await p2.setInputFiles('#file',[path.join(tmp,'nograde.csv')]); await p2.waitForTimeout(500); await pick(p2); await p2.waitForTimeout(500);
   check(/Which category\?/.test(await p2.textContent('#modal')) && await p2.locator('[data-ask]').count()===13,'without a Grade column, the asker lists every new assignment');
   await p2.click('[data-ask="0"] [data-c="Classwork"]'); await p2.click('#askApply'); await p2.waitForTimeout(400);
   const ng=await p2.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const g=T.gradingFor(s.prep); return {wb:g.map['Whiteboard Practice Week 9/21'], how:g.how['Whiteboard Practice Week 9/21'], ov:s.grades.overall}; });

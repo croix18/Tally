@@ -1,12 +1,12 @@
 // Overview (home), calm-by-default with a Details toggle, and the Data Lab graph types.
-const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
   await p.goto('file://'+path.resolve(APP));
   const acc=fs.readdirSync('fixtures').find(f=>f.startsWith('course_acc')), on=fs.readdirSync('fixtures').find(f=>f.startsWith('course_on'));
   await p.setInputFiles('#file',[path.resolve('fixtures',acc), path.resolve('fixtures',on)]); await p.waitForTimeout(800);
-  for (const [f,per,pr] of [['focus_gradebook_pool_p1.csv','1','acc'],['focus_gradebook_pool_p2.csv','2','on']]) { await p.setInputFiles('#file',[path.resolve('fixtures',f)]); await p.waitForTimeout(600); await p.click('[data-sec="__new__"]'); await p.waitForTimeout(200); await p.click(`#ncPeriod [data-p="${per}"]`); await p.click(`#ncPrep [data-prep="${pr}"]`); await p.click('#ncMake'); await p.waitForTimeout(800); if ((await p.textContent('#modal')).trim()) { await p.click('#mCancel').catch(()=>{}); await p.waitForTimeout(300); } }
+  for (const [f,per,pr] of [['focus_gradebook_pool_p1.csv','1','acc'],['focus_gradebook_pool_p2.csv','2','on']]) { await p.setInputFiles('#file',[path.resolve('fixtures',f)]); await p.waitForTimeout(600); await pick(p,'[data-sec="__new__"]'); await p.waitForTimeout(200); await p.click(`#ncPeriod [data-p="${per}"]`); await p.click(`#ncPrep [data-prep="${pr}"]`); await p.click('#ncMake'); await p.waitForTimeout(800); if ((await p.textContent('#modal')).trim()) { await p.click('#mCancel').catch(()=>{}); await p.waitForTimeout(300); } }
   // --- Overview
   await p.reload(); await p.waitForTimeout(600);
   check(await p.locator('#gridwrap .home').count()===1 && await p.locator('.hcard').count()===2,'reload opens on the Overview with a card per class');

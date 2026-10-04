@@ -334,9 +334,16 @@ async function importFiles(files) {
       state.active = meta.key; ok.push(state.sections[meta.key]);
     } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); }
   }
+  const placed = new Set();
   for (const { f, gb } of deferred) { try {
-    let target = await pickSection(f.name, gb);
-    if (target === '__new__') target = await askNewClass(f.name, gb);
+    // A gradebook whose students are plainly one class goes there without a question; the dialog is for the rest.
+    const mt = matchSection(gb, placed);
+    // When its students are in no class there is nothing to choose between: straight to "New class".
+    let target = mt.auto || (mt.nowhere ? '__new__' : await pickSection(f.name, gb, mt));
+    if (target === '__new__') target = await askNewClass(f.name, gb, mt.nowhere && state.order.length ? (mt.best && mt.best.n ? `only ${mt.best.n} of them in a class already` : 'none of them in a class yet') : '');
+    if (target === '__pick__') { target = await pickSection(f.name, gb, mt); if (target === '__new__') target = await askNewClass(f.name, gb); }
+    const how = mt.auto && target === mt.auto ? ` · placed by its names (${mt.best.n} of ${gb.students.length})` : '';
+    if (target) placed.add(target);
     if (!target) { skipped++; continue; }
     const sec = state.sections[target]; sec.grades = sec.grades || { assignments: [], students: [] };
     const keptNote = keepOutgoing(sec, gb);   // a file that starts a new quarter mustn't take the old quarter's scores with it
@@ -353,7 +360,7 @@ async function importFiles(files) {
       if (sec.pool || okN >= Math.max(3, gb.students.length / 2)) { sec.roster = text; sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }   // only when its names really are this class
     }
     if (sec.pool) { materialize(sec); if (!ok.includes(sec)) ok.push(sec); }
-    gbImported.push({ key: sec.key, label: sec.label, text: `${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}${keptNote}${qNote}` });
+    gbImported.push({ key: sec.key, label: sec.label, text: `${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}${keptNote}${qNote}${how}` });
   } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); } }
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
   const workingIn = defaultWorkingIn();
@@ -790,7 +797,7 @@ const LAB_ONLY_CSS = `
 .labChips span.out{box-shadow:0 0 0 2px var(--coral)}
 .labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*10 - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
-.lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:999px;padding:6px 8px;box-shadow:var(--shadow-1)}
+.lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:28px;padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}
 `;
 const LAB_CSS = CHART_CSS + LAB_ONLY_CSS;
@@ -1001,17 +1008,19 @@ function poolLeftovers(sec) {
   const taken = new Set(); state.order.map(k => state.sections[k]).filter(x => x !== sec && x.pool && x.prep === sec.prep).forEach(x => poolIdx(x).forEach(i => taken.add(i)));
   return ixlList(pool).filter(x => !taken.has(x.i));
 }
-function askNewClass(fileName, gb) {
+// `orExisting` (a few words on why): the dialog opened by itself because the file's students are in no class — offer the way back.
+function askNewClass(fileName, gb, orExisting) {
   return new Promise(resolve => {
     const used = new Set(state.order.map(k => state.sections[k].period).filter(Boolean));
     const m = $('#modal'); m.classList.remove('hidden');
     m.innerHTML = `<div class="panel narrow"><header><h2>New class from this gradebook</h2><button id="mClose" aria-label="Close">×</button></header>
-      <div class="body one"><p><b>${esc(fileName)}</b> · ${plural(gb.students.length, 'student')}. Which period is this, and which course?</p>
+      <div class="body one"><p><b>${esc(fileName)}</b> · ${plural(gb.students.length, 'student')}${orExisting ? ', ' + esc(orExisting) : ''}. Which period is this, and which course?</p>
         <div class="field"><label>Period</label><div class="seg" id="ncPeriod">${[1, 2, 3, 4, 5, 6, 7].map(n => `<button data-p="${n}" ${used.has(n) ? 'disabled title="already a class"' : ''}>${n}</button>`).join('')}</div></div>
         <div class="field"><label>Course</label><div class="seg" id="ncPrep"><button data-prep="acc">Accelerated</button><button data-prep="on">On-level</button></div></div>
         <p class="ghint">The class's IXL grid comes from the course-wide IXL export${state.pools.acc || state.pools.on ? '' : ' — import one for each course when you have it'}.</p><p class="ghint warnline" id="ncWarn" hidden></p>
-        <div class="rp-actions"><button class="pill" id="ncMake" disabled>Make the class</button><button class="pill pale" id="mCancel">Skip this file</button></div></div></div>`;
+        <div class="rp-actions"><button class="pill" id="ncMake" disabled>Make the class</button><button class="pill pale" id="mCancel">Skip this file</button>${orExisting ? '<button class="pill pale" id="ncExisting">It belongs to a class I already have</button>' : ''}</div></div></div>`;
     const done = v => { m.classList.add('hidden'); m.innerHTML = ''; resolve(v); };
+    if (orExisting) $('#ncExisting').onclick = () => done('__pick__');
     m._cancel = () => done(null); $('#mClose').onclick = m._cancel; $('#mCancel').onclick = m._cancel; m.onclick = e => { if (e.target === m) done(null); };
     let period = null, prep = null; const arm = () => { $('#ncMake').disabled = !(period && prep); };
     m.querySelectorAll('#ncPeriod button').forEach(b => b.onclick = () => { period = Number(b.dataset.p); m.querySelectorAll('#ncPeriod button').forEach(x => x.classList.toggle('on', x === b)); arm(); });
@@ -1037,17 +1046,44 @@ function rosterVsGradebook(sec) {
   const added = gb.students.filter(n => !have.has(norm(n))), gone = parseRosterText(sec.roster).map(r => r.display).filter(d => !inGb.has(norm(d)));
   return added.length || gone.length ? { added, gone } : null;
 }
-function pickSection(fileName, gb) {
+// Which class a gradebook file belongs to, read from its students. A class's Focus list (its last gradebook, else its
+// roster) is compared by student ID and by name; a class that has neither yet is compared through the IXL name matcher.
+// The file is placed without asking only when it is plainly that class: at least 80 % of its students are in the class,
+// at least 60 % of the class is in the file, and no other class holds more than 40 % of them. Through the IXL matcher
+// (which leaves hyphenated and double surnames for the fixer) the bar is 60 % with no other class above 20 %.
+// Anything less asks, and the dialog says why. `taken` holds the classes another file in the same drop already went
+// to — a second one asks.
+const AUTO_SHARE = 0.8, AUTO_BACK = 0.6, AUTO_RIVAL = 0.4, AUTO_SHARE_IXL = 0.6, AUTO_RIVAL_IXL = 0.2;
+function matchSection(gb, taken) {
+  const N = gb.students.length, names = gb.students.map(n => norm(n)), ids = (gb.ids || []).map(x => String(x || '').trim());
+  const rows = state.order.map(k => {
+    const sec = state.sections[k]; let n = 0, size = 0, via = 'focus';
+    const g = sec.grades && sec.grades.students && sec.grades.students.length ? sec.grades : null;
+    const list = g ? g.students.map((nm, i) => ({ name: norm(nm), id: String((g.ids || [])[i] || '').trim() })) : parseRosterText(sec.roster).map(r => ({ name: norm(r.display), id: String(r.id || '').trim() }));
+    if (list.length) { const byId = new Set(list.map(x => x.id).filter(Boolean)), byName = new Set(list.map(x => x.name)); n = names.filter((nm, i) => (ids[i] && byId.has(ids[i])) || byName.has(nm)).length; size = list.length; }
+    else if (sec.students && sec.students.length && !sec.placeholder) { try { n = buildRows({ ...sec, roster: gb.students.join('\n') }).filter(r => r.status === 'ok' && r.ixl != null).length; } catch (e) {} size = sec.students.length; via = 'ixl'; }
+    return { key: k, label: sec.label, n, size, via, share: N ? n / N : 0, back: size ? n / size : 0 };
+  }).sort((a, b) => b.n - a.n);
+  const a = rows[0], b = rows[1];
+  const suggest = a && a.n >= Math.max(3, N / 2) && (!b || a.n > b.n) ? a.key : null;
+  let why = '';
+  if (!a || !a.n) why = state.order.length ? 'None of its students are in a class yet.' : '';
+  else if (b && b.share > (a.via === 'ixl' ? AUTO_RIVAL_IXL : AUTO_RIVAL)) why = `Its students are split between ${a.label} (${a.n}) and ${b.label} (${b.n}).`;
+  else if (N < 3 || a.share < (a.via === 'ixl' ? AUTO_SHARE_IXL : AUTO_SHARE)) why = `Only ${a.n} of its ${plural(N, 'student')} ${a.n === 1 ? 'is' : 'are'} in ${a.label}.`;
+  else if (a.back < AUTO_BACK) why = `It has only ${a.n} of the ${a.size} students in ${a.label}.`;
+  else if (taken && taken.has(a.key)) why = `Another file in this drop already went to ${a.label}.`;
+  const nowhere = !a || a.n < Math.max(3, N * 0.15);   // a shared name or two is not a class: that file starts a new one
+  return { rows, best: a || null, suggest, auto: a && a.n && !why ? a.key : null, why, nowhere };
+}
+function pickSection(fileName, gb, mt) {
   return new Promise(resolve => {
     const m = $('#modal'); m.classList.remove('hidden');
     const preview = gb.assignments.slice(0, 6).map(a => esc(a.name)).join(', ') + (gb.assignments.length > 6 ? ', …' : '');
-    // Suggest the class whose IXL students the gradebook's names match best (same matcher the roster uses).
-    const roster = gb.students.join('\n');
-    const hits = state.order.map(k => { let n = 0; try { n = buildRows({ ...state.sections[k], roster }).filter(r => r.status === 'ok').length; } catch (e) {} return [k, n]; }).sort((a, b) => b[1] - a[1]);
-    const best = hits.length && hits[0][1] >= Math.max(3, gb.students.length / 2) && (hits.length === 1 || hits[0][1] > hits[1][1]) ? hits[0][0] : null;
+    mt = mt || matchSection(gb); const best = mt.suggest; const hit = {}; mt.rows.forEach(r => { hit[r.key] = r.n; });   // each chip carries its own count, so the highlighted one never claims more than the sentence above it
     m.innerHTML = `<div class="panel narrow"><header><h2>Which class is this gradebook?</h2><button id="mClose" aria-label="Close">×</button></header>
       <div class="body one"><p><b>${esc(fileName)}</b><br>${plural(gb.students.length, 'student')} · ${plural(gb.assignments.length, 'assignment')}: ${preview}${gb.unread ? `<br><span class="warnline">${plural(gb.unread, 'cell')} couldn't be read (${esc(gb.examples.map(x => '“' + x + '”').join(', '))}) and will count as no score.</span>` : ''}</p>
-      <div class="picks">${state.order.map(k => `<button class="chip${k === best ? ' on' : ''}" data-sec="${esc(k)}">${esc(state.sections[k].label)}${k === best ? ' <small>· names match</small>' : ''}</button>`).join('')}<button class="chip${!best ? ' on' : ''}" data-sec="__new__">+ New class${!best && state.order.length ? ' <small>· no class matches these names</small>' : ''}</button></div>
+      ${mt.why ? `<p class="ghint" id="pickWhy">${esc(mt.why)} Tally places a gradebook by itself when its names plainly match one class.</p>` : ''}
+      <div class="picks">${state.order.map(k => `<button class="chip${k === best ? ' on' : ''}" data-sec="${esc(k)}">${esc(state.sections[k].label)}${hit[k] ? ` <small>· ${hit[k]} of ${gb.students.length}</small>` : ''}</button>`).join('')}<button class="chip${!best ? ' on' : ''}" data-sec="__new__">+ New class${!best && state.order.length ? ' <small>· no class matches these names</small>' : ''}</button></div>
       <div class="rp-actions"><button class="pill pale" id="mCancel">Skip this file</button></div></div></div>`;
     const done = v => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; resolve(v); };
     m._cancel = () => done(null); $('#mClose').onclick = m._cancel; $('#mCancel').onclick = m._cancel; m.onclick = e => { if (e.target === m) done(null); };
@@ -1531,7 +1567,7 @@ dd{margin:0}
 </ol>
 <h2>Once per class</h2>
 <ol>
-<li>The <b>roster</b> comes from the Focus gradebook automatically (with IDs). With a course-wide IXL export, a new gradebook offers <b>+ New class</b>: pick the period and course once. You can still paste a roster in Settings.</li>
+<li>The <b>roster</b> comes from the Focus gradebook automatically (with IDs). With a course-wide IXL export, a gradebook whose students are in no class yet asks for the <b>period and course</b> once. After that each gradebook goes to its class by its students' names and IDs — Tally only asks when a file isn't plainly one class, and says why. You can still paste a roster in Settings.</li>
 <li>Fix any flag on a name: <b>Not in IXL</b>, <b>Two matches</b>, <b>Not on roster</b>.</li>
 <li>Mark units <b>Not assigned</b> (open the unit, top bar). This applies to every class in the course.</li>
 <li>For a unit where only the lesson skills were required, open the Focus check and accept <b>Skip N skills to match Focus</b>, or tap skills in the unit view to skip them.</li>
@@ -1912,7 +1948,7 @@ document.addEventListener('keydown', e => {
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { get state() { return state; }, save, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { get state() { return state; }, save, matchSection, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 render();
 if (bootError) setTimeout(() => toast('Saved Tally data could not be read and was set aside (kept as a backup in this browser). Re-import your exports.', true, 8000), 300);

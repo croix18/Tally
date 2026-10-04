@@ -35,6 +35,19 @@ per-section-file era and many items in them are now done).
   course once; the class (`sec.pool = true`, key `period-N`) is carved from `state.pools[prep]` by matching
   the gradebook's names. Re-importing a pool refreshes its classes; a class made before its pool waits.
   Per-section IXL files (`1205050-7T1A-…`) still work and label by period ("1st Period · Accelerated").
+- **Gradebooks place themselves** (4 Oct, Croix's ask — it reverses round 6's "the confirming tap stays", which was
+  kept because the old suggestion called a half-match a match). `matchSection(gb, taken)` in `app.js` compares the
+  file's students with each class's own Focus list (its last gradebook, else its roster) by student ID and by name;
+  a class with neither is compared through the IXL name matcher. It places the file without asking only when at
+  least 80 % of its students are in the class, at least 60 % of the class is in the file and no other class holds
+  more than 40 % of them (60 % / 20 % through the IXL matcher, which leaves double surnames for the fixer). Otherwise
+  "Which class is this gradebook?" opens and says why ("split between…", "only 14 of its 23…", "only 5 of the 23
+  students in…", "another file in this drop already went to…"). A file whose students are in no class (fewer than 3
+  or under 15 %) goes straight to "New class" — period and course can't be read from a Focus file, and both course
+  exports list every student, so the course can't be read from IXL either — with "It belongs to a class I already
+  have" as the way back. The import card says "placed by its names (23 of 23)". There is no override when a file is
+  plainly one class; if that is ever wrong, the fix is to make the dialog reachable from the import card.
+  `tests/auto-place.js`.
 - **Roster = the gradebook's student column** (Focus order, with IDs). Filled in automatically when a class
   has no roster and at least half the names match its IXL students; offered when a pasted roster differs.
 - **"Working in" unit per course** (`settings.currentUnit[prep]`): everything up to it is assigned; later
@@ -146,8 +159,8 @@ per-section-file era and many items in them are now done).
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.
-2. Drop all seven on Tally in any order (and, once a year, the Seating Chart's JSON backup for photos and FAST). Pools refresh their classes; each gradebook lands on its class via
-   the name-match suggestion (confirm with a tap). Accept the category asker if it appears.
+2. Drop all seven on Tally in any order (and, once a year, the Seating Chart's JSON backup for photos and FAST). Pools refresh their classes; each gradebook lands on its class by
+   its students' names and IDs, with no question (see "Gradebooks place themselves" below). Accept the category asker if it appears.
 3. Check the roster-mismatch notice (new or withdrawn students), then copy each unit into Focus. The Focus
    check badge on each unit says whether Focus agrees.
 4. Save backup to Drive.

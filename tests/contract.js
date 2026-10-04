@@ -1,7 +1,7 @@
 // Layout contract (round 6): the things the other 548 checks can't see. Measured, not asserted from the DOM alone —
 // a build with magenta ink, no sticky header or no font would pass every functional suite and fail here.
 // Viewports: laptop 1400×900, Chromebox 1366×768, tablet 1280×800; plus 200 % zoom (emulated as 700×450) for reachability.
-const { chromium, fs, path, exe, check, done, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
 const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }; const a = L(fg), b = L(bg); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };
 (async()=>{
   const b=await chromium.launch({executablePath:exe});
@@ -11,7 +11,7 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   const { ctx: c0, p: p0 } = await open(1400,900);
   const acc=fs.readdirSync('fixtures').find(f=>f.startsWith('course_acc')), on=fs.readdirSync('fixtures').find(f=>f.startsWith('course_on'));
   await p0.setInputFiles('#file',[path.resolve('fixtures',acc), path.resolve('fixtures',on)]); await p0.waitForTimeout(800);
-  for (const [f,per,pr] of [['focus_gradebook_pool_p1.csv','1','acc'],['focus_gradebook_pool_p2.csv','2','on']]) { await p0.setInputFiles('#file',[path.resolve('fixtures',f)]); await p0.waitForTimeout(600); await p0.click('[data-sec="__new__"]'); await p0.waitForTimeout(200); await p0.click(`#ncPeriod [data-p="${per}"]`); await p0.click(`#ncPrep [data-prep="${pr}"]`); await p0.click('#ncMake'); await p0.waitForTimeout(800); if (await p0.locator('#askSave').count()) { await p0.click('#askSave'); await p0.waitForTimeout(300); } }
+  for (const [f,per,pr] of [['focus_gradebook_pool_p1.csv','1','acc'],['focus_gradebook_pool_p2.csv','2','on']]) { await p0.setInputFiles('#file',[path.resolve('fixtures',f)]); await p0.waitForTimeout(600); await pick(p0,'[data-sec="__new__"]'); await p0.waitForTimeout(200); await p0.click(`#ncPeriod [data-p="${per}"]`); await p0.click(`#ncPrep [data-prep="${pr}"]`); await p0.click('#ncMake'); await p0.waitForTimeout(800); if (await p0.locator('#askSave').count()) { await p0.click('#askSave'); await p0.waitForTimeout(300); } }
   const saved=await p0.evaluate(()=>localStorage.getItem('tally.v4')||localStorage.getItem(Object.keys(localStorage).find(k=>/^tally/.test(k))));
   const lsKey=await p0.evaluate(()=>Object.keys(localStorage).find(k=>/^tally/.test(k)&&!/broken/.test(k)));
   check(!!saved && !!lsKey,'state built once ('+lsKey+')');

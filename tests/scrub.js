@@ -1,4 +1,4 @@
-const { chromium, fs, path, exe, check, done, tmp, need, APP, SCRUB } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, APP, SCRUB, pick } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext(); const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('file://'+path.resolve(SCRUB));
@@ -32,7 +32,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, APP, SCRUB } = require(
   check(scr.sum===orig.sum && scr.n===orig.n && scr.students.length===orig.students.length,'scrubbed xlsx: identical scores and structure');
   check(scr.students.every((s,i)=>s!==orig.students[i] && s.split(' ').length===orig.students[i].split(' ').length),'scrubbed xlsx: every name different, same word count');
   await t.click('[data-k="1205050-7T1A"]'); await t.waitForTimeout(150); await t.click('#rpSkip'); await t.waitForTimeout(150);
-  await t.setInputFiles('#file',[outs[2]]); await t.waitForTimeout(400); await t.click('[data-sec="1205050-7T1A"]'); await t.waitForTimeout(300);
+  await t.setInputFiles('#file',[outs[2]]); await t.waitForTimeout(400); await pick(t,'[data-sec="1205050-7T1A"]'); await t.waitForTimeout(300);
   const g=await t.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].grades.assignments.map(a=>[a.name,a.max,a.values]));
   check(g.length===2 && g[0][0]==='Unit 1 Test' && g[0][1]===100 && JSON.stringify(g[1][2])==='[17,0,19,null]','Tally imports the scrubbed HTML gradebook correctly');
   console.log('errors:',errs); check(errs.length===0,'no errors');

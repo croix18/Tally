@@ -1,13 +1,13 @@
 // Round 6, Build 2: alerts that can be cleared ("No IXL account" is a state), one attention line per cause above the
 // cards, the notice band as a count in the class bar, the backup line, Working in defaulted from Focus's IXL columns.
-const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900},acceptDownloads:true}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
   await p.goto('file://'+path.resolve(APP));
   const acc=fs.readdirSync('fixtures').find(f=>f.startsWith('course_acc')), on=fs.readdirSync('fixtures').find(f=>f.startsWith('course_on'));
   await p.setInputFiles('#file',[path.resolve('fixtures',acc), path.resolve('fixtures',on)]); await p.waitForTimeout(800);
-  for (const [f,per,pr] of [['focus_gradebook_pool_p1.csv','1','acc'],['focus_gradebook_pool_p2.csv','2','on']]) { await p.setInputFiles('#file',[path.resolve('fixtures',f)]); await p.waitForTimeout(600); await p.click('[data-sec="__new__"]'); await p.waitForTimeout(200); await p.click(`#ncPeriod [data-p="${per}"]`); await p.click(`#ncPrep [data-prep="${pr}"]`); await p.click('#ncMake'); await p.waitForTimeout(800); if (await p.locator('#askSave').count()) { await p.click('#askSave'); await p.waitForTimeout(300); } }
+  for (const [f,per,pr] of [['focus_gradebook_pool_p1.csv','1','acc'],['focus_gradebook_pool_p2.csv','2','on']]) { await p.setInputFiles('#file',[path.resolve('fixtures',f)]); await p.waitForTimeout(600); await pick(p,'[data-sec="__new__"]'); await p.waitForTimeout(200); await p.click(`#ncPeriod [data-p="${per}"]`); await p.click(`#ncPrep [data-prep="${pr}"]`); await p.click('#ncMake'); await p.waitForTimeout(800); if (await p.locator('#askSave').count()) { await p.click('#askSave'); await p.waitForTimeout(300); } }
   const K='period-1';
   // 0. Working in, when nobody picked it, comes from Focus's IXL columns (never a review unit) and the import says so
   const wi=await p.evaluate(()=>{ const T=window.__tally; return { cur:T.state.settings.currentUnit, skip:T.state.settings.skipFirst, li:JSON.stringify(T.state.lastImport) }; });
@@ -93,7 +93,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const ixl=fs.readdirSync('fixtures').find(f=>f.startsWith('ixl_7T1A_scrubbed'));
   await q.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await q.waitForTimeout(500);
   await q.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await q.click('#rpSave'); await q.waitForTimeout(300);
-  await q.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await q.waitForTimeout(500); await q.click('[data-sec]'); await q.waitForTimeout(600);
+  await q.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await q.waitForTimeout(500); await pick(q); await q.waitForTimeout(600);
   const RK='1205050-7T1A';
   await q.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; T.state.settings.currentUnit={acc:2,on:2};
     // a second import a week earlier so the tiles have a trend to draw

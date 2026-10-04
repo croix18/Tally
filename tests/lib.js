@@ -16,4 +16,7 @@ const unskip = p => p.evaluate(() => { const T = window.__tally; T.state.setting
 const dense = p => p.evaluate(() => { const T = window.__tally; T.state.settings.details = true; T.save(); T.render(); });
 // The suites drive the test build (keeps window.__tally); the shipped Tally.html / index.html are never touched by a test run.
 const APP = 'Tally.test.html', SCRUB = 'Scrub.test.html';
-module.exports = { chromium, fs, path, exe, check, done, tmp, need, unskip, dense, APP, SCRUB };
+// "Which class is this gradebook?" only opens when Tally can't place the file by its names — click the choice if it is asked.
+// A file whose students are in no class opens "New class" instead; "It belongs to a class I already have" leads to the list.
+const pick = async (p, sel = '[data-sec]') => { if (!/__new__/.test(sel)) { const e = await p.$('#ncExisting'); if (e) { await e.click(); await p.waitForTimeout(200); } } const d = await p.$(sel); if (d) await d.click(); return !!d; };
+module.exports = { chromium, fs, path, exe, check, done, tmp, need, unskip, dense, pick, APP, SCRUB };

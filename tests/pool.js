@@ -1,6 +1,6 @@
 // Course-wide IXL exports (no section code, every student of the course in one file) become pools; Focus gradebooks
 // make period classes carved from them. Fixtures: two real scrubbed course exports + two synthetic gradebooks of pool names.
-const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -14,8 +14,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   check(await p.locator('#empty:not(.hidden)').count()===1,'landing still shown until a class exists');
   // gradebook → new class (period + course)
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_pool_p1.csv')]); await p.waitForTimeout(600);
-  check(await p.locator('[data-sec="__new__"].on').count()===1,'picker offers "+ New class" as the choice when no class matches');
-  await p.click('[data-sec="__new__"]'); await p.waitForTimeout(300);
+  check(await p.locator('.picks [data-sec]').count()===0 && /New class from this gradebook/.test(await p.textContent('#modal')),'with no class to choose between, the gradebook goes straight to "New class"');
   check(await p.locator('#ncMake[disabled]').count()===1,'Make is disabled until period and course are chosen');
   await p.click('#ncPeriod [data-p="1"]'); await p.click('#ncPrep [data-prep="acc"]'); await p.click('#ncMake'); await p.waitForTimeout(800);
   if ((await p.textContent('#modal')).trim()) { await p.click('#mCancel').catch(()=>{}); await p.waitForTimeout(300); }
@@ -41,7 +40,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   check(s1b.students===23 && s1b.ok===23,'after picking, the class re-materialises with all 23');
   // second gradebook → 2nd period on-level; period 1 is greyed out in the picker
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_pool_p2.csv')]); await p.waitForTimeout(600);
-  await p.click('[data-sec="__new__"]'); await p.waitForTimeout(300);
+  await pick(p,'[data-sec="__new__"]'); await p.waitForTimeout(300);
   check(await p.locator('#ncPeriod [data-p="1"][disabled]').count()===1,'a period already in use can\'t be chosen twice');
   await p.click('#ncPeriod [data-p="2"]'); await p.click('#ncPrep [data-prep="on"]'); await p.click('#ncMake'); await p.waitForTimeout(800);
   if ((await p.textContent('#modal')).trim()) { await p.click('#mCancel').catch(()=>{}); await p.waitForTimeout(300); }
@@ -79,7 +78,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   check(await p.evaluate(()=>{const T=window.__tally; return T.state.order.length===2 && !!T.state.pools.acc && T.state.sections['period-1'].students.length===23;}),'pools and classes survive a reload');
   // a gradebook before its pool: class exists, waits, then fills when the pool arrives
   const q=await ctx.newPage(); q.on('dialog',d=>d.accept()); await q.goto('file://'+path.resolve(APP)); await q.evaluate(()=>localStorage.clear()); await q.reload(); await q.waitForTimeout(300);
-  await q.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_pool_p2.csv')]); await q.waitForTimeout(600); await q.click('[data-sec="__new__"]'); await q.waitForTimeout(300);
+  await q.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_pool_p2.csv')]); await q.waitForTimeout(600); await pick(q,'[data-sec="__new__"]'); await q.waitForTimeout(300);
   await q.click('#ncPeriod [data-p="2"]'); await q.click('#ncPrep [data-prep="on"]'); await q.click('#ncMake'); await q.waitForTimeout(800);
   if ((await q.textContent('#modal')).trim()) { await q.click('#mCancel').catch(()=>{}); await q.waitForTimeout(300); }
   check(/Waiting for the on-level IXL export/.test(await q.textContent('#notices')),'class made before its pool shows a waiting notice');
