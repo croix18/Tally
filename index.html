@@ -1415,8 +1415,7 @@ function attentionItems(sec) {
   if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings' });
   if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally — ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid' });
     const stale = off.length ? [] : checks.filter(c => c.counts.stale > 0); if (stale.length) out.push({ level: 'info', text: 'moved up since you copied — ' + stale.map(c => `${c.unit.short}: ${plural(c.counts.stale, 'student')}`).join(' · ') + ' — copy again', go: 'grid' });
-    const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' }); if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' });
-    if (!hasOpenGrades(sec) && anyClosed()) out.push({ level: 'info', text: `waiting for the first ${Q_NAMES[currentQuarter() - 1]} gradebook`, go: 'import' }); }
+    const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' }); if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' }); }
   // Without a "Working in" unit, assignment is guessed from who has touched what — on a course-wide export that can pick Unit 8.
   if (!sec.placeholder && sec.students.length && !(state.settings.currentUnit || {})[sec.prep]) { const auto = unitsOf(sec).filter(u => u.assigned && !u.marked); out.push({ level: 'info', text: `no "Working in" unit picked — ${auto.length ? auto.map(u => u.short).join(', ') + (auto.length === 1 ? ' is' : ' are') + ' assigned by guess' : 'nothing is assigned yet'}`, go: 'grid' }); }
   const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid' });
@@ -1432,16 +1431,18 @@ function renderHome() {
   const card = s => { const r = byKey.get(s.key); const g = gradeSummary(s); const att = attentionItems(s); const warn = att.filter(a => a.level === 'warn').length;
     const checks = s.grades ? reconcile(s) : []; const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK).length; const staleN = off ? 0 : checks.reduce((n, c) => n + (c.counts.stale || 0), 0);
     const ixlCols = s.grades ? s.grades.assignments.filter(a => gbUnitFor(s, a)) : [];
-    const focusChip = !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? (ixlCols.length ? `<span class="hchip muted">Focus IXL column${ixlCols.length === 1 ? '' : 's'} (${esc(ixlCols.map(a => gbUnitFor(s, a).short).join(', '))}) not assigned in Tally${(state.settings.currentUnit || {})[s.prep] ? '' : ' — pick Working in'}</span>` : '<span class="hchip muted">no IXL columns in Focus</span>') : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : staleN ? `<span class="hchip stale">Focus: ${staleN} up since copy</span>` : '<span class="hchip ok">Focus ✓</span>';
+    const waiting = !!(g && g.waiting);   // the quarter was closed and the new one has no gradebook yet: say that, not zeros
+    const focusChip = waiting ? '' : !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? (ixlCols.length ? `<span class="hchip muted">Focus IXL column${ixlCols.length === 1 ? '' : 's'} (${esc(ixlCols.map(a => gbUnitFor(s, a).short).join(', '))}) not assigned in Tally${(state.settings.currentUnit || {})[s.prep] ? '' : ' — pick Working in'}</span>` : '<span class="hchip muted">no IXL columns in Focus</span>') : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : staleN ? `<span class="hchip stale">Focus: ${staleN} up since copy</span>` : '<span class="hchip ok">Focus ✓</span>';
     return `<article class="hcardW" style="--cc:${classColor(s)}"><button class="hcard ${warn ? 'warn' : ''}" data-go="${esc(s.key)}" aria-label="Open ${esc(s.label)}">
       <div class="hhead"><b>${esc(s.label)}</b><small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small></div>
       <div class="hnums">
         <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b><span>${r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : 'first import'}</span></div>
-        <div><small>Focus average${anyClosed() ? ' · Q' + currentQuarter() : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b><span>${g && g.waiting ? `no Q${g.q} gradebook yet${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : ''}` : g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : ''}</span></div>
+        ${waiting ? `<div><small>Focus${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final` : ''}</small><b>${g.qFinal && g.qFinal.avg != null ? Math.round(g.qFinal.avg) + '%' : '—'}</b><span>Q${g.q} gradebook not in yet</span></div>` : `
+        <div><small>Focus average${anyClosed() ? ' · Q' + currentQuarter() : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b><span>${g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : ''}</span></div>
         <div><small>Missing work</small><b>${g ? g.missing : '—'}</b><span>${g ? plural(g.missingStudents, 'student') : ''}</span></div>
-        <div><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b><span>${g && g.prevDate ? 'down 3+ or more missing' : 'needs 2 gradebooks'}</span></div>
+        <div><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b><span>${g && g.prevDate ? 'down 3+ or more missing' : 'needs 2 gradebooks'}</span></div>`}
       </div>
-      <div class="hchips">${focusChip}${g ? `<span class="hchip letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${g.letters[l]}</em></i>`).join('')}</span>` : ''}${warn ? `<span class="hchip warn">${plural(warn, 'thing')} to look at</span>` : ''}</div>
+      <div class="hchips">${focusChip}${g && !waiting ? `<span class="hchip letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${g.letters[l]}</em></i>`).join('')}</span>` : ''}${warn ? `<span class="hchip warn">${plural(warn, 'thing')} to look at</span>` : ''}</div>
     </button><button class="hchip act hdigest" data-digest="${esc(s.key)}">What changed ›</button></article>`; };
   const att = secs.flatMap(s => attentionItems(s).map(a => ({ ...a, sec: s })));
   const qdLine = qd ? `<li class="info"><button id="qdGo"><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</button></li>` : '';
@@ -1451,10 +1452,11 @@ function renderHome() {
   const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.filter(h => h.date === d).pop(); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, w: 900, labelW: 200, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
   const ixlBars = race.length ? chartBars(race.map(r => ({ label: r.label, value: r.completion * 100, color: classColor(state.sections[r.key]), hint: `${r.done} of ${r.possible} skill-points` })), { pct: true, max: 100, labelW: 180, aria: 'IXL assigned work at goal by class' }) : '';
   const missLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.filter(h => h.date === d).pop(); return h ? h.missing.reduce((a, b) => a + b, 0) : null; }) })), { min: 0, h: 220, aria: 'missing assignments by import' }) : '';
-  const lettersRows = secs.filter(s => s.grades).map(s => { const g = gradeSummary(s); return { label: s.label, parts: g.letters }; });
+  const lettersRows = secs.filter(s => s.grades).map(s => ({ s, g: gradeSummary(s) })).filter(x => !x.g.waiting).map(x => ({ label: x.s.label, parts: x.g.letters }));
   const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, dark: LETTER_DARK, labelW: 180, aria: 'letter grades by class' }) : '';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
-  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
+  const withGb = secs.filter(s => s.grades).length, waitN = anyClosed() ? secs.filter(s => s.grades && !hasOpenGrades(s)).length : 0;
+  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
   $('#bar').classList.remove('detail');
   const li = state.lastImport; const liAge = li ? ageDays(li.at) : null;
   const importLine = li && (li.lines.length || li.fails.length) ? `<section class="himport ${li.fails.length ? 'warn' : ''}"><h3>Last import <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(li.at.slice(0, 10)))}, ${esc(fmtTime(li.at))}</small><button class="linkbtn" id="liHide" title="Hide until the next import">Hide</button></h3>
@@ -1468,7 +1470,7 @@ function renderHome() {
     </div>
     <section class="gsec"><h3>Focus class average by import</h3>${avgLines}</section>
     <div class="gtwo">
-      <section class="gsec"><h3>Letter grades by class</h3>${lettersChart || '<p class="ghint">Import a Focus gradebook.</p>'}</section>
+      <section class="gsec"><h3>Letter grades by class</h3>${lettersChart || `<p class="ghint">${waitN ? `Appears with the first ${esc(Q_NAMES[cq - 1])} gradebook.` : 'Import a Focus gradebook.'}</p>`}</section>
       <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
     </div>
   </div>`;
@@ -2373,38 +2375,46 @@ function reopenQuarter(n) { delete quarters().closed[n]; state.order.map(k => st
 // A quarter whose end date has passed and isn't closed yet (the Overview offers to close it).
 function quarterDue() { const n = currentQuarter(); const end = quarters().ends[n - 1]; const today = new Date(); const iso = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`; return !qClosed(n) && iso > end ? n : null; }
 
-function openQuarters() {
-  const q = quarters(); const n = currentQuarter(); const secs = state.order.map(k => state.sections[k]);
+function openQuarters(keep) {
+  keep = keep || {};
+  const q = quarters(); const n = currentQuarter(); const secs = state.order.map(k => state.sections[k]); const QN = Q_NAMES[n - 1];
   const lastClosed = [4, 3, 2, 1].find(qClosed);
   const allClosed = [1, 2, 3, 4].every(qClosed);
   const courseUnits = p => { const s = secs.find(x => x.prep === p && !x.placeholder && x.skills && x.skills.length); return s ? unitsOf(s).filter(u => u.total || u.idx.length) : []; };
   const due = { acc: unitsDueIn('acc', n), on: unitsDueIn('on', n) };
+  const isStale = s => { const gb = s.grades; return !!(gb && gb.assignments.some(a => aQuarter(a, gb) === n) && gb.importedAt.slice(0, 10) < q.ends[n - 1]); };
+  const staleN = secs.filter(isStale).length; const allStale = staleN === secs.length; const ended = !!quarterDue();
+  // One row per class: what will be kept. The caution above the table carries the "why"; a row only says which.
   const rows = secs.map(s => { const gb = s.grades; const live = gb ? gb.assignments.filter(a => aQuarter(a, gb) === n).length : 0; const kept = s.qArchive && s.qArchive[n] ? s.qArchive[n].gb.assignments.length : 0; const cnt = live || kept; const date = gb ? gb.importedAt.slice(0, 10) : null;
-    const stale = live && date && date < q.ends[n - 1]; return `<tr><td><span class="qdot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</td><td>${gb ? esc(fmtDate(date)) : '<small>no gradebook</small>'}</td><td>${cnt ? plural(cnt, 'assignment') : ''}${!live && kept ? ' <small>(kept from an earlier export)</small>' : ''}</td><td>${!cnt ? '<small>nothing to keep</small>' : stale ? `<small class="stale">${quarterDue() ? "export older than the quarter's end" : 'frozen at this export'}</small>` : '<small class="ok">ready</small>'}</td></tr>`; }).join('');
-  const staleN = secs.filter(s => { const gb = s.grades; return gb && gb.assignments.some(a => aQuarter(a, gb) === n) && gb.importedAt.slice(0, 10) < q.ends[n - 1]; }).length;
-  const unitPick = p => { const us = courseUnits(p); if (!us.length) return ''; return `<div class="field"><label>${p === 'acc' ? 'Accelerated' : 'On-level'} IXL units that were ${esc(Q_NAMES[n - 1])} work</label><div class="qunits">${us.map(u => { const cur = q.units[p][u.name]; const on = cur === n || (!cur && due[p].has(u.name)); const other = cur && cur !== n && qClosed(cur); return `<label class="${other ? 'dim' : ''}"><input type="checkbox" data-qu="${p}|${esc(u.name)}" ${on || other ? 'checked' : ''} ${other ? 'disabled' : ''}> ${esc(u.short)}${other ? ` <small>Q${cur}</small>` : due[p].has(u.name) ? ' <small>due in Q' + n + '</small>' : ''}</label>`; }).join('')}</div></div>`; };
-  const m = $('#modal'); m.classList.remove('hidden');
-  m.innerHTML = `<div class="panel"><header><h2>Quarters</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one quarters">
+    return `<tr><td><span class="qdot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</td><td>${cnt ? plural(cnt, 'assignment') : '<small>nothing to keep</small>'}${!live && kept ? ' <small>(kept from an earlier export)</small>' : ''}</td><td>${gb ? 'exported ' + esc(fmtDate(date)) : '<small>no gradebook</small>'}${cnt && isStale(s) && !allStale ? ' <small class="stale">older</small>' : ''}</td></tr>`; }).join('');
+  const unitPick = p => { const us = courseUnits(p); if (!us.length) return ''; return `<div class="field"><label>${p === 'acc' ? 'Accelerated' : 'On-level'}</label><div class="qunits">${us.map(u => { const cur = q.units[p][u.name]; const on = cur === n || (!cur && due[p].has(u.name)); const other = cur && cur !== n && qClosed(cur); return `<label class="${other ? 'dim' : ''}"><input type="checkbox" data-qu="${p}|${esc(u.name)}" data-short="${esc(u.short)}" ${on || other ? 'checked' : ''} ${other ? 'disabled' : ''}> ${esc(u.short)}${other ? ` <small>Q${cur}</small>` : due[p].has(u.name) ? ' <small>due in Q' + n + '</small>' : ''}</label>`; }).join('')}</div></div>`; };
+  const dates = `<details class="qmore" id="qDates" ${keep.dates ? 'open' : ''}><summary>Quarter dates…</summary>
       <div class="qdates">${q.ends.map((d, i) => `<label class="${qClosed(i + 1) ? 'closed' : i + 1 === n ? 'now' : ''}"><span>${Q_NAMES[i]} ends</span><input type="date" data-qend="${i}" value="${esc(d)}" ${qClosed(i + 1) ? 'disabled' : ''}><small>${qClosed(i + 1) ? 'closed ' + esc(fmtDate((q.closed[i + 1].at || '').slice(0, 10))) : i + 1 === n ? 'now' : ''}</small></label>`).join('')}</div>
-      <p class="ghint">Lake County Schools 2026–27 dates. An assignment belongs to the quarter its Focus due date falls in.</p>
-      ${allClosed ? '<p><b>Every quarter is closed.</b></p>' : `<h3>Close ${esc(Q_NAMES[n - 1])}${q.ends[n - 1] ? ` <small>(ends ${esc(fmtDate(q.ends[n - 1]))})</small>` : ''}</h3>
-      <p>Closing keeps a frozen copy of every class's ${esc(Q_NAMES[n - 1])} gradebook — each score, the final grades — and then goes quiet about it: no missing-work counts, no sliding, no Focus checks, nothing on the still-owed pages. You can still open it any time (Grades → <b>Q${n}</b>, and every student's page). Focus's ${esc(Q_NAMES[n + 0] || 'next')} exports start fresh, and Tally picks up from there.</p>
-      ${staleN ? `<p class="warnline">${quarterDue() ? `${staleN === secs.length ? 'Every gradebook' : plural(staleN, 'gradebook')} was exported before ${esc(Q_NAMES[n - 1])} ended. If grades changed in Focus since, export Quarter ${n} from Focus and import it first` : `${esc(Q_NAMES[n - 1])} hasn't ended yet${q.ends[n - 1] ? ` (${esc(fmtDate(q.ends[n - 1]))})` : ''}. Closing now freezes each class at its last export` } — the copy Tally keeps is whatever was last imported.</p>` : ''}
-      <table class="checkTable"><thead><tr><th>Class</th><th>Gradebook</th><th>${esc(Q_NAMES[n - 1])} work</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-      ${unitPick('acc')}${unitPick('on')}
-      <div class="rp-actions"><button class="pill" id="qClose">Close ${esc(Q_NAMES[n - 1])}</button><button class="pill pale" id="mCancel">Not yet</button></div>`}
+      <p class="ghint">Lake County Schools 2026–27 dates. An assignment belongs to the quarter its Focus due date falls in.</p></details>`;
+  const m = $('#modal'); m.classList.remove('hidden');
+  m.innerHTML = `<div class="panel"><header><h2>${allClosed ? 'Quarters' : `Close ${esc(QN)}`}</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one quarters">
+      ${allClosed ? '<p><b>Every quarter is closed.</b></p>' : `<p class="qlead">Tally keeps every ${esc(QN)} score and final grade, then stops bringing it up — no missing work, sliding, Focus checks or still-owed lines. It stays one tap away (Grades → <b>Q${n}</b>, and each student's page), and you can reopen it.</p>
+      ${staleN ? `<p class="warnline">${ended ? `${allStale ? 'Every gradebook' : plural(staleN, 'gradebook')} here was exported before ${esc(QN)} ended (${esc(fmtDate(q.ends[n - 1]))}). If grades changed in Focus since, export ${esc(QN)} from Focus and import it first.` : `${esc(QN)} doesn't end until ${esc(fmtDate(q.ends[n - 1]))}. Closing now keeps each class as of its last export.`}</p>` : ''}
+      <table class="checkTable qkeep"><tbody>${rows}</tbody></table>
+      ${unitPick('acc') || unitPick('on') ? `<details class="qmore" id="qUnits" ${keep.units ? 'open' : ''}><summary><span>IXL units in ${esc(QN)}: <b id="qUnitSum"></b></span> <u>Change</u></summary>${unitPick('acc')}${unitPick('on')}</details>` : ''}
+      <div class="rp-actions"><button class="pill" id="qClose">Close ${esc(QN)}</button><button class="pill pale" id="mCancel">Not yet</button></div>`}
+      ${dates}
       ${lastClosed ? `<p class="ghint">Closed by mistake? <button class="linkbtn" id="qReopen">Reopen ${esc(Q_NAMES[lastClosed - 1])}</button> — its alerts come back; the saved copy stays.</p>` : ''}
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; render(); };
   m._cancel = close; $('#mClose').onclick = close; const mc = $('#mCancel'); if (mc) mc.onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  m.querySelectorAll('[data-qend]').forEach(inp => inp.onchange = () => { if (!ISO_RE.test(inp.value)) return; q.ends[Number(inp.dataset.qend)] = inp.value; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); openQuarters(); });
+  const isOpen = id => { const d = $('#' + id); return !!(d && d.open); };
+  m.querySelectorAll('[data-qend]').forEach(inp => inp.onchange = () => { if (!ISO_RE.test(inp.value)) return; q.ends[Number(inp.dataset.qend)] = inp.value; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); openQuarters({ dates: true, units: isOpen('qUnits') }); });
+  const sum = $('#qUnitSum'); const unitSum = () => { if (!sum) return; const by = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => by[cb.dataset.qu.split('|')[0]].push(cb.dataset.short));
+    const part = (p, label) => courseUnits(p).length ? `${label} ${by[p].length ? by[p].join(', ') : 'none'}` : ''; sum.textContent = [part('acc', 'Accelerated'), part('on', 'On-level')].filter(Boolean).join(' · '); };
+  m.querySelectorAll('[data-qu]').forEach(cb => cb.onchange = unitSum); unitSum();
   const qc = $('#qClose'); if (qc) qc.onclick = () => {
     const picks = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => { const [p, u] = cb.dataset.qu.split(/\|(.*)/s); picks[p].push(u); });
     const per = closeQuarter(n, picks); save(); m.classList.add('hidden'); m.innerHTML = ''; render();
-    toast(`<b>${esc(Q_NAMES[n - 1])} closed.</b> ${per.length ? `Kept ${per.map(x => `${esc(x.s.label)} (${x.kept})`).join(' · ')}.` : 'No gradebook had work from it.'} Its assignments and ${plural(picks.acc.length + picks.on.length, 'IXL unit')} won't raise alerts any more.`, false, 7000);
+    toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'} — it won't come up again unless you reopen it.`, false, 5000);
   };
-  const ro = $('#qReopen'); if (ro) ro.onclick = () => { if (!confirm(`Reopen ${Q_NAMES[lastClosed - 1]}? Its missing work, Focus checks and still-owed lines come back. The saved copy stays.`)) return; reopenQuarter(lastClosed); save(); openQuarters(); };
+  const ro = $('#qReopen'); if (ro) ro.onclick = () => { if (!confirm(`Reopen ${Q_NAMES[lastClosed - 1]}? Its missing work, Focus checks and still-owed lines come back. The saved copy stays.`)) return; reopenQuarter(lastClosed); save(); openQuarters({ dates: isOpen('qDates') }); };
 }
  // quarters.js too
 /* ---------- students.js — Students: every student in one place, for the teacher ----------
@@ -2828,6 +2838,8 @@ details.qbook>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap
 .gempty{max-width:620px;margin:40px auto;background:var(--white);border:1px solid var(--grid);border-radius:var(--r);box-shadow:var(--shadow-1);padding:24px}.gempty h3{margin:0 0 8px}
 .qseg{margin:0 6px}.quarters .qdates{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}.quarters .qdates label{display:flex;flex-direction:column;gap:3px;padding:8px;border:2px solid var(--grid);border-radius:10px;font-size:var(--t-s)}
 .quarters .qdates label.now{border-color:var(--teal)}.quarters .qdates label.closed{background:var(--grid)}.quarters .qdates small{color:var(--ink-soft)}.quarters h3{margin:14px 0 6px}
+.quarters .qlead{font-size:var(--t-l);margin:0 0 10px}.quarters .qkeep{margin:10px 0 4px}.quarters .qkeep td{padding:8px 10px}.quarters .qkeep td:last-child{color:var(--ink-soft);text-align:right;white-space:nowrap}
+.qmore{border-top:1px solid var(--grid);margin-top:10px}.qmore summary{cursor:pointer;padding:12px 0;min-height:44px;box-sizing:border-box;display:flex;gap:10px;align-items:center;justify-content:space-between;list-style:none;font-weight:700}.qmore summary::-webkit-details-marker{display:none}.qmore summary u{color:var(--teal);font-weight:800;white-space:nowrap}.qmore summary b{font-weight:900}.qmore[open] summary u{visibility:hidden}.qmore#qDates summary{color:var(--teal);justify-content:flex-start}.qmore .field>label{color:var(--ink-soft)}.qmore+.rp-actions{margin-top:14px}
 .qunits{display:flex;flex-wrap:wrap;gap:6px 14px;padding:6px 0}.qunits label{display:flex;gap:6px;align-items:center;font-size:var(--t-s)}.qunits label.dim{color:var(--ink-soft)}.qunits small{color:var(--teal)}
 .linkbtn{background:none;border:none;padding:0;color:var(--teal);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
 .usub .qtag{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:var(--grid);color:var(--ink-soft);font-weight:900}

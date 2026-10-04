@@ -158,36 +158,44 @@ function reopenQuarter(n) { delete quarters().closed[n]; state.order.map(k => st
 // A quarter whose end date has passed and isn't closed yet (the Overview offers to close it).
 function quarterDue() { const n = currentQuarter(); const end = quarters().ends[n - 1]; const today = new Date(); const iso = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`; return !qClosed(n) && iso > end ? n : null; }
 
-function openQuarters() {
-  const q = quarters(); const n = currentQuarter(); const secs = state.order.map(k => state.sections[k]);
+function openQuarters(keep) {
+  keep = keep || {};
+  const q = quarters(); const n = currentQuarter(); const secs = state.order.map(k => state.sections[k]); const QN = Q_NAMES[n - 1];
   const lastClosed = [4, 3, 2, 1].find(qClosed);
   const allClosed = [1, 2, 3, 4].every(qClosed);
   const courseUnits = p => { const s = secs.find(x => x.prep === p && !x.placeholder && x.skills && x.skills.length); return s ? unitsOf(s).filter(u => u.total || u.idx.length) : []; };
   const due = { acc: unitsDueIn('acc', n), on: unitsDueIn('on', n) };
+  const isStale = s => { const gb = s.grades; return !!(gb && gb.assignments.some(a => aQuarter(a, gb) === n) && gb.importedAt.slice(0, 10) < q.ends[n - 1]); };
+  const staleN = secs.filter(isStale).length; const allStale = staleN === secs.length; const ended = !!quarterDue();
+  // One row per class: what will be kept. The caution above the table carries the "why"; a row only says which.
   const rows = secs.map(s => { const gb = s.grades; const live = gb ? gb.assignments.filter(a => aQuarter(a, gb) === n).length : 0; const kept = s.qArchive && s.qArchive[n] ? s.qArchive[n].gb.assignments.length : 0; const cnt = live || kept; const date = gb ? gb.importedAt.slice(0, 10) : null;
-    const stale = live && date && date < q.ends[n - 1]; return `<tr><td><span class="qdot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</td><td>${gb ? esc(fmtDate(date)) : '<small>no gradebook</small>'}</td><td>${cnt ? plural(cnt, 'assignment') : ''}${!live && kept ? ' <small>(kept from an earlier export)</small>' : ''}</td><td>${!cnt ? '<small>nothing to keep</small>' : stale ? `<small class="stale">${quarterDue() ? "export older than the quarter's end" : 'frozen at this export'}</small>` : '<small class="ok">ready</small>'}</td></tr>`; }).join('');
-  const staleN = secs.filter(s => { const gb = s.grades; return gb && gb.assignments.some(a => aQuarter(a, gb) === n) && gb.importedAt.slice(0, 10) < q.ends[n - 1]; }).length;
-  const unitPick = p => { const us = courseUnits(p); if (!us.length) return ''; return `<div class="field"><label>${p === 'acc' ? 'Accelerated' : 'On-level'} IXL units that were ${esc(Q_NAMES[n - 1])} work</label><div class="qunits">${us.map(u => { const cur = q.units[p][u.name]; const on = cur === n || (!cur && due[p].has(u.name)); const other = cur && cur !== n && qClosed(cur); return `<label class="${other ? 'dim' : ''}"><input type="checkbox" data-qu="${p}|${esc(u.name)}" ${on || other ? 'checked' : ''} ${other ? 'disabled' : ''}> ${esc(u.short)}${other ? ` <small>Q${cur}</small>` : due[p].has(u.name) ? ' <small>due in Q' + n + '</small>' : ''}</label>`; }).join('')}</div></div>`; };
-  const m = $('#modal'); m.classList.remove('hidden');
-  m.innerHTML = `<div class="panel"><header><h2>Quarters</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one quarters">
+    return `<tr><td><span class="qdot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</td><td>${cnt ? plural(cnt, 'assignment') : '<small>nothing to keep</small>'}${!live && kept ? ' <small>(kept from an earlier export)</small>' : ''}</td><td>${gb ? 'exported ' + esc(fmtDate(date)) : '<small>no gradebook</small>'}${cnt && isStale(s) && !allStale ? ' <small class="stale">older</small>' : ''}</td></tr>`; }).join('');
+  const unitPick = p => { const us = courseUnits(p); if (!us.length) return ''; return `<div class="field"><label>${p === 'acc' ? 'Accelerated' : 'On-level'}</label><div class="qunits">${us.map(u => { const cur = q.units[p][u.name]; const on = cur === n || (!cur && due[p].has(u.name)); const other = cur && cur !== n && qClosed(cur); return `<label class="${other ? 'dim' : ''}"><input type="checkbox" data-qu="${p}|${esc(u.name)}" data-short="${esc(u.short)}" ${on || other ? 'checked' : ''} ${other ? 'disabled' : ''}> ${esc(u.short)}${other ? ` <small>Q${cur}</small>` : due[p].has(u.name) ? ' <small>due in Q' + n + '</small>' : ''}</label>`; }).join('')}</div></div>`; };
+  const dates = `<details class="qmore" id="qDates" ${keep.dates ? 'open' : ''}><summary>Quarter dates…</summary>
       <div class="qdates">${q.ends.map((d, i) => `<label class="${qClosed(i + 1) ? 'closed' : i + 1 === n ? 'now' : ''}"><span>${Q_NAMES[i]} ends</span><input type="date" data-qend="${i}" value="${esc(d)}" ${qClosed(i + 1) ? 'disabled' : ''}><small>${qClosed(i + 1) ? 'closed ' + esc(fmtDate((q.closed[i + 1].at || '').slice(0, 10))) : i + 1 === n ? 'now' : ''}</small></label>`).join('')}</div>
-      <p class="ghint">Lake County Schools 2026–27 dates. An assignment belongs to the quarter its Focus due date falls in.</p>
-      ${allClosed ? '<p><b>Every quarter is closed.</b></p>' : `<h3>Close ${esc(Q_NAMES[n - 1])}${q.ends[n - 1] ? ` <small>(ends ${esc(fmtDate(q.ends[n - 1]))})</small>` : ''}</h3>
-      <p>Closing keeps a frozen copy of every class's ${esc(Q_NAMES[n - 1])} gradebook — each score, the final grades — and then goes quiet about it: no missing-work counts, no sliding, no Focus checks, nothing on the still-owed pages. You can still open it any time (Grades → <b>Q${n}</b>, and every student's page). Focus's ${esc(Q_NAMES[n + 0] || 'next')} exports start fresh, and Tally picks up from there.</p>
-      ${staleN ? `<p class="warnline">${quarterDue() ? `${staleN === secs.length ? 'Every gradebook' : plural(staleN, 'gradebook')} was exported before ${esc(Q_NAMES[n - 1])} ended. If grades changed in Focus since, export Quarter ${n} from Focus and import it first` : `${esc(Q_NAMES[n - 1])} hasn't ended yet${q.ends[n - 1] ? ` (${esc(fmtDate(q.ends[n - 1]))})` : ''}. Closing now freezes each class at its last export` } — the copy Tally keeps is whatever was last imported.</p>` : ''}
-      <table class="checkTable"><thead><tr><th>Class</th><th>Gradebook</th><th>${esc(Q_NAMES[n - 1])} work</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-      ${unitPick('acc')}${unitPick('on')}
-      <div class="rp-actions"><button class="pill" id="qClose">Close ${esc(Q_NAMES[n - 1])}</button><button class="pill pale" id="mCancel">Not yet</button></div>`}
+      <p class="ghint">Lake County Schools 2026–27 dates. An assignment belongs to the quarter its Focus due date falls in.</p></details>`;
+  const m = $('#modal'); m.classList.remove('hidden');
+  m.innerHTML = `<div class="panel"><header><h2>${allClosed ? 'Quarters' : `Close ${esc(QN)}`}</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one quarters">
+      ${allClosed ? '<p><b>Every quarter is closed.</b></p>' : `<p class="qlead">Tally keeps every ${esc(QN)} score and final grade, then stops bringing it up — no missing work, sliding, Focus checks or still-owed lines. It stays one tap away (Grades → <b>Q${n}</b>, and each student's page), and you can reopen it.</p>
+      ${staleN ? `<p class="warnline">${ended ? `${allStale ? 'Every gradebook' : plural(staleN, 'gradebook')} here was exported before ${esc(QN)} ended (${esc(fmtDate(q.ends[n - 1]))}). If grades changed in Focus since, export ${esc(QN)} from Focus and import it first.` : `${esc(QN)} doesn't end until ${esc(fmtDate(q.ends[n - 1]))}. Closing now keeps each class as of its last export.`}</p>` : ''}
+      <table class="checkTable qkeep"><tbody>${rows}</tbody></table>
+      ${unitPick('acc') || unitPick('on') ? `<details class="qmore" id="qUnits" ${keep.units ? 'open' : ''}><summary><span>IXL units in ${esc(QN)}: <b id="qUnitSum"></b></span> <u>Change</u></summary>${unitPick('acc')}${unitPick('on')}</details>` : ''}
+      <div class="rp-actions"><button class="pill" id="qClose">Close ${esc(QN)}</button><button class="pill pale" id="mCancel">Not yet</button></div>`}
+      ${dates}
       ${lastClosed ? `<p class="ghint">Closed by mistake? <button class="linkbtn" id="qReopen">Reopen ${esc(Q_NAMES[lastClosed - 1])}</button> — its alerts come back; the saved copy stays.</p>` : ''}
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; render(); };
   m._cancel = close; $('#mClose').onclick = close; const mc = $('#mCancel'); if (mc) mc.onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  m.querySelectorAll('[data-qend]').forEach(inp => inp.onchange = () => { if (!ISO_RE.test(inp.value)) return; q.ends[Number(inp.dataset.qend)] = inp.value; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); openQuarters(); });
+  const isOpen = id => { const d = $('#' + id); return !!(d && d.open); };
+  m.querySelectorAll('[data-qend]').forEach(inp => inp.onchange = () => { if (!ISO_RE.test(inp.value)) return; q.ends[Number(inp.dataset.qend)] = inp.value; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); openQuarters({ dates: true, units: isOpen('qUnits') }); });
+  const sum = $('#qUnitSum'); const unitSum = () => { if (!sum) return; const by = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => by[cb.dataset.qu.split('|')[0]].push(cb.dataset.short));
+    const part = (p, label) => courseUnits(p).length ? `${label} ${by[p].length ? by[p].join(', ') : 'none'}` : ''; sum.textContent = [part('acc', 'Accelerated'), part('on', 'On-level')].filter(Boolean).join(' · '); };
+  m.querySelectorAll('[data-qu]').forEach(cb => cb.onchange = unitSum); unitSum();
   const qc = $('#qClose'); if (qc) qc.onclick = () => {
     const picks = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => { const [p, u] = cb.dataset.qu.split(/\|(.*)/s); picks[p].push(u); });
     const per = closeQuarter(n, picks); save(); m.classList.add('hidden'); m.innerHTML = ''; render();
-    toast(`<b>${esc(Q_NAMES[n - 1])} closed.</b> ${per.length ? `Kept ${per.map(x => `${esc(x.s.label)} (${x.kept})`).join(' · ')}.` : 'No gradebook had work from it.'} Its assignments and ${plural(picks.acc.length + picks.on.length, 'IXL unit')} won't raise alerts any more.`, false, 7000);
+    toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'} — it won't come up again unless you reopen it.`, false, 5000);
   };
-  const ro = $('#qReopen'); if (ro) ro.onclick = () => { if (!confirm(`Reopen ${Q_NAMES[lastClosed - 1]}? Its missing work, Focus checks and still-owed lines come back. The saved copy stays.`)) return; reopenQuarter(lastClosed); save(); openQuarters(); };
+  const ro = $('#qReopen'); if (ro) ro.onclick = () => { if (!confirm(`Reopen ${Q_NAMES[lastClosed - 1]}? Its missing work, Focus checks and still-owed lines come back. The saved copy stays.`)) return; reopenQuarter(lastClosed); save(); openQuarters({ dates: isOpen('qDates') }); };
 }
