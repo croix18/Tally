@@ -176,6 +176,13 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   colour. Checked for colour-blind readers over every pair, and every grade-coloured mark also carries its letter or
   count. Rule and numbers in NOTES.md; new suite `tests/colors.js` (28 checks). Fixed on the way: circle-graph slice
   labels ran into the legend, and the Data Lab line graph's end labels ran off the card. 28 suites, 923 checks.
+- 5 Oct: Croix liked the colours and asked for the "little irrelevant titles" to go — captions that describe the
+  tool inside the tool. About thirty lines removed or cut to a date or a key across every screen, the landing and
+  the Board; three rules moved into the Guide; list and the rule in NOTES.md ("The app does not describe itself").
+  New suite `tests/plain.js` walks 28 screens and fails if one comes back. Settings' option notes, notices and
+  empty states were left; they are his to call. Then, from his screenshot of a class card: the students / goal /
+  export line and the faded lines under the four numbers are Details view only; and Needs attention is one closed
+  line with a red count that opens on a tap. 29 suites, 987 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

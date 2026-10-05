@@ -39,7 +39,7 @@ let state = null;
 /*__QUARTERS__*/ // quarters.js too
 /*__STUDENTS__*/ // students.js too
 let view = { mode: 'home', unit: null };   // opens on the Overview
-let noticesOpen = false, noticeCount = { warn: 0, info: 0 }; let attCache = new Map(); let homeNotesOpen = false;
+let noticesOpen = false, noticeCount = { warn: 0, info: 0 }; let attCache = new Map(); let homeAttOpen = false;
 let search = '';
 
 // Gradebook data is saved with everything else. One earlier build kept it in sessionStorage only; anything still
@@ -559,7 +559,7 @@ function lbMarkup(data, focus) {
     </section>`;
   };
   const one = !multi && leagues[0] ? leagues[0].rows[0].assignedUnits : null;
-  return `${boardHead('Race', ['classes ranked by the share of students who moved up this week', one ? (one.length ? 'counting ' + unitSpan(one) : 'nothing assigned yet') : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
+  return `${boardHead('Race', [one ? (one.length ? 'counting ' + unitSpan(one) : 'nothing assigned yet') : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
     <div class="lbLeagues ${multi ? 'two' : ''}" style="--rows:${rowsMax}">${leagues.map(league).join('')}</div>`;
 }
 const LB_CSS = `
@@ -743,7 +743,6 @@ const boardHead = (title, facts) => { const line = facts.filter(Boolean).join(',
 const dsTitle = label => String(label).replace(/\s+·\s+/g, ': ');   // "Unit 3 · Exponents" reads "Unit 3: Exponents" as a title
 const unitSpan = names => names.length > 1 && names.every((n, i) => /^Unit \d+$/.test(n) && (i === 0 || +n.slice(5) === +names[i - 1].slice(5) + 1)) ? `Units ${names[0].slice(5)}–${names[names.length - 1].slice(5)}` : names.join(', ');
 // What each graph type shows, as a sentence a seventh grader can read from the back of the room.
-const LAB_NOTE = { hist: 'Histogram: each bar counts the students in that range.', dots: 'Dot plot: one dot per student.', stem: 'Stem-and-leaf plot: each leaf is one student.', bar: 'Bar graph: each bar is the number of students with that value.', barGrouped: 'Bar graph: each bar is the number of students in that range (too many values for one bar each).', circle: 'Circle graph: each slice is the share of the class in that group.', line: 'Line graph: one line per class, the class average at each import.' };
 const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph']];
 const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
@@ -762,7 +761,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
     else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
     else body = '<div class="labNotYet">A line graph needs data over time. Pick <b>All assigned units</b> or a Focus assignment.</div>';
     return `${boardHead(dsTitle(list.find(d => d.id === unitName).label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, 'class average at each import', asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
-      <div class="labLegend"><span class="lgNote">${LAB_NOTE.line}</span></div><div class="labRows"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
+      <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
   if (seriesAll[0] && seriesAll[0].pct) scale = 100;
@@ -782,9 +781,8 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
   const isPct = !!(seriesAll[0] && seriesAll[0].pct);
   return `${boardHead(dsTitle(ds.label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
-    ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${kind === 'bar' && scale > 26 ? LAB_NOTE.barGrouped : LAB_NOTE[kind]}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
-    <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
-    ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">The stats are hidden. Read the plots first: which class has the higher median? The bigger spread?</div>' : ''}`;
+    ${kind !== 'box' ? '' : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
+    <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}${kind !== 'box' ? ';--lhead:9.5' : ''}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>`;
 }
 const LAB_ONLY_CSS = `
 .labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.15);color:var(--navy)}
@@ -814,7 +812,7 @@ const LAB_ONLY_CSS = `
 .labStats div.wide b{font-size:calc(var(--bu)*.95);line-height:1.3}
 .labStats span{font-size:calc(var(--bu)*.95);font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
 .labStats b{font-weight:var(--w-black);font-size:calc(var(--bu)*1.3)}
-.labHint{font-weight:var(--w-bold);color:var(--navy);font-size:calc(var(--bu)*1.3);padding:4px 6px}
+
 .labValues{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-start;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labHalf{display:flex;flex-direction:column;gap:4px}
 .labHalf small{font-size:calc(var(--bu)*1);font-weight:var(--w-bold);color:var(--teal);letter-spacing:.02em}
@@ -824,7 +822,7 @@ const LAB_ONLY_CSS = `
 .labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:var(--w-black)}
 .labChips span.m.gap{background:var(--white);color:var(--navy);border-style:dashed}
 .labChips span.out{box-shadow:0 0 0 2px var(--coral)}
-.labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*11.5 - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
+.labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*var(--lhead,11.5) - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
 .lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:var(--r-l);padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}
@@ -1048,7 +1046,7 @@ function askNewClass(fileName, gb, orExisting) {
       <div class="body one"><p><b>${esc(fileName)}</b> · ${plural(gb.students.length, 'student')}${orExisting ? ', ' + esc(orExisting) : ''}. Which period is this, and which course?</p>
         <div class="field"><label>Period</label><div class="seg" id="ncPeriod">${[1, 2, 3, 4, 5, 6, 7].map(n => `<button data-p="${n}" ${used.has(n) ? 'disabled title="already a class"' : ''}>${n}</button>`).join('')}</div></div>
         <div class="field"><label>Course</label><div class="seg" id="ncPrep"><button data-prep="acc">Accelerated</button><button data-prep="on">On-level</button></div></div>
-        <p class="ghint">The class's IXL grid comes from the course-wide IXL export${state.pools.acc || state.pools.on ? '' : ' — import one for each course when you have it'}.</p><p class="ghint warnline" id="ncWarn" hidden></p>
+        ${state.pools.acc || state.pools.on ? '' : '<p class="ghint">Import each course\'s IXL export when you have it.</p>'}<p class="ghint warnline" id="ncWarn" hidden></p>
         <div class="rp-actions"><button class="pill" id="ncMake" disabled>Make the class</button><button class="pill pale" id="mCancel">Skip this file</button>${orExisting ? '<button class="pill pale" id="ncExisting">It belongs to a class I already have</button>' : ''}</div></div></div>`;
     const done = v => { m.classList.add('hidden'); m.innerHTML = ''; resolve(v); };
     if (orExisting) $('#ncExisting').onclick = () => done('__pick__');
@@ -1114,7 +1112,7 @@ function pickSection(fileName, gb, mt) {
     mt = mt || matchSection(gb); const best = mt.suggest; const hit = {}; mt.rows.forEach(r => { hit[r.key] = r.n; });   // each chip carries its own count, so the highlighted one never claims more than the sentence above it
     m.innerHTML = `<div class="panel narrow"><header><h2>Which class is this gradebook?</h2><button id="mClose" aria-label="Close">×</button></header>
       <div class="body one"><p><b>${esc(fileName)}</b><br>${plural(gb.students.length, 'student')} · ${plural(gb.assignments.length, 'assignment')}: ${preview}${gb.unread ? `<br><span class="warnline">${plural(gb.unread, 'cell')} couldn't be read (${esc(gb.examples.map(x => '“' + x + '”').join(', '))}) and will count as no score.</span>` : ''}</p>
-      ${mt.why ? `<p class="ghint" id="pickWhy">${esc(mt.why)} Tally places a gradebook by itself when its students are plainly one class.</p>` : ''}
+      ${mt.why ? `<p class="ghint" id="pickWhy">${esc(mt.why)}</p>` : ''}
       <div class="picks">${state.order.map(k => `<button class="chip${k === best ? ' on' : ''}" data-sec="${esc(k)}">${esc(state.sections[k].label)}${hit[k] ? ` <small>· ${hit[k]} of ${gb.students.length}</small>` : ''}</button>`).join('')}<button class="chip${!best && mt.nowhere ? ' on' : ''}" data-sec="__new__">+ New class${mt.nowhere && state.order.length ? ' <small>· no class has these students</small>' : ''}</button></div>
       <div class="rp-actions"><button class="pill pale" id="mCancel">Skip this file</button></div></div></div>`;
     const done = v => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; resolve(v); };
@@ -1165,8 +1163,8 @@ function render() {
   $('#empty').classList.toggle('hidden', has);
   if (!has) {   // the landing: after a course export with no class yet, say what landed and what comes next instead of "Drop here" again
     const li = state.lastImport, pools = ['acc', 'on'].filter(p => state.pools[p]); const d = $('#drop');
-    d.querySelector('h2').innerHTML = pools.length ? `${pools.length === 2 ? 'Both course exports are in' : (pools[0] === 'acc' ? 'Accelerated' : 'On-level') + ' course export is in'}<span>.</span>` : 'Drop your IXL Score Grid here<span>.</span>';
-    d.querySelector('p').innerHTML = pools.length ? `Now drop a Focus gradebook for each period${pools.length === 1 ? ` (and the ${pools[0] === 'acc' ? 'on-level' : 'accelerated'} IXL export when you have it)` : ''} — each one makes that period's class from the course pool.` : 'Per-period exports make a class each. A course-wide export (all your students in one file) is kept as the course\'s pool, and each Focus gradebook you drop makes a period\'s class from it.';
+    d.querySelector('h2').innerHTML = pools.length ? `${pools.length === 2 ? 'Both course exports are in' : (pools[0] === 'acc' ? 'Accelerated' : 'On-level') + ' course export is in'}<span>.</span>` : 'Drop your IXL and Focus exports here<span>.</span>';
+    const lp = d.querySelector('p'); lp.hidden = !pools.length; lp.textContent = pools.length ? `Now drop a Focus gradebook for each period${pools.length === 1 ? ` (and the ${pools[0] === 'acc' ? 'on-level' : 'accelerated'} IXL export when you have it)` : ''}.` : '';
     let r = d.querySelector('.himport'); if (li && (li.lines.length || li.fails.length)) { if (!r) { r = document.createElement('div'); r.className = 'himport'; d.appendChild(r); } r.classList.toggle('warn', !!li.fails.length); r.innerHTML = `<h3>Last import <small>${esc(fmtTime(li.at))}</small></h3><ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}</ul>`; } else if (r) r.remove(); }
   else { const r = $('#drop .himport'); if (r) r.remove(); }
   $('#app').classList.toggle('hidden', !has);
@@ -1258,8 +1256,7 @@ function renderBar() {
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
       <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are gathered under Ahead">Working in <select id="curUnit">${units.some(u => u.current) ? '' : '<option value="">— pick —</option>'}${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
-      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>
-      <div class="legend det"><span>Tap a unit for skill scores</span></div>`;
+      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
   } else if (view.mode === 'seating') {
@@ -1403,7 +1400,7 @@ function renderGrid() {
     let h = `<table class="grid"><thead><tr class="lessons"><th class="idx"></th><th class="stu"></th><th class="ptsd"></th>`;
     lessons.forEach(L => { const m = L.name.match(/^Lesson\s+([\d.]+)/i); const rest = m ? L.name.slice(m[0].length).replace(/^[:\s]+/, '') : L.name;   // a lesson over one or two skills has room for its number, not for "1.2 CONVE…"
       h += `<th class="lname" colspan="${L.n}" scope="colgroup" title="${esc(L.name)}">${esc(m ? (L.n >= 3 ? m[1] + ' ' + rest : m[1]) : L.name)}</th>`; });
-    h += `</tr><tr class="skills"><th class="idx" scope="col">#</th><th class="stu" scope="col"><div class="ukey" aria-hidden="true"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped</span><small>Tap a skill to skip it for the course, a cell to skip it for one student.</small></div>Student</th><th class="ptsd" scope="col">Points<br><span class="usub">of ${u.total}</span></th>`;
+    h += `</tr><tr class="skills"><th class="idx" scope="col">#</th><th class="stu" scope="col"><div class="ukey" aria-hidden="true"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped</span></div>Student</th><th class="ptsd" scope="col">Points<br><span class="usub">of ${u.total}</span></th>`;
     u.idx.forEach(k => { const sk = s.skills[k]; const off = !!s.excluded[skillKey(sk)]; h += `<th class="skill ${off ? 'off' : ''}" scope="col"><button data-x="${k}" aria-pressed="${off}" aria-label="${esc(sk.name)}${off ? ' (excluded)' : ''}"><span class="rot">${esc(sk.name)}</span><span class="sid">${esc(sk.id)}</span></button></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${u.idx.length + 2}">No students match “${esc(search)}”.</td></tr>`;
@@ -1548,7 +1545,7 @@ function openStillOwed(sec) {
   // with initials (safe to post or project), one list with names (for the teacher or a co-teacher).
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel narrow"><header><h2>Still owed · ${esc(sec.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one"><p>What each student still owes in the assigned units, in black and white.</p>
+    <div class="body one">
       <div class="rp-actions col">
         <button class="pill" data-owed="slips">Slips to hand out <small>one page per student · full names</small></button>
         <button class="pill pale" data-owed="initials">One list, initials <small>safe to post or project</small></button>
@@ -1675,9 +1672,9 @@ li{margin:3px 0}
 <p><b>Best</b> — a score from an earlier export that was higher than today's. A point once earned is kept.</p>
 <p><b>Copied</b> — a receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</p>
 <p><b>Focus ${ico('check', 'check')} / off</b> — whether the Focus column matches what Tally counts today.</p>
-<p><b>Grades</b> — with a Focus gradebook loaded: the real course grade (weighted categories, proved against Focus's Grade column), the change since the last import, sliding students, and what-ifs.</p>
+<p><b>Grades</b> — with a Focus gradebook loaded: the real course grade (weighted categories, missing work as zero, excused work left out; proved against Focus's Grade column), the change since the last import, and what-ifs that each change one thing. <b>Sliding</b> — grade down 3 points or more, or more missing work, since the last import.</p>
 <p><b>Students</b> — every student of every class. Tap one for their page: grades by quarter, missing work, IXL still owed, and the quickest way to the next letter. <b>Show student</b> turns the screen toward them; hold the exit button to leave.</p>
-<p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
+<p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. An assignment belongs to the quarter its Focus due date falls in. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
 <p><b>Seating</b> — draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
 <p><b>Still owed</b> — a printable list of what each student is missing, by unit.</p>
 <p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill or assignment). Names never show. Hold the exit button to leave.</p>

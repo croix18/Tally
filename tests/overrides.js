@@ -53,7 +53,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   // 5. what-if card: every result carries its change; a no-change retake says so
   await p.click('#openGrades'); await p.waitForTimeout(500); await p.locator('.gstu tr[data-stu]').nth(3).click(); await p.waitForTimeout(400);
   const card=await p.textContent('#gridwrap');
-  check(await p.locator('.profile').count()===1 && /Each line below changes one thing/.test(card) && await p.locator('.delta').count()>=5,'student page what-ifs explain themselves and show the change on every line');
+  check(await p.locator('.profile').count()===1 && /If missing work were turned in|If an assessment were retaken/.test(card) && !/Each line below changes/.test(card) && await p.locator('.delta').count()>=5,'student page what-ifs are headed by what changes and show the change on every line');
   check(await p.locator('.delta.up').count()>0,'positive changes are marked');
   await p.click('#back'); await p.waitForTimeout(200);
   console.log('errors:',errs); check(errs.length===0,'no errors');

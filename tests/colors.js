@@ -3,7 +3,7 @@
 //   · the five stay apart for colour-blind readers (same maths as the palette validator used to choose them), and no
 //     mark relies on colour alone: slices and segments carry the letter or the number
 //   · a class's own plot wears that class's colour; class against class uses the class colours
-//   · the Board heading is a title and one ordinary line — no "Data Lab · … · … · …" chain
+//   · the Board heading is a title and one ordinary line of facts — no "Data Lab · … · … · …" chain
 const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
 const hex = h => [0, 2, 4].map(i => parseInt(h.replace('#', '').slice(i, i + 2), 16) / 255);
 const lin = h => hex(h).map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -59,7 +59,7 @@ const rgb = h => 'rgb(' + hex(h).map(c => Math.round(c * 255)).join(', ') + ')';
   check(/^[A-Z][^·—]*, [^·—]*$/.test(head.sub) && /classes, /.test(head.sub) && /as of /.test(head.sub),'under it, one ordinary line — who, what is measured, as of when: "'+head.sub+'"');
   check(!/Data Lab|·|—| - /.test(head.title+head.sub) ,'no "Data Lab · … · …" chain and no dashes in the heading');
   check(head.tSize>=head.sSize*1.6 && head.tSpace==='normal' && head.tCase==='none','the title is clearly the bigger of the two, in plain sentence case with normal spacing ('+head.tSize+' vs '+head.sSize+' px)');
-  check(/^Circle graph: .+\.$/.test(head.note),'the line above the plots is a sentence: "'+head.note+'"');
+  check(head.note==='' && await p.locator('#lb .labLegend').count()===0,'no line above the plots saying what a circle graph is');
   const pie=await p.evaluate(()=>[...document.querySelectorAll('#lb svg.chart.circle')].map(svg=>{ const paths=[...svg.querySelectorAll('path')].map(x=>({fill:getComputedStyle(x).fill, t:x.querySelector('title').textContent})); const labels=[...svg.querySelectorAll('text.val')].map(t=>{ const r=t.getBoundingClientRect(); return {t:t.textContent, l:r.left, r:r.right, top:r.top, b:r.bottom}; }); const leg=[...svg.querySelectorAll('rect')].map(r=>{ const q=r.getBoundingClientRect(); return {l:q.left, r:q.right, top:q.top, b:q.bottom, fill:getComputedStyle(r).fill}; }); const legT=[...svg.querySelectorAll('text.lbl')].map(t=>t.textContent.trim()); const box=svg.getBoundingClientRect(); return { paths, labels, leg, legT, l:box.left, r:box.right }; }));
   check(pie.length>=1 && pie.every(g=>g.paths.length>0 && g.paths.every(s=>{ const k=s.t[0]; return L[k] && s.fill===rgb(L[k]); })),'circle graph of a Focus assignment: every slice wears its letter\'s colour ('+pie.length+' graph'+(pie.length===1?'':'s')+')');
   check(pie.every(g=>g.labels.length>0 && g.labels.every(l=>/^[A-F] \d+%$/.test(l.t))),'…and is labelled with the letter and its share, so it does not rest on colour: '+pie[0].labels.map(l=>l.t).join(', '));
@@ -77,11 +77,11 @@ const rgb = h => 'rgb(' + hex(h).map(c => Math.round(c * 255)).join(', ') + ')';
   check(own.length>0 && own.every(o=>o.got===o.want),'a histogram\'s bars are the colour of the class they belong to ('+own.map(o=>o.got).join(' / ')+')');
   await p.selectOption('#labKind','box'); await p.waitForTimeout(400);
   const hint=await p.evaluate(()=>{ const h=document.querySelector('#lb .labHint'); const lg=document.querySelector('#lb .lgNote'); return (h?h.textContent:'')+' | '+(lg?lg.textContent:''); });
-  check(!/—/.test(hint) && /Whiskers run from the minimum to the maximum\./.test(hint),'box plot notes are sentences without dashes: '+hint.slice(0,110));
+  check(!/—/.test(hint) && /Whiskers run from the minimum to the maximum\./.test(hint),'the box plot keeps its key (a key is not a description), in sentences without dashes: '+hint.slice(0,110));
   // Race heading
   await p.click('[data-tab="race"]'); await p.waitForTimeout(500);
   const race=await p.evaluate(()=>({ t:document.querySelector('#lb h1.lbTitle').textContent, s:(document.querySelector('#lb .lbSub')||{textContent:''}).textContent, basis:[...document.querySelectorAll('#lb .lbBasis')].map(e=>e.textContent).join(' | ') }));
-  check(race.t==='Race' && /^Classes ranked by /.test(race.s) && !/·|—/.test(race.s) && !/assigned:/.test(race.basis),'the Race heading follows the same pattern: "'+race.t+'" / "'+race.s+'"'+(race.basis?' / '+race.basis:''));
+  check(race.t==='Race' && /^(Counting [^,]+, as|As) of \w+ \d+$/.test(race.s) && !/assigned:/.test(race.basis),'the Race heading follows the same pattern: "'+race.t+'" / "'+race.s+'"'+(race.basis?' / '+race.basis:''));
   // Grades: a class's scatter is its colour; a student's category bars are the colour of the letter they earn
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1200);
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#openGrades'); await p.waitForTimeout(500);

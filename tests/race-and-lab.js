@@ -85,7 +85,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   check(g('7T2A').active===null && g('7T5A').active===null && g('7T2A').rank===3 && g('7T5A').rank===4,'classes without a baseline rank below, by completion');
   await p.click('#btnLb'); await p.waitForTimeout(400); const lbt2=await p.textContent('#lb');
   check(/nearly all\s*moved up/i.test(lbt2) && /48% moved up/.test(lbt2),'headline hides a 1–2 student remainder ("nearly all") and shows the percent otherwise');
-  check(/Classes ranked by the share of students who moved up this week/.test(lbt2) && /furthest along/.test(lbt2),'subtitle states the rule; furthest-along tag shown');
+  check(/moved\s+up/i.test(lbt2) && !/ranked by/i.test(lbt2) && /furthest along/.test(lbt2),'each card says what its number is (no sentence describing the Race); furthest-along tag shown');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
   // bunched data: IQR of 0 or 1 switches the outlier rule off
   const bunch=await p.evaluate(()=>{ const S=window.__tally.stats; const a=S([5,5,5,5,5,5,5,5,5,5,5,5,0,10]); const b=S([7,7,7,8,8,8,8,8,8,8,8,8,8,2,14]); const c=S([1,5,6,7,7,8,8,9,9,10,11,12,30]); return {a:[a.iqr,a.bunched,a.outliers.length,a.wLo,a.wHi], b:[b.iqr,b.bunched,b.outliers.length], c:[c.iqr,c.bunched,c.outliers.length]}; });

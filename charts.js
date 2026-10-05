@@ -103,7 +103,7 @@ function chartStem(values, max) {
   const stems = {}; v.forEach(x => { const st = Math.floor(x / 10); (stems[st] = stems[st] || []).push(x % 10); });
   const lo = Math.min(0, Math.floor(v[0] / 10)), hi = Math.max(Math.floor(v[v.length - 1] / 10), Math.floor((max || 0) / 10)); let rows = '';
   for (let st = lo; st <= hi; st++) rows += `<tr><th>${st}</th><td>${(stems[st] || []).join(' ')}</td></tr>`;
-  return `<table class="stem"><tbody>${rows}</tbody></table><p class="ghint">Stem = tens, leaf = ones: 1 | 3 5 means 13 and 15.</p>`;
+  return `<table class="stem"><tbody>${rows}</tbody></table><p class="ghint">Key: 1 | 3 means 13</p>`;
 }
 // Bar graph of how many students at each value (0..max); a bar per value.
 function chartFreq(values, max, o) {

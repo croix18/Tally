@@ -17,8 +17,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   const l0=await p.evaluate(()=>[...document.querySelectorAll('.hatt li:not(.more)')].map(l=>l.textContent.replace(/\s+/g,' ').trim()));
   check(!l0.some(t=>/assigned by guess/.test(t)) && !l0.some(t=>/pick the unit you're working in/.test(t)),'nothing is assigned by guess and nobody is asked to pick a unit: every course has one ('+l0.length+' lines)');
   // 0b. backup: asked for once after an import, one tap, then quiet
-  check(await p.locator('#hBackup').count()===1 && /nothing has been backed up/.test(await p.textContent('#hBackup')) && /back up/.test(await p.textContent('#hNotes > summary')),'the Overview offers a backup after an import (in the notes line)');
-  await p.click('#hNotes > summary'); await p.waitForTimeout(200);
+  check(await p.locator('#hBackup').count()===1 && /nothing has been backed up/.test(await p.textContent('#hBackup')) && await p.locator('#hAtt:not([open])').count()===1 && Number(await p.textContent('#hAtt .hcount'))>=1,'the Overview offers a backup after an import (inside the Needs attention line, which is closed with a count)');
+  await p.click('#hAtt > summary'); await p.waitForTimeout(200);
   const [bk]=await Promise.all([p.waitForEvent('download'), p.click('#hBackup')]); await p.waitForTimeout(400);
   const cfg=JSON.parse(fs.readFileSync(await bk.path(),'utf8'));
   check(cfg.tally===4 && Object.keys(cfg.sections).length===2 && await p.locator('#hBackup').count()===0 && /backed up today/.test(await p.textContent('#bar .meta')),'one tap saves the backup; the line goes and the bar says "backed up today"');
@@ -67,12 +67,12 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.click('#btnHome'); await p.waitForTimeout(400);
   const lines=await p.evaluate(()=>[...document.querySelectorAll('.hatt li:not(.more)')].map(l=>l.textContent.replace(/\s+/g,' ').trim()));
   check(lines.filter(l=>/^Every class — IXL export is \d+ days old/.test(l)).length===1,'two classes with the same stale export get one line: '+lines.length+' rows');
-  if (await p.locator('#hNotes[open]').count()) { await p.click('#hNotes > summary'); await p.waitForTimeout(200); }
-  const fold=await p.evaluate(()=>{ const d=document.querySelector('#hNotes'); const cards=[...document.querySelectorAll('.hcard')].map(c=>c.getBoundingClientRect()); const bottom=document.querySelector('#gridwrap').getBoundingClientRect().bottom; return { notes:!!d, open:d&&d.open, top:Math.round(cards[0].top), whole:cards.filter(c=>c.bottom<=Math.min(bottom,innerHeight)).length, n:cards.length }; });
-  check((!fold.notes || !fold.open) && fold.whole===fold.n && fold.top<520,'things to know share one folded line, so every class card is whole on the first screen (cards start at '+fold.top+' px)');
+  if (await p.locator('#hAtt[open]').count()) { await p.click('#hAtt > summary'); await p.waitForTimeout(200); }
+  const fold=await p.evaluate(()=>{ const d=document.querySelector('#hAtt'); const cards=[...document.querySelectorAll('.hcard')].map(c=>c.getBoundingClientRect()); const bottom=document.querySelector('#gridwrap').getBoundingClientRect().bottom; return { notes:!!d, open:d&&d.open, top:Math.round(cards[0].top), whole:cards.filter(c=>c.bottom<=Math.min(bottom,innerHeight)).length, n:cards.length }; });
+  check((!fold.notes || !fold.open) && fold.whole===fold.n && fold.top<520,'everything to fix or know is one folded line, so every class card is whole on the first screen (cards start at '+fold.top+' px)');
   const order=await p.evaluate(()=>{ const n=document.querySelector('.hneeds'), c=document.querySelector('.hcards'); return n && c ? n.getBoundingClientRect().top < c.getBoundingClientRect().top : null; });
   check(order===true,'Needs attention sits above the class cards');
-  check((await p.evaluate(()=>{ const ls=[...document.querySelectorAll('.hneeds>.hatt>li')].map(l=>l.classList.contains('warn')); return ls.every((w,i)=>i===0 || !w || ls[i-1]); })),'warnings come before notes');
+  check((await p.evaluate(()=>{ const ls=[...document.querySelectorAll('#hAtt>.hatt>li')].map(l=>l.classList.contains('warn')); return ls.every((w,i)=>i===0 || !w || ls[i-1]); })),'warnings come before notes');
   // 3b. storage: a pool class no longer saves its own copy of the course's skills; Settings shows how full the browser is
   const st0=await p.evaluate(()=>{ const T=window.__tally; const raw=JSON.parse(localStorage.getItem('tally.v1')); const s=raw.sections['period-1']; return { flag:s.poolSkills===true, skills:s.skills, live:T.state.sections['period-1'].skills===T.state.pools.acc.skills, n:T.state.sections['period-1'].skills.length, chars:localStorage.getItem('tally.v1').length }; });
   check(st0.flag && Array.isArray(st0.skills) && st0.skills.length===0 && st0.live && st0.n>100,'the saved class points at the pool for its skills ('+st0.n+' skills, not stored twice) and still saves a list — an older Tally.html drops a class whose skills aren\'t one');

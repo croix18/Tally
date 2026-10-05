@@ -16,6 +16,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(await p.locator('.hatt li').count()>=2 && /roster not in IXL/.test(ht),'needs-attention lists the roster mismatch');
   check(await p.locator('.gsec .chart').count()>=2 && /Letter grades by class/.test(ht),'IXL bars and letters stacked bars drawn');
   check(/appear after a second gradebook import/.test(ht),'trend charts explain they need a second import');
+  check(await p.locator('#hAtt:not([open])').count()===1 && Number(await p.textContent('#hAtt .hcount'))>=1,'needs-attention is one closed line with a count until it is opened');
+  await p.click('#hAtt > summary'); await p.waitForTimeout(200);
   await p.click('.hatt li button'); await p.waitForTimeout(400);
   check(await p.locator('table.grid').count()===1 && await p.locator('.tab.active').count()===1,'tapping an attention item opens that class');
   // --- calm grid

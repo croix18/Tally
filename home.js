@@ -53,14 +53,17 @@ function renderHome() {
     const ixlCols = s.grades ? s.grades.assignments.filter(a => gbUnitFor(s, a)) : [];
     const waiting = !!(g && g.waiting);   // the quarter was closed and the new one has no gradebook yet: say that, not zeros
     const focusChip = waiting ? '' : !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? (ixlCols.length ? `<span class="hchip muted" title="Focus has an IXL column for a unit Tally isn't counting (a review unit, or past Working in)">Focus IXL ${esc(ixlCols.map(a => gbUnitFor(s, a).short).join(', '))} not counted</span>` : '<span class="hchip muted">no IXL columns in Focus</span>') : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : staleN ? `<span class="hchip stale">Focus: ${staleN} up since copy</span>` : `<span class="hchip ok">Focus ${ico('check', 'matches')}</span>`;
+    // The calm Overview shows the class, its four numbers and what needs a look. The lines under them (counts, goal,
+    // change since last time) are Details view only; a line stays when it is the reason a number is missing.
+    const D = state.settings.details; const sub = (text, reason) => text && (D || reason) ? `<span>${text}</span>` : '';
     return `<article class="hcardW" style="--cc:${classColor(s)}"><button class="hcard ${warn ? 'warn' : ''}" data-go="${esc(s.key)}" aria-label="Open ${esc(s.label)}">
-      <div class="hhead"><b>${esc(s.label)}</b><small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small></div>
+      <div class="hhead"><b>${esc(s.label)}</b>${D ? `<small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small>` : ''}</div>
       <div class="hnums">
-        <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b><span>${r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : 'first import'}</span></div>
-        ${waiting ? `<div><small>Focus${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final` : ''}</small><b>${g.qFinal && g.qFinal.avg != null ? Math.round(g.qFinal.avg) + '%' : '—'}</b><span>${[1, 2, 3, 4].every(qClosed) ? 'every quarter is closed' : `Q${g.q} gradebook not in yet`}</span></div>` : `
-        <div><small>Focus average${anyClosed() ? ' · Q' + currentQuarter() : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b><span>${g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : ''}</span></div>
-        <div><small>Missing work</small><b>${g ? g.missing : '—'}</b><span>${g ? plural(g.missingStudents, 'student') : ''}</span></div>
-        <div><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b><span>${g && g.prevDate ? 'down 3+ or more missing' : 'needs 2 gradebooks'}</span></div>`}
+        <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b>${sub(r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : 'first import', !r)}</div>
+        ${waiting ? `<div><small>Focus${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final` : ''}</small><b>${g.qFinal && g.qFinal.avg != null ? Math.round(g.qFinal.avg) + '%' : '—'}</b>${sub([1, 2, 3, 4].every(qClosed) ? 'every quarter is closed' : `Q${g.q} gradebook not in yet`, true)}</div>` : `
+        <div><small>Focus average${anyClosed() ? ' · Q' + currentQuarter() : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b>${sub(g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : '', false)}</div>
+        <div><small>Missing work</small><b>${g ? g.missing : '—'}</b>${sub(g ? plural(g.missingStudents, 'student') : '', false)}</div>
+        <div title="Students whose grade is down 3 points or more, or who have more missing work, since the last gradebook"><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b>${sub(g && g.prevDate ? 'since ' + esc(fmtDate(g.prevDate)) : 'needs 2 gradebooks', !(g && g.prevDate))}</div>`}
       </div>
       <div class="hchips">${focusChip}${g && !waiting ? `<span class="hchip letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${g.letters[l]}</em></i>`).join('')}</span>` : ''}${warn ? `<span class="hchip warn">${plural(warn, 'thing')} to look at</span>` : ''}</div>
     </button><button class="hchip act hdigest" data-digest="${esc(s.key)}">What changed ›</button></article>`; };
@@ -74,10 +77,12 @@ function renderHome() {
   const bkLine = bkDue ? `<li class="info"><button id="hBackup" title="Download a backup file — keep it in your school Drive"><i></i><span><b>Back up</b> — ${lb ? `new imports since the last backup (${esc(ageDays(day(lb)) === 0 ? 'earlier today' : fmtDate(day(lb)))})` : 'nothing has been backed up from this browser yet'}</span><em>Save backup</em></button></li>` : '';
   const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>This browser's storage is ${su.pct}% full</b> — ${su.other > su.tally ? `other saved pages hold most of it (${su.mb(su.other)} MB; Tally ${su.mb(su.tally)} MB). Save a backup first` : 'save a backup, then remove an old class or gradebook in Settings'}</span><em>›</em></button></li>` : '';
   const warns = groups.filter(g => g.level === 'warn'), notes = groups.filter(g => g.level !== 'warn');
-  const noteN = notes.length + (bkLine ? 1 : 0); const noteWords = [...notes.map(g => g.text.split(' — ')[0]), bkLine ? 'back up' : ''].filter(Boolean).join(' · ');
-  const noteRows = notes.map(row).join('') + bkLine;
-  const fix = stLine + qdLine + warns.map(row).join('');
-  const attList = fix || noteN ? `<ul class="hatt">${fix}${noteN === 1 ? noteRows : noteN ? `<li class="info more"><details id="hNotes" ${homeNotesOpen ? 'open' : ''}><summary><i></i><span><b>${plural(noteN, 'note')}</b> — ${esc(noteWords)}</span><em></em></summary><ul class="hatt">${noteRows}</ul></details></li>` : ''}</ul>` : '';
+  const noteN = notes.length + (bkLine ? 1 : 0); const noteRows = notes.map(row).join('') + bkLine;
+  const fix = stLine + qdLine + warns.map(row).join(''); const fixN = (stLine ? 1 : 0) + (qdLine ? 1 : 0) + warns.length;
+  // One line that opens (Croix, 5 Oct: "a whole collapsible thing with a notification when I need to look at it"): closed, it is
+  // a name and a count — red when something needs fixing, plain when there are only reminders (an old export, a backup due).
+  // It stays as he left it while Tally is open, and starts open in Details view.
+  const attList = fix || noteN ? `<details class="hneeds ${fixN ? 'warn' : ''}" id="hAtt" ${state.settings.details || homeAttOpen ? 'open' : ''}><summary><b>${fixN ? 'Needs attention' : 'Reminders'}</b><span class="hcount" aria-label="${fixN ? plural(fixN, 'thing') + ' to fix' : plural(noteN, 'reminder')}">${fixN || noteN}</span></summary><ul class="hatt">${fix}${noteRows}</ul></details>` : '';
   // charts
   const withHist = secs.filter(s => (s.gradeHistory || []).length); const dates = [...new Set(withHist.flatMap(s => s.gradeHistory.map(h => h.date)))].sort();
   const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.filter(h => h.date === d).pop(); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, w: 900, labelW: 200, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
@@ -87,17 +92,17 @@ function renderHome() {
   const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, dark: LETTER_DARK, labelW: 180, aria: 'letter grades by class' }) : '';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   const withGb = secs.filter(s => s.grades).length, waitN = anyClosed() ? secs.filter(s => s.grades && !hasOpenGrades(s)).length : 0;
-  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · backed up ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
+  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · backed up ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button>`;
   $('#bar').classList.remove('detail');
   const li0 = state.lastImport; const curU = state.settings.currentUnit || {};
   const li = li0 ? { ...li0, lines: li0.lines.filter(l => !l.wi || String(curU[l.wi.split(':')[0]]) === l.wi.split(':')[1]) } : null;   // a "Working in set to…" line retires once the teacher picks another unit
   const liAge = li ? ageDays(day(li.at)) : null; const nFiles = li ? li.lines.filter(l => !l.wi).length : 0;
   // The import's result is one line that opens (it stays until the next import); it starts open only when a file couldn't be read.
-  const importLine = li && (li.lines.length || li.fails.length) ? `<details class="himport ${li.fails.length ? 'warn' : ''}" ${li.fails.length ? 'open' : ''}><summary><b>${nFiles || li.fails.length ? 'Last import' : 'A note from Tally'}</b> <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(day(li.at)))}, ${esc(fmtTime(li.at))}${nFiles || li.fails.length ? ` · ${plural(nFiles, 'file')}${li.fails.length ? ` · <span class="bad">${li.fails.length} couldn't be read</span>` : ' — all read'}` : ''}${li.lines.some(l => l.wi) ? ' · Working in was set for you' : ''}</small><button class="linkbtn" id="liHide" title="Remove this until the next import">Dismiss</button></summary>
+  const importLine = li && (li.lines.length || li.fails.length) ? `<details class="himport ${li.fails.length ? 'warn' : ''}" ${li.fails.length ? 'open' : ''}><summary><b>${nFiles || li.fails.length ? 'Last import' : 'Note'}</b> <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(day(li.at)))}, ${esc(fmtTime(li.at))}${nFiles || li.fails.length ? ` · ${plural(nFiles, 'file')}${li.fails.length ? ` · <span class="bad">${li.fails.length} couldn't be read</span>` : ' — all read'}` : ''}${li.lines.some(l => l.wi) ? ' · Working in was set for you' : ''}</small><button class="linkbtn" id="liHide" title="Remove this until the next import">Dismiss</button></summary>
     <ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}${li.skipped ? `<li class="muted">${plural(li.skipped, 'file')} skipped</li>` : ''}</ul></details>` : '';
   $('#gridwrap').innerHTML = `<div class="home">
     ${importLine}
-    ${attList ? `<section class="gsec hneeds"><h3>Needs attention</h3>${attList}</section>` : ''}
+    ${attList}
     <div class="hcards">${secs.map(card).join('')}</div>
     <div class="gtwo">
       <section class="gsec"><h3>IXL work at goal by class</h3>${ixlBars || '<p class="ghint">Import an IXL export.</p>'}</section>
@@ -107,7 +112,7 @@ function renderHome() {
     <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
   </div>`;
   const hs = $('#hStore'); if (hs) hs.onclick = () => openSettings();
-  const hn = $('#hNotes'); if (hn) hn.ontoggle = () => { homeNotesOpen = hn.open; };
+  const hn = $('#hAtt'); if (hn) hn.ontoggle = () => { if (hn.isConnected && !state.settings.details) homeAttOpen = hn.open; };   /* Details view opens it without that counting as his choice */
   const hb = $('#hBackup'); if (hb) hb.onclick = () => { saveBackup(); render(); };
   const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;

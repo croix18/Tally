@@ -259,7 +259,7 @@ per-section-file era and many items in them are now done).
   - **Board heading**: `boardHead(title, facts)` — an `<h1>` naming what is shown ("Unit 1 Assessment", "Unit 2:
     Probability", "Race") and one ordinary line under it ("On-level classes, points out of 21 per student, as of
     Sep 26"). No "Data Lab · … · … · …" chain, no scale in the heading (the axis shows it), no dashes. The line above
-    the plots is a sentence (`LAB_NOTE`). Race league lines say "counting Units 1–3" (`unitSpan`). The Data Lab's line
+    the plots was a sentence (`LAB_NOTE`; removed the next day, see below). Race league lines say "counting Units 1–3" (`unitSpan`). The Data Lab's line
     graph labels its lines "5th Period", not "5th Period · On-level" (the heading already says which course; the long
     label was running off the card).
   - `chartCircle` sets its own type sizes (inline, 19/21 px in its 216-high box) and its own width from the longest
@@ -267,6 +267,48 @@ per-section-file era and many items in them are now done).
     labels are anchored away from the circle (they used to run into the legend). On the laptop with three classes
     the circles are still small because the rows share the height; laying circle graphs side by side instead of
     stacked would fix that and has not been done.
+- **The app does not describe itself** (5 Oct; Croix: *"remove any of the little irrelevant titles all over the
+  place. There's no need to describe what a tool does inside the tool on a title. It screams ai."*). The rule, held
+  by `tests/plain.js`: a screen shows names, numbers, dates, and the key needed to read a mark. How something works
+  is in the Guide (⋯ → Guide) and in tooltips, nowhere else. Do not add a caption that explains a screen, a chart
+  type, or a gesture.
+  - **Removed:** the header tagline "IXL → FOCUS"; the landing's sub-paragraph and "How it works" card (it is now
+    a headline, the button, and "Student data stays in this browser."); "Tap a class / unit / student…" on the
+    Overview, Details grid, Grades and Students bars; the unit view's "Tap a skill to skip it…"; Grades' "Course
+    grade = …" (the "Matches the Focus Grade column" result stays) and "…so it isn't circular"; the student page's
+    "Each line below changes one thing…" and "Each cell: the grade if…"; Show student's "Slide to the score…",
+    "starts at your usual score" and the bars sentence (now a one-word key, "now", beside the dark tick); the
+    Quarters dialog's due-date rule; Seating's idle instructions (the prompts while moving a student stay) and most
+    of the room editor's paragraph; the Still owed and Student reports dialog intros; "Tally places a gradebook by
+    itself…" and "The class's IXL grid comes from…" in the import dialogs.
+  - **Board:** the Race's line is the date only ("As of Sep 26"; each card already says "% moved up"); every
+    "Circle graph: each slice is…" / "Dot plot: one dot per student." line is gone (`LAB_NOTE` deleted), and so is
+    "The stats are hidden. Read the plots first…". The box plot keeps its key and the stem-and-leaf plot its key
+    ("Key: 1 | 3 means 13"): a key is not a description. Rows get the freed height (`--lhead` on `.labRows`).
+  - **Shortened:** "Sliding" on class cards and Grades reads "since Sep 19" with the definition as a tooltip; the
+    Overview card "A note from Tally" is "Note".
+  - **Overview class cards** (same day, Croix with a screenshot of a card: *"Remove the busyness of this. The whole
+    19 students line. The faded lines under missing work and sliding. That small stuff should not be displayed on
+    the overall screen"*): a card is the class name, four numbers with their labels, the chips and "What changed".
+    The "23 students · goal 60 · IXL Sep 26" line and every faded line under a number (students with missing work,
+    "since Sep 19", and also the two change lines under IXL work at goal and Focus average) show only in Details
+    view (`settings.details`; `sub()` in `home.js`). The change since last week is still one tap away in "What
+    changed". A line stays only when it is the reason a number is a dash or last quarter's ("needs 2 gradebooks",
+    "Q2 gradebook not in yet").
+  - **Needs attention is one line that opens** (same day: *"The needs attention can be a whole collapsible thing
+    with a notification when I need to look at it"*). On the Overview it is `<details id="hAtt" class="hneeds">`:
+    closed, the name and a count — red (`.hneeds.warn .hcount`) for things to fix, plain and titled "Reminders" when
+    there are only notes (an old export, a backup due). Open, the fixes then the reminders, each a way in as before
+    (the old nested "2 notes" fold, `#hNotes`, is gone). It stays as he left it while Tally is open
+    (`homeAttOpen`, not saved), starts closed on the next open, and starts open in Details view. Nothing shows when
+    there is nothing to look at.
+  - **Moved to the Guide:** the grade rule (missing as zero, excused left out), Sliding's definition, the quarter
+    due-date rule. Skipping a skill and the Race rule were already there.
+  - **Left alone, on purpose:** chart names and tile labels (they name a number); the Data Lab's facts line
+    ("On-level classes, points out of 21 per student, as of Sep 26" — it is the unit and the date); notices and
+    warnings; empty states ("Appears after a second gradebook import."); the notes under options in Settings and in
+    the Focus check (they say what a choice does before he makes it); printed pages; `Scrub.html`; the
+    screen-reader-only legend (`.vh`).
 
 ## Weekly routine
 

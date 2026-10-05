@@ -41,7 +41,7 @@ div.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:16px}   /* 
 .catbar b{text-align:right}
 
 .arrow{white-space:nowrap}.arrow small{color:var(--teal)}.delta{font-size:var(--t-xs);font-weight:var(--w-heavy);border-radius:var(--r-pill);padding:2px 7px;white-space:nowrap}.delta.up{background:var(--paleturq);color:var(--teal)}.delta.down{background:var(--coral);color:var(--bad)}.delta.flat{background:var(--sand);color:var(--ink-soft)}
-.whatif-intro{margin:10px 0 2px;font-size:var(--t-s);color:var(--ink-soft)}.checkTable.whatif td:nth-child(2){color:var(--ink-soft)}.checkTable.whatif .pts{color:var(--ink-soft);font-weight:var(--w-med)}.checkTable.whatif td{vertical-align:middle}.nhi{color:var(--bad)}
+.checkTable.whatif td:nth-child(2){color:var(--ink-soft)}.checkTable.whatif .pts{color:var(--ink-soft);font-weight:var(--w-med)}.checkTable.whatif td{vertical-align:middle}.nhi{color:var(--bad)}
 .checkTable tr.total td{border-top:2px solid var(--navy)}
 .skipList{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow:auto;margin:8px 0;padding:6px 8px;border:2px solid var(--grid);border-radius:var(--r-m)}.skipList label{display:flex;gap:8px;align-items:center;font-size:var(--t-s)}.skipList small{color:var(--teal);margin-left:auto}
 .nextrow{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:var(--t-s)}
@@ -66,14 +66,16 @@ div.home{display:flex;flex-direction:column;gap:16px;padding:4px 0 40px}
 .hnums{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.hnums small{display:block;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:var(--w-black)}
 .hnums b{font-size:24px;font-weight:var(--w-black);line-height:1.1}.hnums span{display:block;font-size:var(--t-xs);color:var(--ink-soft)}
 .hchips{display:flex;gap:6px;flex-wrap:wrap}.hchip{font-size:var(--t-xs);font-weight:var(--w-black);border-radius:var(--r-pill);padding:3px 10px;background:var(--paleturq)}.hchip.warn{background:var(--coral)}.hchip.ok{background:var(--paleturq)}.hchip.muted{background:var(--grid);color:var(--ink-soft)}.hchip.stale{background:var(--sand);color:var(--navy)}
-.himport{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:0 16px;margin-bottom:10px;box-shadow:var(--shadow-1)}.himport.warn{border-color:var(--coral)}.himport summary{display:flex;align-items:baseline;gap:10px;font-size:var(--t-l);cursor:pointer;list-style:none;padding:8px 0;min-height:28px}.himport summary::-webkit-details-marker{display:none}.himport summary::before{content:"";flex:none;width:6px;height:6px;border:solid var(--ink-soft);border-width:0 2px 2px 0;transform:rotate(-45deg);margin:0 2px 2px 0;align-self:center}.himport[open] summary::before{transform:rotate(45deg);margin-bottom:5px}.himport summary b{font-weight:var(--w-black)}.himport summary small{font-weight:var(--w-reg);color:var(--ink-soft);font-size:var(--t-s)}.himport summary .linkbtn{margin-left:auto;font-size:var(--t-s)}.himport ul{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:3px}.himport li.bad{color:var(--bad)}.himport li.muted{color:var(--ink-soft)}#drop .himport{text-align:left;margin:18px auto 0;max-width:640px;padding:12px 16px}#drop .himport h3{font-size:var(--t-l);display:flex;gap:10px;align-items:baseline}#drop .himport h3 small{font-weight:var(--w-reg);color:var(--ink-soft);font-size:var(--t-s)}#drop .himport ul{margin:6px 0 0}
+.himport{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:0 16px;margin-bottom:10px;box-shadow:var(--shadow-1)}.himport.warn{border-color:var(--coral)}.himport summary{display:flex;align-items:baseline;gap:10px;font-size:var(--t-l);cursor:pointer;list-style:none;padding:8px 0;min-height:28px}.himport summary::-webkit-details-marker{display:none}.himport summary::before{content:"";flex:none;width:6px;height:6px;border:solid var(--ink-soft);border-width:0 2px 2px 0;transform:rotate(-45deg);margin:0 2px 2px 0;align-self:center}.himport[open] summary::before{transform:rotate(45deg);margin-bottom:5px}.himport summary b{font-weight:var(--w-black)}.himport summary small{font-weight:var(--w-reg);color:var(--ink-soft);font-size:var(--t-s)}.himport summary .linkbtn{margin-left:auto;font-size:var(--t-s)}.himport ul{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:3px}.himport li.bad{color:var(--bad)}.himport li.muted{color:var(--ink-soft)}
+.hneeds{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:0 16px;margin-bottom:12px;box-shadow:var(--shadow-1)}.hneeds>summary{display:flex;align-items:center;gap:10px;font-size:var(--t-l);cursor:pointer;list-style:none;padding:8px 0;min-height:28px}.hneeds>summary::-webkit-details-marker{display:none}.hneeds>summary::before{content:"";flex:none;width:6px;height:6px;border:solid var(--ink-soft);border-width:0 2px 2px 0;transform:rotate(-45deg);margin:0 2px 0 0}.hneeds[open]>summary::before{transform:rotate(45deg);margin-bottom:3px}.hneeds>summary b{font-weight:var(--w-black)}.hcount{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;border-radius:var(--r-pill);background:var(--grid);color:var(--navy);font-size:var(--t-s);font-weight:var(--w-black)}.hneeds.warn .hcount{background:var(--bad);color:var(--white)}.hneeds>.hatt{border-top:1px solid var(--grid);padding:2px 0 6px}
+#drop .himport{text-align:left;margin:18px auto 0;max-width:640px;padding:12px 16px}#drop .himport h3{font-size:var(--t-l);display:flex;gap:10px;align-items:baseline}#drop .himport h3 small{font-weight:var(--w-reg);color:var(--ink-soft);font-size:var(--t-s)}#drop .himport ul{margin:6px 0 0}
 .hchip.letters{display:inline-flex;gap:6px;background:transparent;padding:0}.hchip.letters i{font-style:normal;display:inline-flex;gap:3px;align-items:baseline;background:var(--paleturq);border-radius:var(--r-s);padding:2px 7px}.hchip.letters i em{font-style:normal;font-weight:var(--w-black)}.hchip.letters i.A,.hchip.letters i.A{background:var(--g-a-wash)}.letters i.B,.hchip.letters i.B{background:var(--g-b-wash)}.letters i.C,.hchip.letters i.C{background:var(--g-c-wash)}.letters i.D,.hchip.letters i.D{background:var(--g-d-wash)}.letters i.F,.hchip.letters i.F{background:var(--g-f-wash)}
 .hatt{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}.hatt li+li{border-top:1px solid var(--grid)}.hatt li button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:none;padding:6px 4px;font:inherit;color:var(--navy);cursor:pointer;font-size:var(--t-m)}.hatt li button:hover{background:var(--cream)}.hatt li i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--teal)}.hatt li.warn i{background:var(--bad)}.hatt li span{flex:1}.hatt li em{font-style:normal;color:var(--ink-soft);font-weight:var(--w-bold)}.hatt li #hBackup em{color:var(--teal);font-weight:var(--w-heavy);text-decoration:underline;white-space:nowrap}
 .hatt li.each>div{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:3px 4px;font-size:var(--t-m)}.hatt li.each span{flex:none}.hatt li .hgo{width:auto;border:1px solid var(--grid);background:var(--white);border-radius:var(--r-pill);padding:4px 12px 4px 10px;font:inherit;font-weight:var(--w-heavy);font-size:var(--t-s);color:var(--navy);min-height:var(--h-s);display:inline-flex;align-items:center;gap:6px}.hatt li .hgo::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--cc)}.hatt li .hgo:hover{background:var(--cream)}
 .storeLine{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.storeBar{flex:none;width:120px;height:8px;border-radius:var(--r-pill);background:var(--grid);overflow:hidden}.storeBar i{display:block;height:100%;background:var(--teal);border-radius:var(--r-pill)}.storeLine.full .storeBar i{background:var(--bad)}.storeLine.full b{color:var(--bad)}
-.hatt li.more>details>summary{display:flex;align-items:center;gap:10px;padding:6px 4px;cursor:pointer;list-style:none;font-size:var(--t-m)}.hatt li.more summary::-webkit-details-marker{display:none}.hatt li.more summary span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hatt li.more summary em{flex:none;width:7px;height:7px;border:solid var(--ink-soft);border-width:0 2px 2px 0;transform:rotate(45deg);margin:0 4px 3px 0}.hatt li.more details[open]>summary em{transform:rotate(-135deg);margin-bottom:-3px}.hatt li.more details[open]>summary span{white-space:normal}.hatt li.more .hatt{border-top:1px solid var(--grid);margin-left:18px}
+
 .himport summary .bad{color:var(--bad);font-weight:var(--w-bold)}
-.hneeds{margin-bottom:12px;padding-top:10px;padding-bottom:6px}.hneeds h3{margin-bottom:2px}.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ---- class colour: --cc follows the class everywhere (after the Overview rules so it wins) ---- */
 .tab::before{content:'';width:10px;height:10px;border-radius:50%;background:var(--cc,var(--grid));flex-shrink:0}.hcard{border-top:6px solid var(--cc,var(--grid))!important}
@@ -142,7 +144,6 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 }
 #top .brand{display:flex;align-items:baseline;gap:10px}
 #top .brand h1{color:var(--turq);font-weight:var(--w-black);letter-spacing:.14em;font-size:22px;text-transform:uppercase}
-#top .brand small{color:var(--white);opacity:.55;font-weight:var(--w-bold);letter-spacing:.05em;font-size:var(--t-s)}
 #top .spacer{flex:1}
 /* the three places: one segmented control, the current one filled */
 #top .nav{display:flex;background:rgba(255,255,255,.12);border-radius:var(--r-pill);padding:4px;gap:2px;margin-left:10px;flex:none}
@@ -336,13 +337,7 @@ body.dragging #drop{border-color:var(--turq);background:rgba(216,246,241,.6)}
 #drop p{color:var(--teal);font-weight:var(--w-bold);margin:0 0 6px;font-size:clamp(15px,1.8vw,20px)}
 #launch{background:var(--turq);color:var(--navy);font-size:clamp(16px,1.8vw,22px);font-weight:var(--w-black);padding:16px 42px;border-radius:var(--r-l);border:none;box-shadow:var(--shadow-2);margin-top:6px}
 #launch:active{transform:translate(3px,4px);box-shadow:var(--shadow-2)}
-#empty .how{width:min(720px,94vw);background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);overflow:hidden;text-align:left}
-#empty .how .strip{background:var(--teal);color:var(--white);padding:12px 24px;font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;font-size:var(--t-m)}
-#empty .how .body{padding:18px 24px 20px;font-size:var(--t-m);line-height:1.6;color:var(--navy)}
-#empty .how b{font-weight:var(--w-black)}
-#empty .how ol{margin:8px 0 0;padding-left:22px}
-#empty .how li{margin:3px 0}
-#empty .how .fine{margin-top:12px;font-size:var(--t-s);color:var(--teal);font-weight:var(--w-reg)}
+#drop .fine{margin-top:18px;font-size:var(--t-s);color:var(--ink-soft);font-weight:var(--w-med)}
 body.dragging::after{content:'Drop IXL exports anywhere';position:fixed;inset:0;background:rgba(22,33,58,.6);color:var(--white);font-weight:var(--w-black);font-size:clamp(28px,4vw,48px);display:flex;align-items:center;justify-content:center;z-index:100;pointer-events:none}
 
 /* ---- settings card ---- */
@@ -408,7 +403,7 @@ td.pts .v{font-size:var(--t-l)}
 th.skill{min-width:var(--skw,56px);width:var(--skw,56px);height:auto}td.sc{width:var(--skw,56px);min-width:var(--skw,56px)}
 th.skill button{padding:6px 0 4px}
 th.skill .rot{white-space:normal;width:auto;max-width:calc(var(--skw,56px) - 4px);max-height:var(--skh,120px);line-height:1.08;font-size:12px;overflow:hidden;text-align:left}
-.ukey{display:grid;grid-template-columns:auto auto;gap:4px 12px;justify-content:start;text-transform:none;letter-spacing:0;font-weight:var(--w-bold);font-size:var(--t-xs);color:var(--navy);margin-bottom:10px;white-space:normal}.ukey i{display:inline-block;width:12px;height:12px;border-radius:var(--r-xs);vertical-align:-2px;margin-right:5px;border:1px solid var(--grid)}.ukey .lp{background:var(--turq)}.ukey .ll{background:var(--sand)}.ukey .ln{background:var(--white)}.ukey .lx{background:repeating-linear-gradient(45deg,var(--grid),var(--grid) 3px,var(--white) 3px,var(--white) 6px)}.ukey small{grid-column:1 / -1;font-size:var(--t-xs);font-weight:var(--w-reg);color:var(--ink-soft);line-height:1.3}
+.ukey{display:grid;grid-template-columns:auto auto;gap:4px 12px;justify-content:start;text-transform:none;letter-spacing:0;font-weight:var(--w-bold);font-size:var(--t-xs);color:var(--navy);margin-bottom:10px;white-space:normal}.ukey i{display:inline-block;width:12px;height:12px;border-radius:var(--r-xs);vertical-align:-2px;margin-right:5px;border:1px solid var(--grid)}.ukey .lp{background:var(--turq)}.ukey .ll{background:var(--sand)}.ukey .ln{background:var(--white)}.ukey .lx{background:repeating-linear-gradient(45deg,var(--grid),var(--grid) 3px,var(--white) 3px,var(--white) 6px)}
 .nmbtn{background:none;border:none;padding:0;text-decoration:underline dotted var(--teal);text-underline-offset:3px;cursor:pointer;text-align:left}
 .rpanel{display:grid;grid-template-columns:1.2fr 1fr;gap:26px;padding:26px 28px;min-height:100%}
 .rpanel h3{font-weight:var(--w-black);font-size:var(--t-xl);margin-bottom:6px}
@@ -454,7 +449,7 @@ body:has(#modal:not(.hidden)) #toast{bottom:auto;top:18px}   /* while a dialog i
 #toast.err{background:var(--coral);color:var(--navy);border-color:var(--coral)}
 #toast b{color:var(--turq)}
 #toast.err b{color:var(--navy)}
-@media (max-width:1420px){#top{gap:10px;padding:12px 18px}#top .brand small{display:none}}
+@media (max-width:1420px){#top{gap:10px;padding:12px 18px}}
 /* a short window (a 1080p laptop at Windows' 150 % scale is 720 px tall; the Chromebox is 768): give the table the room */
 @media (max-height:800px) and (min-width:760px){#top{margin-top:12px}#tabs{padding-top:12px}#board{margin-top:12px;margin-bottom:14px}}
 /* …and a browser window on that laptop is shorter still (taskbar, tab strip, address bar): about 600 px at 150 % */
@@ -466,7 +461,7 @@ body:has(#modal:not(.hidden)) #toast{bottom:auto;top:18px}   /* while a dialog i
 .seat{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:14px 16px 24px;align-items:start}
 @media (max-width:1000px){.seat{grid-template-columns:1fr}}
 .seatSide{display:flex;flex-direction:column;gap:10px;min-width:0}.seatMain{min-width:0;position:sticky;top:0}
-.seatHint{margin:0 0 6px}.chart-stage{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:8px;box-shadow:var(--shadow-1)}
+.seatHint{margin:0 0 6px;min-height:1.5em}.chart-stage{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:8px;box-shadow:var(--shadow-1)}
 .chart-stage .chartSvg{max-height:max(300px,calc(100vh - 360px));margin:0 auto}.cdesk{cursor:pointer}
 .pill.big{min-height:var(--h-l);font-size:var(--t-l);justify-content:center}
 .prog{height:6px;border-radius:var(--r-pill);background:var(--sand);overflow:hidden}.prog i{display:block;height:100%;width:0;background:var(--teal);transition:width .2s}
@@ -511,7 +506,7 @@ body:has(#modal:not(.hidden)) #toast{bottom:auto;top:18px}   /* while a dialog i
 
 /* ---- touch: every everyday control reaches 44px on the tablet and panel; the laptop keeps its compact sizes ---- */
 @media (hover:none),(pointer:coarse){
-  #bar .pill.toggle,th.unit .copy,.pill.small,.seg.small button,.seg button,.lbTools .pill,.lbTools .seg button,.lbTools .labSelect,.hatt li button,.hatt li .hgo,.hatt li.more>details>summary,.pill{min-height:var(--h-touch)}.himport summary .linkbtn{min-height:var(--h-touch);padding:0 6px}#bar .crumb button{min-height:var(--h-touch)}
+  #bar .pill.toggle,th.unit .copy,.pill.small,.seg.small button,.seg button,.lbTools .pill,.lbTools .seg button,.lbTools .labSelect,.hatt li button,.hatt li .hgo,.pill{min-height:var(--h-touch)}.himport summary .linkbtn{min-height:var(--h-touch);padding:0 6px}#bar .crumb button{min-height:var(--h-touch)}
   .curUnit select{min-height:var(--h-touch);padding:8px 12px}
   .fcheck{min-height:var(--h-m);padding:6px 12px;font-size:var(--t-s)}
   .flag{min-height:var(--h-m);padding:6px 12px}
@@ -527,7 +522,7 @@ body:has(#modal:not(.hidden)) #toast{bottom:auto;top:18px}   /* while a dialog i
 <body>
 
 <div id="top">
-  <div class="brand"><h1>Tally</h1><small>IXL → FOCUS</small></div>
+  <div class="brand"><h1>Tally</h1></div>
   <!-- Three places and one action. Classes = the Overview and everything inside a class; Board = Race and Data Lab. -->
   <nav class="nav hidden" id="nav" aria-label="Go to">
     <button id="btnHome" title="Every class at a glance — and every class from there">Classes</button>
@@ -557,15 +552,10 @@ body:has(#modal:not(.hidden)) #toast{bottom:auto;top:18px}   /* while a dialog i
 
 <div id="empty" class="hidden">
   <div id="drop">
-    <h2>Drop your IXL Score Grid here<span>.</span></h2>
-    <p>Per-period exports make a class each. A course-wide export (all your students in one file) is kept as the course's pool, and each Focus gradebook you drop makes a period's class from it.</p>
+    <h2>Drop your IXL and Focus exports here<span>.</span></h2>
+    <p hidden></p>
     <button id="launch">Choose files</button>
-  </div>
-  <div class="how">
-    <div class="strip">How it works</div>
-    <div class="body">One point per skill, one grade per unit. A skill is at goal when its SmartScore reaches the class goal (60 on-level, 67 accelerated, set from the file name; change it any time). Tap a skill in a unit to skip it for every class of that course. Paste each class's roster from FOCUS once and every Copy comes out in FOCUS order, with blanks where a student is missing from IXL.
-    <div class="fine">Student data never leaves this device. It stays in this browser until you clear it, so on a shared computer hide names (the eye button) while projecting and clear it when you're done.</div>
-    </div>
+    <div class="fine">Student data stays in this browser.</div>
   </div>
 </div>
 
@@ -1106,8 +1096,7 @@ function renderGradesBar(s0) {
       <div class="spacer"></div>
       <button class="pill toggle" id="gradesWeights" title="Category weights">${gradingFor(s0.prep).cats.map(c => `${esc(c.name.slice(0, 1))} ${c.w}`).join(' · ')}</button>
       ${s._arch ? '' : '<button class="pill toggle" id="gradesCats" title="Check or move assignment categories">Categories</button>'}
-      <button class="pill toggle" id="gradesQuarters" title="Quarter dates; close a quarter">Quarters</button>
-      <div class="legend"><span>Tap a student for their page: every grade, trends, what-ifs</span></div>`;
+      <button class="pill toggle" id="gradesQuarters" title="Quarter dates; close a quarter">Quarters</button>`;
 }
 function renderGrades(s0) {
   const n = gradesQuarter(s0); const s = gradesView(s0, n); const closedQ = !!(s && s._arch);   // a kept copy is read-only
@@ -1155,14 +1144,14 @@ function renderGrades(s0) {
       <div class="gcard"><small>${closedQ ? 'Final class average' : 'Class average'}</small><b>${pct1(avg)}</b>${closedQ ? `<span>${esc(Q_NAMES[n - 1])}, as closed</span>` : prevAvg != null && avg != null ? `<span class="${Math.round(avg) - Math.round(prevAvg) < 0 ? 'down' : 'up'}">${signedPts(Math.round(avg) - Math.round(prevAvg))} since ${esc(fmtDate(prev.date))}</span>` : '<span>first import</span>'}</div>
       <div class="gcard"><small>Letters</small><b class="letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${letters[l]}</em></i>`).join('')}</b></div>
       <div class="gcard"><small>${closedQ ? 'Missing at close' : 'Missing work'}</small><b>${missingTotal}</b><span>${plural(rows.filter(r => r.missing).length, 'student')} with something missing</span></div>
-      ${closedQ ? '' : `<div class="gcard"><small>Sliding</small><b>${sliding}</b><span>${prev ? 'grade down 3+ or more missing since ' + esc(fmtDate(prev.date)) : 'needs a second import'}</span></div>`}
+      ${closedQ ? '' : `<div class="gcard" title="Students whose grade is down 3 points or more, or who have more missing work, since the last gradebook"><small>Sliding</small><b>${sliding}</b><span>${prev ? 'since ' + esc(fmtDate(prev.date)) : 'needs a second import'}</span></div>`}
       ${trend ? `<div class="gcard"><small>Class average by import</small>${sparkline(trend, 160, 44)}<span>${hist.map(h => esc(fmtDate(h.date))).join(' → ')}</span></div>` : ''}
     </div>
     <div class="gtwo">
       <section class="gsec"><h3>Categories</h3><table class="checkTable"><thead><tr><th>Category</th><th>Weight</th><th>Assignments</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th></tr></thead><tbody>
         ${catRows.map(x => `<tr><td>${esc(x.c.name)}</td><td>${x.c.w}%</td><td>${x.n}</td><td>${pct1(x.avg)}</td></tr>`).join('')}</tbody></table>
-        <p class="ghint">Course grade = each category's points earned ÷ points possible, weighted. Missing work counts as 0; excused (NG) is left out.${fit && fit.exact ? ` <b>Matches the Focus Grade column for all ${fit.n} students.</b>` : ''}</p></section>
-      <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 ? scatterSVG(pts, 420, 260, classColor(s0)) + `<p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)} — ${rWord}. Assessment average leaves the IXL columns out so it isn't circular.</p>` : `<p class="ghint">Needs at least 8 students matched to IXL with an assessment on record (${pts.length} so far).</p>`}</section>
+        ${fit && fit.exact ? `<p class="ghint"><b>Matches the Focus Grade column for all ${fit.n} students.</b></p>` : ''}</section>
+      <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 ? scatterSVG(pts, 420, 260, classColor(s0)) + `<p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)} — ${rWord}.</p>` : `<p class="ghint">Needs at least 8 students matched to IXL with an assessment on record (${pts.length} so far).</p>`}</section>
     </div>
     <section class="gsec"><h3>Assignments</h3><table class="checkTable gasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th>Points</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th><th>Missing</th><th>Excused</th><th title="Class average now minus the class average without this assignment — negative means it pulls grades down">Effect</th></tr></thead><tbody>
       ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}" ${closedQ ? 'disabled' : ''}>${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small title="${x.how === 'fit' ? 'proved by the Focus Grade column' : x.how === 'user' ? 'set by you' : x.how === 'file' ? 'stated in the export' : 'guessed from the name'}">${x.how === 'fit' ? ico('check', 'confirmed') : x.how === 'user' ? 'edited' : x.how === 'file' ? 'from file' : 'guess'}${x.disagree ? ' · Focus disagrees' : ''}</small></td><td>${esc(x.a.due || '')}</td><td>${x.a.max != null ? esc(fmtN(x.a.max)) : '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>
@@ -1251,7 +1240,7 @@ function openStudentReports(s) {
   const n = owes.filter(Boolean).length;
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel narrow"><header><h2>Student reports · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one"><p>One page per student: the Focus grade, what would move it, and the IXL still owed. Full names — these go home.</p>
+    <div class="body one"><p>One page per student, full names.</p>
       <div class="rp-actions col"><button class="pill" data-rep="all">Everyone <small>${plural(gb.students.length, 'page')}</small></button><button class="pill pale" data-rep="owes" ${n ? '' : 'disabled'}>Only students who owe something <small>${plural(n, 'page')}</small></button></div></div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
@@ -1395,7 +1384,7 @@ function chartStem(values, max) {
   const stems = {}; v.forEach(x => { const st = Math.floor(x / 10); (stems[st] = stems[st] || []).push(x % 10); });
   const lo = Math.min(0, Math.floor(v[0] / 10)), hi = Math.max(Math.floor(v[v.length - 1] / 10), Math.floor((max || 0) / 10)); let rows = '';
   for (let st = lo; st <= hi; st++) rows += `<tr><th>${st}</th><td>${(stems[st] || []).join(' ')}</td></tr>`;
-  return `<table class="stem"><tbody>${rows}</tbody></table><p class="ghint">Stem = tens, leaf = ones: 1 | 3 5 means 13 and 15.</p>`;
+  return `<table class="stem"><tbody>${rows}</tbody></table><p class="ghint">Key: 1 | 3 means 13</p>`;
 }
 // Bar graph of how many students at each value (0..max); a bar per value.
 function chartFreq(values, max, o) {
@@ -1494,14 +1483,17 @@ function renderHome() {
     const ixlCols = s.grades ? s.grades.assignments.filter(a => gbUnitFor(s, a)) : [];
     const waiting = !!(g && g.waiting);   // the quarter was closed and the new one has no gradebook yet: say that, not zeros
     const focusChip = waiting ? '' : !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? (ixlCols.length ? `<span class="hchip muted" title="Focus has an IXL column for a unit Tally isn't counting (a review unit, or past Working in)">Focus IXL ${esc(ixlCols.map(a => gbUnitFor(s, a).short).join(', '))} not counted</span>` : '<span class="hchip muted">no IXL columns in Focus</span>') : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : staleN ? `<span class="hchip stale">Focus: ${staleN} up since copy</span>` : `<span class="hchip ok">Focus ${ico('check', 'matches')}</span>`;
+    // The calm Overview shows the class, its four numbers and what needs a look. The lines under them (counts, goal,
+    // change since last time) are Details view only; a line stays when it is the reason a number is missing.
+    const D = state.settings.details; const sub = (text, reason) => text && (D || reason) ? `<span>${text}</span>` : '';
     return `<article class="hcardW" style="--cc:${classColor(s)}"><button class="hcard ${warn ? 'warn' : ''}" data-go="${esc(s.key)}" aria-label="Open ${esc(s.label)}">
-      <div class="hhead"><b>${esc(s.label)}</b><small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small></div>
+      <div class="hhead"><b>${esc(s.label)}</b>${D ? `<small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small>` : ''}</div>
       <div class="hnums">
-        <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b><span>${r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : 'first import'}</span></div>
-        ${waiting ? `<div><small>Focus${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final` : ''}</small><b>${g.qFinal && g.qFinal.avg != null ? Math.round(g.qFinal.avg) + '%' : '—'}</b><span>${[1, 2, 3, 4].every(qClosed) ? 'every quarter is closed' : `Q${g.q} gradebook not in yet`}</span></div>` : `
-        <div><small>Focus average${anyClosed() ? ' · Q' + currentQuarter() : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b><span>${g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : ''}</span></div>
-        <div><small>Missing work</small><b>${g ? g.missing : '—'}</b><span>${g ? plural(g.missingStudents, 'student') : ''}</span></div>
-        <div><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b><span>${g && g.prevDate ? 'down 3+ or more missing' : 'needs 2 gradebooks'}</span></div>`}
+        <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b>${sub(r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : 'first import', !r)}</div>
+        ${waiting ? `<div><small>Focus${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final` : ''}</small><b>${g.qFinal && g.qFinal.avg != null ? Math.round(g.qFinal.avg) + '%' : '—'}</b>${sub([1, 2, 3, 4].every(qClosed) ? 'every quarter is closed' : `Q${g.q} gradebook not in yet`, true)}</div>` : `
+        <div><small>Focus average${anyClosed() ? ' · Q' + currentQuarter() : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b>${sub(g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : '', false)}</div>
+        <div><small>Missing work</small><b>${g ? g.missing : '—'}</b>${sub(g ? plural(g.missingStudents, 'student') : '', false)}</div>
+        <div title="Students whose grade is down 3 points or more, or who have more missing work, since the last gradebook"><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b>${sub(g && g.prevDate ? 'since ' + esc(fmtDate(g.prevDate)) : 'needs 2 gradebooks', !(g && g.prevDate))}</div>`}
       </div>
       <div class="hchips">${focusChip}${g && !waiting ? `<span class="hchip letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${g.letters[l]}</em></i>`).join('')}</span>` : ''}${warn ? `<span class="hchip warn">${plural(warn, 'thing')} to look at</span>` : ''}</div>
     </button><button class="hchip act hdigest" data-digest="${esc(s.key)}">What changed ›</button></article>`; };
@@ -1515,10 +1507,12 @@ function renderHome() {
   const bkLine = bkDue ? `<li class="info"><button id="hBackup" title="Download a backup file — keep it in your school Drive"><i></i><span><b>Back up</b> — ${lb ? `new imports since the last backup (${esc(ageDays(day(lb)) === 0 ? 'earlier today' : fmtDate(day(lb)))})` : 'nothing has been backed up from this browser yet'}</span><em>Save backup</em></button></li>` : '';
   const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>This browser's storage is ${su.pct}% full</b> — ${su.other > su.tally ? `other saved pages hold most of it (${su.mb(su.other)} MB; Tally ${su.mb(su.tally)} MB). Save a backup first` : 'save a backup, then remove an old class or gradebook in Settings'}</span><em>›</em></button></li>` : '';
   const warns = groups.filter(g => g.level === 'warn'), notes = groups.filter(g => g.level !== 'warn');
-  const noteN = notes.length + (bkLine ? 1 : 0); const noteWords = [...notes.map(g => g.text.split(' — ')[0]), bkLine ? 'back up' : ''].filter(Boolean).join(' · ');
-  const noteRows = notes.map(row).join('') + bkLine;
-  const fix = stLine + qdLine + warns.map(row).join('');
-  const attList = fix || noteN ? `<ul class="hatt">${fix}${noteN === 1 ? noteRows : noteN ? `<li class="info more"><details id="hNotes" ${homeNotesOpen ? 'open' : ''}><summary><i></i><span><b>${plural(noteN, 'note')}</b> — ${esc(noteWords)}</span><em></em></summary><ul class="hatt">${noteRows}</ul></details></li>` : ''}</ul>` : '';
+  const noteN = notes.length + (bkLine ? 1 : 0); const noteRows = notes.map(row).join('') + bkLine;
+  const fix = stLine + qdLine + warns.map(row).join(''); const fixN = (stLine ? 1 : 0) + (qdLine ? 1 : 0) + warns.length;
+  // One line that opens (Croix, 5 Oct: "a whole collapsible thing with a notification when I need to look at it"): closed, it is
+  // a name and a count — red when something needs fixing, plain when there are only reminders (an old export, a backup due).
+  // It stays as he left it while Tally is open, and starts open in Details view.
+  const attList = fix || noteN ? `<details class="hneeds ${fixN ? 'warn' : ''}" id="hAtt" ${state.settings.details || homeAttOpen ? 'open' : ''}><summary><b>${fixN ? 'Needs attention' : 'Reminders'}</b><span class="hcount" aria-label="${fixN ? plural(fixN, 'thing') + ' to fix' : plural(noteN, 'reminder')}">${fixN || noteN}</span></summary><ul class="hatt">${fix}${noteRows}</ul></details>` : '';
   // charts
   const withHist = secs.filter(s => (s.gradeHistory || []).length); const dates = [...new Set(withHist.flatMap(s => s.gradeHistory.map(h => h.date)))].sort();
   const avgLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.filter(h => h.date === d).pop(); if (!h) return null; const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 260, w: 900, labelW: 200, aria: 'Focus class average by import' }) : `<p class="ghint">Class averages over time appear after a second gradebook import${dates.length === 1 ? ' (one so far: ' + esc(fmtDate(dates[0])) + ')' : ''}.</p>`;
@@ -1528,17 +1522,17 @@ function renderHome() {
   const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, dark: LETTER_DARK, labelW: 180, aria: 'letter grades by class' }) : '';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   const withGb = secs.filter(s => s.grades).length, waitN = anyClosed() ? secs.filter(s => s.grades && !hasOpenGrades(s)).length : 0;
-  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · backed up ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button><div class="legend"><span>Tap a class to open it</span></div>`;
+  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · backed up ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button>`;
   $('#bar').classList.remove('detail');
   const li0 = state.lastImport; const curU = state.settings.currentUnit || {};
   const li = li0 ? { ...li0, lines: li0.lines.filter(l => !l.wi || String(curU[l.wi.split(':')[0]]) === l.wi.split(':')[1]) } : null;   // a "Working in set to…" line retires once the teacher picks another unit
   const liAge = li ? ageDays(day(li.at)) : null; const nFiles = li ? li.lines.filter(l => !l.wi).length : 0;
   // The import's result is one line that opens (it stays until the next import); it starts open only when a file couldn't be read.
-  const importLine = li && (li.lines.length || li.fails.length) ? `<details class="himport ${li.fails.length ? 'warn' : ''}" ${li.fails.length ? 'open' : ''}><summary><b>${nFiles || li.fails.length ? 'Last import' : 'A note from Tally'}</b> <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(day(li.at)))}, ${esc(fmtTime(li.at))}${nFiles || li.fails.length ? ` · ${plural(nFiles, 'file')}${li.fails.length ? ` · <span class="bad">${li.fails.length} couldn't be read</span>` : ' — all read'}` : ''}${li.lines.some(l => l.wi) ? ' · Working in was set for you' : ''}</small><button class="linkbtn" id="liHide" title="Remove this until the next import">Dismiss</button></summary>
+  const importLine = li && (li.lines.length || li.fails.length) ? `<details class="himport ${li.fails.length ? 'warn' : ''}" ${li.fails.length ? 'open' : ''}><summary><b>${nFiles || li.fails.length ? 'Last import' : 'Note'}</b> <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(day(li.at)))}, ${esc(fmtTime(li.at))}${nFiles || li.fails.length ? ` · ${plural(nFiles, 'file')}${li.fails.length ? ` · <span class="bad">${li.fails.length} couldn't be read</span>` : ' — all read'}` : ''}${li.lines.some(l => l.wi) ? ' · Working in was set for you' : ''}</small><button class="linkbtn" id="liHide" title="Remove this until the next import">Dismiss</button></summary>
     <ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}${li.skipped ? `<li class="muted">${plural(li.skipped, 'file')} skipped</li>` : ''}</ul></details>` : '';
   $('#gridwrap').innerHTML = `<div class="home">
     ${importLine}
-    ${attList ? `<section class="gsec hneeds"><h3>Needs attention</h3>${attList}</section>` : ''}
+    ${attList}
     <div class="hcards">${secs.map(card).join('')}</div>
     <div class="gtwo">
       <section class="gsec"><h3>IXL work at goal by class</h3>${ixlBars || '<p class="ghint">Import an IXL export.</p>'}</section>
@@ -1548,7 +1542,7 @@ function renderHome() {
     <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
   </div>`;
   const hs = $('#hStore'); if (hs) hs.onclick = () => openSettings();
-  const hn = $('#hNotes'); if (hn) hn.ontoggle = () => { homeNotesOpen = hn.open; };
+  const hn = $('#hAtt'); if (hn) hn.ontoggle = () => { if (hn.isConnected && !state.settings.details) homeAttOpen = hn.open; };   /* Details view opens it without that counting as his choice */
   const hb = $('#hBackup'); if (hb) hb.onclick = () => { saveBackup(); render(); };
   const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;
@@ -1986,7 +1980,7 @@ function renderSeating(s) {
   const noScore = stu.filter(x => x.standing == null).length;
   side += `<h3 class="seatH">Students <small>${stu.length}</small></h3>${stu.length > 8 ? `<input class="txt seatSearch" id="seatSearch" placeholder="Find a student…" aria-label="Find a student" autocomplete="off">` : ''}${noScore ? `<p class="ghint">${plural(noScore, 'student')} with no scores yet — treated as mid-level for placement.</p>` : ''}<div class="seatList">${stu.map((x, i) => `<div class="seatStu" data-n="${esc(norm(x.display + ' ' + seatName(x)))}"><button class="seatOpen" data-sheet="${i}" aria-label="Edit ${esc(seatName(x))}"><span class="ph">${x.photo && !H ? `<img src="${x.photo}" alt="">` : esc(((x.first[0] || '') + (x.last[0] || '')).toUpperCase())}</span><span class="col"><span class="nm">${esc(seatName(x))}</span><span class="tags">${x.standing != null ? `<i class="st" title="${esc(standingText(x))}">${x.standing}</i>` : ''}${H ? '' : `${x.plan ? `<i class="plan">${esc(x.plan)}</i>` : ''}${x.nearTeacher ? '<i>Near</i>' : ''}${x.apart.length ? `<i class="apart">${x.apart.length} apart</i>` : ''}${x.together.length ? `<i class="near">${x.together.length} near</i>` : ''}`}</span></span></button>${H ? '' : `<span class="quick"><span class="seg tiny" role="group" aria-label="Behavior">${['low', 'medium', 'high'].map(b => `<button data-qb="${i}|${b}" class="${x.behavior === b ? (b === 'high' ? 'on hot' : 'on') : ''}" aria-pressed="${x.behavior === b}" title="${b} behavior">${b[0].toUpperCase()}</button>`).join('')}</span><button class="ft ${x.front ? 'on' : ''}" data-qf="${i}" aria-pressed="${!!x.front}" title="Needs a front seat">F</button></span>`}</div>`).join('')}</div>`;
   if (departed.length) side += `<details class="departed"><summary>Not on the roster <small>${departed.length}</small></summary><p class="ghint">Kept 45 days in case they return, then forgotten. Photos, flags and notes go with them.</p>${departed.map((d, i) => `<div class="seatStu gone"><span class="ph">${d.photo && !H ? `<img src="${d.photo}" alt="">` : '·'}</span><span class="nm">${esc(H ? mask(d.id) : d.id)}</span><span class="tags"><i>since ${esc(fmtDate(d.gone))}</i></span><button class="pill pale small" data-forget="${i}">Forget</button></div>`).join('')}<button class="pill pale small" id="forgetAll">Forget all ${departed.length}</button></details>`;
-  const hint = w ? (seatSel ? '<b>Tap another desk</b> to swap or move · tap the same desk to cancel' : seatPending ? '<b>Tap an empty desk</b> to seat them' : 'Tap a student on the chart to see why they\u2019re there, lock them, or move them') : (nd ? 'Generate seating, or seat by hand; tap a student in the list to set flags first.' : '');
+  const hint = w ? (seatSel ? '<b>Tap another desk</b> to swap or move · tap the same desk to cancel' : seatPending ? '<b>Tap an empty desk</b> to seat them' : '') : '';
   wrap.innerHTML = `<div class="seat"><aside class="seatSide">${side}</aside><section class="seatMain"><p class="ghint seatHint">${hint}</p><div class="chart-stage">${svgChart(s, w ? w.seats : {}, stu, G, 'screen', w)}</div><div class="seatLegend">${H ? '<span>Names off — initials only</span>' : `<span><b class="planTag">H</b> high behavior</span><span>FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')}</span><span><b class="planTag">ESE</b>/<b class="planTag">504</b> plan</span>`}<span>${ico('lock')} locked</span><span>partners: <b>${esc(SEAT_PAIRS.find(b => b[0] === seatPairs())[1])}</b></span>${stu.length && stu.every(x => x.standing == null) ? `<span class="ddown">no ${esc(SEAT_BASES.find(b => b[0] === seatBasis())[1])} data for this class — everyone is treated as mid-level</span>` : ''}<span>number = standing by <b>${esc(SEAT_BASES.find(b => b[0] === seatBasis())[1])}</b>${seatBasis() === 'blend' ? ' (FAST · Focus · IXL, relative to the class)' : ' (relative to the class)'}</span></div></section></div>`;
   bindSeating(s, wrap, w, stu, G, departed);
 }
@@ -2147,7 +2141,7 @@ function renderRoom(s) {
   if (roomSel) { const isDesk = roomSel.type === 'desk';
     h += `<div class="selbar"><b>${isDesk ? 'Desk ' + (deskNumbers()[roomSel.id] || '') : roomSel.type === 'teacher' ? 'Teacher desk' : 'Door'}</b>${isDesk ? `<button class="ib" data-rot="-15" title="Rotate left" aria-label="Rotate left">${ico('rotl')}</button><button class="ib" data-rot="15" title="Rotate right" aria-label="Rotate right">${ico('rotr')}</button><button class="ib" id="rmDup" title="Duplicate" aria-label="Duplicate">${ico('dup')}</button>` : roomSel.type === 'teacher' ? `<button class="ib" data-rot="90" aria-label="Rotate 90 degrees">${ico('rotr')} 90°</button>` : ''}<span class="nudge"><button class="ib" data-nudge="-10,0" aria-label="Nudge left" title="Nudge left (←)">${ico('left')}</button><button class="ib" data-nudge="0,-10" aria-label="Nudge up" title="Nudge up (↑)">${ico('up')}</button><button class="ib" data-nudge="0,10" aria-label="Nudge down" title="Nudge down (↓)">${ico('down')}</button><button class="ib" data-nudge="10,0" aria-label="Nudge right" title="Nudge right (→)">${ico('right')}</button></span><span class="spacer"></span><button class="ib danger" id="rmDel" aria-label="Delete" title="Delete (Delete key)">${ico('trash')}</button><button class="ib" id="rmDesel" aria-label="Deselect" title="Deselect (Esc)">${ico('x')}</button></div>`; }
   h += `<div class="stage" id="stage">${svgRoom()}<div class="zoomctl"><button class="ib" data-zoom="0.7" aria-label="Zoom in" title="Zoom in">+</button><button class="ib" data-zoom="1.4" aria-label="Zoom out" title="Zoom out">−</button><button class="ib" id="rmFit" aria-label="Fit the room in view" title="Fit room">Fit</button></div></div>
-    <p class="ghint">Drag a desk to move it, drag empty space to pan, pinch or + / − to zoom; select a desk and use the arrows to nudge it one grid step. Keyboard: Tab to a desk, Enter selects, arrow keys nudge, R rotates, Delete removes, Esc deselects. Desks are numbered from the front, left to right. Saved charts follow desks when you move them; deleting a desk unseats whoever is in it in every class.</p></div>`;
+    <p class="ghint">Keys: arrows nudge, R rotates, Delete removes. Deleting a desk unseats whoever is in it in every class.</p></div>`;
   wrap.innerHTML = h; bindRoom(s, wrap);
 }
 function bindRoom(s, wrap) {
@@ -2467,7 +2461,7 @@ function openQuarters(keep) {
   // a tick made by hand survives a redraw (changing a date redraws the dialog)
   const unitPick = p => { const us = courseUnits(p); if (!us.length) return ''; return `<div class="field"><label>${p === 'acc' ? 'Accelerated' : 'On-level'}</label><div class="qunits">${us.map(u => { const cur = q.units[p][u.name]; const key = p + '|' + u.name; const on = keep.picks && key in keep.picks ? keep.picks[key] : (cur === n || (!cur && due[p].has(u.name))); const other = cur && cur !== n && qClosed(cur); return `<label class="${other ? 'dim' : ''}"><input type="checkbox" data-qu="${esc(key)}" data-short="${esc(u.short)}" ${on || other ? 'checked' : ''} ${other ? 'disabled' : ''}> ${esc(u.short)}${other ? ` <small>Q${cur}</small>` : due[p].has(u.name) ? ' <small>due in Q' + n + '</small>' : ''}</label>`; }).join('')}</div></div>`; };
   const dates = `<div class="qdates">${q.ends.map((d, i) => `<label class="${qClosed(i + 1) ? 'closed' : i + 1 === n ? 'now' : ''}"><span>${Q_NAMES[i]} ends</span><input type="date" data-qend="${i}" value="${esc(d)}" ${qClosed(i + 1) ? 'disabled' : ''}><small>${qClosed(i + 1) ? 'closed ' + esc(fmtDate((q.closed[i + 1].at || '').slice(0, 10))) : i + 1 === n ? 'now' : ''}</small></label>`).join('')}</div>
-      <p class="ghint">Lake County Schools 2026–27 dates. An assignment belongs to the quarter its Focus due date falls in.</p>`;
+      <p class="ghint">Lake County Schools 2026–27 dates.</p>`;
   const form = `<p class="qlead">Tally keeps every ${esc(QN)} score and final grade, then stops bringing it up — no missing work, sliding, Focus checks or still-owed lines. It stays one tap away (Grades → <b>Q${n}</b>, and each student's page), and you can reopen it.</p>
       ${!ended ? `<p class="warnline">${esc(QN)} doesn't end until ${esc(fmtDate(q.ends[n - 1]))}. Closing now keeps each class as of its last export.</p>` : staleN ? `<p class="warnline">${allStale ? (staleN === 1 ? 'The gradebook here was' : 'Every gradebook here was') : `${plural(staleN, 'gradebook')} here ${staleN === 1 ? 'was' : 'were'}`} exported before ${esc(QN)} ended (${esc(fmtDate(q.ends[n - 1]))}). If grades changed in Focus since, export ${esc(QN)} from Focus and import it first.</p>` : ''}
       <table class="checkTable qkeep"><tbody>${rows}</tbody></table>
@@ -2591,8 +2585,7 @@ function renderStudentsView() {
   const cq = currentQuarter(); const closedQs = [1, 2, 3, 4].filter(n => qClosed(n));
   $('#bar').innerHTML = `<h2>Students</h2><span class="meta">${plural(rows.length, 'student')}${q ? ` matching “${esc(search)}”` : ''} · grades are ${esc(Q_NAMES[cq - 1])}${closedQs.length ? ` · ${closedQs.map(n => 'Q' + n).join(', ')} closed` : ''}</span><div class="spacer"></div>
     <label class="curUnit">Class <select id="stuClass"><option value="">Every class</option>${state.order.map(k => `<option value="${esc(k)}" ${k === stuClass ? 'selected' : ''}>${esc(state.sections[k].label)}</option>`).join('')}</select></label>
-    <div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding']].map(([k, l]) => `<button data-sort="${k}" class="${stuSort === k ? 'on' : ''}" aria-pressed="${stuSort === k}">${l}</button>`).join('')}</div>
-    <div class="legend"><span>Tap a student for everything: grades, trends, what-ifs</span></div>`;
+    <div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding']].map(([k, l]) => `<button data-sort="${k}" class="${stuSort === k ? 'on' : ''}" aria-pressed="${stuSort === k}">${l}</button>`).join('')}</div>`;
   $('#bar').classList.add('detail');
   let lastSec = null; let body = '';
   rows.forEach(r => {
@@ -2658,7 +2651,7 @@ function renderProfile() {
     ${sum.finals.map(x => `<div class="gcard"><small>${esc(Q_NAMES[x.q - 1])} ${x.closed ? 'final' : '(kept)'}</small><b>${x.g}%<em class="lt ${letterOf(x.g)}">${letterOf(x.g)}</em></b><span>${x.closed ? 'closed · kept in Tally' : 'not closed yet · kept in Tally'}</span></div>`).join('')}
     <div class="gcard"><small>Missing now</small><b>${openB ? sum.missing : '—'}${openB ? tileSpark(missHist, { color: 'var(--bad)', label: 'missing assignments at each Focus import' }) : ''}</b><span>${openB ? (sum.dMissing > 0 ? `+${sum.dMissing} since the last import` : sum.missing ? 'not handed in (counts as 0)' : 'nothing missing') : ''}</span></div>
     <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}${it ? tileSpark(it.mine, { ref: it.cls, label: 'IXL skills at goal at each export, with the class average dashed' }) : ''}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}${clsNow != null && !ix.basisClosed ? ` · class average ${fmtN(Math.round(clsNow * 10) / 10)} skills` : ''}` : f.ixl == null ? (f.noAccount ? 'no IXL account' : 'not matched to an IXL account') : 'no units assigned'}</span></div>
-    <div class="gcard"><small>Tests &amp; quizzes</small><b>${assessNow != null ? Math.round(assessNow) + '%' : '—'}</b><span>${assessNow != null ? 'assessment points, IXL columns left out' : ''}</span></div>
+    <div class="gcard"><small>Tests &amp; quizzes</small><b>${assessNow != null ? Math.round(assessNow) + '%' : '—'}</b><span>${assessNow != null ? 'IXL columns left out' : ''}</span></div>
   </div>`;
 
   // trends
@@ -2800,10 +2793,9 @@ function whatIfMarkup(s, i) {
   const tests = assess.filter(a => !/\bixl\b/i.test(a.name) && (a.values[i] == null || a.values[i] < a.max));
   const nx = nextSize(s);
   return `<div class="wnow">Now ${gradeChip(r)}</div>
-    <p class="whatif-intro">Each line below changes <b>one thing</b> in the Focus gradebook and shows the grade that would result — nothing else moves.</p>
     <h4 class="subh">If missing work were turned in${missing.length ? ` <small>${missing.length}</small>` : ''}</h4>
     ${missing.length ? `<table class="checkTable whatif"><tbody>${missing.map(a => `<tr><td><b>${esc(a.name)}</b><small>${esc(catIn(s, a))} · due ${esc(a.due || '?')}</small></td><td>turned in, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}${missing.length > 1 ? `<tr class="total"><td><b>All ${missing.length} turned in</b></td><td>full credit</td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
-    ${tests.length ? `<h4 class="subh">If an assessment were retaken</h4><p class="ghint">Each cell: the grade if that assessment were re-scored at that percent. A dash means the score is already at or above it.</p><table class="checkTable whatif"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${a.status[i] === 'missing' ? '<b class="nhi">NHI</b>' : `${fmtN(a.values[i])}/${a.max} <small>(${Math.round(a.values[i] / a.max * 100)}%)</small>`}</td>${[70, 80, 90, 100].map(p => `<td>${a.status[i] !== 'missing' && a.values[i] >= a.max * p / 100 ? '<span class="ghint" title="already at or above this">—</span>' : `<small class="pts">${fmtN(Math.round(a.max * p / 100 * 2) / 2)}/${a.max}</small><br>${arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}`}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
+    ${tests.length ? `<h4 class="subh">If an assessment were retaken</h4><table class="checkTable whatif"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${a.status[i] === 'missing' ? '<b class="nhi">NHI</b>' : `${fmtN(a.values[i])}/${a.max} <small>(${Math.round(a.values[i] / a.max * 100)}%)</small>`}</td>${[70, 80, 90, 100].map(p => `<td>${a.status[i] !== 'missing' && a.values[i] >= a.max * p / 100 ? '<span class="ghint" title="already at or above this">—</span>' : `<small class="pts">${fmtN(Math.round(a.max * p / 100 * 2) / 2)}/${a.max}</small><br>${arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}`}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
     ${ixlCols.length ? `<h4 class="subh">If IXL were finished</h4><table class="checkTable whatif"><tbody>${ixlCols.map(a => `<tr><td><b>${esc(a.name)}</b><small>now ${a.status[i] === 'missing' ? 'NHI' : fmtN(a.values[i]) + '/' + a.max}</small></td><td>every skill, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
     <h4 class="subh">If the next assessment scored…</h4>
     <div class="nextrow"><label>out of <input type="number" class="wiMax" value="${nx}" min="1" max="500" style="width:70px"></label><label>score <input type="range" class="wiPts" min="0" max="${nx}" step="0.5" value="${Math.round(nx * 0.8)}"> <b class="wiV">${Math.round(nx * 0.8)}</b> / <span class="wiMaxV">${nx}</span></label><span class="wiOut">${arrow(withNext(s, i, 'Assessments', nx, Math.round(nx * 0.8)))}</span></div>
@@ -2859,13 +2851,13 @@ function openShow(sec, name) {
       <div class="shQuick">${quickestCard(plan, true)}</div>
       <div class="shTry">
         ${missing.length ? `<section><h3>Turn in missing work</h3>${missing.map(a => row('miss', a, 0, 0)).join('')}</section>` : ''}
-        ${retake.length ? `<section><h3>Retake an assessment</h3><p class="shHint">Slide to the score you'd get on the retake.</p>${retake.map(a => row('re', a, a.values[i], a.values[i])).join('')}</section>` : ''}
+        ${retake.length ? `<section><h3>Retake an assessment</h3>${retake.map(a => row('re', a, a.values[i], a.values[i])).join('')}</section>` : ''}
         ${ixlCols.length ? `<section><h3>Finish IXL</h3>${ixlCols.map(a => row('ix', a, st.ix[a.name], st.ix[a.name])).join('')}</section>` : ''}
-        <section><h3>Your next assessment</h3><div class="shRow" data-k="next"><div class="shL"><b>Next test or quiz</b><small>out of <input type="number" id="shNextMax" value="${nx}" min="1" max="200"> points · starts at your usual score</small></div><label class="shSw"><input type="checkbox" class="shOn" id="shNextOn"><span>Count it</span></label>
+        <section><h3>Your next assessment</h3><div class="shRow" data-k="next"><div class="shL"><b>Next test or quiz</b><small>out of <input type="number" id="shNextMax" value="${nx}" min="1" max="200"> points</small></div><label class="shSw"><input type="checkbox" class="shOn" id="shNextOn"><span>Count it</span></label>
           <div class="shS off"><input type="range" class="shPts" id="shNextPts" min="0" max="${nx}" step="0.5" value="${st.next.pts}" aria-label="Next assessment score"><output>${st.next.pts} / ${nx}</output></div></div>
           <p class="shHint" id="shNeed"></p></section>
       </div>
-      <div class="shCats" id="shCats"></div><p class="shHint shKey">Bars show each part of the grade after the changes you picked; the dark line is where it is now.</p>
+      <div class="shCats" id="shCats"></div><p class="shHint shKey"><i></i>now</p>
     </div>`;
   document.body.appendChild(el); document.body.classList.add('showMode'); $('#toast').classList.remove('show');
   const catBars = (a, b) => cats.map(c => { const x = a.cats[c.name], y = b.cats[c.name]; const w = v => v == null ? 0 : Math.max(0, Math.min(100, v)); return `<div class="shCat"><span>${esc(c.name)} <small>counts ${c.w}%</small></span><div class="shBar"><i class="if" style="width:${w(y && y.pct)}%;background:${gradeFill(y && y.pct)}"></i><i class="now" style="left:calc(${w(x && x.pct)}% - 2px)" title="now ${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}"></i></div><b>${y && y.pct != null ? Math.round(y.pct) + '%' : '—'}</b></div>`; }).join('');
@@ -2953,14 +2945,14 @@ body.showMode #top,body.showMode #app,body.showMode #empty,body.showMode #toast{
 .shTry{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px}.shTry section{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:14px 20px}.shTry h3{margin:0 0 8px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
 .shRow{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--grid)}.shRow:last-child{border-bottom:none}.shL b{display:block;font-size:16px}.shL small{color:var(--ink-soft)}.shL input{width:64px;font:inherit}
 .shS{grid-column:1/-1;display:flex;gap:12px;align-items:center}.shS.off{display:none}.shS input{flex:1;min-height:var(--h-m);accent-color:var(--teal)}.shS output{font-weight:var(--w-black);min-width:78px;text-align:right}
-.shSw{display:flex;gap:8px;align-items:center;font-weight:var(--w-bold);cursor:pointer;min-height:var(--h-touch)}.shSw input{width:24px;height:24px;accent-color:var(--teal)}.shHint{color:var(--ink-soft);font-size:var(--t-s);margin:4px 0}
+.shSw{display:flex;gap:8px;align-items:center;font-weight:var(--w-bold);cursor:pointer;min-height:var(--h-touch)}.shSw input{width:24px;height:24px;accent-color:var(--teal)}.shHint{color:var(--ink-soft);font-size:var(--t-s);margin:4px 0}.shKey{text-align:right}.shKey i{display:inline-block;width:4px;height:14px;background:var(--navy);border-radius:var(--r-xs);vertical-align:-2px;margin-right:6px}
 @media (max-width:700px){.shTry{grid-template-columns:1fr}.shCat{grid-template-columns:120px 1fr 50px}.catline .catbar{grid-template-columns:110px 1fr 48px}.catline .catbar small:last-child{display:none}}
 @media print{#show{display:none}}
 `;
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: STU_CSS }));
  // students.js too
 let view = { mode: 'home', unit: null };   // opens on the Overview
-let noticesOpen = false, noticeCount = { warn: 0, info: 0 }; let attCache = new Map(); let homeNotesOpen = false;
+let noticesOpen = false, noticeCount = { warn: 0, info: 0 }; let attCache = new Map(); let homeAttOpen = false;
 let search = '';
 
 // Gradebook data is saved with everything else. One earlier build kept it in sessionStorage only; anything still
@@ -3480,7 +3472,7 @@ function lbMarkup(data, focus) {
     </section>`;
   };
   const one = !multi && leagues[0] ? leagues[0].rows[0].assignedUnits : null;
-  return `${boardHead('Race', ['classes ranked by the share of students who moved up this week', one ? (one.length ? 'counting ' + unitSpan(one) : 'nothing assigned yet') : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
+  return `${boardHead('Race', [one ? (one.length ? 'counting ' + unitSpan(one) : 'nothing assigned yet') : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
     <div class="lbLeagues ${multi ? 'two' : ''}" style="--rows:${rowsMax}">${leagues.map(league).join('')}</div>`;
 }
 const LB_CSS = `
@@ -3664,7 +3656,6 @@ const boardHead = (title, facts) => { const line = facts.filter(Boolean).join(',
 const dsTitle = label => String(label).replace(/\s+·\s+/g, ': ');   // "Unit 3 · Exponents" reads "Unit 3: Exponents" as a title
 const unitSpan = names => names.length > 1 && names.every((n, i) => /^Unit \d+$/.test(n) && (i === 0 || +n.slice(5) === +names[i - 1].slice(5) + 1)) ? `Units ${names[0].slice(5)}–${names[names.length - 1].slice(5)}` : names.join(', ');
 // What each graph type shows, as a sentence a seventh grader can read from the back of the room.
-const LAB_NOTE = { hist: 'Histogram: each bar counts the students in that range.', dots: 'Dot plot: one dot per student.', stem: 'Stem-and-leaf plot: each leaf is one student.', bar: 'Bar graph: each bar is the number of students with that value.', barGrouped: 'Bar graph: each bar is the number of students in that range (too many values for one bar each).', circle: 'Circle graph: each slice is the share of the class in that group.', line: 'Line graph: one line per class, the class average at each import.' };
 const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph']];
 const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
@@ -3683,7 +3674,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
     else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
     else body = '<div class="labNotYet">A line graph needs data over time. Pick <b>All assigned units</b> or a Focus assignment.</div>';
     return `${boardHead(dsTitle(list.find(d => d.id === unitName).label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, 'class average at each import', asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
-      <div class="labLegend"><span class="lgNote">${LAB_NOTE.line}</span></div><div class="labRows"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
+      <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
   if (seriesAll[0] && seriesAll[0].pct) scale = 100;
@@ -3703,9 +3694,8 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
   const isPct = !!(seriesAll[0] && seriesAll[0].pct);
   return `${boardHead(dsTitle(ds.label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
-    ${kind !== 'box' ? `<div class="labLegend"><span class="lgNote">${kind === 'bar' && scale > 26 ? LAB_NOTE.barGrouped : LAB_NOTE[kind]}</span></div>` : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
-    <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>
-    ${statsLevel === 0 && series.length > 1 ? '<div class="labHint">The stats are hidden. Read the plots first: which class has the higher median? The bigger spread?</div>' : ''}`;
+    ${kind !== 'box' ? '' : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
+    <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}${kind !== 'box' ? ';--lhead:9.5' : ''}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>`;
 }
 const LAB_ONLY_CSS = `
 .labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.15);color:var(--navy)}
@@ -3735,7 +3725,7 @@ const LAB_ONLY_CSS = `
 .labStats div.wide b{font-size:calc(var(--bu)*.95);line-height:1.3}
 .labStats span{font-size:calc(var(--bu)*.95);font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
 .labStats b{font-weight:var(--w-black);font-size:calc(var(--bu)*1.3)}
-.labHint{font-weight:var(--w-bold);color:var(--navy);font-size:calc(var(--bu)*1.3);padding:4px 6px}
+
 .labValues{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-start;border-top:2px solid var(--grid);padding:8px 0 4px}
 .labHalf{display:flex;flex-direction:column;gap:4px}
 .labHalf small{font-size:calc(var(--bu)*1);font-weight:var(--w-bold);color:var(--teal);letter-spacing:.02em}
@@ -3745,7 +3735,7 @@ const LAB_ONLY_CSS = `
 .labChips span.m{background:var(--navy);color:var(--white);border-color:var(--navy);font-weight:var(--w-black)}
 .labChips span.m.gap{background:var(--white);color:var(--navy);border-style:dashed}
 .labChips span.out{box-shadow:0 0 0 2px var(--coral)}
-.labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*11.5 - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
+.labPlot .chart,.labPlot .labSvg{max-height:min(34vh,calc((100vh - var(--bu)*var(--lhead,11.5) - 120px)/var(--lrows,2) - 34px))} .labRow.one .labPlot .chart{max-height:68vh}
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
 .lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:var(--r-l);padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}
@@ -3969,7 +3959,7 @@ function askNewClass(fileName, gb, orExisting) {
       <div class="body one"><p><b>${esc(fileName)}</b> · ${plural(gb.students.length, 'student')}${orExisting ? ', ' + esc(orExisting) : ''}. Which period is this, and which course?</p>
         <div class="field"><label>Period</label><div class="seg" id="ncPeriod">${[1, 2, 3, 4, 5, 6, 7].map(n => `<button data-p="${n}" ${used.has(n) ? 'disabled title="already a class"' : ''}>${n}</button>`).join('')}</div></div>
         <div class="field"><label>Course</label><div class="seg" id="ncPrep"><button data-prep="acc">Accelerated</button><button data-prep="on">On-level</button></div></div>
-        <p class="ghint">The class's IXL grid comes from the course-wide IXL export${state.pools.acc || state.pools.on ? '' : ' — import one for each course when you have it'}.</p><p class="ghint warnline" id="ncWarn" hidden></p>
+        ${state.pools.acc || state.pools.on ? '' : '<p class="ghint">Import each course\'s IXL export when you have it.</p>'}<p class="ghint warnline" id="ncWarn" hidden></p>
         <div class="rp-actions"><button class="pill" id="ncMake" disabled>Make the class</button><button class="pill pale" id="mCancel">Skip this file</button>${orExisting ? '<button class="pill pale" id="ncExisting">It belongs to a class I already have</button>' : ''}</div></div></div>`;
     const done = v => { m.classList.add('hidden'); m.innerHTML = ''; resolve(v); };
     if (orExisting) $('#ncExisting').onclick = () => done('__pick__');
@@ -4035,7 +4025,7 @@ function pickSection(fileName, gb, mt) {
     mt = mt || matchSection(gb); const best = mt.suggest; const hit = {}; mt.rows.forEach(r => { hit[r.key] = r.n; });   // each chip carries its own count, so the highlighted one never claims more than the sentence above it
     m.innerHTML = `<div class="panel narrow"><header><h2>Which class is this gradebook?</h2><button id="mClose" aria-label="Close">×</button></header>
       <div class="body one"><p><b>${esc(fileName)}</b><br>${plural(gb.students.length, 'student')} · ${plural(gb.assignments.length, 'assignment')}: ${preview}${gb.unread ? `<br><span class="warnline">${plural(gb.unread, 'cell')} couldn't be read (${esc(gb.examples.map(x => '“' + x + '”').join(', '))}) and will count as no score.</span>` : ''}</p>
-      ${mt.why ? `<p class="ghint" id="pickWhy">${esc(mt.why)} Tally places a gradebook by itself when its students are plainly one class.</p>` : ''}
+      ${mt.why ? `<p class="ghint" id="pickWhy">${esc(mt.why)}</p>` : ''}
       <div class="picks">${state.order.map(k => `<button class="chip${k === best ? ' on' : ''}" data-sec="${esc(k)}">${esc(state.sections[k].label)}${hit[k] ? ` <small>· ${hit[k]} of ${gb.students.length}</small>` : ''}</button>`).join('')}<button class="chip${!best && mt.nowhere ? ' on' : ''}" data-sec="__new__">+ New class${mt.nowhere && state.order.length ? ' <small>· no class has these students</small>' : ''}</button></div>
       <div class="rp-actions"><button class="pill pale" id="mCancel">Skip this file</button></div></div></div>`;
     const done = v => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; resolve(v); };
@@ -4086,8 +4076,8 @@ function render() {
   $('#empty').classList.toggle('hidden', has);
   if (!has) {   // the landing: after a course export with no class yet, say what landed and what comes next instead of "Drop here" again
     const li = state.lastImport, pools = ['acc', 'on'].filter(p => state.pools[p]); const d = $('#drop');
-    d.querySelector('h2').innerHTML = pools.length ? `${pools.length === 2 ? 'Both course exports are in' : (pools[0] === 'acc' ? 'Accelerated' : 'On-level') + ' course export is in'}<span>.</span>` : 'Drop your IXL Score Grid here<span>.</span>';
-    d.querySelector('p').innerHTML = pools.length ? `Now drop a Focus gradebook for each period${pools.length === 1 ? ` (and the ${pools[0] === 'acc' ? 'on-level' : 'accelerated'} IXL export when you have it)` : ''} — each one makes that period's class from the course pool.` : 'Per-period exports make a class each. A course-wide export (all your students in one file) is kept as the course\'s pool, and each Focus gradebook you drop makes a period\'s class from it.';
+    d.querySelector('h2').innerHTML = pools.length ? `${pools.length === 2 ? 'Both course exports are in' : (pools[0] === 'acc' ? 'Accelerated' : 'On-level') + ' course export is in'}<span>.</span>` : 'Drop your IXL and Focus exports here<span>.</span>';
+    const lp = d.querySelector('p'); lp.hidden = !pools.length; lp.textContent = pools.length ? `Now drop a Focus gradebook for each period${pools.length === 1 ? ` (and the ${pools[0] === 'acc' ? 'on-level' : 'accelerated'} IXL export when you have it)` : ''}.` : '';
     let r = d.querySelector('.himport'); if (li && (li.lines.length || li.fails.length)) { if (!r) { r = document.createElement('div'); r.className = 'himport'; d.appendChild(r); } r.classList.toggle('warn', !!li.fails.length); r.innerHTML = `<h3>Last import <small>${esc(fmtTime(li.at))}</small></h3><ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}</ul>`; } else if (r) r.remove(); }
   else { const r = $('#drop .himport'); if (r) r.remove(); }
   $('#app').classList.toggle('hidden', !has);
@@ -4179,8 +4169,7 @@ function renderBar() {
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
       <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are gathered under Ahead">Working in <select id="curUnit">${units.some(u => u.current) ? '' : '<option value="">— pick —</option>'}${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
-      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>
-      <div class="legend det"><span>Tap a unit for skill scores</span></div>`;
+      <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
   } else if (view.mode === 'seating') {
@@ -4324,7 +4313,7 @@ function renderGrid() {
     let h = `<table class="grid"><thead><tr class="lessons"><th class="idx"></th><th class="stu"></th><th class="ptsd"></th>`;
     lessons.forEach(L => { const m = L.name.match(/^Lesson\s+([\d.]+)/i); const rest = m ? L.name.slice(m[0].length).replace(/^[:\s]+/, '') : L.name;   // a lesson over one or two skills has room for its number, not for "1.2 CONVE…"
       h += `<th class="lname" colspan="${L.n}" scope="colgroup" title="${esc(L.name)}">${esc(m ? (L.n >= 3 ? m[1] + ' ' + rest : m[1]) : L.name)}</th>`; });
-    h += `</tr><tr class="skills"><th class="idx" scope="col">#</th><th class="stu" scope="col"><div class="ukey" aria-hidden="true"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped</span><small>Tap a skill to skip it for the course, a cell to skip it for one student.</small></div>Student</th><th class="ptsd" scope="col">Points<br><span class="usub">of ${u.total}</span></th>`;
+    h += `</tr><tr class="skills"><th class="idx" scope="col">#</th><th class="stu" scope="col"><div class="ukey" aria-hidden="true"><span><i class="lp"></i>At goal</span><span><i class="ll"></i>Below goal</span><span><i class="ln"></i>Not started</span><span><i class="lx"></i>Skipped</span></div>Student</th><th class="ptsd" scope="col">Points<br><span class="usub">of ${u.total}</span></th>`;
     u.idx.forEach(k => { const sk = s.skills[k]; const off = !!s.excluded[skillKey(sk)]; h += `<th class="skill ${off ? 'off' : ''}" scope="col"><button data-x="${k}" aria-pressed="${off}" aria-label="${esc(sk.name)}${off ? ' (excluded)' : ''}"><span class="rot">${esc(sk.name)}</span><span class="sid">${esc(sk.id)}</span></button></th>`; });
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${u.idx.length + 2}">No students match “${esc(search)}”.</td></tr>`;
@@ -4469,7 +4458,7 @@ function openStillOwed(sec) {
   // with initials (safe to post or project), one list with names (for the teacher or a co-teacher).
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel narrow"><header><h2>Still owed · ${esc(sec.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one"><p>What each student still owes in the assigned units, in black and white.</p>
+    <div class="body one">
       <div class="rp-actions col">
         <button class="pill" data-owed="slips">Slips to hand out <small>one page per student · full names</small></button>
         <button class="pill pale" data-owed="initials">One list, initials <small>safe to post or project</small></button>
@@ -4596,9 +4585,9 @@ li{margin:3px 0}
 <p><b>Best</b> — a score from an earlier export that was higher than today's. A point once earned is kept.</p>
 <p><b>Copied</b> — a receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</p>
 <p><b>Focus ${ico('check', 'check')} / off</b> — whether the Focus column matches what Tally counts today.</p>
-<p><b>Grades</b> — with a Focus gradebook loaded: the real course grade (weighted categories, proved against Focus's Grade column), the change since the last import, sliding students, and what-ifs.</p>
+<p><b>Grades</b> — with a Focus gradebook loaded: the real course grade (weighted categories, missing work as zero, excused work left out; proved against Focus's Grade column), the change since the last import, and what-ifs that each change one thing. <b>Sliding</b> — grade down 3 points or more, or more missing work, since the last import.</p>
 <p><b>Students</b> — every student of every class. Tap one for their page: grades by quarter, missing work, IXL still owed, and the quickest way to the next letter. <b>Show student</b> turns the screen toward them; hold the exit button to leave.</p>
-<p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
+<p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. An assignment belongs to the quarter its Focus due date falls in. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
 <p><b>Seating</b> — draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
 <p><b>Still owed</b> — a printable list of what each student is missing, by unit.</p>
 <p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill or assignment). Names never show. Hold the exit button to leave.</p>
