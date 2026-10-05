@@ -60,8 +60,8 @@ function load() {
 }
 function migrate() {
   const st = state.settings || {};
-  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
-    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line'].includes(st.labKind) ? st.labKind : 'box', labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
+  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
+    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line', 'avg'].includes(st.labKind) ? st.labKind : 'box', labAvg: !!st.labAvg, labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null },
     curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) } };   // the unit each course is working in: everything up to it is assigned, later units are gathered under Ahead   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
@@ -651,6 +651,7 @@ function labDatasets(prep) {
   const add = (group, id, label) => { let g = groups.find(x => x.group === group); if (!g) { g = { group, items: [] }; groups.push(g); } if (!g.items.some(x => x.id === id)) g.items.push({ id, label }); };
   secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden && u.total) add('IXL units (points)', 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')); }));
   add('IXL units (points)', 'unit:__all__', 'All assigned units · skills at goal');
+  if (secs.some(hasOpenGrades)) add('Focus course grade', 'grade:course', 'Course grade · ' + Q_NAMES[currentQuarter() - 1]);
   secs.forEach(s => { const cats = {}; (s.grades ? s.grades.assignments : []).forEach(a => { cats[catOf(s.prep, a.name, a)] = 1; }); Object.keys(cats).sort().forEach(c => (s.grades.assignments.filter(a => catOf(s.prep, a.name, a) === c)).forEach(a => add(c, 'gb:' + a.name, a.name))); });
   state.custom.filter(c => c.prep === prep).forEach(c => add('Our own data', 'custom:' + c.id, c.label));
   secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden) u.idx.forEach(k => { const sk = s.skills[k]; add('IXL skills (SmartScore), ' + u.short, 'skill:' + skillKey(sk), u.short + ' · ' + sk.name); }); }));
@@ -661,17 +662,19 @@ function labSeries(prep, id) {
   const { secs } = labDatasets(prep);
   return secs.map(s => {
     const list = population(s); const aUnits = unitsOf(s).filter(u => u.assigned);
-    let vals, max, missing = 0, excused = 0, unit = 'points';
+    let vals, max, missing = 0, excused = 0, unit = 'points', grade = false;
     if (id === 'unit:__all__') { vals = list.map(x => aUnits.reduce((m, u) => m + points(s, u, x.i), 0)); max = aUnits.reduce((m, u) => m + u.total, 0); unit = 'skills at goal'; }
     else if (id.startsWith('unit:')) { const u = unitsOf(s).find(u => u.name === id.slice(5)); if (!u) return null; vals = list.map(x => points(s, u, x.i)); max = u.total; }
     else if (id.startsWith('skill:')) { const k = s.skills.findIndex(sk => skillKey(sk) === id.slice(6)); if (k < 0) return null; vals = list.map(x => eff(s, k, x.i)); missing = vals.filter(v => v == null).length; max = 100; unit = 'SmartScore'; }
     else if (id.startsWith('custom:')) { const c = state.custom.find(c => c.id === id.slice(7)); const vv = c && c.values[s.key]; if (!vv || !vv.length) return null; vals = vv.slice(); max = Math.max(...vv, 1); unit = c.unit || 'value'; }
     else if (id.startsWith('gb:')) { const a = s.grades && s.grades.assignments.find(a => a.name === id.slice(3)); if (!a) return null; vals = a.values; missing = a.missing; excused = a.excused || 0; max = a.max || Math.max(...vals.filter(v => v != null), 1); unit = a.percent ? 'percent' : a.max ? 'points out of ' + a.max : 'score'; }
+    // The open quarter's course grade, as Focus rounds it — so a class's average here is the "Focus average" on its Overview card.
+    else if (id === 'grade:course') { const o = openSec(s); if (!o || !o.grades || !o.grades.assignments.length) return null; vals = gradeAll(o).map(r => r && r.rounded != null ? r.rounded : null); missing = vals.filter(v => v == null).length; max = 100; unit = 'course grade'; grade = true; }
     else return null;
-    let pct = false;
-    if (state.settings.labPct && max > 0 && unit !== 'SmartScore') { vals = vals.map(v => v == null ? null : Math.round(v / max * 100)); unit = '% of ' + unit; max = 100; pct = true; }   // percent of the maximum, whole numbers
+    let pct = grade;   // a course grade is a percent already
+    if (!grade && state.settings.labPct && max > 0 && unit !== 'SmartScore') { vals = vals.map(v => v == null ? null : Math.round(v / max * 100)); unit = '% of ' + unit; max = 100; pct = true; }   // percent of the maximum, whole numbers
     const st = stats(vals) || { n: 0 };
-    return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: id.split(':')[0], values: vals, thr: s.threshold, sec: s, pct };
+    return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: grade ? 'gb' : id.split(':')[0], values: vals, thr: s.threshold, sec: s, pct, grade };
   }).filter(Boolean);
 }
 const fmtN = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
@@ -721,11 +724,12 @@ function valuesMarkup(st, tukey, pct) {
 // One class's plot in the chosen form. Box plots keep their own drawing (whiskers, outliers, dots); the rest use charts.js.
 function labPlot(kind, x, scale, id, o) {
   const vals = x.values.filter(v => v != null); const max = Math.max(scale, 1);
-  if (x.kind === 'gb' && !['box', 'hist', 'circle', 'line'].includes(kind)) return `<div class="labNotYet">Focus scores are shown as a box plot, histogram, circle graph or line graph only.</div>`;
-  if (kind === 'dots') return chartDots(vals, max);
-  if (kind === 'hist') return chartHist(vals, max, o.bin || 0);
+  if (x.kind === 'gb' && !FOCUS_KINDS.includes(kind)) return `<div class="labNotYet">Focus scores are shown as a box plot, histogram, circle graph, line graph or class averages only.</div>`;
+  const mk = o.avg ? { mean: x.st.mean, meanLabel: 'Average ' + fmtAvg(x) } : {};
+  if (kind === 'dots') return chartDots(vals, max, mk);
+  if (kind === 'hist') return chartHist(vals, max, o.bin || 0, mk);
   if (kind === 'stem') return chartStem(vals, max);
-  if (kind === 'bar') return chartFreq(vals, max);
+  if (kind === 'bar') return chartFreq(vals, max, mk);
   if (kind === 'circle') {
     if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', value: x.missing, color: NEUTRAL_FILL }]); }
     if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, short: k, value: b[k], color: LETTER_COLORS[k] }))); }
@@ -743,7 +747,11 @@ const boardHead = (title, facts) => { const line = facts.filter(Boolean).join(',
 const dsTitle = label => String(label).replace(/\s+·\s+/g, ': ');   // "Unit 3 · Exponents" reads "Unit 3: Exponents" as a title
 const unitSpan = names => names.length > 1 && names.every((n, i) => /^Unit \d+$/.test(n) && (i === 0 || +n.slice(5) === +names[i - 1].slice(5) + 1)) ? `Units ${names[0].slice(5)}–${names[names.length - 1].slice(5)}` : names.join(', ');
 // What each graph type shows, as a sentence a seventh grader can read from the back of the room.
-const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph']];
+const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph'], ['avg', 'Class averages']];
+// Focus data (an assignment's scores, the course grade) stays aggregate on the Board: these forms only, never one mark per student.
+const FOCUS_KINDS = ['box', 'hist', 'circle', 'line', 'avg']; const focusSet = id => /^(gb|grade):/.test(id || '');
+const labAsOf = (secs, focus) => secs.map(s => focus ? (s.grades && s.grades.importedAt ? s.grades.importedAt.slice(0, 10) : null) : s.date).filter(Boolean).sort().pop();   // a Focus data set is as of its gradebook, not the IXL export
+const fmtAvg = x => x.st.mean.toFixed(1) + (x.pct ? '%' : '');   // a class average, one decimal, everywhere it is shown
 const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   statsLevel = +statsLevel || 0; const kind = state.settings.labKind || 'box';
@@ -754,35 +762,45 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
   const seriesAll = labSeries(prep, unitName);
   const series = seriesAll.filter(x => x.st.n >= MIN_N), thin = seriesAll.filter(x => x.st.n < MIN_N);
   // Focus scores on the projected screen stay aggregate: no per-student values, no outlier marks, bins of at least 5, no excused counts.
-  const gbSet = unitName.startsWith('gb:'); if (gbSet) { valuesOn = false; tukey = false; }
+  const gbSet = focusSet(unitName); if (gbSet) { valuesOn = false; tukey = false; }
+  const course = prep === 'acc' ? 'accelerated' : 'on-level'; const avgOn = !!state.settings.labAvg;
   if (kind === 'line') {   // every class on one chart — the comparison is the point
-    const asOfL = secs.map(s => s.date).filter(Boolean).sort().pop(); let body = '';
+    const asOfL = labAsOf(secs, gbSet); let body = '';
     if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = snapTotals(x.sec, h); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300, w: 900, labelW: 200 }); }
     else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
-    else body = '<div class="labNotYet">A line graph needs data over time. Pick <b>All assigned units</b> or a Focus assignment.</div>';
-    return `${boardHead(dsTitle(list.find(d => d.id === unitName).label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, 'class average at each import', asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
+    else if (unitName === 'grade:course') { const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).filter(z => z.date === d).pop(); if (!z) return null; const v = z.grade.filter(g => g != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average course grade by import' }); }
+    else body = '<div class="labNotYet">A line graph needs data over time. Pick <b>All assigned units</b>, the course grade or a Focus assignment.</div>';
+    return `${boardHead(dsTitle(list.find(d => d.id === unitName).label), [`${course} classes`, 'class average at each import', asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
       <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
   if (seriesAll[0] && seriesAll[0].pct) scale = 100;
   else if (unitName === 'unit:__all__' || series.some(x => x.st.max > x.max)) { const top = Math.max(...series.map(x => Math.max(x.st.max, unitName === 'unit:__all__' ? 0 : x.max)), 1); const step = top > 100 ? 20 : top > 40 ? 10 : 5; scale = Math.ceil((top + 1) / step) * step; }
   const unitLabel = seriesAll.length ? seriesAll[0].unit : 'points';
-  const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
+  const asOf = labAsOf(secs, gbSet);
+  const isGrade = unitName === 'grade:course'; const isPct = !!(seriesAll[0] && seriesAll[0].pct);
+  if (kind === 'avg') {   // one bar per class, in period order (the Race ranks; this compares)
+    const what = isGrade ? 'course grade' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')}` : unitLabel;
+    const bars = series.length ? chartBars(series.map(x => ({ label: labShort(x.name), value: x.st.mean, color: classColor(x.sec), hint: 'n = ' + x.st.n })), { max: scale, pct: isPct, fmt: v => v.toFixed(1) + (isPct ? '%' : ''), w: 760, labelW: 170, rowH: 46, barH: 26, ticks: (() => { const st = scale > 60 ? 25 : scale > 30 ? 10 : scale > 12 ? 5 : scale > 6 ? 2 : 1; const a = []; for (let v = 0; v <= scale + 1e-9; v += st) a.push(v); return a; })(), aria: 'class average, one bar per class' }) : '<div class="labNotYet">No class has enough scores for an average yet.</div>';
+    return `${boardHead(dsTitle(ds.label), [`${course} classes`, `average ${what} per class`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+      <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labAvgBars">${bars}${thin.length ? `<div class="labNotYet">${esc(thin.map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}</div></div></div>`;
+  }
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
+  const marks = avgOn && ['box', 'dots', 'hist', 'bar'].includes(kind);   // the forms that can carry a mark at the average; the others show the number only
   const row = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return `<div class="labRow" style="--cc:${classColor(x.sec)}">
-      <div class="labName">${esc(labShort(x.name))}<small><b>n = ${x.st.n}</b>${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}</small></div>
-      <div class="labPlot">${labPlot(kind, x, scale, unitName, { stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1, bin: gbSet ? Math.max(5, state.settings.labBin || 5) : state.settings.labBin, pct: x.pct })}</div>
+      <div class="labSide"><div class="labName">${esc(labShort(x.name))}<small><b>n = ${x.st.n}</b>${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}</small></div>${avgOn ? `<div class="labAvg"><b>${fmtAvg(x)}</b><span>average</span></div>` : ''}</div>
+      <div class="labPlot">${labPlot(kind, x, scale, unitName, { stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 || avgOn, avg: avgOn, bin: gbSet ? Math.max(5, state.settings.labBin || 5) : state.settings.labBin, pct: x.pct })}</div>
       ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
       ${statsLevel > 0 ? `<div class="labStats">
         ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
         ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)}, too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''}
     </div>`; };
-  const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
-  const isPct = !!(seriesAll[0] && seriesAll[0].pct);
-  return `${boardHead(dsTitle(ds.label), [`${prep === 'acc' ? 'accelerated' : 'on-level'} classes`, isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
-    ${kind !== 'box' ? '' : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 ? '<span><i class="lgMean"></i>mean</span>' : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
-    <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}${kind !== 'box' ? ';--lhead:9.5' : ''}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>`;
+  const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
+  const meanKey = '<span><i class="lgMean"></i>average (mean)</span>';
+  return `${boardHead(dsTitle(ds.label), [`${course} classes`, isGrade ? 'course grade per student, in percent' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+    ${kind !== 'box' ? (marks ? `<div class="labLegend">${meanKey}</div>` : '') : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 || avgOn ? meanKey : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
+    <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}${kind !== 'box' && !marks ? ';--lhead:9.5' : ''}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>`;
 }
 const LAB_ONLY_CSS = `
 .labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.15);color:var(--navy)}
@@ -794,6 +812,8 @@ const LAB_ONLY_CSS = `
 .labRow.thin{opacity:.75}
 .labNotYet{font-weight:var(--w-bold);color:var(--teal);padding:14px 0}
 .labName{font-weight:var(--w-black);font-size:calc(var(--bu)*1.7);line-height:1.1;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.labSide{min-width:0;display:flex;flex-direction:column;gap:calc(var(--bu)*.35)}
+.labAvg{display:flex;align-items:baseline;gap:.4em;color:var(--navy)} .labAvg b{font-weight:var(--w-black);font-size:calc(var(--bu)*2);line-height:1} .labAvg span{font-weight:var(--w-bold);font-size:calc(var(--bu)*1.1);color:var(--ink-soft)}
 .labName small{display:block;font-size:calc(var(--bu)*1.1);color:var(--teal);font-weight:var(--w-bold);margin-top:4px} .labName small b{font-size:calc(var(--bu)*1.25);font-weight:var(--w-black)}
 .labPlot{min-width:0}
 .labSvg{width:100%;height:auto;display:block;overflow:visible}
@@ -830,7 +850,7 @@ const LAB_ONLY_CSS = `
 const LAB_CSS = CHART_CSS + LAB_ONLY_CSS;
 // One copy of the board's styles: the app injects it here, and the saved Race / Data Lab pages embed the same strings.
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: LB_CSS + LAB_ONLY_CSS }));
-function dotsDefault(id) { return !(id || '').startsWith('gb:'); }
+function dotsDefault(id) { return !focusSet(id); }
 const parseNums = txt => String(txt || '').split(/[\s,;]+/).filter(x => x !== '').map(Number).filter(Number.isFinite);   // an empty box is no numbers, not one zero
 function renderLeaderboard() {
   const el = $('#lb'); const on = !!state.settings.leaderboard;
@@ -841,8 +861,9 @@ function renderLeaderboard() {
   if (lab && !hasBoth && data.length) st.labPrep = data[0].prep;
   const { list, groups } = labDatasets(st.labPrep);
   if (lab && list.length && !list.some(d => d.id === st.labUnit)) st.labUnit = list[0].id;
-  if (lab && (st.labUnit || '').startsWith('gb:') && !['box', 'hist', 'circle', 'line'].includes(st.labKind)) st.labKind = 'box';
-  const dotsOn = (st.labUnit || '').startsWith('gb:') ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
+  if (lab && focusSet(st.labUnit) && !FOCUS_KINDS.includes(st.labKind)) st.labKind = 'box';
+  const one = st.labKind === 'line' || st.labKind === 'avg';   // every class on one chart: the per-class controls don't apply
+  const dotsOn = focusSet(st.labUnit) ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
   // The data-set list is units, gradebook assignments and the class's own sets; the 200-odd single skills sit behind one choice.
   const isSkill = (st.labUnit || '').startsWith('skill:'); const mainGroups = groups.filter(g => !/^IXL skills/.test(g.group)), skillGroups = groups.filter(g => /^IXL skills/.test(g.group));
   const tabs = `<div class="seg lbTabs"><button data-tab="race" class="${!lab ? 'on' : ''}">Race</button><button data-tab="lab" class="${lab ? 'on' : ''}">Data Lab</button></div>`;
@@ -851,13 +872,14 @@ function renderLeaderboard() {
     ? `${hasBoth ? `<div class="seg lbFocus">${[['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-prep="${k}" class="${st.labPrep === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
        <select id="labUnit" class="labSelect" aria-label="Data set">${mainGroups.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label)}</option>`).join('')}</optgroup>`).join('')}${skillGroups.length ? `<option value="__skill__" ${isSkill ? 'selected' : ''}>A single skill…</option>` : ''}</select>
        ${isSkill ? `<select id="labSkill" class="labSelect" aria-label="Skill">${skillGroups.map(g => `<optgroup label="${esc(g.group.replace(/^IXL skills \(SmartScore\) — /, ''))}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label.replace(/^Unit \d+ · /, ''))}</option>`).join('')}</optgroup>`).join('')}</select>` : ''}
-       <select id="labKind" class="labSelect" aria-label="Show as">${LAB_KINDS.filter(([k]) => !(st.labUnit || '').startsWith('gb:') || ['box', 'hist', 'circle', 'line'].includes(k)).map(([k, n]) => `<option value="${k}" ${st.labKind === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
-       ${st.labKind === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${((st.labUnit || '').startsWith('gb:') ? [5, 10] : [1, 2, 5, 10]).map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
-       <button class="pill small" id="labStats" aria-pressed="${st.labStats > 0}">${revealLabel}</button>
-       ${st.labKind === 'box' && !(st.labUnit || '').startsWith('gb:') ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
-       <div class="seg small" id="labPct" title="Show each student's score as points or as a percent of the maximum"><button data-pct="0" class="${st.labPct ? '' : 'on'}">Points</button><button data-pct="1" class="${st.labPct ? 'on' : ''}">%</button></div>
-       ${(st.labUnit || '').startsWith('gb:') ? '' : `<button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>`}
-       ${st.labKind === 'box' ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`
+       <select id="labKind" class="labSelect" aria-label="Show as">${LAB_KINDS.filter(([k]) => !focusSet(st.labUnit) || FOCUS_KINDS.includes(k)).map(([k, n]) => `<option value="${k}" ${st.labKind === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+       ${st.labKind === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${(focusSet(st.labUnit) ? [5, 10] : [1, 2, 5, 10]).map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
+       ${one ? '' : `<button class="pill small" id="labStats" aria-pressed="${st.labStats > 0}">${revealLabel}</button>`}
+       ${one ? '' : `<button class="pill small" id="labAvg" aria-pressed="${!!st.labAvg}" title="Each class's average, beside its name and marked on its plot">Average</button>`}
+       ${st.labKind === 'box' && !focusSet(st.labUnit) ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
+       ${st.labUnit === 'grade:course' ? '' : `<div class="seg small" id="labPct" title="Show each student's score as points or as a percent of the maximum"><button data-pct="0" class="${st.labPct ? '' : 'on'}">Points</button><button data-pct="1" class="${st.labPct ? 'on' : ''}">%</button></div>`}
+       ${focusSet(st.labUnit) || one ? '' : `<button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>`}
+       ${st.labKind === 'box' && !focusSet(st.labUnit) ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`
     : (hasBoth ? `<div class="seg lbFocus">${[['both', 'Both'], ['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-focus="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '');
   el.innerHTML = `<div class="lbWrap">${lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, f)}</div>
     <div class="lbTools">${tabs}${controls}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
@@ -870,6 +892,7 @@ function renderLeaderboard() {
   el.querySelectorAll('[data-pct]').forEach(b => b.onclick = () => { st.labPct = b.dataset.pct === '1'; save(); renderLeaderboard(); });
   const lb = $('#labBin'); if (lb) lb.onchange = () => { st.labBin = Number(lb.value); save(); renderLeaderboard(); };
   const ls = $('#labStats'); if (ls) ls.onclick = () => { st.labStats = (st.labStats + 1) % 3; save(); renderLeaderboard(); };
+  const la = $('#labAvg'); if (la) la.onclick = () => { st.labAvg = !st.labAvg; save(); renderLeaderboard(); };
   const ld = $('#labDots'); if (ld) ld.onclick = () => { st.labDots[st.labUnit] = !dotsOn; save(); renderLeaderboard(); };
   const lv = $('#labValues'); if (lv) lv.onclick = () => { st.labValues = !st.labValues; save(); renderLeaderboard(); };
   const lt = $('#labTukey'); if (lt) lt.onclick = () => { st.labTukey = !st.labTukey; save(); renderLeaderboard(); };
@@ -893,7 +916,7 @@ function tokensCss() { return (document.getElementById('tallyTokens') || {}).tex
 function printFontCss() { const m = ((document.getElementById('tallyFont') || {}).textContent || '').match(/@font-face\s*\{[^}]*\}/); return m ? m[0] : ''; }
 function downloadLeaderboard(which) {
   const data = leaderboardData(); const st = state.settings; const lab = which === 'lab';
-  const dotsOn = (st.labUnit || '').startsWith('gb:') ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
+  const dotsOn = focusSet(st.labUnit) ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
   const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, st.lbFocus);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
 <style>${printFontCss()}</style>
@@ -1677,7 +1700,7 @@ li{margin:3px 0}
 <p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. An assignment belongs to the quarter its Focus due date falls in. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
 <p><b>Seating</b> — draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
 <p><b>Still owed</b> — a printable list of what each student is missing, by unit.</p>
-<p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill or assignment). Names never show. Hold the exit button to leave.</p>
+<p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade; <b>Average</b> marks each class's average, and <b>Class averages</b> puts the classes side by side). Names never show. Hold the exit button to leave.</p>
 <p><b>Names</b> — the eye button in the header. Crossed out = initials only, for projecting.</p>
 <p><b>⋯</b> — Details view (every count, notice and legend at once), Settings, this Guide, Save backup.</p>
 </div>

@@ -310,6 +310,28 @@ per-section-file era and many items in them are now done).
     the Focus check (they say what a choice does before he makes it); printed pages; `Scrub.html`; the
     screen-reader-only legend (`.vh`).
 
+- **Class averages in the Data Lab** (5 Oct; Croix: *"Can I get a class average option in the data lab"*; asked which
+  of three readings he meant, he chose all three):
+  - **Average** (`#labAvg`, `settings.labAvg`): each class's average beside its name (`.labAvg`, one decimal,
+    `fmtAvg`) and a dashed line with a diamond at it on the plots that have a number line — box plot (the mark it
+    already had under "Show more"), dot plot, histogram, bar graph (`meanMark` in `charts.js`; the plot grows 16–18
+    units of headroom so the diamond never sits on the data). Stem-and-leaf and circle graph show the number only.
+    The key gains "average (mean)"; on the forms that otherwise have no key it is that one item.
+  - **Class averages** (graph type `avg`): one chart, one bar per class in period order (the Race ranks; this
+    compares), class colours, value on each bar, round axis ticks. Works for every data set. A class under
+    `MIN_N` students gets no bar and a line saying so.
+  - **Course grade** (data set `grade:course`, "Course grade · Quarter N"): each student's open-quarter Focus grade
+    as Focus rounds it, so a class's average is the Overview card's "Focus average". It is a Focus set
+    (`focusSet(id)`, `FOCUS_KINDS`): box plot, histogram (bins of 5+), circle graph (letters), line graph (the
+    Overview's "class average by import"), class averages — never dots, values or outliers.
+  - An average is over the students with a score (`n`), as the row already says ("n = 11 · 2 no score"). In % the
+    per-student values are whole percents first, so the average can differ from points ÷ maximum by a tenth.
+  - Fixed on the way: a Focus data set's heading said "as of" the IXL export date (now its gradebook's,
+    `labAsOf`); "Our own data" sets were lost as the chosen data set on reload (`labUnit`'s prefix check);
+    Outliers showed on Focus box plots where it does nothing; Show stats and Values showed on the line graph where
+    they do nothing.
+  - Tests: `tests/lab-average.js` recounts every average from raw state and checks it against the class grid's
+    footer and the Overview card.
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.

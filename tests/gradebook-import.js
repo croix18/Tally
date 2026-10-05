@@ -38,7 +38,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   await p.selectOption('#labUnit','gb:Unit 1 Test'); await p.waitForTimeout(400);
   check(await p.locator('.labRow').count()===1 && /out of 100/.test(await p.textContent('.lbSub')),'assessment dataset plots the one on-level class that has it');
   check(await p.locator('.labDot').count()===0 && await p.locator('#labDots').count()===0 && await p.locator('#labValues').count()===0,'gradebook dataset: no dots, no Dots or Values controls (individual scores never project)');
-  check((await p.locator('#labKind option').allTextContents()).join()==='Box plot,Histogram,Circle graph,Line graph','gradebook dataset: only aggregate graph types offered');
+  check((await p.locator('#labKind option').allTextContents()).join()==='Box plot,Histogram,Circle graph,Line graph,Class averages','gradebook dataset: only aggregate graph types offered');
   await p.click('#labStats'); await p.waitForTimeout(200); const gst=await p.textContent('.labStats'); check(/median/.test(gst) && !/\bmin\b/i.test(gst) && !/\bmax\b/i.test(gst),'gradebook stats: quartiles only, no min/max: '+gst.replace(/\s+/g,' ').slice(0,80)); await p.click('#labStats'); await p.click('#labStats'); await p.waitForTimeout(200);
   check(/missing/.test(await p.textContent('.labName')) || true,'missing count shown when present');
   await p.click('#labStats'); await p.waitForTimeout(200); await p.click('#labStats'); await p.waitForTimeout(200); await p.screenshot({path:path.join(tmp,'shot16.png')});

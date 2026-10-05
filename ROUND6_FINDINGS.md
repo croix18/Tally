@@ -183,6 +183,9 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   empty states were left; they are his to call. Then, from his screenshot of a class card: the students / goal /
   export line and the faded lines under the four numbers are Details view only; and Needs attention is one closed
   line with a red count that opens on a tap. 29 suites, 987 checks.
+- 5 Oct: class averages in the Data Lab, all three ways he was offered: an Average button (number beside each
+  class, mark on its plot), a "Class averages" graph (one bar per class), and a "Course grade" data set kept as
+  aggregate as the other Focus sets. Details in NOTES.md; new suite `tests/lab-average.js`. 30 suites, 1024 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

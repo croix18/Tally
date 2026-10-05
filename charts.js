@@ -25,13 +25,14 @@ const niceMax = (v, step) => { if (!(v > 0)) return step || 10; const s = step |
 
 // Horizontal bars: items [{ label, value, max?, hint? }]. One hue; value labels on every bar (few bars, so they're the point).
 function chartBars(items, o) {
-  o = o || {}; const w = o.w || 640, rowH = 30, lw = o.labelW || 150, h = items.length * rowH + 28;
+  o = o || {}; const w = o.w || 640, rowH = o.rowH || 30, barH = o.barH || 16, lw = o.labelW || 150, h = items.length * rowH + 28;
   const max = o.max || niceMax(Math.max(...items.map(i => i.value || 0), 1));
   const X = v => lw + (v / max) * (w - lw - 60);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'bar chart')}">`;
-  [0, 0.5, 1].forEach(f => { s += `<line x1="${X(max * f)}" y1="6" x2="${X(max * f)}" y2="${h - 22}" class="gl"/><text x="${X(max * f)}" y="${h - 6}" text-anchor="middle" class="tl">${o.pct ? Math.round(max * f) + '%' : fmtV(max * f)}</text>`; });
-  items.forEach((it, i) => { const y = 8 + i * rowH; const v = it.value || 0;
-    s += `<text x="${lw - 10}" y="${y + 15}" text-anchor="end" class="lbl">${esc(it.label)}</text><rect x="${X(0)}" y="${y + 3}" width="${Math.max(X(v) - X(0), 0)}" height="16" rx="4" class="bar" style="fill:${it.color || 'var(--teal)'}"><title>${esc(it.label)}: ${o.pct ? Math.round(v) + '%' : fmtV(v)}${it.hint ? ' · ' + esc(it.hint) : ''}</title></rect><text x="${X(v) + 6}" y="${y + 15}" class="val">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; });
+  (o.ticks || [0, max / 2, max]).forEach(tv => { s += `<line x1="${X(tv)}" y1="6" x2="${X(tv)}" y2="${h - 22}" class="gl"/><text x="${X(tv)}" y="${h - 6}" text-anchor="middle" class="tl">${o.pct ? Math.round(tv) + '%' : fmtV(tv)}</text>`; });   /* o.ticks: round numbers when the maximum isn't one (0, 5, 10, 15, 20 for a test out of 21) */
+  items.forEach((it, i) => { const y = 8 + i * rowH + (rowH - barH) / 2 - 7; const v = it.value || 0;   /* y + 3 is the bar's top, as it always was at the default sizes */
+    const lab = o.fmt ? o.fmt(v) : o.pct ? Math.round(v) + '%' : fmtV(v);   /* o.fmt: the caller's own number format (the Data Lab's class averages keep one decimal) */
+    s += `<text x="${lw - 10}" y="${y + barH / 2 + 7}" text-anchor="end" class="lbl">${esc(it.label)}</text><rect x="${X(0)}" y="${y + 3}" width="${Math.max(X(v) - X(0), 0)}" height="${barH}" rx="4" class="bar" style="fill:${it.color || 'var(--teal)'}"><title>${esc(it.label)}: ${lab}${it.hint ? ' · ' + esc(it.hint) : ''}</title></rect><text x="${X(v) + 6}" y="${y + barH / 2 + 7}" class="val">${lab}</text>`; });
   return s + '</svg>';
 }
 // Stacked horizontal bars: rows [{ label, parts: { key: value } }], keys in fixed order with colours; legend always.
@@ -73,28 +74,33 @@ function chartLines(labels, series, o) {
     s += `<text x="${w - r + 8}" y="${e.y + 4}" class="lbl">${lbl}<tspan class="val">${val}</tspan></text>`; });
   return s + '</svg>';
 }
+// The class average on a plot: a dashed line with a diamond on top — the same mark as the box plot's mean. The number
+// itself is beside the class name, so the mark carries no label, only a tooltip.
+const meanMark = (x, yTop, yAxis, label) => `<g class="mean"><line x1="${x.toFixed(1)}" y1="${yTop}" x2="${x.toFixed(1)}" y2="${yAxis}" class="meanLine"/><rect x="${(x - 6).toFixed(1)}" y="${yTop - 6}" width="12" height="12" transform="rotate(45 ${x.toFixed(1)} ${yTop})" class="meanDia"/><title>${esc(label)}</title></g>`;
 // Dot plot on a 0..max axis; stacks dots at equal values (shrinks radius when tall).
 function chartDots(values, max, o) {
   o = o || {}; const w = o.w || 800, v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[x] = (counts[x] || 0) + 1);
-  const tallest = Math.max(1, ...Object.values(counts)); const r = tallest > 12 ? 4 : 6; const h = Math.max(60, tallest * (r * 2 + 1) + 34);
+  const tallest = Math.max(1, ...Object.values(counts)); const r = tallest > 12 ? 4 : 6; const pad = o.mean != null ? 18 : 0; const h = Math.max(60, tallest * (r * 2 + 1) + 34) + pad;   /* dots hang from the axis, so extra height is headroom for the average's diamond */
   const X = x => 30 + x / (max || 1) * (w - 60);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="dot plot">`;
   const step = max > 40 ? 10 : max > 10 ? 5 : 1; for (let x = 0; x <= max; x += step) s += `<line x1="${X(x)}" y1="${h - 26}" x2="${X(x)}" y2="${h - 20}" class="ax"/><text x="${X(x)}" y="${h - 6}" text-anchor="middle" class="tl">${x}</text>`;
   s += `<line x1="${X(0)}" y1="${h - 26}" x2="${X(max)}" y2="${h - 26}" class="ax"/>`;
   Object.keys(counts).map(Number).sort((a, b) => a - b).forEach(x => { for (let i = 0; i < counts[x]; i++) s += `<circle cx="${X(x)}" cy="${h - 28 - r - i * (r * 2 + 1)}" r="${r}" class="dot"><title>${x}: ${counts[x]} student${counts[x] === 1 ? '' : 's'}</title></circle>`; });
+  if (o.mean != null) s += meanMark(X(o.mean), 10, h - 26, o.meanLabel || 'Average');
   return s + '</svg>';
 }
 // Histogram with a bin size; bars touch (histograms do), 1px surface gap for legibility.
 function chartHist(values, max, bin, o) {
-  o = o || {}; const w = o.w || 800, h = 200, v = values.filter(x => x != null); bin = bin || (max > 40 ? 10 : max > 10 ? 5 : 1);
+  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = o.w || 800, h = 200 + pad, v = values.filter(x => x != null); bin = bin || (max > 40 ? 10 : max > 10 ? 5 : 1);
   // Bins are [lo, hi) with the top bin closed at max, so 100 with bins of 10 gives ten bins, not an empty 100–110.
   const nb = Math.max(1, Math.ceil(max / bin - 1e-9)); const c = new Array(nb).fill(0); v.forEach(x => c[Math.max(0, Math.min(nb - 1, Math.floor(x / bin)))]++);
   const ints = v.every(x => Number.isInteger(x)); const range = (lo, hi, last) => !ints ? `${lo}–${hi}` : bin === 1 ? `${lo}` : last ? `${lo}–${Math.max(lo, Math.round(max))}` : `${lo}–${hi - 1}`;
-  const top = niceMax(Math.max(...c, 1), c.length && Math.max(...c) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Y = n => h - 30 - n / top * (h - 50);
+  const top = niceMax(Math.max(...c, 1), c.length && Math.max(...c) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Y = n => h - 30 - n / top * (h - 50 - pad);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="histogram">`;
   for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
   c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--cc,var(--teal))"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
   s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${nb * bin}</text>`;
+  if (o.mean != null) s += meanMark(X(Math.max(0, Math.min(nb, o.mean / bin))), 10, Y(0), o.meanLabel || 'Average');   /* the axis is labelled at bin edges, so a value sits at value ÷ bin */
   return s + '</svg>';
 }
 // Stem-and-leaf as a table: stems are always tens, leaves ones (the form students learn), so 0–23 data reads 0 | 3 5 8 / 1 | 0 2 / 2 | 1.
@@ -110,10 +116,11 @@ function chartFreq(values, max, o) {
   const v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[Math.round(x)] = (counts[Math.round(x)] || 0) + 1);
   const items = []; for (let x = 0; x <= max; x++) items.push({ label: String(x), value: counts[x] || 0 });
   if (items.length > 26) return chartHist(values, max, Math.ceil(max / 20), o);   // too many bars: bin them
-  const w = (o && o.w) || 800, h = 200, top = niceMax(Math.max(...items.map(i => i.value), 1), 1); const X = i => 40 + i / items.length * (w - 60), Y = n => h - 30 - n / top * (h - 50);
+  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = o.w || 800, h = 200 + pad, top = niceMax(Math.max(...items.map(i => i.value), 1), 1); const X = i => 40 + i / items.length * (w - 60), Y = n => h - 30 - n / top * (h - 50 - pad);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="bar graph">`;
   for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
   items.forEach((it, i) => { s += `<rect x="${X(i) + 3}" y="${Y(it.value)}" width="${Math.max(X(i + 1) - X(i) - 6, 2)}" height="${Y(0) - Y(it.value)}" rx="3" class="bar" style="fill:var(--cc,var(--teal))"><title>${it.label}: ${it.value} student${it.value === 1 ? '' : 's'}</title></rect><text x="${(X(i) + X(i + 1)) / 2}" y="${h - 10}" text-anchor="middle" class="tl">${it.label}</text>`; });
+  if (o.mean != null) s += meanMark(X(Math.max(0, Math.min(items.length, o.mean + 0.5))), 10, Y(0), o.meanLabel || 'Average');   /* each value's bar is centred on value + ½ */
   return s + '</svg>';
 }
 // Circle graph: parts [{ label, value, short? }]. Each slice is labeled outside with its share (and its letter when it
@@ -140,7 +147,7 @@ const CHART_CSS = `
 .chart .tl{font-size:12px;fill:var(--ink-soft)}.chart .lbl{font-size:13px;font-weight:var(--w-bold);fill:var(--navy)}.chart .val{font-size:12px;font-weight:var(--w-black);fill:var(--navy)}.chart .inv{font-size:12px;font-weight:var(--w-black);fill:#fff}
 #lb .chart .tl{font-size:16px}#lb .chart .lbl{font-size:17px}#lb .chart .val{font-size:16px}#lb .chart .inv{font-size:16px}
 .chart .qmark{stroke:var(--ink-soft);stroke-width:1;stroke-dasharray:4 4;opacity:.7}.chart .qmarkl{font-size:11px;font-weight:var(--w-bold)}.chart .ln.ref{stroke-dasharray:5 4;stroke-width:2}
-.chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--cc,var(--teal));stroke:#fff;stroke-width:1.5}.chart .bar{stroke:none}
+.chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--cc,var(--teal));stroke:#fff;stroke-width:1.5}.chart .meanLine{stroke:var(--navy);stroke-width:1.5;stroke-dasharray:3 3;opacity:.7}.chart .meanDia{fill:var(--white);stroke:var(--navy);stroke-width:2}.chart .bar{stroke:none}
 .stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
 .labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px;overflow:visible}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.35);margin:.4em 0 .2em}
 `;
