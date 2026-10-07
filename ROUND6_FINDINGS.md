@@ -186,6 +186,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 5 Oct: class averages in the Data Lab, all three ways he was offered: an Average button (number beside each
   class, mark on its plot), a "Class averages" graph (one bar per class), and a "Course grade" data set kept as
   aggregate as the other Focus sets. Details in NOTES.md; new suite `tests/lab-average.js`. 30 suites, 1024 checks.
+- 7 Oct: from a real student's page Croix sent. The quickest-way list is now in order of what each line adds,
+  with the grade after each line, and an NHI assessment no longer appears in the retake table. Open question put to
+  him: whether a retake may be used when it shortens the plan (today: only when missing work and IXL fall short).
+  New suite `tests/quickest.js`. 31 suites, 1039 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

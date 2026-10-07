@@ -1176,7 +1176,7 @@ h1{font-size:17pt;margin:0;font-weight:900}h2{font-size:10pt;font-weight:900;mar
 table{border-collapse:collapse;width:100%}td,th{padding:2.5px 6px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd;font-size:10pt}th{font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;color:#333}
 .r{text-align:right;white-space:nowrap}.nhi{font-weight:bold}.cats td{border-bottom:none;padding:1px 6px}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
 .u{margin:4px 0 6px}.uh{font-size:10pt;display:flex;justify-content:space-between}.uh b{font-weight:bold}.l{margin:1px 0 0 12px;font-size:9.5pt}.l span{font-weight:bold}.l.done{font-style:italic}
-.qpath{margin:2px 0 6px;padding-left:20px}.qpath li{margin:2px 0}.qsk{font-size:9.5pt;margin-left:4px}.foot{font-size:8pt;color:#444;margin-top:10px;border-top:1px solid #999;padding-top:6px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
+.qpath{margin:2px 0 6px;padding-left:20px}.qpath li{margin:2px 0}.qafter{float:right;margin-left:10px;font-weight:bold;white-space:nowrap}.qsk{font-size:9.5pt;margin-left:4px}.foot{font-size:8pt;color:#444;margin-top:10px;border-top:1px solid #999;padding-top:6px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
 // What one next assessment of `mx` points can do for student i — only what is computed: for each letter above the
 // current grade (a D counts), the score that reaches it or the fact that none does; and the score that keeps the
 // current letter. The report, the student page and Show student all word their sentence from this.
@@ -2762,7 +2762,15 @@ function quickestPath(sec, s, i, ixlIdx) {
     if (u && ixlIdx != null) { const t = sec.threshold; const unit = unitsOf(sec).find(x => x.name === u.name); if (unit) skills = activeFor(sec, unit, ixlIdx).map(k => ({ name: sec.skills[k].name, v: eff(sec, k, ixlIdx) })).filter(x => x.v == null || x.v < t).sort((x, y) => (y.v ?? -1) - (x.v ?? -1)).slice(0, ixlPlus[name]); }
     return { a, n: ixlPlus[name], unit: u, skills }; });
   const result = computeGrade(s, i, over);
-  return { base, target, letter, reached: result.rounded >= target, result, over, nhi: nhi.filter(a => done.has(a.name)), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length };
+  // The order to do it in: what adds the most comes first (an IXL line is judged per skill, since each skill is a piece
+  // of work), retakes last — and the grade after each line, so the list adds up to the result in front of whoever reads it.
+  // (Croix, 7 Oct: the list was in gradebook order, so a +3 worksheet sat above a +7 one and read as the tool's first pick.)
+  const pend = [...nhi.filter(a => done.has(a.name)).map(a => ({ kind: 'nhi', a, n: 1, to: a.max })), ...ixlSteps.map(x => ({ kind: 'ixl', a: x.a, n: x.n, to: nowOf(x.a) + x.n, unit: x.unit, skills: x.skills }))];
+  const plan = []; const acc = {}; let at = base.pct;
+  while (pend.length) { let bi = 0, bv = -Infinity; pend.forEach((c, k) => { acc[c.a.name] = c.to; const v = (computeGrade(s, i, acc).pct - at) / c.n; delete acc[c.a.name]; if (v > bv + 1e-9) { bv = v; bi = k; } });
+    const c = pend.splice(bi, 1)[0]; acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ ...c, after: r.rounded }); }
+  retakes.forEach(a => { acc[a.name] = over[a.name]; plan.push({ kind: 'retake', a, n: 1, to: over[a.name], after: computeGrade(s, i, acc).rounded }); });
+  return { base, target, letter, reached: result.rounded >= target, result, over, plan, nhi: plan.filter(x => x.kind === 'nhi').map(x => x.a), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length };
 }
 const anLetter = l => (/^[AF]/.test(l) ? 'an ' : 'a ') + l;
 // One line for the Students list: "2 missing + 3 IXL skills → C".
@@ -2774,10 +2782,10 @@ function quickestShort(q) {
 // The plan as a list, for the teacher's page, the student's screen and the printed report.
 function quickestList(q, forStudent) {
   if (!q || q.top) return '';
-  const you = forStudent ? 'Turn in' : 'Turn in'; const items = [];
-  q.nhi.forEach(a => items.push(`<li><b>${you} ${esc(a.name)}</b> <small>${a.max} pts${a.due ? ' · was due ' + esc(a.due) : ''}</small></li>`));
-  q.ixl.forEach(x => items.push(`<li><b>Pass ${plural(x.n, 'more IXL skill')}${x.unit ? ' in ' + esc(x.unit.short) : ''}</b> <small>${esc(x.a.name)}</small>${x.skills.length ? `<div class="qsk">${x.skills.map(k => `${esc(k.name)} <small>${k.v == null ? 'not started' : 'at ' + k.v}</small>`).join(' · ')}</div>` : ''}</li>`));
-  q.retakes.forEach(r => items.push(`<li><b>Retake ${esc(r.a.name)}</b> <small>score at least ${fmtN(r.pts)} / ${r.a.max}</small></li>`));
+  const after = x => `<span class="qafter" title="The grade once this and everything above it is done">→ ${x.after}%</span>`;
+  const items = q.plan.map(x => x.kind === 'nhi' ? `<li>${after(x)}<b>Turn in ${esc(x.a.name)}</b> <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small></li>`
+    : x.kind === 'ixl' ? `<li>${after(x)}<b>Pass ${plural(x.n, 'more IXL skill')}${x.unit ? ' in ' + esc(x.unit.short) : ''}</b> <small>${esc(x.a.name)}</small>${x.skills.length ? `<div class="qsk">${x.skills.map(k => `${esc(k.name)} <small>${k.v == null ? 'not started' : 'at ' + k.v}</small>`).join(' · ')}</div>` : ''}</li>`
+    : `<li>${after(x)}<b>Retake ${esc(x.a.name)}</b> <small>score at least ${fmtN(x.to)} / ${x.a.max}</small></li>`);
   return `<ol class="qpath">${items.join('')}</ol>`;
 }
 function quickestCard(q, forStudent) {
@@ -2797,12 +2805,13 @@ function whatIfMarkup(s, i) {
   const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing'); const allIn = {}; missing.forEach(a => allIn[a.name] = a.max);
   const assess = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
   const ixlCols = assess.filter(a => /\bixl\b/i.test(a.name) && (a.values[i] == null || a.values[i] < a.max));
-  const tests = assess.filter(a => !/\bixl\b/i.test(a.name) && (a.values[i] == null || a.values[i] < a.max));
+  // A retake needs a first take: an assessment that was never handed in (NHI) is missing work, listed above, not here.
+  const tests = assess.filter(a => !/\bixl\b/i.test(a.name) && a.status[i] === 'score' && a.values[i] != null && a.values[i] < a.max);
   const nx = nextSize(s);
   return `<div class="wnow">Now ${gradeChip(r)}</div>
     <h4 class="subh">If missing work were turned in${missing.length ? ` <small>${missing.length}</small>` : ''}</h4>
     ${missing.length ? `<table class="checkTable whatif"><tbody>${missing.map(a => `<tr><td><b>${esc(a.name)}</b><small>${esc(catIn(s, a))} · due ${esc(a.due || '?')}</small></td><td>turned in, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}${missing.length > 1 ? `<tr class="total"><td><b>All ${missing.length} turned in</b></td><td>full credit</td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
-    ${tests.length ? `<h4 class="subh">If an assessment were retaken</h4><table class="checkTable whatif"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${a.status[i] === 'missing' ? '<b class="nhi">NHI</b>' : `${fmtN(a.values[i])}/${a.max} <small>(${Math.round(a.values[i] / a.max * 100)}%)</small>`}</td>${[70, 80, 90, 100].map(p => `<td>${a.status[i] !== 'missing' && a.values[i] >= a.max * p / 100 ? '<span class="ghint" title="already at or above this">—</span>' : `<small class="pts">${fmtN(Math.round(a.max * p / 100 * 2) / 2)}/${a.max}</small><br>${arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}`}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
+    ${tests.length ? `<h4 class="subh">If an assessment were retaken</h4><table class="checkTable whatif"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${fmtN(a.values[i])}/${a.max} <small>(${Math.round(a.values[i] / a.max * 100)}%)</small></td>${[70, 80, 90, 100].map(p => `<td>${a.values[i] >= a.max * p / 100 ? '<span class="ghint" title="already at or above this">—</span>' : `<small class="pts">${fmtN(Math.round(a.max * p / 100 * 2) / 2)}/${a.max}</small><br>${arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}`}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
     ${ixlCols.length ? `<h4 class="subh">If IXL were finished</h4><table class="checkTable whatif"><tbody>${ixlCols.map(a => `<tr><td><b>${esc(a.name)}</b><small>now ${a.status[i] === 'missing' ? 'NHI' : fmtN(a.values[i]) + '/' + a.max}</small></td><td>every skill, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
     <h4 class="subh">If the next assessment scored…</h4>
     <div class="nextrow"><label>out of <input type="number" class="wiMax" value="${nx}" min="1" max="500" style="width:70px"></label><label>score <input type="range" class="wiPts" min="0" max="${nx}" step="0.5" value="${Math.round(nx * 0.8)}"> <b class="wiV">${Math.round(nx * 0.8)}</b> / <span class="wiMaxV">${nx}</span></label><span class="wiOut">${arrow(withNext(s, i, 'Assessments', nx, Math.round(nx * 0.8)))}</span></div>
@@ -2904,7 +2913,7 @@ document.addEventListener('keydown', e => { const el = $('#show'); if (!el) retu
 
 const STU_CSS = `
 .qcard{display:flex;flex-direction:column;gap:6px}.qcard .qhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}.qcard>b,.qcard .qhead>b{font-size:var(--t-l);color:var(--navy)}.qcard>span{color:var(--ink-soft);font-size:var(--t-s)}.qres{font-size:var(--t-l)}.qres b{color:var(--teal)}
-.qpath{margin:4px 0 2px;padding-left:22px;display:flex;flex-direction:column;gap:6px}.qpath li small{color:var(--ink-soft)}.qsk{font-size:var(--t-s);margin-top:2px}.qsk small{color:var(--bad);font-weight:var(--w-bold)}
+.qpath{margin:4px 0 2px;padding-left:22px;display:flex;flex-direction:column;gap:6px}.qpath li small{color:var(--ink-soft)}.qafter{float:right;margin-left:14px;font-weight:var(--w-heavy);color:var(--navy);white-space:nowrap}.qsk{font-size:var(--t-s);margin-top:2px}.qsk small{color:var(--bad);font-weight:var(--w-bold)}
 #pQuick{border-left:5px solid var(--teal)}.qcol{font-size:var(--t-s);white-space:nowrap}.qcol b{color:var(--teal)}
 .shQuick .qcard{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:16px 22px;border-left:6px solid var(--teal)}.shQuick .qcard>b,.shQuick .qhead>b{font-size:clamp(20px,2.4vw,28px)}.shQuick .qpath{font-size:17px}.shQuick #shPlan{align-self:flex-start;margin-top:6px}
 .qdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cc);margin-right:6px;vertical-align:baseline}

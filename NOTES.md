@@ -332,6 +332,19 @@ per-section-file era and many items in them are now done).
     they do nothing.
   - Tests: `tests/lab-average.js` recounts every average from raw state and checks it against the class grid's
     footer and the Overview card.
+- **Quickest way: in the order to do it, with the grade after each line** (7 Oct; Croix, with a student's page:
+  *"How does the math here make sense? Quickest path should be the two [big ones], not 2.02 and 1.4"* and *"NHI
+  isn't in the retake category because it hasn't even happened yet"*). The plan itself was right (all four missing
+  pieces plus nine IXL skills, 34 → 60); the list was in gradebook order, so a +3 worksheet sat above a +7 one and
+  read as the tool's first pick. Now `quickestPath` returns `plan`: the same work ordered by what each line adds
+  (an IXL line is judged per skill; retakes last), each with `after`, the grade once that line and everything above
+  it is done. `quickestList` draws from `plan` and ends each line "→ 41%"; the last line is the heading's number.
+  Same list on the student page, Show student and the printed report. The teacher's "If an assessment were
+  retaken" table lists only assessments that have a score (`status === 'score'`); a never-handed-in one is missing
+  work and stays in the table above it (Show student already did this). **Not changed, and his to decide:** the
+  rule that retakes are used only when missing work and IXL cannot reach the letter. It is why a plan can be 13
+  steps when missing work plus one retake would be about five. `tests/quickest.js` reshapes a scrubbed student to
+  match his page.
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.
