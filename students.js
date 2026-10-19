@@ -75,34 +75,58 @@ function studentSummary(sec, name) {
   return out;
 }
 
+/* ---------- Retake eligibility ----------
+   Croix's rule (19 Oct 2026): a student may retake an assessment only when they are completely caught up — nothing not
+   handed in (NHI) in the open quarter, and every counted IXL skill in the unit the course is working in at goal.
+   One function decides; every screen shows its answer. */
+function retakeStatus(sec, name) {
+  const f = findStudent(sec, name); const o = openSec(sec);
+  const missing = o && o.grades && f.gi >= 0 ? o.grades.assignments.filter(a => a.status && a.status[f.gi] === 'missing').map(a => a.name) : [];
+  const cur = (state.settings.currentUnit || {})[sec.prep]; const units = unitsOf(sec); const unit = (cur && units.find(u => u.num === cur)) || units.filter(u => u.assigned).pop() || null;
+  let short = [], noIxl = f.ixl == null, nUnit = 0;
+  if (unit && !noIxl) { const t = sec.threshold; const own = activeFor(sec, unit, f.ixl); nUnit = own.length; short = own.filter(k => { const v = eff(sec, k, f.ixl); return v == null || v < t; }).map(k => ({ name: sec.skills[k].name, v: eff(sec, k, f.ixl) })); }
+  const ok = !missing.length && !noIxl && !short.length;
+  return { ok, missing, short, unit, nUnit, noIxl, hasGrades: !!(o && o.grades && f.gi >= 0 && o.grades.assignments.length) };
+}
+// "2 missing · 3 IXL skills in Unit 3", or "" when eligible — the same words on every screen.
+function retakeWhy(r, forStudent) {
+  const parts = [];
+  if (r.missing.length) parts.push(forStudent ? `turn in ${plural(r.missing.length, 'missing assignment')}` : `${r.missing.length} missing`);
+  if (r.noIxl) parts.push(forStudent ? 'no IXL account on file' : 'no IXL');
+  else if (r.short.length) parts.push(forStudent ? `finish ${plural(r.short.length, 'IXL skill')} in ${r.unit.short}` : `${plural(r.short.length, 'IXL skill')} in ${r.unit.short}`);
+  return parts.join(forStudent ? ' and ' : ' · ');
+}
+const retakeChip = r => r.ok ? `<span class="rtag ok" title="Nothing missing, and every IXL skill in the unit is at goal">${ico('check', 'eligible')} retake</span>` : `<span class="rtag" title="To retake: ${esc(retakeWhy(r, true))}">${esc(retakeWhy(r))}</span>`;
+
 /* ---------- Students directory ---------- */
 let stuSort = 'class', stuClass = '';
 function renderStudentsView() {
   rowCache = new Map();
   const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : niceName(d)); const q = norm(search);
   const secs = state.order.map(k => state.sections[k]).filter(s => !stuClass || s.key === stuClass);
-  let rows = []; secs.forEach(s => classStudents(s).forEach(n => { if (!q || norm(n).includes(q) || norm(niceName(n)).includes(q)) rows.push(studentSummary(s, n)); }));
+  let rows = []; secs.forEach(s => classStudents(s).forEach(n => { if (!q || norm(n).includes(q) || norm(niceName(n)).includes(q)) { const r = studentSummary(s, n); r.retake = retakeStatus(s, n); rows.push(r); } }));
   const g = r => r.grade && r.grade.rounded != null ? r.grade.rounded : 999;
   if (stuSort === 'grade') rows.sort((a, b) => g(a) - g(b) || a.name.localeCompare(b.name));
   else if (stuSort === 'missing') rows.sort((a, b) => b.missing - a.missing || g(a) - g(b));
   else if (stuSort === 'sliding') rows.sort((a, b) => (b.sliding ? 1 : 0) - (a.sliding ? 1 : 0) || (a.d ?? 0) - (b.d ?? 0) || g(a) - g(b));
   else if (stuSort === 'name') rows.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
+  else if (stuSort === 'retake') rows.sort((a, b) => (b.retake.ok ? 1 : 0) - (a.retake.ok ? 1 : 0) || (a.retake.missing.length + a.retake.short.length) - (b.retake.missing.length + b.retake.short.length) || g(a) - g(b));
   const cq = currentQuarter(); const closedQs = [1, 2, 3, 4].filter(n => qClosed(n));
   $('#bar').innerHTML = `<h2>Students</h2><span class="meta">${plural(rows.length, 'student')}${q ? ` matching “${esc(search)}”` : ''} · grades are ${esc(Q_NAMES[cq - 1])}${closedQs.length ? ` · ${closedQs.map(n => 'Q' + n).join(', ')} closed` : ''}</span><div class="spacer"></div>
     <label class="curUnit">Class <select id="stuClass"><option value="">Every class</option>${state.order.map(k => `<option value="${esc(k)}" ${k === stuClass ? 'selected' : ''}>${esc(state.sections[k].label)}</option>`).join('')}</select></label>
-    <div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding']].map(([k, l]) => `<button data-sort="${k}" class="${stuSort === k ? 'on' : ''}" aria-pressed="${stuSort === k}">${l}</button>`).join('')}</div>`;
+    <div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding'], ['retake', 'Retake']].map(([k, l]) => `<button data-sort="${k}" class="${stuSort === k ? 'on' : ''}" aria-pressed="${stuSort === k}">${l}</button>`).join('')}</div>`;
   $('#bar').classList.add('detail');
   let lastSec = null; let body = '';
   rows.forEach(r => {
-    if (stuSort === 'class' && r.sec !== lastSec) { lastSec = r.sec; body += `<tr class="sgroup"><th colspan="8" style="--cc:${classColor(r.sec)}">${esc(r.sec.label)}</th></tr>`; }
+    if (stuSort === 'class' && r.sec !== lastSec) { lastSec = r.sec; body += `<tr class="sgroup"><th colspan="9" style="--cc:${classColor(r.sec)}">${esc(r.sec.label)}</th></tr>`; }
     const o = openSec(r.sec); const qs = r.grade && r.f.gi >= 0 ? quickestPath(r.sec, o, r.f.gi, r.f.ixl) : null;
     const ix = r.ixl; const fin = r.finals.map(x => `<span class="qfin">Q${x.q} ${x.g}<small>${letterOf(x.g)}</small></span>`).join('');
     body += `<tr data-open="${esc(r.sec.key)}" data-name="${esc(r.name)}" class="${r.sliding ? 'sliding' : ''}"><td><button class="nm nmbtn">${nm(r.name)}</button>${r.sliding ? ' <span class="gtag">sliding</span>' : ''}</td>
       <td><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td><td>${r.grade ? gradeChip(r.grade) : '<small>no grade yet</small>'}</td>
       <td class="${r.d < 0 ? 'down' : r.d > 0 ? 'up' : ''}">${r.d == null ? '' : signedPts(r.d)}</td><td>${r.missing || ''}</td>
-      <td>${ix && ix.pct != null ? `${Math.round(ix.pct)}% <small>${ix.done}/${ix.poss}</small>` : '<small>—</small>'}</td><td class="qcol">${quickestShort(qs)}</td><td>${fin}</td></tr>`;
+      <td>${ix && ix.pct != null ? `${Math.round(ix.pct)}% <small>${ix.done}/${ix.poss}</small>` : '<small>—</small>'}</td><td class="qcol">${quickestShort(qs)}</td><td>${r.retake.hasGrades ? retakeChip(r.retake) : ''}</td><td>${fin}</td></tr>`;
   });
-  $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th><th>Class</th><th>${esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Closed quarters</th></tr></thead><tbody>${body || `<tr><td colspan="8" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet — import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
+  $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th><th>Class</th><th>${esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Retake</th><th>Closed quarters</th></tr></thead><tbody>${body || `<tr><td colspan="9" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet — import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
   $('#gridwrap').querySelectorAll('tr[data-open]').forEach(tr => tr.onclick = () => openProfile(tr.dataset.open, tr.dataset.name));
   $('#bar').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { stuSort = b.dataset.sort; render(); });
   const sc = $('#stuClass'); if (sc) sc.onchange = () => { stuClass = sc.value; render(); };
@@ -157,6 +181,7 @@ function renderProfile() {
     <div class="gcard"><small>Missing now</small><b>${openB ? sum.missing : '—'}${openB ? tileSpark(missHist, { color: 'var(--bad)', label: 'missing assignments at each Focus import' }) : ''}</b><span>${openB ? (sum.dMissing > 0 ? `+${sum.dMissing} since the last import` : sum.missing ? 'not handed in (counts as 0)' : 'nothing missing') : ''}</span></div>
     <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}${it ? tileSpark(it.mine, { ref: it.cls, label: 'IXL skills at goal at each export, with the class average dashed' }) : ''}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}${clsNow != null && !ix.basisClosed ? ` · class average ${fmtN(Math.round(clsNow * 10) / 10)} skills` : ''}` : f.ixl == null ? (f.noAccount ? 'no IXL account' : 'not matched to an IXL account') : 'no units assigned'}</span></div>
     <div class="gcard"><small>Tests &amp; quizzes</small><b>${assessNow != null ? Math.round(assessNow) + '%' : '—'}</b><span>${assessNow != null ? 'IXL columns left out' : ''}</span></div>
+    ${openB ? (() => { const rt = retakeStatus(sec, name); return `<div class="gcard ${rt.ok ? 'rtOk' : 'rtNo'}" id="pRetake"><small>Retake</small><b>${rt.ok ? `${ico('check', 'eligible')} Eligible` : 'Not yet'}</b><span>${rt.ok ? 'nothing missing, ' + rt.unit.short + ' IXL at goal' : esc(retakeWhy(rt))}</span></div>`; })() : ''}
   </div>`;
 
   // trends
@@ -201,7 +226,7 @@ function renderProfile() {
 
   // what would move it (open quarter only)
   const qp = openB ? quickestPath(sec, openB.s, openB.i, f.ixl) : null;
-  const wi = openB ? `${qp ? `<section class="gsec" id="pQuick">${quickestCard(qp)}</section>` : ''}<section class="gsec" id="pWhat"><h3>What would move the grade <small>${esc(Q_NAMES[openB.q - 1])}</small></h3>${whatIfMarkup(openB.s, openB.i)}</section>`
+  const wi = openB ? `${qp ? `<section class="gsec" id="pQuick">${quickestCard(qp)}</section>` : ''}<section class="gsec" id="pWhat"><h3>What would move the grade <small>${esc(Q_NAMES[openB.q - 1])}</small></h3>${whatIfMarkup(openB.s, openB.i, retakeStatus(sec, name))}</section>`
     : `<section class="gsec"><h3>What would move the grade</h3><p class="ghint">${anyClosed() ? `${esc(Q_NAMES[cq - 1])} has no gradebook yet — closed quarters don't change, so there's nothing to move until the first ${esc(Q_NAMES[cq - 1])} import.` : 'Import this class\'s Focus gradebook for grades and what-ifs.'}</p></section>`;
 
   $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}</div></div></div>`;
@@ -297,7 +322,7 @@ function quickestCard(q, forStudent) {
 function nextSize(s) { const sizes = {}; s.grades.assignments.filter(a => isAssess(s, a) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1); return Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20); }
 // A result reads "→ 69 D +5": the new grade, its letter, and the change from now ("no change" when it doesn't move).
 const whatIfArrow = r => x => { if (!x || x.rounded == null) return ''; const d = x.rounded - r.rounded; return `<b class="arrow">→ ${x.rounded} <small>${x.letter}</small></b> <span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : 'flat'}">${d > 0 ? '+' + d : d < 0 ? '−' + Math.abs(d) : 'no change'}</span>`; };
-function whatIfMarkup(s, i) {
+function whatIfMarkup(s, i, rt) {
   const gb = s.grades; const r = computeGrade(s, i); if (!r) return ''; if (r.rounded == null) return '<p class="ghint">Nothing is graded for this student yet this quarter.</p>';
   const arrow = whatIfArrow(r);
   const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing'); const allIn = {}; missing.forEach(a => allIn[a.name] = a.max);
@@ -309,7 +334,7 @@ function whatIfMarkup(s, i) {
   return `<div class="wnow">Now ${gradeChip(r)}</div>
     <h4 class="subh">If missing work were turned in${missing.length ? ` <small>${missing.length}</small>` : ''}</h4>
     ${missing.length ? `<table class="checkTable whatif"><tbody>${missing.map(a => `<tr><td><b>${esc(a.name)}</b><small>${esc(catIn(s, a))} · due ${esc(a.due || '?')}</small></td><td>turned in, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}${missing.length > 1 ? `<tr class="total"><td><b>All ${missing.length} turned in</b></td><td>full credit</td><td>${arrow(computeGrade(s, i, allIn))}</td></tr>` : ''}</tbody></table>` : '<p class="ghint">Nothing missing.</p>'}
-    ${tests.length ? `<h4 class="subh">If an assessment were retaken</h4><table class="checkTable whatif"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${fmtN(a.values[i])}/${a.max} <small>(${Math.round(a.values[i] / a.max * 100)}%)</small></td>${[70, 80, 90, 100].map(p => `<td>${a.values[i] >= a.max * p / 100 ? '<span class="ghint" title="already at or above this">—</span>' : `<small class="pts">${fmtN(Math.round(a.max * p / 100 * 2) / 2)}/${a.max}</small><br>${arrow(computeGrade(s, i, { [a.name]: a.max * p / 100 }))}`}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
+    ${tests.length ? `<h4 class="subh">If an assessment were retaken${rt ? ` <span class="rtag ${rt.ok ? 'ok' : ''}">${rt.ok ? ico('check', 'eligible') + ' eligible' : 'not yet: ' + esc(retakeWhy(rt))}</span>` : ''}</h4><table class="checkTable whatif"><thead><tr><th>Assessment</th><th>Now</th><th>70%</th><th>80%</th><th>90%</th><th>100%</th></tr></thead><tbody>${tests.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${fmtN(a.values[i])}/${a.max} <small>(${Math.round(a.values[i] / a.max * 100)}%)</small></td>${[70, 80, 90, 100].map(p => `<td>${a.values[i] >= a.max * p / 100 ? '<span class="ghint" title="already at or above this">—</span>' : (() => { const pts = Math.round(a.max * p / 100 * 2) / 2; return `<small class="pts">${fmtN(pts)}/${a.max}</small><br>${arrow(computeGrade(s, i, { [a.name]: pts }))}`; })()}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
     ${ixlCols.length ? `<h4 class="subh">If IXL were finished</h4><table class="checkTable whatif"><tbody>${ixlCols.map(a => `<tr><td><b>${esc(a.name)}</b><small>now ${a.status[i] === 'missing' ? 'NHI' : fmtN(a.values[i]) + '/' + a.max}</small></td><td>every skill, ${a.max}/${a.max}</td><td>${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`).join('')}</tbody></table>` : ''}
     <h4 class="subh">If the next assessment scored…</h4>
     <div class="nextrow"><label>out of <input type="number" class="wiMax" value="${nx}" min="1" max="500" style="width:70px"></label><label>score <input type="range" class="wiPts" min="0" max="${nx}" step="0.5" value="${Math.round(nx * 0.8)}"> <b class="wiV">${Math.round(nx * 0.8)}</b> / <span class="wiMaxV">${nx}</span></label><span class="wiOut">${arrow(withNext(s, i, 'Assessments', nx, Math.round(nx * 0.8)))}</span></div>
@@ -365,7 +390,7 @@ function openShow(sec, name) {
       <div class="shQuick">${quickestCard(plan, true)}</div>
       <div class="shTry">
         ${missing.length ? `<section><h3>Turn in missing work</h3>${missing.map(a => row('miss', a, 0, 0)).join('')}</section>` : ''}
-        ${retake.length ? `<section><h3>Retake an assessment</h3>${retake.map(a => row('re', a, a.values[i], a.values[i])).join('')}</section>` : ''}
+        ${retake.length ? (() => { const rt = retakeStatus(sec, name); return `<section><h3>Retake an assessment</h3>${rt.ok ? `<p class="shHint rtLine ok">${ico('check', 'eligible')} You can retake: nothing is missing and ${esc(rt.unit.short)} IXL is at goal.</p>` : `<p class="shHint rtLine">To retake: ${esc(retakeWhy(rt, true))}.</p>`}${retake.map(a => row('re', a, a.values[i], a.values[i])).join('')}</section>`; })() : ''}
         ${ixlCols.length ? `<section><h3>Finish IXL</h3>${ixlCols.map(a => row('ix', a, st.ix[a.name], st.ix[a.name])).join('')}</section>` : ''}
         <section><h3>Your next assessment</h3><div class="shRow" data-k="next"><div class="shL"><b>Next test or quiz</b><small>out of <input type="number" id="shNextMax" value="${nx}" min="1" max="200"> points</small></div><label class="shSw"><input type="checkbox" class="shOn" id="shNextOn"><span>Count it</span></label>
           <div class="shS off"><input type="range" class="shPts" id="shNextPts" min="0" max="${nx}" step="0.5" value="${st.next.pts}" aria-label="Next assessment score"><output>${st.next.pts} / ${nx}</output></div></div>
@@ -459,7 +484,7 @@ body.showMode #top,body.showMode #app,body.showMode #empty,body.showMode #toast{
 .shTry{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px}.shTry section{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:14px 20px}.shTry h3{margin:0 0 8px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
 .shRow{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--grid)}.shRow:last-child{border-bottom:none}.shL b{display:block;font-size:16px}.shL small{color:var(--ink-soft)}.shL input{width:64px;font:inherit}
 .shS{grid-column:1/-1;display:flex;gap:12px;align-items:center}.shS.off{display:none}.shS input{flex:1;min-height:var(--h-m);accent-color:var(--teal)}.shS output{font-weight:var(--w-black);min-width:78px;text-align:right}
-.shSw{display:flex;gap:8px;align-items:center;font-weight:var(--w-bold);cursor:pointer;min-height:var(--h-touch)}.shSw input{width:24px;height:24px;accent-color:var(--teal)}.shHint{color:var(--ink-soft);font-size:var(--t-s);margin:4px 0}.shKey{text-align:right}.shKey i{display:inline-block;width:4px;height:14px;background:var(--navy);border-radius:var(--r-xs);vertical-align:-2px;margin-right:6px}
+.shSw{display:flex;gap:8px;align-items:center;font-weight:var(--w-bold);cursor:pointer;min-height:var(--h-touch)}.shSw input{width:24px;height:24px;accent-color:var(--teal)}.shHint{color:var(--ink-soft);font-size:var(--t-s);margin:4px 0}.shHint.rtLine{font-weight:var(--w-bold);color:var(--navy)}.shHint.rtLine.ok{color:var(--teal)}.shKey{text-align:right}.shKey i{display:inline-block;width:4px;height:14px;background:var(--navy);border-radius:var(--r-xs);vertical-align:-2px;margin-right:6px}
 @media (max-width:700px){.shTry{grid-template-columns:1fr}.shCat{grid-template-columns:120px 1fr 50px}.catline .catbar{grid-template-columns:110px 1fr 48px}.catline .catbar small:last-child{display:none}}
 @media print{#show{display:none}}
 `;

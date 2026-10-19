@@ -345,6 +345,41 @@ per-section-file era and many items in them are now done).
   rule that retakes are used only when missing work and IXL cannot reach the letter. It is why a plan can be 13
   steps when missing work plus one retake would be about five. `tests/quickest.js` reshapes a scrubbed student to
   match his page.
+- **The what-if page audited; retake eligibility; Board file and full save** (19 Oct; Croix: *"make sure all the math
+  is solid and everything works on the what if page… a student landed at 59% despite them supposed to be at 60"*,
+  *"students can't take a retake unless they are completely caught up… no NHIs"*, *"Tally wouldn't let me upload the
+  json saved file… on my Promethean… maybe it can make a scrubbed save file"*).
+  - **The 1 % slip, found:** the retake table showed a half-point score ("21.5/27" for 80 %) but computed the grade from
+    the exact percent behind it (21.6). Where the shown score is the lower half point, the prediction ran high — a
+    student who scored exactly what the cell said could land one point under it. The cell now computes from the score
+    it shows. Everything else on the page was already the formula's answer: `tests/whatif-audit.js` recomputes all
+    227 cells of the scrubbed class (missing rows, "All N turned in", every retake cell, IXL rows, the next-assessment
+    slider and the "N/21 for a D" minimum, Show student's live grade) with its own copy of the formula.
+  - **Rounding, checked against Focus:** the grade is points earned ÷ possible per category, weighted, rounded half
+    up — a real export shows a 37.5 as 38 — and the engine matches the Grade column for every student. `roundPct`
+    adds a hair of slack so a 59.5 that floating point makes 59.49999… still rounds up, as Focus shows it.
+  - **Retake eligibility** (`retakeStatus`, `retakeWhy` in `students.js`): no NHI in the open quarter and every counted
+    IXL skill in the unit the course is working in (`settings.currentUnit[prep]`; the last assigned unit if none) at
+    goal. Shown as a tile on the student page, a column and a sort on the Students list, a tag on the "If an
+    assessment were retaken" heading, a line at the top of Show student's retake section, and a line on the printed
+    report. A student with no IXL row is "no IXL", never eligible. The quickest-way plan still adds a retake only when
+    missing work and IXL cannot reach the letter, so by then nothing is missing — it does not check the unit's IXL.
+  - **Why the Promethean refused the file:** a backup is settings-only (no scores — by design, for the Drive), so on a
+    Tally with no exports there was nothing to show; and `#cfgFile` had `accept=".json"`, which Android's picker
+    turns into "no files". Two new files (`saveFull`, `boardFile`/`saveBoardFile`, `loadTallyFile` in `app.js`):
+    **Full save** = the whole saved state (`stateForSave()`), exports and gradebooks included; loading replaces this
+    browser's Tally after a confirm. **Board file** = per class: IXL rows with best scores baked in, rows shuffled and
+    named "Aa", "Ab"…; history keys remapped the same way so the Race still counts movers; each Focus assignment's
+    scores shuffled on their own (no row is a student); the course grades as one shuffled list (`boardGrades`, which
+    `labSeries` reads for `grade:course`); no roster, IDs, pool, seating, kept quarters, receipts or raw cells. A Tally
+    holding one has `state.board` and renders only a card ("Board file · Saved Oct 19 · 5 classes · no names · Open
+    the Board") and the Board itself (`renderBoardOnly`); names are forced hidden; nav, eye and ⋯ are gone. Any of the
+    three files loads through Import or Settings → Load a Tally file (`.json` with `tally`); a full save or Board
+    file ends the import batch. The weekly backup is unchanged. `tests/board-file.js` checks that no name, first or
+    last, no ID and no student's row of grades is in the file, and that the panel's Race and every Data Lab summary
+    equal the laptop's.
+  - Two tests moved with the calendar: after Oct 9 the first attention row is "close Quarter 1", so
+    `command-center.js` now clicks the first row that opens a class.
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.

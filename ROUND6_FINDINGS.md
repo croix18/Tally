@@ -190,6 +190,12 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   with the grade after each line, and an NHI assessment no longer appears in the retake table. Open question put to
   him: whether a retake may be used when it shortens the plan (today: only when missing work and IXL fall short).
   New suite `tests/quickest.js`. 31 suites, 1039 checks.
+- 19 Oct: Croix asked for an audit of the what-if math (a prediction ran 1 % high), a way to see retake eligibility
+  (no NHI, the current unit's IXL all at goal), and a scrubbed save for the Promethean. Found and fixed: the retake
+  table computed from the exact percent while showing a half-point score. Added: retake eligibility on four screens
+  and the report; a Full save and a Board file (no names, no row of grades, Board-only) beside the weekly backup; the
+  picker no longer limits Android to files typed .json. New suites `tests/whatif-audit.js` (227 cells recomputed
+  independently) and `tests/board-file.js`. 33 suites, 1077 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

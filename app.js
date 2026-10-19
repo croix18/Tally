@@ -264,7 +264,7 @@ async function importFiles(files) {
     try {
       if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts) — a Tally backup goes through Settings
         let obj = null; try { obj = JSON.parse(await f.text()); } catch (e) {}
-        if (obj && obj.tally) { fails.push(f.name + ': that is a Tally backup — load it from Settings → Load backup'); continue; }
+        if (obj && obj.tally) { let done = false; try { done = await loadTallyFile(f, obj); } catch (e) { fails.push(f.name + ': not a Tally file'); } if (done && (obj.board || obj.full)) return; continue; }   // a full save or Board file replaces everything: nothing else in the drop applies
         if (!looksLikeSeatingBackup(obj)) { fails.push(f.name + ': not a Seating Chart backup'); continue; }
         const r = await importSeatingBackup(obj); save();
         toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).map(n => shown(n)).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
@@ -669,7 +669,7 @@ function labSeries(prep, id) {
     else if (id.startsWith('custom:')) { const c = state.custom.find(c => c.id === id.slice(7)); const vv = c && c.values[s.key]; if (!vv || !vv.length) return null; vals = vv.slice(); max = Math.max(...vv, 1); unit = c.unit || 'value'; }
     else if (id.startsWith('gb:')) { const a = s.grades && s.grades.assignments.find(a => a.name === id.slice(3)); if (!a) return null; vals = a.values; missing = a.missing; excused = a.excused || 0; max = a.max || Math.max(...vals.filter(v => v != null), 1); unit = a.percent ? 'percent' : a.max ? 'points out of ' + a.max : 'score'; }
     // The open quarter's course grade, as Focus rounds it — so a class's average here is the "Focus average" on its Overview card.
-    else if (id === 'grade:course') { const o = openSec(s); if (!o || !o.grades || !o.grades.assignments.length) return null; vals = gradeAll(o).map(r => r && r.rounded != null ? r.rounded : null); missing = vals.filter(v => v == null).length; max = 100; unit = 'course grade'; grade = true; }
+    else if (id === 'grade:course') { if (Array.isArray(s.boardGrades)) { vals = s.boardGrades.slice(); } else { const o = openSec(s); if (!o || !o.grades || !o.grades.assignments.length) return null; vals = gradeAll(o).map(r => r && r.rounded != null ? r.rounded : null); } missing = vals.filter(v => v == null).length; max = 100; unit = 'course grade'; grade = true; }   // a Board file carries the grades as one shuffled list
     else return null;
     let pct = grade;   // a course grade is a percent already
     if (!grade && state.settings.labPct && max > 0 && unit !== 'SmartScore') { vals = vals.map(v => v == null ? null : Math.round(v / max * 100)); unit = '% of ' + unit; max = 100; pct = true; }   // percent of the maximum, whole numbers
@@ -1181,6 +1181,7 @@ function render() {
   rowCache = new Map();   // students.js name-match cache: never outlives one render
   attCache = new Map();   // home.js attention items per class: the tabs, the cards and the list read the same answer once per render
   const has = state.order.length > 0;
+  if (state.board) { renderBoardOnly(); return; }
   const focusId = document.activeElement && document.activeElement.id && !document.activeElement.closest('#modal') ? document.activeElement.id : null;
   const viewKey = view.mode + '|' + (view.unit || '') + '|' + (view.sub || '') + '|' + (view.q || '') + '|' + (view.stu ? view.stu.key + '/' + view.stu.name : '') + '|' + state.active; if (viewKey !== lastViewKey) { lastViewKey = viewKey; const gw = $('#gridwrap'); if (gw) gw.scrollTop = 0; landOnCurrent = true; }
   $('#empty').classList.toggle('hidden', has);
@@ -1216,6 +1217,18 @@ function render() {
   else if (view.mode === 'student') { $('#notices').innerHTML = ''; renderProfile(); }
   else { renderNotices(); renderBar(); renderGrid(); }
   if (focusId && document.activeElement === document.body) { const el = document.getElementById(focusId); if (el && !el.disabled) { try { el.focus({ preventScroll: true }); } catch (e) {} } }
+}
+// A Tally that holds a Board file: the Board, and a card to open it from. Nothing else renders — there is nothing else in the file.
+function renderBoardOnly() {
+  $('#empty').classList.add('hidden'); $('#app').classList.remove('hidden');
+  ['#search', '#nav', '#btnHide', '#topMore', '#btnGuide0'].forEach(id => $(id).classList.add('hidden'));
+  document.body.classList.remove('home', 'grades', 'seating'); document.body.classList.add('boardOnly');
+  state.settings.hideNames = true;
+  $('#tabs').innerHTML = ''; $('#notices').innerHTML = ''; $('#bar').innerHTML = '';
+  const b = state.board; const when = b && b.saved ? fmtDate(b.saved.slice(0, 10)) : '';
+  $('#gridwrap').innerHTML = `<div class="boardCard"><h2>Board file</h2><p>${when ? 'Saved ' + esc(when) + ' · ' : ''}${plural(state.order.length, 'class')} · no names</p><button class="pill" id="openBoard">Open the Board</button></div>`;
+  $('#openBoard').onclick = () => enterProjected();
+  renderLeaderboard();
 }
 // A tab's dot means "something here you can do today" — the same warnings the Overview lists, nothing else.
 function sectionWarn(s) { return attentionItems(s).some(x => x.level === 'warn'); }
@@ -1662,7 +1675,7 @@ li{margin:3px 0}
 <li>Look at <b>Needs attention</b> on the Overview (<b>Classes</b> in the header) and the "N to fix" count beside a class's name: roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}).</li>
 <li>Tap <b>Copy</b> on a unit → paste into that unit's Focus column (rows are already in Focus order). The unit header then shows <i>copied ‹date›</i>.</li>
 <li>After the next Focus export each unit's <b>Focus badge</b> says ${ico('check', 'a check')}, "N up since copy" or "N off". Tap it to see who, and <b>Copy corrections</b>.</li>
-<li><b>Save a backup</b> to your school Drive (the header's ⋯ menu; it says how long ago the last one was). It is how two computers stay in step, and the only copy if this browser's storage is cleared.</li>
+<li><b>Save a backup</b> to your school Drive (the header's ⋯ menu; it says how long ago the last one was). A <b>Full save</b> (Settings) carries the exports too, so another computer becomes this one; a <b>Board file</b> (Settings) carries only the Race and the Data Lab, with no names, for the classroom panel. Any of the three loads through Import.</li>
 </ol>
 <div class="two">
 <div>
@@ -1700,6 +1713,7 @@ li{margin:3px 0}
 <p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. An assignment belongs to the quarter its Focus due date falls in. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
 <p><b>Seating</b> — draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
 <p><b>Still owed</b> — a printable list of what each student is missing, by unit.</p>
+<p><b>Retake</b> — a student may retake an assessment when nothing is missing and every IXL skill in the unit the course is working in is at goal. The Students list, the student's page, the what-ifs and Show student all say "eligible" or what stands in the way.</p>
 <p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade; <b>Average</b> marks each class's average, and <b>Class averages</b> puts the classes side by side). Names never show. Hold the exit button to leave.</p>
 <p><b>Names</b> — the eye button in the header. Crossed out = initials only, for projecting.</p>
 <p><b>⋯</b> — Details view (every count, notice and legend at once), Settings, this Guide, Save backup.</p>
@@ -1864,6 +1878,69 @@ function matchReport(s, rosterText) {
   return h;
 }
 // The backup is the bridge between the laptop and the tablet, and the only copy if this browser's storage is cleared.
+/* ---------- Saving and loading Tally files ----------
+   Three kinds of file, told apart by what is inside:
+   · a FULL SAVE (`full`): everything this browser holds — exports, rosters, gradebooks, settings. Loading it on another
+     computer makes that computer this one. Student names and scores are in it: it belongs in the school Drive.
+   · a BOARD FILE (`board`): only what the Race and the Data Lab draw — no names, no IDs, no rosters, no seating, and no
+     student's row of Focus grades (each assignment's scores are shuffled on their own, so no row is a person). A Tally
+     that loads one shows the Board and nothing else. For the classroom panel.
+   · a BACKUP (neither): rosters, goals, skips, matches, history and kept quarters — no scores — merged onto the classes
+     that exist here. The weekly one, for the school Drive; it has always been this.
+   Croix, 19 Oct 2026: the backup from his laptop would not load on the Promethean — a backup carries no scores, so with
+   no exports there was nothing to show, and the picker only let Android offer files typed .json. */
+function saveFull() {
+  const cfg = { tally: 4, full: { saved: new Date().toISOString(), classes: state.order.length }, state: stateForSave() };
+  downloadJson(cfg, 'tally-full-' + new Date().toISOString().slice(0, 10) + '.json');
+  state.lastBackup = new Date().toISOString(); save();
+  toast('Full save written — it holds every export, roster and gradebook in this browser, with student names, so keep it in your school Drive.', false, 5000);
+}
+function downloadJson(obj, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+// Two-letter stand-in names ("Aa", "Ab", …): one token, letters only, so every name helper treats them as distinct students.
+const pseudoName = (j, prefix) => (prefix || '') + String.fromCharCode(65 + Math.floor(j / 26) % 26) + String.fromCharCode(97 + j % 26) + (j >= 676 ? String(Math.floor(j / 676)) : '');
+const shuffled = n => { const a = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function boardFile() {
+  const st = state.settings; const sections = {};
+  const secs = state.order.map(k => state.sections[k]).filter(s => !s.placeholder && s.students.length);
+  secs.forEach(s => {
+    const pop = population(s); const perm = shuffled(pop.length).map(j => pop[j].i);   // the students counted, in a random order
+    const keyMap = {}; perm.forEach((i, j) => keyMap[ixlKeyAt(s, i)] = pseudoName(j) + '#0');
+    const remap = o => { const out = {}; if (o) for (const k in o) if (keyMap[k]) out[keyMap[k]] = o[k]; return out; };
+    const scores = s.skills.map((sk, k) => perm.map(i => eff(s, k, i)));   // best scores baked in, so `best` need not travel
+    const sec = { key: s.key, label: s.label, prep: s.prep, period: s.period, threshold: s.threshold, date: s.date, importedAt: s.importedAt, file: '', skills: s.skills.map(sk => ({ unit: sk.unit, lesson: sk.lesson, name: sk.name, id: sk.id })), students: perm.map((_, j) => pseudoName(j)), scores,
+      studentSkips: remap(s.studentSkips), hiddenUnits: s.hiddenUnits || {}, roster: '', ignored: {}, aliases: {}, excluded: {}, overrides: {}, receipts: {}, seatInfo: {}, qArchive: {}, pool: false, allBlank: !scores.some(r => r.some(v => v != null)),
+      history: (s.history || []).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: remap(h.per), pu: Object.fromEntries(Object.entries(h.pu || {}).map(([u, m]) => [u, remap(m)])), ua: h.ua })) };
+    if (s.grades && s.grades.assignments.length) {
+      const gb = s.grades, n = gb.students.length;
+      sec.grades = { importedAt: gb.importedAt, file: '', students: gb.students.map((_, j) => pseudoName(j, 'G')), assignments: gb.assignments.map(a => { const idx = shuffled(n); return { name: a.name, category: a.category, categoryFromFile: a.categoryFromFile, max: a.max, percent: a.percent, due: a.due, assignedOn: a.assignedOn, missing: a.missing, excused: a.excused, unread: a.unread, values: idx.map(j => a.values[j]), status: a.status ? idx.map(j => a.status[j]) : undefined }; }) };
+      const o = openSec(s); sec.boardGrades = o && o.grades ? shuffled(n).map(j => { const r = computeGrade(o, j); return r ? r.rounded : null; }).filter(v => v != null) : [];
+    }
+    sec.gradeHistory = (s.gradeHistory || []).map(h => { const idx = shuffled(h.students.length); return { date: h.date, at: h.at, q: h.q, file: '', students: idx.map(j => pseudoName(j, 'G')), grade: idx.map(j => h.grade[j]), missing: idx.map(j => h.missing[j]), cats: Object.fromEntries(Object.entries(h.cats || {}).map(([c, arr]) => [c, idx.map(j => arr[j])])), assignments: h.assignments }; });
+    sections[s.key] = sec;
+  });
+  const settings = { hideNames: true, leaderboard: true, lbFocus: st.lbFocus, lbTab: st.lbTab, labUnit: st.labUnit, labStats: st.labStats, labTukey: false, labDots: {}, labPrep: st.labPrep, labValues: false, labPct: st.labPct, labKind: st.labKind, labBin: st.labBin, labAvg: st.labAvg, useBest: true, skipFirst: st.skipFirst, skipFirstV2: true, currentUnit: st.currentUnit, curUnitTouched: st.curUnitTouched, details: false, copyMode: st.copyMode, remindDays: st.remindDays };
+  return { tally: 4, board: { saved: new Date().toISOString(), classes: secs.length }, state: { settings, sections, order: secs.map(s => s.key), active: secs.length ? secs[0].key : null, pendingCfg: {}, pools: {}, assigned: state.assigned, skips: state.skips, custom: state.custom, grading: state.grading, quarters: quarters(), board: { saved: new Date().toISOString(), classes: secs.length } } };
+}
+function saveBoardFile() {
+  const cfg = boardFile(); if (!cfg.board.classes) { toast('Nothing to put on the Board yet.', true); return; }
+  downloadJson(cfg, 'tally-board-' + new Date().toISOString().slice(0, 10) + '.json');
+  toast('Board file written — no names, no rosters, no student\'s row of grades. Load it on the classroom panel.', false, 5000);
+}
+// Any Tally file, dropped on the page or chosen through Import or Settings.
+async function loadTallyFile(file, cfg) {
+  if (!cfg || !cfg.tally) throw new Error('not tally');
+  if (cfg.board || cfg.full) {
+    const kind = cfg.board ? 'Board file' : 'full save'; const meta = cfg.board || cfg.full; const when = meta && meta.saved ? fmtDate(meta.saved.slice(0, 10)) : '?';
+    const here = state.order.length ? `This replaces everything Tally holds in this browser (${plural(state.order.length, 'class')}).` : '';
+    if (state.order.length && !confirm(`Load the ${kind} from ${when} (${plural(meta.classes || 0, 'class')})? ${here}`)) return false;
+    const s = JSON.parse(JSON.stringify(cfg.state || {})); if (!s.sections || typeof s.sections !== 'object') throw new Error('not tally');
+    if (cfg.board) { s.board = cfg.board; s.settings = { ...(s.settings || {}), hideNames: true, leaderboard: true }; } else delete s.board;
+    localStorage.setItem(LS_KEY, JSON.stringify(s)); state = load() || s; migrate(); view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();
+    toast(cfg.board ? `Board file loaded: ${plural(state.order.length, 'class')}, no names.` : `Full save loaded: ${plural(state.order.length, 'class')}.`, false, 5000);
+    return true;
+  }
+  return loadSettingsBackup(cfg);
+}
 function saveBackup() {
   const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays, skipFirst: state.settings.skipFirst, skipFirstV2: true, currentUnit: state.settings.currentUnit, curUnitTouched: state.settings.curUnitTouched }, assigned: state.assigned, custom: state.custom, grading: state.grading, room: state.room, seatWeights: state.seatWeights, seatBasis: state.seatBasis, seatPairs: state.seatPairs, quarters: quarters(), sections: {} };
   for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [], seating: x.seating || null, seatInfo: x.seatInfo || {}, qArchive: x.qArchive || {}, overrides: x.overrides || {} }; }
@@ -1913,7 +1990,13 @@ function openSettings(key) {
         <div class="field"><label>Copy puts on the clipboard</label><div class="seg" id="copyMode">${[['points', 'Points only'], ['names', 'Name + points'], ['ids', 'ID + points']].map(([k, n]) => `<button data-cm="${k}" class="${state.settings.copyMode === k ? 'on' : ''}">${n}</button>`).join('')}</div><p style="margin-top:4px">Roster students missing from IXL get a blank line so the column stays aligned. Students on a modified list get their own "out of" after the points.</p></div>
         <h3 class="mt">Backup</h3>
         <p>Rosters, goals, skips, matches, category weights, each student's weekly skill counts (for the race) and their computed Focus grade per import (for trends). Not raw scores. Load it on another computer before or after importing exports.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load backup</button><input type="file" id="cfgFile" accept=".json" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last saved ${esc(ageDays(localDay(state.lastBackup)) === 0 ? 'today' : fmtDate(localDay(state.lastBackup)))}.` : 'Never saved from this browser.'}</small></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load a Tally file</button><input type="file" id="cfgFile" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last saved ${esc(ageDays(localDay(state.lastBackup)) === 0 ? 'today' : fmtDate(localDay(state.lastBackup)))}.` : 'Never saved from this browser.'}</small></div>
+        <h3 class="mt">Full save</h3>
+        <p>Everything in this browser: exports, rosters, gradebooks, settings. Load it on another computer and that computer is this one. It holds student names and scores, so keep it in your school Drive.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportFull">Full save</button></div>
+        <h3 class="mt">Board file</h3>
+        <p>For the classroom panel: only what the Race and the Data Lab draw. No names, no IDs, no rosters, no seating, and no student's row of Focus grades. A Tally that loads it shows the Board and nothing else.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportBoard">Save Board file</button></div>
         <h3 class="mt">Our own data (Data Lab)</h3>
         <p>Numbers the classes collected themselves — minutes to school, letters in a first name. One list per class; no names.</p>
         <div id="customList">${state.custom.map(c => `<div class="customRow"><b>${esc(c.label)}</b> <span>${c.prep === 'acc' ? 'accelerated' : 'on-level'} · ${Object.values(c.values).filter(v => v.length).length} classes</span> <button class="pill pale small" data-editc="${esc(c.id)}">Edit</button> <button class="pill danger small" data-delc="${esc(c.id)}">Delete</button></div>`).join('') || '<p>None yet.</p>'}</div>
@@ -1993,9 +2076,16 @@ function openSettings(key) {
   $('#saveRace').onclick = () => downloadLeaderboard('race'); $('#saveLab').onclick = () => downloadLeaderboard('lab');
   const dg = $('#dropGrades'); if (dg) dg.onclick = () => { if (!confirm(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.`)) return; delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#exportCfg').onclick = () => { saveBackup(); const lb = $('#lastBk'); if (lb) lb.textContent = 'Last saved today.'; };
+  $('#exportBoard').onclick = () => saveBoardFile(); $('#exportFull').onclick = () => saveFull();
   $('#importCfg').onclick = () => $('#cfgFile').click();
   $('#cfgFile').onchange = async e => {
-    try { const cfg = JSON.parse(await e.target.files[0].text()); if (!cfg || !cfg.tally || typeof cfg.sections !== 'object') throw 0;
+    const f = e.target.files[0]; if (!f) return; e.target.value = '';
+    try { const cfg = JSON.parse(await f.text()); const done = await loadTallyFile(f, cfg); if (done) close(); }
+    catch (err) { console.error(err); toast('That file is not a Tally backup.', true); }
+  };
+}
+function loadSettingsBackup(cfg) {
+    try { if (!cfg || !cfg.tally || typeof cfg.sections !== 'object') throw 0;
       if (cfg.settings) { if (cfg.settings.curUnitTouched && typeof cfg.settings.curUnitTouched === 'object') state.settings.curUnitTouched = { acc: !!cfg.settings.curUnitTouched.acc, on: !!cfg.settings.curUnitTouched.on }; if (cfg.settings.currentUnit && typeof cfg.settings.currentUnit === 'object') state.settings.currentUnit = { acc: Number.isInteger(cfg.settings.currentUnit.acc) ? cfg.settings.currentUnit.acc : ((state.settings.currentUnit || {}).acc || null), on: Number.isInteger(cfg.settings.currentUnit.on) ? cfg.settings.currentUnit.on : ((state.settings.currentUnit || {}).on || null) }   /* a backup saved before a unit was picked must not erase this device's */; if (cfg.settings.skipFirst && typeof cfg.settings.skipFirst === 'object' && cfg.settings.skipFirstV2) state.settings.skipFirst = { acc: Number.isInteger(cfg.settings.skipFirst.acc) ? cfg.settings.skipFirst.acc : 0, on: Number.isInteger(cfg.settings.skipFirst.on) ? cfg.settings.skipFirst.on : 1 }; if (['points', 'names', 'ids'].includes(cfg.settings.copyMode)) state.settings.copyMode = cfg.settings.copyMode; if (cfg.settings.copyNames) state.settings.copyMode = 'names'; if (cfg.settings.useBest != null) state.settings.useBest = !!cfg.settings.useBest; if (REMIND.includes(cfg.settings.remindDays)) state.settings.remindDays = cfg.settings.remindDays; }
       const safeObj = o => { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) if (SAFE_KEY(k)) out[k] = o[k]; return out; };
       if (cfg.assigned && typeof cfg.assigned === 'object') { state.assigned.acc = { ...state.assigned.acc, ...safeObj(cfg.assigned.acc) }; state.assigned.on = { ...state.assigned.on, ...safeObj(cfg.assigned.on) }; }
@@ -2016,9 +2106,9 @@ function openSettings(key) {
       });
       let applied = 0, held = 0;
       for (const k in cfg.sections) { if (!SAFE_KEY(k)) continue; const c = cfg.sections[k] || {}; if (state.sections[k]) { const cl = clean(c, state.sections[k]); Object.assign(state.sections[k], cl); applied++; } else { const cl = clean(c, null); if (!cl.label) cl.label = k; state.pendingCfg[k] = cl; held++; } }
-      migrate(); state.order.map(k => state.sections[k]).forEach(x => { if (x.pool) materialize(x); }); const wi = defaultWorkingIn(); noteWorkingIn(wi); save(); close(); render(); toast(`Loaded settings for ${plural(applied, 'class')}${held ? ` · ${held} waiting for their exports to be imported` : ''}${wi.map(x => `<br>${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join('')}`, false, wi.length ? 9000 : 5000);
-    } catch (err) { console.error(err); toast('That file is not a Tally backup.', true); }
-  };
+      migrate(); state.order.map(k => state.sections[k]).forEach(x => { if (x.pool) materialize(x); }); const wi = defaultWorkingIn(); noteWorkingIn(wi); save(); render(); toast(`Loaded settings for ${plural(applied, 'class')}${held ? ` · ${held} waiting for their exports to be imported` : ''}${wi.map(x => `<br>${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join('')}`, false, wi.length ? 9000 : 5000);
+      return true;
+    } catch (err) { console.error(err); toast('That file is not a Tally backup.', true); return false; }
 }
 
 function openCustomEditor(id, prep) {
@@ -2089,7 +2179,7 @@ document.addEventListener('keydown', e => {
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { get state() { return state; }, save, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { get state() { return state; }, save, retakeStatus, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.

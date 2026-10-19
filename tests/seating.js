@@ -85,7 +85,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(await p.locator('.seatStu .ph img').count()===2,'imported photos show on the student list');
   // a Tally backup dropped here is refused with a pointer to Settings
   const tb=path.join(tmp,'tally-backup.json'); fs.writeFileSync(tb, JSON.stringify({tally:4,sections:{}}));
-  await p.setInputFiles('#file',[tb]); await p.waitForTimeout(600); check(/Tally backup/.test(await p.textContent('#toast')),'a Tally backup on the drop zone is redirected to Settings');
+  await p.setInputFiles('#file',[tb]); await p.waitForTimeout(600); check(/Loaded settings/.test(await p.textContent('#toast')),'a Tally backup on the drop zone loads like any Tally file');
   // 8. backup round-trip carries room, weights, seating and seatInfo
   await more(p,'#btnSettings'); await p.waitForTimeout(200);
   const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8'));

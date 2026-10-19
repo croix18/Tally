@@ -18,7 +18,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(/appear after a second gradebook import/.test(ht),'trend charts explain they need a second import');
   check(await p.locator('#hAtt:not([open])').count()===1 && Number(await p.textContent('#hAtt .hcount'))>=1,'needs-attention is one closed line with a count until it is opened');
   await p.click('#hAtt > summary'); await p.waitForTimeout(200);
-  await p.click('.hatt li button'); await p.waitForTimeout(400);
+  await p.locator('.hatt li button[data-go], .hatt li .hgo').first().click(); await p.waitForTimeout(400);   /* the first row that opens a class (after Oct 9 the first row is "close Quarter 1") */
   check(await p.locator('table.grid').count()===1 && await p.locator('.tab.active').count()===1,'tapping an attention item opens that class');
   // --- calm grid
   check(await p.locator('#bar #nToggle.nchip').count()===1 && await p.locator('#notices .notice').count()===0 && /to fix/.test(await p.textContent('#nToggle')) && (await p.evaluate(()=>document.querySelector('#notices').getBoundingClientRect().height))<14,'notices are a count in the class bar, not a band above it');

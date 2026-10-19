@@ -44,8 +44,11 @@ function computeGrade(sec, i, over, mapOverride) {
   });
   let tw = 0, tot = 0; for (const k in cats) { const c = cats[k]; if (c.possible > 0) { c.pct = c.earned / c.possible * 100; tw += c.w; tot += c.w * c.pct; } else c.pct = null; }
   const pct = tw ? tot / tw : null;
-  return { pct, rounded: pct == null ? null : Math.round(pct), letter: letterOf(pct == null ? null : Math.round(pct)), cats };
+  return { pct, rounded: roundPct(pct), letter: letterOf(roundPct(pct)), cats };
 }
+// Focus rounds the grade half up (a 37.5 shows as 38 — seen in a real export). So does Tally, with a hair of slack so a
+// grade that is 59.5 in decimal arithmetic but 59.49999… in floating point still rounds the way Focus shows it.
+const roundPct = p => p == null ? null : Math.round(p + 1e-9);
 const gradeAll = (sec, mapOverride) => sec.grades ? sec.grades.students.map((_, i) => computeGrade(sec, i, null, mapOverride)) : [];
 
 // Fit assignment categories to the Focus "Grade" column. Coordinate descent from the current map/guesses; then, at
@@ -104,9 +107,9 @@ function neededOn(sec, i, cat, max, target) {
   const g = gradingFor(sec.prep); const base = computeGrade(sec, i); if (!base) return null;
   const c = base.cats[cat] || { earned: 0, possible: 0, w: (g.cats.find(x => x.name === cat) || {}).w || 0 };
   const grade = pts => { let tw = 0, tot = 0; for (const k in base.cats) { const x = base.cats[k]; const e = k === cat ? x.earned + pts : x.earned, p = k === cat ? x.possible + max : x.possible; if (p > 0) { tw += x.w; tot += x.w * e / p * 100; } } if (!(cat in base.cats) && c.w) { tw += c.w; tot += c.w * pts / max * 100; } return tw ? tot / tw : null; };
-  if (Math.round(grade(max)) < target) return null;
+  if (roundPct(grade(max)) < target) return null;
   // Scores are entered in half points, so walk the half-point grid (0 first — a student already above the line needs nothing).
-  for (let pts = 0; pts <= max; pts += 0.5) if (Math.round(grade(pts)) >= target) return pts;
+  for (let pts = 0; pts <= max; pts += 0.5) if (roundPct(grade(pts)) >= target) return pts;
   return max;
 }
 // Grade after a new assignment in `cat` worth `max` scored `pts`.
@@ -115,7 +118,7 @@ function withNext(sec, i, cat, max, pts) {
   let tw = 0, tot = 0, seen = false;
   for (const k in base.cats) { const x = base.cats[k]; const e = k === cat ? x.earned + pts : x.earned, p = k === cat ? x.possible + max : x.possible; if (k === cat) seen = true; if (p > 0) { tw += x.w; tot += x.w * e / p * 100; } }
   if (!seen) { const w = (g.cats.find(x => x.name === cat) || {}).w || 0; tw += w; tot += w * pts / max * 100; }
-  const pct = tw ? tot / tw : null; return { pct, rounded: pct == null ? null : Math.round(pct), letter: letterOf(pct == null ? null : Math.round(pct)) };
+  const pct = tw ? tot / tw : null; return { pct, rounded: roundPct(pct), letter: letterOf(roundPct(pct)) };
 }
 
 /* ---------- history ---------- */
@@ -323,6 +326,7 @@ function studentReportSection(s0, i, ixlRow) {
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>
     ${(() => { const qp = r ? quickestPath(s0, s, i, ixlRow ? ixlRow.ixl : null) : null; return qp && !qp.top ? `<h2>Quickest way to ${anLetter(qp.letter)}</h2>${qp.reached ? `<p>${qp.base.rounded}% → <b>${qp.result.rounded}% ${qp.result.letter}</b> in ${plural(qp.steps, 'step')}:</p>` : `<p>Missing work, IXL and retakes reach ${qp.result.rounded}% — the next assessments are needed too.</p>`}${quickestList(qp)}` : ''; })()}
     <h2>What would move the grade</h2>${moves ? `<table><tbody>${moves}</tbody></table>` : '<p>Nothing missing and every assessment at full marks — keep going.</p>'}
+    ${r ? (() => { const rt = retakeStatus(s0, name); return `<p class="rt"><b>Retakes:</b> ${rt.ok ? `eligible — nothing missing and ${esc(rt.unit.short)} IXL at goal.` : `not yet. To retake: ${esc(retakeWhy(rt, true))}.`}</p>`; })() : ''}
     ${ixl}
     <div class="foot">Course grade = each category's points earned ÷ points possible, weighted ${g.cats.map(c => `${esc(c.name)} ${c.w}%`).join(' · ')}. Work not handed in counts as zero; excused work is left out. IXL: one point per skill at or above the goal SmartScore. Figures come from the exports named above; Focus is the record of grade.</div></section>`;
 }
