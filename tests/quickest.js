@@ -24,7 +24,7 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
     const now=a=>a.status[i]==='missing'?0:(Number(a.values[i])||0);
     // each line's gain on its own, from where the student is now, and the grade with every line so far applied
     const acc={}; const lines=q.plan.map(x=>{ const solo=T.computeGrade(s,i,{[x.a.name]:x.to}).pct-base.pct; acc[x.a.name]=x.to; return { kind:x.kind, name:x.a.name, n:x.n, to:x.to, max:x.a.max, was:now(x.a), after:x.after, recount:T.computeGrade(s,i,acc).rounded, perStep:solo/x.n }; });
-    return { base:base.rounded, target:q.target, letter:q.letter, reached:q.reached, result:q.result.rounded, steps:q.steps, lines, overKeys:Object.keys(q.over).sort().join('|'), planKeys:q.plan.map(x=>x.a.name).sort().join('|'), nhiOrder:q.nhi.map(a=>a.name).join(' > ') }; },{K,WHO});
+    return { base:base.rounded, target:q.target, letter:q.letter, reached:q.reached, result:q.result.rounded, steps:q.steps, lines, overKeys:Object.keys(q.over).sort().join('|'), planKeys:q.plan.filter(x=>x.kind!=='ixlreq').map(x=>x.a.name).sort().join('|'), nhiOrder:q.nhi.map(a=>a.name).join(' > ') }; },{K,WHO});
   console.log('plan: '+q.base+'% → '+q.lines.map(l=>(l.kind==='ixl'?l.n+' IXL skills in ':'')+l.name+' → '+l.after).join(', '));
   check(q.reached && q.letter==='D' && q.lines.filter(l=>l.kind==='nhi').length===4 && q.lines.some(l=>l.kind==='ixl'),'the reshaped student needs all four missing pieces and some IXL to reach a D, like the page he sent ('+q.base+'% → '+q.result+'%, '+q.steps+' steps)');
   check(q.planKeys===q.overKeys,'the list is exactly the work the result is computed from — nothing counted that is not listed');
@@ -55,8 +55,28 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   await p.reload(); await p.waitForTimeout(600);
   // ---- every student in the class ------------------------------------------------------------------------------------
   const all=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; let n=0, bad=[]; s.grades.students.forEach((name,i)=>{ const f=T.findStudent(s,name); const q=T.quickestPath(s,s,i,f?f.ixl:null); if (!q||q.top) return; n++; const acc={}; let prev=-1, ok=true; q.plan.forEach(x=>{ acc[x.a.name]=x.to; if (T.computeGrade(s,i,acc).rounded!==x.after || x.after<prev) ok=false; prev=x.after; });
-      if (q.plan.length && q.plan[q.plan.length-1].after!==q.result.rounded) ok=false; if (Object.keys(q.over).sort().join('|')!==q.plan.map(x=>x.a.name).sort().join('|')) ok=false; if (q.plan.findIndex(x=>x.kind==='retake')>-1 && q.plan.slice(q.plan.findIndex(x=>x.kind==='retake')).some(x=>x.kind!=='retake')) ok=false; if (!ok) bad.push(name); }); return { n, bad }; },K);
+      if (q.plan.length && q.plan[q.plan.length-1].after!==q.result.rounded) ok=false; if (Object.keys(q.over).sort().join('|')!==q.plan.filter(x=>x.kind!=='ixlreq').map(x=>x.a.name).sort().join('|')) ok=false; if (q.plan.findIndex(x=>x.kind==='retake')>-1 && q.plan.slice(q.plan.findIndex(x=>x.kind==='retake')).some(x=>x.kind!=='retake')) ok=false; if (!ok) bad.push(name); }); return { n, bad }; },K);
   check(all.n>=5 && all.bad.length===0,'for all '+all.n+' students with a plan: the lines add up to the result, in order, retakes last'+(all.bad.length?' — not for '+all.bad.length:''));
+  // Croix, 21 Oct 2026: "It should not suggest a retake if it is the quickest route. A student cannot take a retake unless
+  // they are all caught up on everything." Every plan with a retake does all missing work and the current unit's IXL
+  // first; a plan never lists a retake that the catch-up alone makes unnecessary; no IXL link, no retake.
+  const rk=await p.evaluate(K=>{ const T=window.__tally; const sec=T.state.sections[K]; const s=T.openSec(sec); const out={ withRetake:0, bad:[], blocked:0 };
+    // make some students need a retake: drop their best quiz to a low score so catch-up work can't reach the letter
+    const run=()=>s.grades.students.forEach((nm,i)=>{ const f=T.findStudent(sec,nm); const q=T.quickestPath(sec,s,i,f.ixl); if(!q||q.top) return; const rt=T.retakeStatus(sec,nm);
+      const ri=q.plan.findIndex(x=>x.kind==='retake'); if (ri<0) return; out.withRetake++;
+      const before=q.plan.slice(0,ri); const missing=s.grades.assignments.filter(a=>a.max>0&&a.status&&a.status[i]==='missing'&&!/\bixl\b/i.test(a.name)).map(a=>a.name);
+      if (!missing.every(n=>before.some(x=>x.kind==='nhi'&&x.a.name===n))) out.bad.push(nm+': a retake before all missing work');
+      if (rt.noIxl) out.bad.push(nm+': a retake without an IXL link');
+      if (rt.short.length && !before.some(x=>(x.kind==='ixl'&&/\bixl\b/i.test(x.a.name))||x.kind==='ixlreq')) out.bad.push(nm+': a retake before the unit IXL');
+      // without the retakes, the catch-up alone falls short (otherwise the retake was not needed)
+      const over={...q.over}; q.plan.filter(x=>x.kind==='retake').forEach(x=>delete over[x.a.name]); if (T.computeGrade(s,i,over).rounded>=q.target) out.bad.push(nm+': a retake the catch-up made unnecessary'); });
+    const save=JSON.stringify(s.grades.assignments.map(a=>a.values));
+    s.grades.assignments.forEach(a=>{ if (/Squares and Cubes Quiz/.test(a.name)) a.values=a.values.map((v,j)=>a.status&&a.status[j]==='score'?Math.min(Number(v)||0,5):v); });
+    run(); const vals=JSON.parse(save); s.grades.assignments.forEach((a,k)=>a.values=vals[k]);
+    out.noIxlRetake=s.grades.students.some((nm,i)=>{ const f=T.findStudent(sec,nm); if (f.ixl!=null) return false; const q=T.quickestPath(sec,s,i,null); if (q&&q.retakeBlocked) out.blocked++; return q&&q.plan&&q.plan.some(x=>x.kind==='retake'); });
+    return out; },K);
+  check(rk.withRetake>=3 && rk.bad.length===0,'every plan that needs a retake ('+rk.withRetake+' students) first turns in all missing work and finishes the unit\'s IXL, and lists no retake the catch-up makes unnecessary'+(rk.bad.length?' — '+rk.bad.slice(0,3).join('; '):''));
+  check(!rk.noIxlRetake,'a student with no IXL link in Tally is never planned a retake');
   check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();
 })();

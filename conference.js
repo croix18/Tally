@@ -17,46 +17,89 @@ function reportCard(finals) {
   return { Q1: q.Q1 ?? null, Q2: q.Q2 ?? null, S1: sem('Q1', 'Q2'), Q3: q.Q3 ?? null, Q4: q.Q4 ?? null, S2: sem('Q3', 'Q4') };
 }
 // Everything the form needs, read fresh from the class.
+// Words a parent reads: "tests and quizzes", never "assessments"; no "pts", no "at goal", no year-long IXL totals.
+// (21 Oct 2026, after three reviews of 23 drafts — a teacher's, a data auditor's and a parent's: notebook checks and
+// 7-point vocabulary quizzes were praised as "best", the Assessments category, which holds the IXL columns, was
+// called a test average, a failed unit test sat beside "strong on assessments", and missing work was counted but
+// never said what it costs.)
+const REAL_TEST = a => !/notebook|vocab/i.test(a.name) && a.max >= 10;   // a test or quiz that says what a student knows
 function conferenceData(sec, name) {
   const f = findStudent(sec, name); const sum = studentSummary(sec, name); const books = studentBooks(sec, name); const openB = books.find(b => !b.closed);
   const r = openB ? computeGrade(openB.s, openB.i) : null;
-  // report-card grades: only closed quarters are report-card grades; a semester is the average of its two quarters
-  const rc = reportCard(sum.finals);
-  // the open quarter's work
-  const gb = openB ? openB.s.grades : null; const i = openB ? openB.i : -1;
-  const missing = gb ? gb.assignments.filter(a => a.status && a.status[i] === 'missing').map(a => ({ name: a.name, max: a.max, due: a.due || '', cat: catIn(openB.s, a) })) : [];
-  const tests = gb ? gb.assignments.filter(a => isAssess(openB.s, a) && a.status && a.status[i] === 'score' && a.values[i] != null).map(a => ({ name: a.name, v: Number(a.values[i]), max: a.max, pct: Number(a.values[i]) / a.max * 100 })) : [];
-  const redo = tests.filter(t => t.pct < 70);
+  const rc = reportCard(sum.finals);   // only closed quarters are report-card grades; a semester averages its two
+  const s = openB ? openB.s : null; const gb = s ? s.grades : null; const i = openB ? openB.i : -1;
+  const ixlCol = a => /\bixl\b/i.test(a.name);
+  const classAvg = a => { const v = []; a.values.forEach((x, j) => { if (a.status && a.status[j] === 'score' && x != null) v.push(Number(x) / a.max * 100); }); return v.length >= 3 ? v.reduce((p, q) => p + q, 0) / v.length : null; };
+  const all = gb ? gb.assignments.filter(a => a.max > 0) : [];
+  const missingAll = all.filter(a => a.status && a.status[i] === 'missing' && !ixlCol(a));
+  const missing = missingAll.filter(a => !isAssess(s, a)).map(a => ({ name: a.name, max: a.max, due: a.due || '', cat: catIn(s, a) }));
+  const missedTests = missingAll.filter(a => isAssess(s, a)).map(a => ({ name: a.name, max: a.max, due: a.due || '' }));
+  const tests = gb ? all.filter(a => isAssess(s, a) && a.status && a.status[i] === 'score' && a.values[i] != null).map(a => ({ name: a.name, v: Number(a.values[i]), max: a.max, pct: Number(a.values[i]) / a.max * 100, real: REAL_TEST(a), unit: /\b(unit|module)\b.*\b(assessment|test|exam)\b|\b(assessment|test|exam)\b/i.test(a.name) && !/quiz/i.test(a.name), avg: classAvg(a), due: a.due || '' })) : [];
+  const redo = tests.filter(t => confRound(t.pct) < 70);
+  const graded = gb ? all.filter(a => a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && catIn(s, a) !== 'Participation').length : 0;
+  // what turning in every missing assignment and making up every missed test at full credit would do to the grade
+  let ifDone = null; if (r && missingAll.length) { const over = {}; missingAll.forEach(a => over[a.name] = a.max); ifDone = computeGrade(s, i, over).rounded; }
+  // the Focus IXL columns: how much of the grade's IXL is done
+  const ixlCols = all.filter(a => ixlCol(a) && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
+  const ixlGrade = ixlCols.length ? { got: ixlCols.reduce((p, a) => p + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), max: ixlCols.reduce((p, a) => p + a.max, 0) } : null;
+  const prev = s && !s._closed ? prevGradeSnap(s) : null;
   const rt = retakeStatus(sec, name); const ix = ixlFor(sec, f.ixl);
-  return { sec, name, f, sum, r, q: openB ? openB.q : currentQuarter(), rc, missing, tests, redo, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
+  const first = state.settings.hideNames ? mask(name) : niceName(name).split(' ')[0];
+  return { sec, name, first, f, sum, r, q: openB ? openB.q : currentQuarter(), rc, missing, missedTests, tests, redo, graded, ifDone, ixlGrade, prevDate: prev ? prev.date : null, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
 }
 
-// A first draft of Strengths and Concerns, in plain sentences a parent can read. Only what the numbers show.
+// Strengths and Concerns: a few full sentences each, every one tied to a number, the biggest effect on the grade first.
 function conferenceDraft(d) {
-  const pct = v => Math.round(v) + '%'; const s = [], c = [];
-  const A = d.cats.Assessments, C = d.cats.Classwork;
-  const best = d.tests.slice().sort((x, y) => y.pct - x.pct)[0];
-  if (A && A.pct != null && A.pct >= 80) s.push(`Strong on assessments: ${pct(A.pct)} overall${best ? `, best on ${best.name} (${pct(best.pct)})` : ''}.`);
-  else if (best && best.pct >= 85) s.push(`Best assessment so far: ${best.name} (${pct(best.pct)}).`);
-  if (!d.missing.length && d.r) s.push('Turns in every assignment. Nothing is missing this quarter.');
-  if (C && C.pct != null && C.pct >= 85) s.push(`Classwork is consistent: ${pct(C.pct)}.`);
-  if (d.ix && d.ix.poss && d.ix.pct >= 80) s.push(`Keeps up with IXL: ${d.ix.done} of ${d.ix.poss} assigned skills at goal.`);
-  else if (d.rt.unit && !d.rt.noIxl && !d.rt.short.length && d.rt.nUnit) s.push(`Finished every ${d.rt.unit.short} IXL skill.`);
-  if (d.sum.d != null && d.sum.d >= 3) s.push(`Grade is up ${d.sum.d} points since the last gradebook.`);
-  if (d.missing.length) c.push(`${plural(d.missing.length, 'assignment')} not handed in, each counted as a zero (listed below).`);
-  if (A && A.pct != null && A.pct < 70) c.push(`Assessment average is ${pct(A.pct)}${d.redo.length ? `; ${plural(d.redo.length, 'assessment')} below 70% (listed below)` : ''}.`);
-  else if (d.redo.length) c.push(`${plural(d.redo.length, 'assessment')} below 70% (listed below).`);
-  if (d.ix && d.ix.poss && d.ix.pct < 60) { const ns = d.ix.open.reduce((a, u) => a + u.notStarted.length, 0); c.push(`IXL: ${d.ix.done} of ${d.ix.poss} assigned skills at goal${ns ? `; ${ns} not started` : ''}.`); }
-  else if (d.rt.short.length) c.push(`${plural(d.rt.short.length, 'IXL skill')} in ${d.rt.unit.short} still below goal.`);
-  if (d.sum.d != null && d.sum.d <= -3) c.push(`Grade is down ${-d.sum.d} points since the last gradebook.`);
-  return { strengths: confLines(s), concerns: confLines(c) };
+  const P = v => confRound(v) + '%'; const n = d.first; const S = [], C = [];
+  const of = t => `${fmtN(t.v)} of ${fmtN(t.max)}`;
+  const vsClass = t => t.avg != null && Math.abs(t.pct - t.avg) >= 5 ? ` The class average was ${P(t.avg)}.` : '';
+  const real = d.tests.filter(t => t.real);
+  const unitTests = real.filter(t => t.unit);
+  // ---- strengths ----
+  const bestUnit = unitTests.slice().sort((a, b) => b.pct - a.pct)[0];
+  const bestReal = real.slice().sort((a, b) => b.pct - a.pct || b.max - a.max)[0];
+  const stand = t => t && (confRound(t.pct) >= 85 || (confRound(t.pct) >= 75 && t.avg != null && t.pct - t.avg >= 10));
+  if (stand(bestUnit)) S.push(`${n} scored ${of(bestUnit)} (${P(bestUnit.pct)}) on the ${bestUnit.name}.${vsClass(bestUnit)}`);
+  else if (stand(bestReal)) S.push(`${n} scored ${of(bestReal)} (${P(bestReal.pct)}) on the ${bestReal.name}.${vsClass(bestReal)}`);
+  if (d.r && !d.missing.length && !d.missedTests.length && d.graded >= 3) S.push(`${n} has turned in every assignment this quarter.`);
+  if (!d.rt.noIxl && d.rt.unit && d.rt.nUnit && !d.rt.short.length) S.push(`${n} has finished every ${d.rt.unit.short} IXL practice skill.`);
+  if (d.sum.d != null && d.sum.d >= 3 && d.prevDate) S.push(`${n}'s grade has gone up ${d.sum.d} points since ${fmtDate(d.prevDate)}.`);
+  // ---- concerns ----
+  if (d.missing.length) {
+    const k = d.missing.length; const gain = d.ifDone != null && d.r ? d.ifDone - d.r.rounded : 0;
+    C.push(`${n} has ${k === 1 ? '1 missing assignment' : k + ' missing assignments'}, which count${k === 1 ? 's' : ''} as ${k === 1 ? 'a zero' : 'zeros'} until turned in.${gain >= 2 && !d.missedTests.length ? ` Turning ${k === 1 ? 'it' : 'them'} in could raise the grade from ${d.r.rounded}% to as high as ${d.ifDone}%.` : ''}`);
+  }
+  if (d.missedTests.length) { const names = d.missedTests.slice(0, 2).map(t => 'the ' + t.name).join(' and '); const gain = d.ifDone != null && d.r ? d.ifDone - d.r.rounded : 0;
+    C.push(`${n} missed ${names}${d.missedTests.length > 2 ? ` and ${d.missedTests.length - 2} more` : ''} and needs to make ${d.missedTests.length === 1 ? 'it' : 'them'} up.${gain >= 2 ? ` ${d.missing.length ? 'Making these up and turning in the missing work' : `Making ${d.missedTests.length === 1 ? 'it' : 'them'} up`} could raise the grade from ${d.r.rounded}% to as high as ${d.ifDone}%.` : ''}`); }
+  const low = real.filter(t => confRound(t.pct) < 70).sort((a, b) => a.pct - b.pct);
+  if (low.length) { const t = low[0];
+    const path = d.rt.ok ? ` ${n} can retake it now.` : d.rt.noIxl ? (d.rt.missing.length ? ` A retake opens once the missing work is turned in.` : '') : ` A retake opens once ${n} ${[d.rt.missing.length ? 'turns in the missing work' : '', d.rt.short.length ? `finishes ${plural(d.rt.short.length, d.rt.unit.short + ' IXL practice skill')}` : ''].filter(Boolean).join(' and ')}.`;
+    C.push(`${n} scored ${of(t)} (${P(t.pct)}) on the ${t.name}.${vsClass(t)}${path}${low.length > 1 ? ` ${low.length - 1} more ${low.length === 2 ? 'quiz or test is' : 'quizzes or tests are'} below 70% (listed below).` : ''}`); }
+  if (d.ixlGrade && d.ixlGrade.max && d.ixlGrade.got / d.ixlGrade.max < 0.6 && d.r && d.r.rounded < 80) C.push(`IXL practice counts in the grade. ${n} has finished ${d.ixlGrade.got} of the ${d.ixlGrade.max} IXL skills counted so far, and finishing the rest raises the grade.`);
+  if (d.sum.d != null && d.sum.d <= -3 && d.prevDate) C.push(`${n}'s grade has dropped ${-d.sum.d} points since ${fmtDate(d.prevDate)}.`);
+  if (d.r && d.graded >= 3 && !C.length) C.push('No concerns at this time.');   // with only participation graded there is nothing to judge yet
+  return { strengths: confLines(S.slice(0, 4)), concerns: confLines(C.slice(0, 4)) };
 }
+// The third box: what to turn in, what to make up, what can be retaken, and when a retake opens.
 function conferenceWork(d) {
-  const lines = [];
-  if (d.missing.length) { lines.push('Not handed in (each counts as a zero until it is):'); d.missing.forEach(a => lines.push(`• ${a.name}, ${fmtN(a.max)} pts${a.due ? ', due ' + a.due : ''}`)); }
-  if (d.redo.length) { if (lines.length) lines.push(''); lines.push('Assessments below 70%:'); d.redo.forEach(t => lines.push(`• ${t.name}, ${fmtN(t.v)}/${fmtN(t.max)} (${Math.round(t.pct)}%)`)); }
-  if (d.redo.length || d.missing.length) { lines.push(''); lines.push(d.rt.ok ? 'Retakes: eligible now.' : `Retakes: not yet. First ${retakeWhy(d.rt, true)}.`); }
-  return lines.join('\n');
+  const out = []; const due = a => a.due ? ` (due ${a.due})` : '';
+  if (d.missing.length) { out.push('Missing (zeros until turned in):'); d.missing.forEach(a => out.push(`• ${a.name}${due(a)}`)); }
+  if (d.missedTests.length) { if (out.length) out.push(''); out.push('Tests and quizzes to make up:'); d.missedTests.forEach(a => out.push(`• ${a.name}${due(a)}`)); }
+  if (d.redo.length) { if (out.length) out.push(''); out.push('Below 70%, can be retaken:'); d.redo.forEach(t => out.push(`• ${t.name}: ${fmtN(t.v)} of ${fmtN(t.max)} (${confRound(t.pct)}%)`));
+    const need = [d.rt.missing.length ? 'the missing work is turned in' : '', !d.rt.noIxl && d.rt.short.length ? `the ${plural(d.rt.short.length, d.rt.unit.short + ' IXL practice skill')} ${d.rt.short.length === 1 ? 'is' : 'are'} finished` : ''].filter(Boolean);
+    out.push(''); out.push(d.rt.ok ? `${d.first} can retake these now.` : need.length ? `Retakes open once ${need.join(' and ')}.` : 'Retakes open once all work is caught up.'); }
+  return out.join('\n');
+}
+// Things to look at before printing — shown beside the form, never on it.
+function conferenceChecks(d) {
+  const out = []; const old = a => { const m = String(a.due || '').match(/^(\d{1,2})\/(\d{1,2})/); if (!m) return false; const now = new Date(); let y = now.getFullYear(); const dt = new Date(y, Number(m[1]) - 1, Number(m[2])); if (dt > now) dt.setFullYear(y - 1); return (now - dt) / 864e5 > 30; };
+  if (!d.r) out.push('No gradebook for this student yet.');
+  else if (d.graded < 3) out.push('Only participation is graded so far, so there is little to draft from.');
+  d.tests.filter(t => t.pct < 20).forEach(t => out.push(`${t.name}: ${fmtN(t.v)} of ${fmtN(t.max)}. An absence or a blank paper?`));
+  if (d.rt.noIxl) out.push('IXL isn\'t linked to this student in Tally, so retake readiness on IXL is unknown.');
+  [...d.missing, ...d.missedTests].filter(old).forEach(a => out.push(`${a.name} was due ${a.due}. Still accepted?`));
+  if (d.r && d.tests.filter(t => t.real).length < 2) out.push('Fewer than two tests or quizzes graded.');
+  return out;
 }
 // FAST / EBA history in one line, newest first: "FAST PM1 2026-27: Level 2, 231 (above grade); FAST PM3 2025-26: Level 4, 247, 81st percentile".
 const ordinal = n => { n = Math.round(n); const t = n % 100; return n + (t >= 11 && t <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th'); };
@@ -65,11 +108,15 @@ function testLine(h) { return `${h.test}${h.pm ? ' ' + h.pm : ''}${h.year ? ' ' 
 function conferenceTests(d) { return d.hist.map(testLine).join('; '); }
 
 /* ---------- FAST results ----------
-   state.tests = { 'id:<Focus ID>' | 'n:<last|first>': [{ test: 'FAST', pm: 'PM1', year: '2026-27', level, scale, pct?, grade?, above? }] }.
-   Kept once for the whole app (a student who changes period keeps their history), by ID and by name so either finds them.
-   Teacher-only: hidden while names are hidden, never on Show student, never in a Board file. */
+   state.tests    = { key: [{ test: 'FAST', pm: 'PM1', year: '2026-27', level, scale, pct?, grade?, above? }] }
+   state.testInfo = { key: { FAST: { fields: { L30: 'Y', ESE: '', Race: …, every other column by its heading }, at, file } } }
+   key = 'n:<the roster name, normalized>' (and 'id:<Focus ID>' when the report has one). Kept once for the whole app,
+   so a student who changes period keeps their history. Matching is by name, the way IXL rows are matched: the exact
+   name, then last name + first name, then last name + a first name that starts the same (Chris / Christopher); the
+   report's Student ID settles two students with the same name and a spelling that differs. Teacher-only: hidden while
+   names are hidden, never on Show student, never in a Board save. */
 const looseName = n => { const m = String(n || '').match(/^([^,]+),\s*(\S+)/); if (m) return norm(m[1]) + '|' + norm(m[2]); const w = norm(n).split(' '); return w.length > 1 ? w[w.length - 1] + '|' + w[0] : norm(n); };
-const testKeys = (id, name) => [id ? 'id:' + String(id).trim() : null, name ? 'n:' + looseName(name) : null].filter(Boolean);
+const testKeys = (id, name) => [id ? 'id:' + String(id).trim() : null, name ? 'n:' + norm(name) : null, name ? 'n:' + looseName(name) : null].filter(Boolean);   // the last: saves from before name matching
 const testSig = h => [h.test, h.pm || '', h.year || ''].join('|');
 function cleanTests(o) {   // a declaration: migrate() runs before this file's consts exist
   const out = {}; if (!o || typeof o !== 'object') return out; const n = v => typeof v === 'number' && isFinite(v) ? v : undefined;
@@ -79,18 +126,49 @@ function cleanTests(o) {   // a declaration: migrate() runs before this file's c
     if (list.length) out[k.slice(0, 120)] = list; }
   return out;
 }
+function cleanTestInfo(o) {
+  const out = {}; if (!o || typeof o !== 'object') return out;
+  for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !/^(id|n):/.test(k) || !o[k] || typeof o[k] !== 'object') continue; const per = {};
+    for (const t of Object.keys(o[k]).slice(0, 8)) { const v = o[k][t]; if (!SAFE_KEY(t) || !v || typeof v !== 'object' || !v.fields || typeof v.fields !== 'object') continue; const fields = {};
+      Object.keys(v.fields).slice(0, 80).forEach(f => { if (SAFE_KEY(f) && typeof v.fields[f] === 'string') fields[f.slice(0, 60)] = v.fields[f].slice(0, 80); });
+      per[t.slice(0, 20)] = { fields, at: typeof v.at === 'string' ? v.at.slice(0, 30) : '', file: typeof v.file === 'string' ? v.file.slice(0, 120) : '' }; }
+    if (Object.keys(per).length) out[k.slice(0, 120)] = per; }
+  return out;
+}
 function mergeTests(a, b) { const out = { ...(a || {}) }; for (const k in b) { const keep = (out[k] || []).filter(h => !b[k].some(x => testSig(x) === testSig(h))); out[k] = keep.concat(b[k]); } return out; }
-// Every student on a roster, by ID and by loose name, for matching an imported report.
-function rosterIndex() { const ids = new Set(), names = new Set(); rowCache = new Map(); state.order.forEach(k => { const s = state.sections[k]; if (!s || s.board) return; classStudents(s).forEach(n => { const f = findStudent(s, n); if (f.id) ids.add(String(f.id).trim()); names.add(looseName(n)); }); }); return { ids, names }; }
+// Every student on every roster, for matching an imported report by name.
+function rosterPeople() { const out = []; rowCache = new Map(); state.order.forEach(k => { const s = state.sections[k]; if (!s || s.board || s.placeholder) return; classStudents(s).forEach(n => { const f = findStudent(s, n); const m = String(n).match(/^([^,]+),\s*(.+)$/);
+  out.push({ name: n, id: f.id ? String(f.id).trim() : '', nn: norm(n), last: m ? norm(m[1]) : norm(n).split(' ').pop(), first: (m ? norm(m[2]) : norm(n)).split(' ')[0] || '' }); }); });
+  const seen = new Set(); return out.filter(p => { const k = p.nn + '|' + p.id; if (seen.has(k)) return false; seen.add(k); return true; }); }
+function matchPerson(people, name, id) {
+  const m = String(name || '').match(/^([^,]+),\s*(.+)$/); const nn = norm(name); const last = m ? norm(m[1]) : nn.split(' ').pop(); const first = (m ? norm(m[2]) : nn).split(' ')[0] || '';
+  const byId = id ? people.filter(p => p.id && p.id === String(id).trim()) : [];
+  const passes = [p => p.nn === nn, p => p.last === last && p.first === first, p => p.last === last && first && p.first && (p.first.startsWith(first) || first.startsWith(p.first))];
+  if (name) for (const pass of passes) { const c = people.filter(pass); if (c.length === 1) return { p: c[0], how: 'name' }; if (c.length > 1) { const pick = c.find(p => byId.includes(p)); if (pick) return { p: pick, how: 'name' }; break; } }
+  if (byId.length === 1) return { p: byId[0], how: 'id' };
+  return null;
+}
 function importFast(fx, file) {
-  if (!fx.students.length) { toast(fx.blank ? `${esc(file)}: this FAST report has no student IDs or names, so Tally can't tell whose scores they are.` : `${esc(file)}: no FAST scores in this report.`, true, 8000); return; }
-  const add = {}; fx.students.forEach(st => testKeys(st.id, st.name).forEach(k => { add[k] = (add[k] || []).filter(h => !st.tests.some(x => testSig(x) === testSig(h))).concat(st.tests.map(t => ({ ...t }))); }));
+  if (!fx.students.length) { toast(fx.blank ? `${esc(file)}: this FAST report has no student names or IDs, so Tally can't tell whose scores they are.` : `${esc(file)}: no FAST scores in this report.`, true, 8000); return; }
+  const people = rosterPeople(); const add = {}, info = {}; const unmatched = []; let byName = 0, byId = 0; const at = new Date().toISOString();
+  fx.students.forEach(st => {
+    const hit = matchPerson(people, st.name, st.id); if (hit) { if (hit.how === 'id') byId++; else byName++; } else unmatched.push(st);
+    const keys = hit ? [hit.p.id ? 'id:' + hit.p.id : null, 'n:' + hit.p.nn, st.id && st.id !== hit.p.id ? 'id:' + st.id : null].filter(Boolean) : [st.id ? 'id:' + st.id : null, st.name ? 'n:' + norm(st.name) : null].filter(Boolean);
+    keys.forEach(k => { add[k] = (add[k] || []).filter(h => !st.tests.some(x => testSig(x) === testSig(h))).concat(st.tests.map(t => ({ ...t }))); info[k] = { FAST: { fields: { ...st.info, ...(st.name ? { Student: st.name } : {}), ...(st.id ? { ID: st.id } : {}) }, at, file: String(file || '') } }; });
+  });
   state.tests = mergeTests(state.tests, cleanTests(add));
-  const ri = rosterIndex(); const unmatched = fx.students.filter(st => !(st.id && ri.ids.has(String(st.id).trim())) && !(st.name && ri.names.has(looseName(st.name))));
+  state.testInfo = { ...(state.testInfo || {}), ...cleanTestInfo(info) };
   save(); const wins = fx.windows.map(w => w.pm + ' ' + w.year).join(' and ');
-  toast(`FAST results (${esc(wins)}): ${plural(fx.students.length - unmatched.length, 'student')} matched${unmatched.length ? ` · <b>${unmatched.length} not in your classes</b> (kept, in case they join)` : ''}${fx.blank ? ` · ${plural(fx.blank, 'row')} with no ID or name skipped` : ''}`, false, 9000);
+  const names = unmatched.slice(0, 3).map(st => esc(st.name ? shown(st.name) : 'ID ' + st.id)).join('; ');
+  toast(`FAST report (${esc(wins)}): ${plural(byName + byId, 'student')} matched to your classes${byId ? ` (${byId} by ID, the rest by name)` : ' by name'}${unmatched.length ? ` · <b>${unmatched.length} not in your classes</b>: ${names}${unmatched.length > 3 ? '…' : ''} (kept, in case they join)` : ''}${fx.blank ? ` · ${plural(fx.blank, 'row')} with no name or ID skipped` : ''}. Every column was kept.`, false, 10000);
   render();
 }
+// Everything the FAST report said about a student, by column heading ({} when there is no report).
+function fastInfo(sec, name) { const f = findStudent(sec, name); for (const k of testKeys(f.id, name)) { const v = ((state.testInfo || {})[k] || {}).FAST; if (v) return v.fields || {}; } return {}; }
+const flagOn = v => v != null && String(v).trim() !== '' && !/^(n|no|0|-|none)$/i.test(String(v).trim());
+// The flags a teacher acts on, from the report: L30 first.
+function fastFlags(fi) { const out = []; if (flagOn(fi.L30)) out.push({ k: 'L30', t: 'Lowest 30%', cls: 'l30' }); ['ESE', '504', 'ELL'].forEach(c => { if (flagOn(fi[c])) out.push({ k: c, t: /^y(es)?$/i.test(fi[c]) ? c : `${c} (${fi[c]})`, cls: '' }); }); if (flagOn(fi.TestedAboveGrade)) out.push({ k: 'above', t: 'Tests above grade', cls: '' }); return out; }
+const isL30 = (sec, name) => flagOn(fastInfo(sec, name).L30);
 
 // Test history for one student: imported FAST results, then the FAST score the Seating Chart backup carried.
 function testHistory(sec, name) {
@@ -103,10 +181,11 @@ function testHistory(sec, name) {
 }
 // The student page's FAST section: newest first, with the change in scale score from one window to the next.
 function testsSection(sec, name) {
-  const hist = testHistory(sec, name); if (!hist.length) return '';
+  const hist = testHistory(sec, name); const fi = fastInfo(sec, name); if (!hist.length && !Object.keys(fi).length) return '';
   if (state.settings.hideNames) return `<section class="gsec" id="pTests"><h3>FAST</h3><p class="ghint">Hidden while names are hidden.</p></section>`;
-  return `<section class="gsec" id="pTests"><h3>FAST</h3><table class="ftab"><tbody>${hist.map((h, j) => { const prev = hist[j + 1]; const dv = prev && h.scale != null && prev.scale != null ? h.scale - prev.scale : null;
-    return `<tr><th scope="row">${esc([h.pm, h.year].filter(Boolean).join(' '))}</th><td>${h.level != null ? `<span class="flvl l${Math.min(5, Math.max(1, h.level))}">Level ${h.level}</span>` : ''}</td><td class="num">${h.scale != null ? h.scale : ''}${dv != null ? ` <small class="${dv < 0 ? 'neg' : 'pos'}">${dv > 0 ? '+' : dv < 0 ? '−' : '±'}${Math.abs(dv)}</small>` : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct).replace(' percentile', ' pct')) : h.above ? 'above grade' : h.grade != null ? 'grade ' + h.grade + ' test' : ''}</td></tr>`; }).join('')}</tbody></table></section>`;
+  const flags = fastFlags(fi); const keys = Object.keys(fi).filter(k => !['Student', 'ID'].includes(k));
+  return `<section class="gsec" id="pTests"><h3>FAST</h3>${flags.length ? `<div class="fflags">${flags.map(x => `<span class="fflag ${x.cls}">${esc(x.t)}</span>`).join('')}</div>` : ''}<table class="ftab"><tbody>${hist.map((h, j) => { const prev = hist[j + 1]; const dv = prev && h.scale != null && prev.scale != null ? h.scale - prev.scale : null;
+    return `<tr><th scope="row">${esc([h.pm, h.year].filter(Boolean).join(' '))}</th><td>${h.level != null ? `<span class="flvl l${Math.min(5, Math.max(1, h.level))}">Level ${h.level}</span>` : ''}</td><td class="num">${h.scale != null ? h.scale : ''}${dv != null ? ` <small class="${dv < 0 ? 'neg' : 'pos'}">${dv > 0 ? '+' : dv < 0 ? '−' : '±'}${Math.abs(dv)}</small>` : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct).replace(' percentile', ' pct')) : h.above ? 'above grade' : h.grade != null ? 'grade ' + h.grade + ' test' : ''}</td></tr>`; }).join('')}</tbody></table>${keys.length ? `<details class="fall"><summary>Everything in the report</summary><dl>${keys.map(k => `<dt>${esc(k)}</dt><dd>${esc(fi[k])}</dd>`).join('')}</dl></details>` : ''}</section>`;
 }
 
 // Kept conference text, per student: { tests, strengths, concerns, work, saved }.
@@ -129,15 +208,17 @@ function openConference(sec, name) {
         <div class="row3 r3"><div class="field"><label for="cfTeacher">Teacher</label><input type="text" id="cfTeacher" value="${esc(v.teacher)}"></div><div class="field"><label for="cfCourse">Course</label><input type="text" id="cfCourse" value="${esc(v.course)}"></div><div class="field sm"><label for="cfPeriod">Period</label><input type="text" id="cfPeriod" value="${esc(v.period)}" maxlength="4"></div></div>
         <div class="row3 r4"><div class="field sm"><label for="cfCurrent">Current grade %</label><input type="text" id="cfCurrent" value="${esc(v.current)}" maxlength="5"></div><div class="field cf-rcs"><label>Report card grades</label><div>${['Q1', 'Q2', 'S1', 'Q3', 'Q4', 'S2'].map(rcCell).join('')}</div></div></div>
         <div class="field"><label for="cfTests">FAST / EBA test history</label><textarea id="cfTests" rows="2" placeholder="No test results in Tally yet">${esc(v.tests)}</textarea></div>
-        <div class="field"><label for="cfStrengths">Strengths in class</label><textarea id="cfStrengths" rows="4">${esc(v.strengths)}</textarea></div>
+        <div class="field"><label for="cfStrengths">Strengths in class</label><textarea id="cfStrengths" rows="4">${esc(v.strengths)}</textarea>${!kept && !draft.strengths ? '<p class="ghint" style="margin:2px 0 0">Nothing in the numbers stands out yet. Add something you have seen in class, or one of the notes beside the form.</p>' : ''}</div>
         <div class="field"><label for="cfConcerns">Concerns in class</label><textarea id="cfConcerns" rows="4">${esc(v.concerns)}</textarea></div>
         <div class="field"><label for="cfWork">Missing assignments &amp; assignments needing to be redone</label><textarea id="cfWork" rows="6">${esc(v.work)}</textarea></div>
       </div>
       <aside class="confSide">
+        ${(() => { const ck = conferenceChecks(d); return ck.length ? `<h3>Check before printing</h3><ul class="cfChecks">${ck.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''; })()}
         <h3>Notes</h3>
         ${H ? '<p class="ghint">Hidden while names are hidden.</p>' : d.notes.length ? `<ul class="cfNotes">${d.notes.slice().reverse().map(n => `<li><time>${esc(fmtDate(localDay(n.at)))}</time><p>${esc(n.text)}</p><span><button class="pill pale small" data-cfadd="strengths" data-nid="${esc(n.id)}">+ Strengths</button><button class="pill pale small" data-cfadd="concerns" data-nid="${esc(n.id)}">+ Concerns</button></span></li>`).join('')}</ul>` : '<p class="ghint">No notes for this student.</p>'}
+        ${(() => { const fl = H ? [] : fastFlags(fastInfo(sec, name)); return fl.length ? `<h3>From FAST</h3><div class="fflags">${fl.map(x => `<span class="fflag ${x.cls}">${esc(x.t)}</span>`).join('')}</div>` : ''; })()}
         <h3>From the gradebook</h3>
-        <ul class="cfFacts">${[d.r ? `${esc(Q_NAMES[d.q - 1])}: ${d.r.rounded}% ${d.r.letter}` : '', ...Object.entries(d.cats).filter(([, x]) => x.pct != null).map(([c, x]) => `${esc(c)}: ${Math.round(x.pct)}%`), d.ix && d.ix.poss ? `IXL: ${d.ix.done} of ${d.ix.poss} skills at goal` : '', `Missing: ${d.missing.length}`, d.rt.ok ? 'Retake: eligible' : `Retake: ${esc(retakeWhy(d.rt))}`].filter(Boolean).map(x => `<li>${x}</li>`).join('')}</ul>
+        <ul class="cfFacts">${[d.r ? `${esc(Q_NAMES[d.q - 1])}: ${d.r.rounded}% ${d.r.letter}` : '', ...Object.entries(d.cats).filter(([, x]) => x.pct != null).map(([c, x]) => `${esc(c)}: ${Math.round(x.pct)}%`), d.ix && d.ix.poss ? `IXL: ${d.ix.done} of ${d.ix.poss} skills at goal` : '', `Missing: ${d.missing.length + d.missedTests.length}`, d.rt.ok ? 'Retake: eligible' : `Retake: ${esc(retakeWhy(d.rt))}`, d.ixlGrade && d.ixlGrade.max ? `IXL in Focus: ${d.ixlGrade.got} of ${d.ixlGrade.max}` : ''].filter(Boolean).map(x => `<li>${x}</li>`).join('')}</ul>
       </aside>
     </div>
     <footer>${kept ? `<small class="ghint" style="margin:0">Your edits from ${esc(fmtDate(localDay(kept.saved)))}</small><button class="linkbtn" id="cfRefill">Start over from Tally</button>` : ''}<div class="spacer"></div><button class="pill pale" id="mCancel">Close</button><button class="pill" id="cfPrint">Print</button></footer></div>`;

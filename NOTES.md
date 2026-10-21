@@ -393,7 +393,7 @@ per-section-file era and many items in them are now done).
     school year; window PM1/PM2/PM3/Total under "Achievement Level", "Growth", "Scale Score", "Growth"). Tally reads
     ID, Student, the level and scale score for each window, the one Percentile column (it belongs to the PM3: same
     PM3 score, same percentile, in his file), PM3TestLevel (grade of last year's test) and TestedAboveGrade (this
-    year's windows). **Race, ELL, ESE, 504, L30 and Survey match are never read or kept.** Growth columns are
+    year's windows). (Superseded the same day: every column is now kept, see below.) Growth columns are
     worked out from the scores. His copy had the BOM and the en dash mangled by a wrong-encoding round trip; the
     year match tolerates that. Kept once for the app in `state.tests`, keyed `id:<Focus ID>` and `n:<last|first>`,
     so a student who changes period keeps their history; importing again replaces a window. A report with no IDs
@@ -454,6 +454,43 @@ per-section-file era and many items in them are now done).
     page instead; there the page carries "If Print does nothing, press Ctrl+P."
   - `tests/saving.js` runs Tally in frames sandboxed without allow-same-origin and allow-modals (and one without
     allow-popups) and checks all of the above, including an autosave with no click behind it.
+- **21 Oct 2026 — FAST keeps every column; matching by name; drafts rewritten; retakes never a shortcut.**
+  - Croix: "I don't want Tally to ignore that stuff. I want it to log it. It's all important. I eventually want this thing
+    running data all sorts of ways … check for correlations and connections in everything that I feed it. The L30 is
+    especially important because the lower quartile is a whole bucket item on the school grade." `parseFastReport`
+    now returns every non-score column under its own heading (`info`: Teacher, GradeLevel, Race, ELL, ESE, 504, L30,
+    Percentile, Survey 2Match, TestedAboveGrade, PM3TestLevel, Gain, "Level growth PM1", "Scale growth Total", …; the
+    growth columns are named by window alone because the report's year row is offset under them); a new column in a
+    later export is kept without code changes. Stored in `state.testInfo[key].FAST = { fields, at, file }`. Shown on the
+    student page (flags L30 / ESE / 504 / ELL / tests above grade, then "Everything in the report" folded), beside the
+    conference form, and in Students (an L30 tag and an L30-only button). Teacher-only like the rest: hidden while
+    names are hidden, never on Show student or in a Board save; in the Full save. The data is there for the
+    correlation work he wants next (FAST against grade, IXL, missing work, by L30/ESE/ELL…).
+  - Croix: "It already matches by name, why wouldn't it do that instead of matching by id?" Matching is now by name
+    across every roster (exact, then last + first, then last + a first name that starts the same), the ID only for
+    a row with no name or to settle two same-name students. Keys: `n:<norm(roster name)>` and `id:<Focus ID>`.
+  - Strengths/Concerns rewritten after three agent reviews of 23 drafts (teacher, data auditor, parent). Findings:
+    notebook checks and 7-point vocab quizzes praised as "best"; the Assessments category (which holds the IXL
+    columns) called a test average; "strong on assessments" beside a 45% unit test; "Turns in every assignment" with
+    nothing graded; the year-long IXL total (59) beside the unit count (18); "First no IXL account on file" printed to
+    parents; missing work counted but never said what it costs; A students given unfinished IXL as a concern; blank
+    Concerns boxes. New rules (conference.js): parent words ("tests and quizzes", "missing", "IXL practice"), the
+    student's first name, full sentences, at most four per box; Strengths = best unit test (or a 10+ point non-vocab
+    quiz) at 85%+ or 10+ above the class average, "turned in every assignment" only with 3+ graded items and nothing
+    missing, current-unit IXL finished, grade up 3+ since a dated import; Concerns in order of grade impact = missing
+    work with "could raise the grade from X% to as high as Y%", missed tests to make up, the lowest test under 70%
+    with the class average and what opens a retake, IXL in Focus under 60% (only below a B), grade down 3+, else "No
+    concerns at this time." (nothing with only participation graded). The third box: Missing / Tests and quizzes to
+    make up / Below 70% (can be retaken), then one sentence on what opens a retake. Beside the form, "Check before
+    printing" (never printed): no gradebook, participation only, a score under 20% (absence or blank?), IXL not
+    linked, missing work over 30 days old (still accepted?), fewer than two tests graded. `retakeWhy` no longer says
+    "no IXL account on file" (teacher: "IXL not linked"; student: "check your IXL account with your teacher").
+  - Croix: "It should not suggest a retake if it is the quickest route. A student cannot take a retake unless they are
+    all caught up on everything." The quickest path already tried missing work and IXL first, but a planned retake
+    could skip prerequisites (found on 10 fixture students). Now, before any retake, the plan turns in every missing
+    assignment and finishes the current unit's IXL (an "ixlreq" line when that unit isn't in Focus yet); a retake is
+    listed only if that catch-up still falls short, and its line says "allowed once everything above is done". No IXL
+    link in Tally → no retake is planned, and the teacher's card says why.
   - GitHub is blocked on the school wifi, so Pages is not an option at school. Offered: Tally served from Google Apps
     Script, autosaving to a file in his school Drive (one Tally across laptop, panel and tablet). Croix: "Let's hold
     off on that option and stick to the html for now." So: the HTML file, opened directly in Chrome on the laptop,

@@ -208,6 +208,9 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   names, a strip that counts unsaved minutes, opening a save saves the current work first and flags an older file,
   Tally's own question dialog where the browser's is blocked, and printing that survives a sandboxed frame (found: a
   sandboxed frame could not write into its own print window, so every print there failed). 35 suites, 1151 checks.
+- 21 Oct: FAST keeps every column (L30 tag and filter in Students), matching by name; Strengths/Concerns rewritten after
+  three agent reviews (rules tested over the whole class); retakes in the quickest path now wait for every missing
+  assignment and the unit's IXL (the old plan skipped them for 10 fixture students). 35 suites, 1166 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

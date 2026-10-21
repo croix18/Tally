@@ -12,7 +12,7 @@ function fastCsv(rows) {
   const y1 = '2025' + DASH + '2026', y2 = '2026' + DASH + '2027';
   const years = ',,,,,,,,,,,,,,' + [y1, y2, y1, y2, y1, y2, y1, y2].join(',');
   const wins = ',,,,,,,,,,,,,,PM3,PM1,PM1,Total,PM3,PM1,PM1,Total';
-  return [head, years, wins].concat(rows.map(r => [r.id, r.name, 'TEACHER, SAMPLE (2026) +1', '07', 'ZZRACE', 'ZZELL', 'ZZESE', 'ZZ504', 'ZZL30', r.pct, '', r.above ? 'Y' : '', r.pm3 ? '06' : '', '', r.l3 ?? '', r.l1 ?? '', '', '', r.s3 ?? '', r.s1 ?? '', r.s3 != null && r.s1 != null ? r.s1 - r.s3 : '', ''].map(q).join(','))).join('\r\n') + '\r\n';
+  return [head, years, wins].concat(rows.map(r => [r.id, r.name, 'TEACHER, SAMPLE (2026) +1', '07', r.race ?? 'X', r.ell ?? '', r.ese ?? '', r.s504 ?? '', r.l30 ?? '', r.pct, '', r.above ? 'Y' : '', r.pm3 ? '06' : '', '', r.l3 ?? '', r.l1 ?? '', '', '', r.s3 ?? '', r.s1 ?? '', r.s3 != null && r.s1 != null ? r.s1 - r.s3 : '', ''].map(q).join(','))).join('\r\n') + '\r\n';
 }
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1536,height:864},acceptDownloads:true}); const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -26,13 +26,14 @@ function fastCsv(rows) {
   const S=raw.gb.students, ids=raw.gb.ids||[]; check(S.length===23 && ids.filter(Boolean).length===23,'the scrubbed gradebook carries a Focus ID for every student');
 
   // ---- 1. the FAST report ------------------------------------------------------------------------------------------------
-  const rows=[ { id:ids[0], name:'', pct:81, above:true, pm3:1, l3:4, l1:2, s3:247, s1:231 },
-    { id:ids[1], name:'', pct:0, pm3:1, l3:1, l1:1, s3:168, s1:196 },
-    { id:ids[2], name:'', pct:30, pm3:1, l3:2, l1:3, s3:221, s1:236 },
+  const noMiddle=n=>n.replace(/^([^,]+,\s*\S+).*$/,'$1');   // "LAST, FIRST MIDDLE" → "LAST, FIRST"
+  const rows=[ { id:ids[0], name:S[0], pct:81, above:true, pm3:1, l3:4, l1:2, s3:247, s1:231, race:'W', l30:'', ese:'' },
+    { id:ids[1], name:noMiddle(S[1]), pct:0, pm3:1, l3:1, l1:1, s3:168, s1:196, race:'B', ese:'Y', l30:'Y' },   // name without the middle name
+    { id:ids[2], name:S[2], pct:30, pm3:1, l3:2, l1:3, s3:221, s1:236, race:'H', ell:'LY', s504:'Y', l30:'Y' },
     { id:'', name:S[3], pct:57, pm3:1, l3:3, l1:2, s3:234, s1:229 },          // no ID: matched by name
-    { id:ids[4], name:'', pct:'', l1:4, s1:253 },                             // new this year: no PM3
-    { id:'999000111', name:'', pct:50, pm3:1, l3:3, l1:3, s3:233, s1:240 },   // not in any class
-    { id:'', name:'', pct:60, pm3:1, l3:3, l1:2, s3:235, s1:233 } ];          // names deleted: cannot be placed
+    { id:ids[4], name:'', pct:'', l1:4, s1:253 },                             // no name: matched by ID; new this year (no PM3)
+    { id:'999000111', name:'STRANGER, NEW', pct:50, pm3:1, l3:3, l1:3, s3:233, s1:240 },   // not in any class
+    { id:'', name:'', pct:60, pm3:1, l3:3, l1:2, s3:235, s1:233 } ];          // name and ID deleted: cannot be placed
   const f1=path.join(tmp,'fast_report.csv'); fs.writeFileSync(f1, fastCsv(rows), 'utf8');
   const parsed=await p.evaluate(t=>window.__tally.parseFastReport(window.__tally.csvToRows ? window.__tally.csvToRows(t) : csvToRows(t)), fs.readFileSync(f1,'utf8')).catch(()=>null);
   const pr=parsed||await p.evaluate(t=>{ return window.__tally.parseFastReport(csvToRows(t)); }, fs.readFileSync(f1,'utf8'));
@@ -40,12 +41,15 @@ function fastCsv(rows) {
   const r0=pr.students.find(s=>s.id===ids[0]);
   check(JSON.stringify(r0.tests)===JSON.stringify([{test:'FAST',pm:'PM3',year:'2025-26',level:4,scale:247,pct:81,grade:6},{test:'FAST',pm:'PM1',year:'2026-27',level:2,scale:231,above:true}]),'one student: last year\'s PM3 with its percentile and the grade of the test, this year\'s PM1 marked above grade');
   check(pr.students.find(s=>s.id===ids[4]).tests.length===1 && pr.blank===1 && pr.students.length===6,'a student with only PM1 has one record; the row with no ID and no name is counted and skipped');
-  check(pr.students.every(s=>s.tests.every(t=>Object.keys(t).every(k=>['test','pm','year','level','scale','pct','grade','above'].includes(k)))) && !/ZZ/.test(JSON.stringify(pr)),'nothing from the race, ELL, ESE, 504 or L30 columns is read');
+  const i2=pr.students.find(s=>s.id===ids[2]).info;
+  check(i2.Race==='H' && i2.ELL==='LY' && i2['504']==='Y' && i2.L30==='Y' && i2.Teacher && i2.GradeLevel==='07' && i2.Percentile==='30' && i2['Scale growth PM1']==='15' && Object.values(i2).every(v=>v!==''),'every other column is kept under its own heading, growth included (Croix: "I want it to log it. It\'s all important"): '+Object.keys(i2).join(', '));
   await p.setInputFiles('#file',[f1]); await p.waitForTimeout(700);
   const toast1=await p.evaluate(()=>document.querySelector('#toast').textContent);
-  check(/FAST results \(PM3 2025-26 and PM1 2026-27\): 5 students matched · 1 not in your classes .*1 row with no ID or name skipped/.test(toast1),'the import says what it matched: "'+toast1+'"');
+  check(/FAST report \(PM3 2025-26 and PM1 2026-27\): 5 students matched to your classes \(1 by ID, the rest by name\) · 1 not in your classes: STRANGER, NEW \(kept, in case they join\) · 1 row with no name or ID skipped\. Every column was kept\./.test(toast1),'the import matches by name (the one row with no name by its ID) and says so: "'+toast1+'"');
   const st1=await p.evaluate(()=>JSON.parse(JSON.stringify(window.__tally.state.tests)));
-  check(st1['id:'+ids[0]] && st1['id:'+ids[0]].length===2 && st1['id:999000111'] && Object.keys(st1).some(k=>k.startsWith('n:')) && !/ZZ/.test(JSON.stringify(st1)),'scores are kept by Focus ID (and by name for the row without one); the stranger is kept in case they join; no demographic value is stored');
+  const ti=await p.evaluate(()=>JSON.parse(JSON.stringify(window.__tally.state.testInfo)));
+  check(st1['id:'+ids[0]] && st1['id:'+ids[0]].length===2 && st1['id:999000111'] && Object.keys(st1).some(k=>k.startsWith('n:')),'scores are kept under the student\'s roster name and ID; the stranger is kept in case they join');
+  check(ti['id:'+ids[2]] && ti['id:'+ids[2]].FAST.fields.L30==='Y' && ti['id:'+ids[2]].FAST.fields.Race==='H' && /fast_report\.csv$/.test(ti['id:'+ids[2]].FAST.file),'the report\'s other columns are kept per student too, with the file they came from');
   // a later report replaces a window instead of adding a second copy
   const rows2=rows.slice(0,1).map(r=>({ ...r, s1:240, l1:3 })); const f2=path.join(tmp,'fast_report_again.csv'); fs.writeFileSync(f2, fastCsv(rows2), 'utf8');
   await p.setInputFiles('#file',[f2]); await p.waitForTimeout(600);
@@ -55,7 +59,7 @@ function fastCsv(rows) {
   const f3=path.join(tmp,'no_names.csv'); fs.writeFileSync(f3, fastCsv(rows.map(r=>({ ...r, id:'', name:'' }))), 'utf8');
   const before=await p.evaluate(()=>JSON.stringify(window.__tally.state.tests)); await p.setInputFiles('#file',[f3]); await p.waitForTimeout(600);
   const t3=await p.evaluate(()=>({ msg:document.querySelector('#toast').textContent, err:document.querySelector('#toast').classList.contains('err'), same:JSON.stringify(window.__tally.state.tests) }));
-  check(t3.err && /no student IDs or names/.test(t3.msg) && t3.same===before,'a report with no IDs or names is refused with a plain reason: "'+t3.msg+'"');
+  check(t3.err && /no student names or IDs/.test(t3.msg) && t3.same===before,'a report with no IDs or names is refused with a plain reason: "'+t3.msg+'"');
 
   // ---- 2. the student page: FAST and notes -------------------------------------------------------------------------------
   const open=async i=>{ await p.evaluate(({K,nm})=>window.__tally.openProfile(K,nm),{K,nm:S[i]}); await p.waitForTimeout(300); };
@@ -63,6 +67,12 @@ function fastCsv(rows) {
   const ft=await p.evaluate(()=>[...document.querySelectorAll('#pTests tr')].map(tr=>[...tr.children].map(c=>c.textContent.trim()).join(' ').replace(/\s+/g,' ').trim()));
   check(ft.length===2 && /^PM1 2026-27 Level 3 240 −7 above grade$/.test(ft[0]) && /^PM3 2025-26 Level 4 247 81st pct$/.test(ft[1]),'the student page lists FAST newest first with the change in scale score: '+ft.join(' / '));
   await open(3); const byName=await p.evaluate(()=>document.querySelectorAll('#pTests tr').length); check(byName===2,'the student without an ID in the report is found by name');
+  await open(2); const fl=await p.evaluate(()=>({ flags:[...document.querySelectorAll('#pTests .fflag')].map(x=>x.textContent), all:[...document.querySelectorAll('#pTests .fall dt')].map(x=>x.textContent) }));
+  check(fl.flags.join(' | ')==='Lowest 30% | 504 | ELL (LY)' && ['Race','L30','ELL','504','Percentile','Scale growth PM1','Teacher'].every(k=>fl.all.includes(k)),'the student page shows the flags (L30 first) and, folded, everything the report said: '+fl.flags.join(' | '));
+  await p.click('#btnStudents'); await p.waitForTimeout(400); await p.click('#stuL30'); await p.waitForTimeout(300);
+  const l30=await p.evaluate(()=>({ n:document.querySelectorAll('.sdir tr[data-name]').length, meta:document.querySelector('#bar .meta').textContent, chips:document.querySelectorAll('.sdir .fflag.l30').length }));
+  check(l30.n===2 && l30.chips===2 && /2 students in the lowest 30%/.test(l30.meta),'Students has an L30 button that lists only the lowest-30% students, each tagged: "'+l30.meta+'"');
+  await p.click('#stuL30'); await p.waitForTimeout(200);
   await open(1); const zero=await p.evaluate(()=>document.querySelector('#pTests').textContent); check(/below 1st pct/.test(zero),'a percentile of 0 reads "below 1st"');
   await open(5); check(await p.evaluate(()=>!document.querySelector('#pTests')),'a student with no results has no FAST section');
   // notes
@@ -87,7 +97,7 @@ function fastCsv(rows) {
 
   // ---- 3. the conference form, against the gradebook read independently ---------------------------------------------------
   const assess=a=>raw.map[a.name]==='Assessments' && !/\bixl\b/i.test(a.name) && a.max>0;
-  const expectFor=i=>({ missing: raw.gb.assignments.filter(a=>a.status && a.status[i]==='missing').map(a=>a.name),
+  const expectFor=i=>({ missing: raw.gb.assignments.filter(a=>a.status && a.status[i]==='missing' && !/\bixl\b/i.test(a.name)).map(a=>a.name),
     redo: raw.gb.assignments.filter(a=>assess(a) && a.status && a.status[i]==='score' && a.values[i]!=null && a.values[i]/a.max<0.7).map(a=>a.name) });
   const nice=n=>{ const m=n.match(/^([^,]+),\s*(.+)$/); const t=s=>s.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()); return t(m[2].split(/\s+/)[0]+' '+m[1]); };
   let worst=-1, best=-1; S.forEach((_,i)=>{ const e=expectFor(i); if (worst<0 && e.missing.length && e.redo.length) worst=i; if (best<0 && !e.missing.length) best=i; });
@@ -97,10 +107,24 @@ function fastCsv(rows) {
   const want=await p.evaluate(({K,nm})=>{ const T=window.__tally; const s=T.state.sections[K]; const i=s.grades.students.indexOf(nm); return { g:T.computeGrade(s,i).rounded, per:s.period, rt:T.retakeStatus(s,nm) }; },{K,nm:S[worst]});
   const ew=expectFor(worst);
   check(v.cfName===nice(S[worst]) && v.cfCurrent===String(want.g) && v.cfPeriod===String(want.per||'') && v.cfGrade==='7' && /Grade 7/.test(v.cfCourse),'header fields: '+[v.cfName,v.cfGrade,v.cfCourse,v.cfPeriod,v.cfCurrent+'%'].join(' · '));
-  check(ew.missing.every(n=>v.cfWork.includes('• '+n+',')) && (v.cfWork.match(/^• /gm)||[]).length===ew.missing.length+ew.redo.length && ew.redo.every(n=>v.cfWork.includes('• '+n+',')),'"Missing & redo" lists exactly the '+ew.missing.length+' assignments not handed in and the '+ew.redo.length+' assessments under 70%');
-  check(/Retakes: not yet\. First turn in \d+ missing assignments?/.test(v.cfWork) && !want.rt.ok,'and says whether a retake is allowed, in the words Show student uses');
-  check(new RegExp('^'+ew.missing.length+' assignments? not handed in').test(v.cfConcerns.split('\n')[0]),'Concerns is drafted from the numbers: "'+v.cfConcerns.split('\n')[0]+'"');
+  check(ew.missing.every(n=>v.cfWork.includes('• '+n+' (due') || v.cfWork.includes('• '+n+'\n')) && (v.cfWork.match(/^• /gm)||[]).length===ew.missing.length+ew.redo.length && ew.redo.every(n=>v.cfWork.includes('• '+n+': ')) && /^Missing \(zeros until turned in\):/m.test(v.cfWork) && /^Below 70%, can be retaken:/m.test(v.cfWork),'"Missing & redo" lists exactly the '+ew.missing.length+' assignments not handed in and the '+ew.redo.length+' assessments under 70%');
+  check(/^Retakes open once the missing work is turned in( and the \d+ Unit \d+ IXL practice skills? (is|are) finished)?\.$/m.test(v.cfWork) && !want.rt.ok,'and says, in a full sentence, what opens a retake: "'+(v.cfWork.match(/^Retakes.*$/m)||[''])[0]+'"');
+  check(new RegExp(' has '+ew.missing.length+' missing assignments?, which counts? as (a zero|zeros) until turned in\\.').test(v.cfConcerns.split('\n')[0]),'Concerns is drafted from the numbers: "'+v.cfConcerns.split('\n')[0]+'"');
   check(['Q1','Q2','S1','Q3','Q4','S2'].every(q=>v['cf'+q]===''),'no report-card grade is filled while no quarter has been closed');
+  // the draft rules, over the whole class (21 Oct 2026, after three reviews: a teacher's, a data auditor's, a parent's)
+  const all=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; return s.grades.students.map(n=>{ const d=T.conferenceData(s,n); const dr=T.conferenceDraft(d); return { n, S:dr.strengths, C:dr.concerns, W:T.conferenceWork(d), poss:d.ix?d.ix.poss:null, graded:d.graded, redo:d.redo.length, missing:d.missing.length+d.missedTests.length, grade:d.r?d.r.rounded:null, noIxl:d.rt.noIxl, checks:T.conferenceChecks(d) }; }); },K);
+  const lines=x=>x?x.split('\n').filter(Boolean):[];
+  const bad=(rule,f)=>{ const b=all.filter(f); check(b.length===0, rule+(b.length?' — not for '+b.length+': '+b.slice(0,2).map(x=>JSON.stringify(x.S+' | '+x.C+' | '+x.W).slice(0,220)).join(' ; '):'')); };
+  bad('no strength rests on a notebook check or a vocabulary quiz',x=>/notebook|vocab/i.test(x.S));
+  bad('no dashboard fragments or jargon: "Strong on assessments", "assessment average", "at goal", "pts", "(listed below)" only after a count',x=>/Strong on|assessment average|at goal|\bpts\b|Best assessment/i.test(x.S+x.C+x.W));
+  bad('no IXL account wording ever reaches the form (it is a teacher check instead)',x=>/IXL account|no IXL|First no/i.test(x.S+x.C+x.W) || (x.noIxl && !x.checks.some(c=>/IXL isn't linked/.test(c))));
+  bad('the year-long IXL total is never printed',x=>x.poss && new RegExp('of '+x.poss+'\\b').test(x.S+x.C));
+  bad('Strengths and Concerns are full sentences, at most four each',x=>[...lines(x.S),...lines(x.C)].some(l=>!/[.]$/.test(l) || !/^[A-Z]/.test(l)) || lines(x.S).length>4 || lines(x.C).length>4);
+  bad('a retake sentence appears only with something below 70%',x=>/Retakes open|retake these now/.test(x.W)!==(x.redo>0));
+  bad('missing work is always in Concerns, with what it costs',x=>x.missing>0 && !/missing assignment|missed the/.test(x.C));
+  bad('nothing is called a concern or a strength for a student with only participation graded',x=>x.graded<3 && (x.C!=='' || /turned in every/.test(x.S)));
+  bad('every student with something graded gets a Concerns line ("No concerns at this time." when there are none)',x=>x.graded>=3 && x.C==='');
+  bad('"turned in every assignment" never sits beside missing work',x=>/turned in every/.test(x.S) && x.missing>0);
   // report-card grades: quarters as closed, semesters the average of two quarters rounded half up
   const rc=await p.evaluate(()=>{ const R=window.__tally.reportCard; const c=(q,g,closed=true)=>({ q, g, closed });
     return [R([c(1,89),c(2,90)]), R([c(1,88),c(2,91)]), R([c(1,79),c(2,80,false)]), R([c(1,92),c(2,85),c(3,70),c(4,75)]), R([c(1,64),c(2,55)])]; });
@@ -110,7 +134,7 @@ function fastCsv(rows) {
   await p.evaluate(()=>{ window.__tally.reopenQuarter(1); }); await p.click('#mClose'); await p.waitForTimeout(300);
   await open(best); await p.click('#pConf'); await p.waitForTimeout(400);
   const vb=await p.evaluate(()=>({ s:document.querySelector('#cfStrengths').value, w:document.querySelector('#cfWork').value }));
-  check(/Turns in every assignment/.test(vb.s) && (vb.w==='' || !/Not handed in/.test(vb.w)),'a student with nothing missing gets that as a strength, and no "not handed in" list');
+  check(/has turned in every assignment this quarter\./.test(vb.s) && (vb.w==='' || !/^Missing/m.test(vb.w)),'a student with nothing missing gets that as a strength, and no "not handed in" list');
   await p.click('#mClose'); await p.waitForTimeout(300);
   // notes go into the form on a click; edits, the teacher and the course are kept
   await open(0); await p.click('#pConf'); await p.waitForTimeout(400);

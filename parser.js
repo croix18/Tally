@@ -284,7 +284,9 @@ function parseIxlFilename(fn) {
 
 /* FAST progress-monitoring report (Focus "FAST report", one row per student). Three header rows: column names, then the
    school year and the window (PM1, PM2, PM3, Total) under the grouped "Achievement Level" and "Scale Score" columns.
-   Only the scores are read; the demographic and program columns in the export are ignored and never kept. */
+   Every column is kept (Croix, 21 Oct 2026: "I don't want Tally to ignore that stuff. I want it to log it. It's all
+   important … The L30 is especially important because the lower quartile is a whole bucket item on the school
+   grade"): the scores per window as records, and every other column, under its own heading, in `info`. */
 function parseFastReport(rows) {
   const txt = v => v == null ? '' : String(v).trim();
   const h = rows.slice(0, 15).findIndex(r => r && r.some(v => /scale\s*score/i.test(txt(v))) && r.some(v => /achievement/i.test(txt(v))));
@@ -292,12 +294,18 @@ function parseFastReport(rows) {
   const hdr = rows[h].map(txt); const yr = (rows[h + 1] || []).map(txt), pm = (rows[h + 2] || []).map(txt);
   const col = re => hdr.findIndex(v => re.test(v));
   const cId = col(/(^|[^a-z])id([^a-z]|$)/i), cName = col(/^student/i), cGrade = col(/grade\s*level/i), cPct = col(/percentile/i), cAbove = col(/tested\s*above/i), cTestLvl = col(/test\s*level/i);
-  const width = Math.max(hdr.length, yr.length, pm.length); let group = ''; const cols = [];
+  const width = Math.max(hdr.length, yr.length, pm.length); let group = '', prevGroup = ''; const cols = [], extra = [];
+  const clean = v => String(v || '').replace(/^[\uFEFF"]+|"+$/g, '').replace(/^ï»¿"*/, '').replace(/"+$/, '').trim();
   for (let c = 0; c < width; c++) {
-    if (hdr[c]) group = hdr[c];
+    if (hdr[c]) { if (!/growth/i.test(hdr[c])) prevGroup = hdr[c]; group = hdr[c]; }
     const y = (yr[c] || '').match(/(\d{4})\D{1,9}(\d{2})(\d{2})?/), w = (pm[c] || '').match(/^PM\s*(\d)$/i);
+    const yy = y ? y[1] + '-' + (y[3] || y[2]) : '';
+    if (y && (pm[c] || '')) {   // a grouped column: a score window, or growth as the report states it
+      const kind = w && /achievement/i.test(group) ? 'level' : w && /scale/i.test(group) ? 'scale' : null;
+      if (!kind) { extra.push({ c, label: `${/growth/i.test(group) ? (/scale/i.test(prevGroup) ? 'Scale growth' : /achievement/i.test(prevGroup) ? 'Level growth' : clean(group)) : clean(group)}${/growth/i.test(group) ? '' : ' ' + yy} ${pm[c]}`.replace(/\s+/g, ' ').trim() }); continue; }
+    } else { if (hdr[c] && c !== cId && c !== cName) extra.push({ c, label: clean(hdr[c]) }); continue; }
     if (!y || !w) continue;
-    const kind = /achievement/i.test(group) ? 'level' : /scale/i.test(group) ? 'scale' : null; if (!kind) continue;   // growth columns are worked out from the scores
+    const kind = /achievement/i.test(group) ? 'level' : 'scale';
     cols.push({ c, kind, year: y[1] + '-' + (y[3] || y[2]), pm: 'PM' + w[1] });
   }
   if (!cols.some(x => x.kind === 'scale')) return null;
@@ -317,9 +325,10 @@ function parseFastReport(rows) {
       if (w.year === lastYear && cAbove >= 0 && /^y/i.test(txt(r[cAbove]))) t.above = true;
       return t; }).filter(t => t.scale != null || t.level != null);
     if (!id && !name) { blank++; continue; }
-    if (tests.length) students.push({ id, name, grade: cGrade >= 0 ? num(r[cGrade]) : null, tests });
+    const info = {}; extra.forEach(x => { const v = txt(r[x.c]); if (v && x.label) info[x.label] = v.slice(0, 80); });
+    if (tests.length || Object.keys(info).length) students.push({ id, name, grade: cGrade >= 0 ? num(r[cGrade]) : null, tests, info });
   }
-  return { students, blank, windows: wins };
+  return { students, blank, windows: wins, columns: extra.map(x => x.label) };
 }
 
 if (typeof module !== 'undefined') module.exports = { inflateRaw, readZip, xlsxToRows, csvToRows, parseIxlGrid, parseIxlFilename, asScore, parseFastReport };
