@@ -380,6 +380,34 @@ per-section-file era and many items in them are now done).
     equal the laptop's.
   - Two tests moved with the calendar: after Oct 9 the first attention row is "close Quarter 1", so
     `command-center.js` now clicks the first row that opens a class.
+- **21 Oct 2026 — Parent conference form, student notes, FAST results.** Croix sent the school's *Parent Conference
+  Input Form*: "Can you make it so Tally can generate this for me for whichever student I select? I can upload pm data
+  into Tally … Also a way to keep notes about a student." His answers: Strengths/Concerns **drafted from the data, he
+  edits**; the redo list is **assessments under 70 %**; a semester grade is **the average of its two quarters**
+  (rounded half up, no exam); he sent his FAST report with names and IDs deleted (not fakes) — it was read for its
+  shape only and is **not in the repo**; `tests/conference.js` builds a synthetic report in the same shape.
+  - **Notes** (`students.js`): a dated log per student on the class, `sec.stuNotes[norm(name)] = [{id, at, text}]`,
+    newest first on the student page, Add (or Ctrl+Enter) and Remove. Hidden while names are hidden; never on Show
+    student or in a Board file; carried by the weekly backup and the full save.
+  - **FAST** (`parser.js` `parseFastReport`, `conference.js`): the Focus FAST report has three header rows (names;
+    school year; window PM1/PM2/PM3/Total under "Achievement Level", "Growth", "Scale Score", "Growth"). Tally reads
+    ID, Student, the level and scale score for each window, the one Percentile column (it belongs to the PM3: same
+    PM3 score, same percentile, in his file), PM3TestLevel (grade of last year's test) and TestedAboveGrade (this
+    year's windows). **Race, ELL, ESE, 504, L30 and Survey match are never read or kept.** Growth columns are
+    worked out from the scores. His copy had the BOM and the en dash mangled by a wrong-encoding round trip; the
+    year match tolerates that. Kept once for the app in `state.tests`, keyed `id:<Focus ID>` and `n:<last|first>`,
+    so a student who changes period keeps their history; importing again replaces a window. A report with no IDs
+    or names is refused with a reason. The student page shows a FAST table (newest first, change in scale score);
+    hidden while names are hidden; not on Show student, not in a Board file. Without a report, the FAST score a
+    Seating Chart backup carried is still used.
+  - **Conference form** (`conference.js`, button on the student page): an editable dialog — header fields, current
+    grade (open quarter, as Focus rounds), Q1–S2 from closed quarters only, FAST line, Strengths, Concerns, "Missing
+    & redo" (not handed in, assessments under 70 %, and the retake line in the words Show student uses) — with the
+    student's notes beside it ("+ Strengths" / "+ Concerns" copy one in) and the gradebook facts. Print opens the
+    school's form as one Letter page: its own banner and footer artwork (`forms/`, embedded by `build.py` as data
+    URIs), the same labels and underlines, long text shrinking to fit. Teacher name, grade and course (per prep) are
+    remembered in settings (added to `migrate()`'s whitelist); a student's edited text is kept in
+    `sec.confForms[norm(name)]` only when it differs from the fresh draft, with "Start over from Tally".
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.

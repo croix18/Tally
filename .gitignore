@@ -11,3 +11,4 @@ fixtures/tmp_*
 .github-token
 Tally.test.html
 Scrub.test.html
+!forms/*.png

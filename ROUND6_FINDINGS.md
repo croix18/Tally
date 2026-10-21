@@ -196,6 +196,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   and the report; a Full save and a Board file (no names, no row of grades, Board-only) beside the weekly backup; the
   picker no longer limits Android to files typed .json. New suites `tests/whatif-audit.js` (227 cells recomputed
   independently) and `tests/board-file.js`. 33 suites, 1077 checks.
+- 21 Oct: the school's parent conference form, filled from Tally for any student and printed as the school's own
+  page; notes per student; FAST results imported from the Focus FAST report (scores only, by ID). One build snag:
+  the print page's literal `</script>` ended Tally's own script — now `<\/script>`. New suite
+  `tests/conference.js`. 34 suites, 1119 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

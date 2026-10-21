@@ -75,6 +75,28 @@ function studentSummary(sec, name) {
   return out;
 }
 
+/* ---------- Student notes ----------
+   A dated log per student, kept on the class (sec.stuNotes[norm(name)] = [{ id, at, text }], newest last). Teacher-only:
+   hidden while names are hidden, never on Show student, never in a Board file; carried by the backup and a full save. */
+const NOTE_MAX = 2000;
+function cleanNotes(o) { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !Array.isArray(o[k])) continue; const list = o[k].filter(n => n && typeof n.text === 'string' && n.text.trim() && typeof n.at === 'string').map(n => ({ id: typeof n.id === 'string' ? n.id.slice(0, 20) : Math.random().toString(36).slice(2, 10), at: n.at.slice(0, 30), text: n.text.slice(0, 2000) })).slice(-200); if (list.length) out[k] = list; } return out; }   /* a declaration: migrate() runs before this file's consts exist */
+const notesOf = (sec, name) => ((sec.stuNotes || {})[norm(name)] || []);
+function addNote(sec, name, text) { text = String(text || '').trim().slice(0, NOTE_MAX); if (!text) return null; sec.stuNotes = sec.stuNotes || {}; const k = norm(name); const n = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: new Date().toISOString(), text }; (sec.stuNotes[k] = sec.stuNotes[k] || []).push(n); return n; }
+function dropNote(sec, name, id) { const k = norm(name); const l = (sec.stuNotes || {})[k]; if (!l) return; sec.stuNotes[k] = l.filter(n => n.id !== id); if (!sec.stuNotes[k].length) delete sec.stuNotes[k]; }
+function notesSection(sec, name) {
+  const H = state.settings.hideNames; const list = notesOf(sec, name).slice().reverse();
+  if (H) return `<section class="gsec" id="pNotes"><h3>Notes${list.length ? ` <small>${list.length}</small>` : ''}</h3><p class="ghint">Hidden while names are hidden.</p></section>`;
+  return `<section class="gsec" id="pNotes"><h3>Notes${list.length ? ` <small>${list.length}</small>` : ''}</h3>
+    <div class="noteAdd"><textarea id="noteText" rows="2" maxlength="${NOTE_MAX}" placeholder="New note" aria-label="New note"></textarea><button class="pill small" id="noteAdd">Add</button></div>
+    ${list.length ? `<ul class="notes">${list.map(n => `<li data-nid="${esc(n.id)}"><time datetime="${esc(n.at)}">${esc(fmtDate(localDay(n.at)))}</time><p>${esc(n.text)}</p><button class="linkbtn" data-ndel="${esc(n.id)}" aria-label="Remove this note">Remove</button></li>`).join('')}</ul>` : ''}</section>`;
+}
+function wireNotes(sec, name) {
+  const add = $('#noteAdd'), ta = $('#noteText'); if (!add || !ta) return;
+  const go = () => { if (addNote(sec, name, ta.value)) { save(); render(); const t = $('#noteText'); if (t) t.focus(); } };
+  add.onclick = go; ta.onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); go(); } };
+  document.querySelectorAll('#pNotes [data-ndel]').forEach(b => b.onclick = () => { if (!confirm('Remove this note?')) return; dropNote(sec, name, b.dataset.ndel); save(); render(); });
+}
+
 /* ---------- Retake eligibility ----------
    Croix's rule (19 Oct 2026): a student may retake an assessment only when they are completely caught up — nothing not
    handed in (NHI) in the open quarter, and every counted IXL skill in the unit the course is working in at goal.
@@ -165,7 +187,7 @@ function renderProfile() {
   const backLabel = profileBack && profileBack.mode === 'grades' ? 'Grades' : profileBack && profileBack.mode === 'home' ? 'Overview' : profileBack && profileBack.mode === 'seating' ? 'Seating' : profileBack && (profileBack.mode === 'units' || profileBack.mode === 'unit') ? sec.label : 'Students';
   $('#bar').innerHTML = `<div class="crumb"><button id="back">‹ ${esc(backLabel)}</button><h2>${esc(shownName)}</h2></div><span class="meta"><span class="qdot" style="--cc:${classColor(sec)}"></span>${esc(sec.label)}${f.id && !H ? ` · ID ${esc(f.id)}` : ''}${at >= 0 ? ` · ${at + 1} of ${list.length}` : ''}</span><div class="spacer"></div>
     <span class="pnav"><button class="pill toggle" id="pPrev" ${at > 0 ? '' : 'disabled'} title="Previous student in this class">‹ Prev</button><button class="pill toggle" id="pNext" ${at >= 0 && at < list.length - 1 ? '' : 'disabled'} title="Next student in this class">Next ›</button></span>
-    ${openB ? `<button class="pill toggle" id="pPrint" title="One printed page for the student and home">Print report</button><button class="pill" id="pShow" title="Turn the screen toward the student: their grade and what-ifs, nothing else">Show student</button>` : ''}`;
+    ${openB ? `<button class="pill toggle" id="pPrint" title="One printed page for the student and home">Print report</button>` : ''}<button class="pill toggle" id="pConf" title="The school's parent conference form, filled in from Tally">Conference form</button>${openB ? `<button class="pill" id="pShow" title="Turn the screen toward the student: their grade and what-ifs, nothing else">Show student</button>` : ''}`;
   $('#bar').classList.add('detail');
 
   // headline tiles
@@ -229,13 +251,15 @@ function renderProfile() {
   const wi = openB ? `${qp ? `<section class="gsec" id="pQuick">${quickestCard(qp)}</section>` : ''}<section class="gsec" id="pWhat"><h3>What would move the grade <small>${esc(Q_NAMES[openB.q - 1])}</small></h3>${whatIfMarkup(openB.s, openB.i, retakeStatus(sec, name))}</section>`
     : `<section class="gsec"><h3>What would move the grade</h3><p class="ghint">${anyClosed() ? `${esc(Q_NAMES[cq - 1])} has no gradebook yet — closed quarters don't change, so there's nothing to move until the first ${esc(Q_NAMES[cq - 1])} import.` : 'Import this class\'s Focus gradebook for grades and what-ifs.'}</p></section>`;
 
-  $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}</div></div></div>`;
+  $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}${testsSection(sec, name)}${notesSection(sec, name)}</div></div></div>`;
   if (openB) wireWhatIf($('#pWhat'), openB.s, openB.i);
   $('#back').onclick = profileLeave;
   const go = d => { const n = list[at + d]; if (n) { view.stu = { key: sec.key, name: n }; render(); } };
   $('#pPrev').onclick = () => go(-1); $('#pNext').onclick = () => go(1);
   const pp = $('#pPrint'); if (pp) pp.onclick = () => printStudentReports(sec, [f.gi], `${name} — report`);
   const ps = $('#pShow'); if (ps) ps.onclick = () => openShow(sec, name);
+  wireNotes(sec, name);
+  const pc = $('#pConf'); if (pc) pc.onclick = () => openConference(sec, name);
 }
 
 /* ---------- Quickest way to the next letter ----------

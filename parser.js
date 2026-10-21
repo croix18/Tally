@@ -282,4 +282,44 @@ function parseIxlFilename(fn) {
   return { date, courseNum, section, courseTag, accelerated, key, label, period };
 }
 
-if (typeof module !== 'undefined') module.exports = { inflateRaw, readZip, xlsxToRows, csvToRows, parseIxlGrid, parseIxlFilename, asScore };
+/* FAST progress-monitoring report (Focus "FAST report", one row per student). Three header rows: column names, then the
+   school year and the window (PM1, PM2, PM3, Total) under the grouped "Achievement Level" and "Scale Score" columns.
+   Only the scores are read; the demographic and program columns in the export are ignored and never kept. */
+function parseFastReport(rows) {
+  const txt = v => v == null ? '' : String(v).trim();
+  const h = rows.slice(0, 15).findIndex(r => r && r.some(v => /scale\s*score/i.test(txt(v))) && r.some(v => /achievement/i.test(txt(v))));
+  if (h < 0) return null;
+  const hdr = rows[h].map(txt); const yr = (rows[h + 1] || []).map(txt), pm = (rows[h + 2] || []).map(txt);
+  const col = re => hdr.findIndex(v => re.test(v));
+  const cId = col(/(^|[^a-z])id([^a-z]|$)/i), cName = col(/^student/i), cGrade = col(/grade\s*level/i), cPct = col(/percentile/i), cAbove = col(/tested\s*above/i), cTestLvl = col(/test\s*level/i);
+  const width = Math.max(hdr.length, yr.length, pm.length); let group = ''; const cols = [];
+  for (let c = 0; c < width; c++) {
+    if (hdr[c]) group = hdr[c];
+    const y = (yr[c] || '').match(/(\d{4})\D{1,9}(\d{2})(\d{2})?/), w = (pm[c] || '').match(/^PM\s*(\d)$/i);
+    if (!y || !w) continue;
+    const kind = /achievement/i.test(group) ? 'level' : /scale/i.test(group) ? 'scale' : null; if (!kind) continue;   // growth columns are worked out from the scores
+    cols.push({ c, kind, year: y[1] + '-' + (y[3] || y[2]), pm: 'PM' + w[1] });
+  }
+  if (!cols.some(x => x.kind === 'scale')) return null;
+  const wins = []; cols.forEach(x => { if (!wins.some(v => v.year === x.year && v.pm === x.pm)) wins.push({ year: x.year, pm: x.pm }); });
+  const order = v => v.year + v.pm; wins.sort((a, b) => order(a).localeCompare(order(b)));
+  const pm3s = wins.filter(v => v.pm === 'PM3'); const pctWin = pm3s.length ? pm3s[pm3s.length - 1] : null;   // the report's one Percentile column belongs to its PM3
+  const lastYear = wins.length ? wins[wins.length - 1].year : null;
+  const num = v => { const t = txt(v); return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : null; };
+  const students = []; let blank = 0;
+  for (let i = h + 3; i < rows.length; i++) {
+    const r = rows[i]; if (!r || !r.some(v => txt(v))) continue;
+    const id = cId >= 0 ? txt(r[cId]).replace(/^"+|"+$/g, '') : '', name = cName >= 0 ? txt(r[cName]) : '';
+    const tests = wins.map(w => { const t = { test: 'FAST', pm: w.pm, year: w.year };
+      cols.filter(x => x.year === w.year && x.pm === w.pm).forEach(x => { const v = num(r[x.c]); if (v != null) t[x.kind] = v; });
+      if (pctWin && w === pctWin && cPct >= 0 && num(r[cPct]) != null && t.scale != null) t.pct = num(r[cPct]);
+      if (w.pm === 'PM3' && cTestLvl >= 0 && num(r[cTestLvl]) != null && w.year !== lastYear) t.grade = num(r[cTestLvl]);
+      if (w.year === lastYear && cAbove >= 0 && /^y/i.test(txt(r[cAbove]))) t.above = true;
+      return t; }).filter(t => t.scale != null || t.level != null);
+    if (!id && !name) { blank++; continue; }
+    if (tests.length) students.push({ id, name, grade: cGrade >= 0 ? num(r[cGrade]) : null, tests });
+  }
+  return { students, blank, windows: wins };
+}
+
+if (typeof module !== 'undefined') module.exports = { inflateRaw, readZip, xlsxToRows, csvToRows, parseIxlGrid, parseIxlFilename, asScore, parseFastReport };

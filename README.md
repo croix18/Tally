@@ -36,6 +36,8 @@ Student-facing screens (Race and Data Lab) never show names and lock behind a ho
 
 **Retakes**: a student may retake an assessment when nothing is missing and every IXL skill in the unit the course is working in is at goal. The Students list (sortable by it), the student's page, the what-ifs and Show student say "eligible" or what stands in the way.
 
+**Parent conference form** (student page): fills in Windy Hill's *Parent Conference Input Form* — current grade, report-card grades from closed quarters (a semester is the average of its two quarters), FAST history, missing work, assessments under 70 % and whether a retake is allowed — and drafts Strengths and Concerns from the numbers. Everything is editable; Print gives the school's own one-page form. **Notes** on the student page are a dated, teacher-only log that can be copied into the form. **FAST**: drop the Focus FAST report on Import; scores are matched by student ID (or name) and kept across classes. Only scores are read — the report's demographic and program columns are ignored.
+
 ## Source
 
 | file | what |
