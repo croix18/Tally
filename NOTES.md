@@ -432,6 +432,10 @@ per-section-file era and many items in them are now done).
     or the downloaded Tally.html opened in Chrome on the laptop both keep their data. On the Google Site, link to the
     Pages address (opens in a new tab) instead of embedding the file.
   - New suite `tests/saving.js` (the frame case is a sandboxed iframe with no storage).
+  - GitHub is blocked on the school wifi, so Pages is not an option at school. Offered: Tally served from Google Apps
+    Script, autosaving to a file in his school Drive (one Tally across laptop, panel and tablet). Croix: "Let's hold
+    off on that option and stick to the html for now." So: the HTML file, opened directly in Chrome on the laptop,
+    with Full saves to Drive.
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.
