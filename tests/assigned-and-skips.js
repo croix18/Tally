@@ -1,4 +1,4 @@
-const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); let dialogAnswer=true; p.on('dialog', d=>dialogAnswer?d.accept():d.dismiss());
@@ -77,8 +77,8 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   const applied=await p.evaluate(()=>{const s=window.__tally.state.sections['1205050-7T4A']; return [s.threshold, Object.keys(s.excluded).length];});
   check(applied[0]===55 && applied[1]===1,'course settings applied to the other on-level class: '+applied);
   // backup roundtrip carries studentSkips + assigned + custom
-  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await more(p,'#btnSettings'); const [dl3]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const bk=JSON.parse(fs.readFileSync(await dl3.path(),'utf8')); await p.click('#mCancel');
-  check(bk.custom.length===1 && Object.keys(bk.sections['1205050-7T1A'].studentSkips).length===1 && bk.assigned.on,'backup carries custom sets, student skips, assignment marks');
+  await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); const bk=(await fullSave(p)).json.state; await p.click('#mCancel');
+  check(bk.custom.length===1 && Object.keys(bk.sections['1205050-7T1A'].studentSkips).length===1 && bk.assigned.on,'the full save carries custom sets, student skips, assignment marks');
   await p.reload(); await p.waitForTimeout(500); check((await p.evaluate(()=>Object.keys(window.__tally.state.sections['1205050-7T1A'].studentSkips).length))===1,'student skips persist');
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();

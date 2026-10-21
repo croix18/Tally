@@ -21,4 +21,11 @@ const APP = 'Tally.test.html', SCRUB = 'Scrub.test.html';
 const pick = async (p, sel = '[data-sec]') => { if (!/__new__/.test(sel)) { const e = await p.$('#ncExisting'); if (e) { await e.click(); await p.waitForTimeout(200); } } const d = await p.$(sel); if (d) await d.click(); return !!d; };
 // Settings, Guide and Details view live in the header's ⋯ menu: open it, then choose.
 const more = async (p, sel) => { await p.click('#btnMore'); await p.click(sel); };
-module.exports = { chromium, fs, path, exe, check, done, tmp, need, unskip, dense, pick, more, APP, SCRUB };
+// The Full save from Settings, parsed (the only file that carries everything since 21 Oct 2026). Leaves Settings open.
+const fullSave = async p => { if (!(await p.$('#modal:not(.hidden) #exportFull'))) { await more(p, '#btnSettings'); await p.waitForTimeout(250); } const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#exportFull')]); const f = path.join(tmp, 'full-' + Date.now() + '.json'); await dl.saveAs(f); return { file: f, json: JSON.parse(fs.readFileSync(f, 'utf8')), name: dl.suggestedFilename() }; };
+// The settings-only backup Tally wrote until 21 Oct 2026, rebuilt from a Full save's state with the same fields, so the
+// loader those old files still go through stays tested.
+const legacyOf = st => { const s = st.settings || {}; const out = { tally: 4, exported: '2026-10-01T12:00:00.000Z', settings: { copyMode: s.copyMode, useBest: s.useBest, remindDays: s.remindDays, skipFirst: s.skipFirst, skipFirstV2: true, currentUnit: s.currentUnit, curUnitTouched: s.curUnitTouched }, assigned: st.assigned, custom: st.custom, grading: st.grading, room: st.room, seatWeights: st.seatWeights, seatBasis: st.seatBasis, seatPairs: st.seatPairs, quarters: st.quarters, sections: {} };
+  for (const k of st.order || Object.keys(st.sections)) { const x = st.sections[k]; out.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [], seating: x.seating || null, seatInfo: x.seatInfo || {}, qArchive: x.qArchive || {}, overrides: x.overrides || {} }; }
+  return out; };
+module.exports = { fullSave, legacyOf, chromium, fs, path, exe, check, done, tmp, need, unskip, dense, pick, more, APP, SCRUB };

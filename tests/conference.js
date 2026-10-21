@@ -4,7 +4,7 @@
 // redo list is assessments under 70 %; a semester grade is the average of its two quarters.
 // The FAST report here is synthetic, built in the shape of the school's export (three header rows, the BOM and the
 // en dash mangled the way his copy was); no real score is in the repo.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more, fullSave } = require('./lib');
 const BOM = 'ï»¿', DASH = 'â\u0080\u0093';   // what a UTF-8 BOM and "–" become after one wrong round trip, as in his file
 function fastCsv(rows) {
   const q = v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
@@ -141,18 +141,16 @@ function fastCsv(rows) {
   const long=await p.evaluate(()=>{ const T=window.__tally; const blah='Needs reminders to show work and check answers before turning them in. '; return T.conferenceHtml({ name:'Long Text', grade:'7', teacher:'T', course:'C', period:'1', current:'71', rc:{}, tests:'x', strengths:blah.repeat(14), concerns:blah.repeat(14), work:Array.from({length:22},(_,i)=>'• Assignment '+(i+1)+', 10 pts').join('\n') }); });
   const lp=await pages(long); check(lp.n===1 && lp.fs.every(f=>f<14),'a lot of text still prints on one page: the boxes shrink their type ('+lp.fs.map(f=>f.toFixed(1)+'px').join(', ')+')');
 
-  // ---- 4. the backup carries notes, FAST, the kept form text and the header fields ----------------------------------------
+  // ---- 4. the full save carries notes, FAST, the kept form text and the header fields ----------------------------------------
   await p.click('#mClose').catch(()=>{}); await p.waitForTimeout(200); await open(3); await p.click('#pConf'); await p.waitForTimeout(300); await p.fill('#cfStrengths','Edited for row three.'); await p.click('#mCancel'); await p.waitForTimeout(200);
-  await more(p,'#btnSettings'); await p.waitForTimeout(300);
-  const [d1]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const bk=path.join(tmp,'backup.json'); await d1.saveAs(bk); await p.keyboard.press('Escape');
-  const B=JSON.parse(fs.readFileSync(bk,'utf8'));
-  check(B.tests && B.tests['id:'+ids[0]] && B.settings.teacherName==='Mr. Shaffer' && Object.values(B.settings.courseNames).includes('M/J Grade 7 Math') && Object.keys(B.sections[K].stuNotes).length===1 && Object.keys(B.sections[K].confForms).length===1,'the backup holds FAST, the teacher and course names, the notes and the kept form text');
+  const FS=await fullSave(p); const bk=FS.file; const B=FS.json.state; await p.keyboard.press('Escape');
+  check(B.tests && B.tests['id:'+ids[0]] && B.settings.teacherName==='Mr. Shaffer' && Object.values(B.settings.courseNames).includes('M/J Grade 7 Math') && Object.keys(B.sections[K].stuNotes).length===1 && Object.keys(B.sections[K].confForms).length===1,'the full save holds FAST, the teacher and course names, the notes and the kept form text');
   const ctx2=await b.newContext({viewport:{width:1536,height:864}}); const q=await ctx2.newPage(); q.on('pageerror',e=>errs.push('restore: '+e.message)); q.on('dialog',d=>d.accept()); await q.goto('file://'+path.resolve(APP)); await q.waitForTimeout(300);
   await q.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await q.waitForTimeout(500); await q.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await q.click('#rpSave'); await q.waitForTimeout(300);
   await q.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await q.waitForTimeout(500); await pick(q); await q.waitForTimeout(600);
   await q.setInputFiles('#file',[bk]); await q.waitForTimeout(800);
   const R=await q.evaluate(({K,a,c})=>{ const T=window.__tally; const s=T.state.sections[K]; return { notes:T.notesOf(s,a).length, tests:T.testHistory(s,a).length, kept:(s.confForms||{})[Object.keys(s.confForms||{})[0]], teacher:T.state.settings.teacherName }; },{K,a:S[0],c:S[3]});
-  check(R.notes===2 && R.tests===2 && R.kept && R.kept.strengths==='Edited for row three.' && R.teacher==='Mr. Shaffer','loading the backup into another Tally brings all of it back');
+  check(R.notes===2 && R.tests===2 && R.kept && R.kept.strengths==='Edited for row three.' && R.teacher==='Mr. Shaffer','opening the full save in another Tally brings all of it back');
   // the full save keeps it too (it is the whole state); the migrate whitelist keeps the new settings through a reload
   await q.reload(); await q.waitForTimeout(500); check(await q.evaluate(()=>window.__tally.state.settings.teacherName==='Mr. Shaffer' && Object.keys(window.__tally.state.tests).length>0),'…and they survive a reload');
   check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));

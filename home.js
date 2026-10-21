@@ -74,8 +74,8 @@ function renderHome() {
     : `<li class="${g.level}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"><i></i><span><b>${esc(g.who)}</b> — ${esc(g.text)}</span><em>›</em></button></li>`;
   const qdLine = qd ? `<li class="warn"><button id="qdGo"><i></i><span><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</span><em>›</em></button></li>` : '';
   const lb = state.lastBackup; const bkDue = backupBehind();
-  const bkLine = bkDue ? `<li class="info"><button id="hBackup" title="Download a backup file — keep it in your school Drive"><i></i><span><b>Back up</b> — ${lb ? `new imports since the last backup (${esc(ageDays(day(lb)) === 0 ? 'earlier today' : fmtDate(day(lb)))})` : 'nothing has been backed up from this browser yet'}</span><em>Save backup</em></button></li>` : '';
-  const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>This browser's storage is ${su.pct}% full</b> — ${su.other > su.tally ? `other saved pages hold most of it (${su.mb(su.other)} MB; Tally ${su.mb(su.tally)} MB). Save a backup first` : 'save a backup, then remove an old class or gradebook in Settings'}</span><em>›</em></button></li>` : '';
+  const bkLine = bkDue ? `<li class="info"><button id="hBackup" title="Download a Full save: everything in Tally. Keep it in your school Drive"><i></i><span><b>Full save</b> — ${storageFragile ? 'work on this page is in no Full save yet' : lb ? `new imports since the last one (${esc(ageDays(day(lb)) === 0 ? 'earlier today' : fmtDate(day(lb)))})` : 'nothing has been saved from this browser yet'}</span><em>Save</em></button></li>` : '';
+  const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>This browser's storage is ${su.pct}% full</b> — ${su.other > su.tally ? `other saved pages hold most of it (${su.mb(su.other)} MB; Tally ${su.mb(su.tally)} MB). Make a Full save first` : 'make a Full save, then remove an old class or gradebook in Settings'}</span><em>›</em></button></li>` : '';
   const warns = groups.filter(g => g.level === 'warn'), notes = groups.filter(g => g.level !== 'warn');
   const noteN = notes.length + (bkLine ? 1 : 0); const noteRows = notes.map(row).join('') + bkLine;
   const fix = stLine + qdLine + warns.map(row).join(''); const fixN = (stLine ? 1 : 0) + (qdLine ? 1 : 0) + warns.length;
@@ -92,7 +92,7 @@ function renderHome() {
   const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, dark: LETTER_DARK, labelW: 180, aria: 'letter grades by class' }) : '';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   const withGb = secs.filter(s => s.grades).length, waitN = anyClosed() ? secs.filter(s => s.grades && !hasOpenGrades(s)).length : 0;
-  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · backed up ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button>`;
+  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · saved ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button>`;
   $('#bar').classList.remove('detail');
   const li0 = state.lastImport; const curU = state.settings.currentUnit || {};
   const li = li0 ? { ...li0, lines: li0.lines.filter(l => !l.wi || String(curU[l.wi.split(':')[0]]) === l.wi.split(':')[1]) } : null;   // a "Working in set to…" line retires once the teacher picks another unit
@@ -113,7 +113,7 @@ function renderHome() {
   </div>`;
   const hs = $('#hStore'); if (hs) hs.onclick = () => openSettings();
   const hn = $('#hAtt'); if (hn) hn.ontoggle = () => { if (hn.isConnected && !state.settings.details) homeAttOpen = hn.open; };   /* Details view opens it without that counting as his choice */
-  const hb = $('#hBackup'); if (hb) hb.onclick = () => { saveBackup(); render(); };
+  const hb = $('#hBackup'); if (hb) hb.onclick = () => saveFull();
   const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;
   $('#gridwrap').querySelectorAll('[data-digest]').forEach(b => b.onclick = e => { e.stopPropagation(); openDigest(state.sections[b.dataset.digest]); });

@@ -1,7 +1,7 @@
 // Round-3 hardening: numbers that must not drift (snapshots vs skips, class average, neededOn, plural, duplicate
 // skill rows, "nearly all"), pool/storage edges (same-name pool students, empty roster, old backups, old saves),
 // and the touch/keyboard manners (menu overlay, dialog focus, undo toast).
-const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -65,8 +65,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(await p.evaluate(K=>window.__tally.state.sections[K].students.length, K)>=20,'pasting the roster back re-carves the class');
   // 10. old backup without skipFirstV2 must not drag skipFirst back to on:2
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.skipFirst={acc:0,on:1}; T.save(); });
-  const [dl]=await Promise.all([p.waitForEvent('download'), (async()=>{ await p.click('[data-k="period-1"]'); await p.waitForTimeout(200); await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('#exportCfg'); })()]);
-  const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8')); check(cfg.settings.skipFirstV2===true,'backup marks skipFirstV2');
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(200); const fsv=(await fullSave(p)).json.state; const cfg=legacyOf(fsv); check(fsv.settings.skipFirst && fsv.settings.skipFirst.on===1,'the full save carries the review-unit setting');
   const old={...cfg, settings:{...cfg.settings, skipFirst:{acc:0,on:2}}}; delete old.settings.skipFirstV2; const oldPath=path.join(tmp,'old-backup.json'); fs.writeFileSync(oldPath, JSON.stringify(old));
   await p.setInputFiles('#cfgFile', oldPath); await p.waitForTimeout(600);
   const sf=await p.evaluate(()=>window.__tally.state.settings.skipFirst); check(sf.on===1,'an old backup (on:2, no V2 flag) does not override the review-unit default: '+JSON.stringify(sf));

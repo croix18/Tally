@@ -1,4 +1,4 @@
-const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}});
   await ctx.grantPermissions(['clipboard-read','clipboard-write']);
@@ -120,8 +120,8 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   check(mm.lf[0][1]==='ok','IXL "Last, First" form matches');
   // backup: hand-edited garbage tolerated
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await more(p,'#btnSettings');
-  const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfgPath=await dl.path(); const cfg=JSON.parse(fs.readFileSync(cfgPath,'utf8'));
-  check(cfg.sections['1205050-7T1A'].threshold===67 && cfg.sections['1205050-7T1A'].aliases['Aiden, Carter'],'backup carries threshold + alias');
+  const cfg=legacyOf((await fullSave(p)).json.state);
+  check(cfg.sections['1205050-7T1A'].threshold===67 && cfg.sections['1205050-7T1A'].aliases['Aiden, Carter'],'the full save carries threshold + alias (checked here through an old-style backup built from it)');
   cfg.sections['1205050-7T1A'].threshold='sixty'; cfg.sections['NEW-1']={}; fs.writeFileSync('/tmp/bad.json',JSON.stringify(cfg));
   await p.setInputFiles('#cfgFile','/tmp/bad.json'); await p.waitForTimeout(300);
   check((await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].threshold))===67 && (await p.evaluate(()=>window.__tally.state.pendingCfg['NEW-1'].label))==='NEW-1','bad backup values sanitized');

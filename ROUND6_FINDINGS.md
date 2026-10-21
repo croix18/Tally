@@ -200,6 +200,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   page; notes per student; FAST results imported from the Focus FAST report (scores only, by ID). One build snag:
   the print page's literal `</script>` ended Tally's own script — now `<\/script>`. New suite
   `tests/conference.js`. 34 suites, 1119 checks.
+- 21 Oct: two saves only (Full save, Board save; the settings-only backup that cost him a day's work is gone from every
+  screen, old files still open). Inside a Google Site Tally's storage never lasts: Tally now says so in a strip, keeps
+  Full save one tap away, and asks before the page is left with unsaved work; a Full save opens even where storage is
+  refused. New suite `tests/saving.js`. 35 suites, 1138 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

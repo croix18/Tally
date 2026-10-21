@@ -26,7 +26,7 @@ per-section-file era and many items in them are now done).
 - Devices: laptop, a Samsung tablet, and the classroom Promethean panel (Chromebox, touch, projected).
   The tablet opens the file from the Files app (`content://` address), which breaks storage and the
   clipboard API — Tally works around the clipboard; storage needs GitHub Pages (below).
-- Backups go in his school Google Drive. The laptop and tablet are separate Tallys; the backup is the bridge.
+- Full saves go in his school Google Drive. The laptop and tablet are separate Tallys; the Full save is the bridge.
 
 ## Decisions (and reversals)
 
@@ -408,6 +408,30 @@ per-section-file era and many items in them are now done).
     URIs), the same labels and underlines, long text shrinking to fit. Teacher name, grade and course (per prep) are
     remembered in settings (added to `migrate()`'s whitelist); a student's edited text is kept in
     `sec.confForms[norm(name)]` only when it differs from the fresh draft, with "Start over from Tally".
+- **21 Oct 2026 — Two saves only; a Tally that can't keep anything says so.** Croix: "I just did a ton of work,
+  clicked the save thinking it was the whole thing, accidentally refreshed the page and lost it all because all I
+  saved were the settings. So I need a full save and a board save, that's it. No settings save." And: "Tally won't
+  even save itself between sessions on the Google Sites. If I accidentally navigate away from the site I lose it all."
+  - The settings-only backup is gone from every screen (⋯ menu, Settings, the Overview's reminder). The ⋯ menu has
+    **Full save** (with how long ago) and **Board save**; Settings → Saving has both and **Open a save**. The Overview
+    reminder downloads a Full save. "Board file" is "Board save" on screen. Old backup files still load (the merge
+    loader is unchanged; `tests/lib.js` `legacyOf()` rebuilds one from a Full save so the loader stays tested). The
+    course file for another teacher is renamed "Share this setup" / "Use a shared setup" so no other button reads as a save.
+  - **Unsaved work** = a fingerprint (`workPrint()`, FNV-1a over what a Full save would hold, minus the open class,
+    `lastBackup`, the last-import card and view switches) differs from `state.savedPrint`, taken at the last Full save
+    or when a Full save is opened.
+  - **Storage that does not last** (`storageFragile`): localStorage refuses a write, the origin is opaque, the page is on
+    googleusercontent.com, or it is framed under sites.google.com. A Google Sites embed is a sandboxed frame on a
+    googleusercontent.com address; nothing Tally writes there comes back. Tally can't fix that from inside, so: a strip
+    under the header ("This page can't keep your work after you leave it." + whether everything is in the last Full
+    save, with Full save / Open a save), the Overview's save line counts any unsaved work, leaving with unsaved work
+    triggers the browser's "Leave site?" prompt, and the storage-blocked error toast is not shown there. Opening a Full
+    save no longer goes through localStorage (`hydrate()`), so it loads even where storage is refused.
+    Elsewhere Tally asks the browser to keep its storage (`navigator.storage.persist()`).
+  - The real fix is where Tally runs: as its own page. GitHub Pages (`https://croix18.github.io/Tally/`, see Open items)
+    or the downloaded Tally.html opened in Chrome on the laptop both keep their data. On the Google Site, link to the
+    Pages address (opens in a new tab) instead of embedding the file.
+  - New suite `tests/saving.js` (the frame case is a sandboxed iframe with no storage).
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.

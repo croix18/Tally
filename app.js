@@ -46,9 +46,12 @@ let search = '';
 // Gradebook data is saved with everything else. One earlier build kept it in sessionStorage only; anything still
 // there is folded in once and removed.
 const GB_KEY = LS_KEY + '.gradebooks';
-function load() {
+function load() { let raw = null; try { raw = localStorage.getItem(LS_KEY); } catch (e) { return null; } /* storage refused: start empty, not "could not be read" */ return hydrate(JSON.parse(raw)); }
+// A saved state, made whole: pool classes pointed back at their pool, old gradebook shapes dropped. From this browser's
+// storage or from a Full save (which must load even where this browser can't store anything).
+function hydrate(s) {
   try {
-    const s = JSON.parse(localStorage.getItem(LS_KEY)); if (!s || !s.sections) return null;
+    if (!s || !s.sections) return null;
     for (const k in s.sections) { const x = s.sections[k]; if (!x) continue; const pool = s.pools && s.pools[x.prep] && Array.isArray(s.pools[x.prep].skills) ? s.pools[x.prep] : null;
       if (x.poolSkills) { x.skills = pool ? pool.skills : []; delete x.poolSkills; }
       // a save from before this change holds its own identical copy: point it at the pool so the next save drops it
@@ -72,7 +75,8 @@ function migrate() {
   state.custom = Array.isArray(state.custom) ? state.custom.filter(c => c && typeof c.id === 'string' && typeof c.label === 'string').map(c => { const values = {}; if (c.values && typeof c.values === 'object') for (const k of Object.keys(c.values)) if (SAFE_KEY(k) && Array.isArray(c.values[k])) values[k] = c.values[k].map(Number).filter(Number.isFinite); return { ...c, label: c.label.slice(0, 80), unit: typeof c.unit === 'string' ? c.unit.slice(0, 40) : '', prep: c.prep === 'acc' ? 'acc' : 'on', values }; }) : [];
   state.grading = state.grading && typeof state.grading === 'object' ? state.grading : {};
   state.pools = state.pools && typeof state.pools === 'object' ? state.pools : {};
-  state.lastBackup = typeof state.lastBackup === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(state.lastBackup) ? state.lastBackup.slice(0, 30) : null;
+  state.lastBackup = typeof state.lastBackup === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(state.lastBackup) ? state.lastBackup.slice(0, 30) : null;   // when the last Full save was made
+  state.savedPrint = typeof state.savedPrint === 'string' ? state.savedPrint.slice(0, 20) : null;   // what was in it (workPrint)
   const li = state.lastImport; state.lastImport = li && typeof li === 'object' && typeof li.at === 'string' ? { at: li.at.slice(0, 30), lines: (Array.isArray(li.lines) ? li.lines : []).filter(l => l && typeof l === 'object').map(l => ({ label: String(l.label || '').slice(0, 80), text: String(l.text || '').slice(0, 300), pool: l.pool === 'acc' || l.pool === 'on' ? l.pool : null, wi: typeof l.wi === 'string' && /^(acc|on):\d+$/.test(l.wi) ? l.wi : null })).slice(0, 20), fails: (Array.isArray(li.fails) ? li.fails : []).map(x => String(x).slice(0, 300)).slice(0, 20), skipped: Number(li.skipped) || 0 } : null;
   roomOK(); state.seatWeights = state.seatWeights && typeof state.seatWeights === 'object' ? state.seatWeights : {};
   state.seatBasis = typeof state.seatBasis === 'string' ? state.seatBasis : 'blend'; state.seatPairs = typeof state.seatPairs === 'string' ? state.seatPairs : 'mix';
@@ -110,8 +114,9 @@ function migrate() {
 function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (fallback != null ? fallback : DEFAULT_THR.on) : Math.max(1, Math.min(100, n)); }
 // A pool class reads its skills from the course pool (the same array in memory); writing a copy per class was a quarter
 // of everything stored. The saved class carries poolSkills instead, and load() points it back at the pool.
+let saveCount = 0;
 function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = state.sections[k]; const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
-function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
+function save() { saveCount++; try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
 function norm(s) {
@@ -166,6 +171,28 @@ function parseRosterText(text) {
 function rosterState(sec) { const n = parseRosterText(sec.roster).length; return { hasText: !!String(sec.roster || '').trim(), count: n }; }
 function mask(display) { const m = String(display).match(/^([^,]+),\s*(.+)$/); if (m) return (m[2].trim()[0] || '') + '. ' + (m[1].trim()[0] || '') + '.'; return String(display).split(/\s+/).map(x => (x[0] || '') + '.').join(' '); }
 const shown = d => state.settings.hideNames ? mask(d) : d;
+
+/* ---------- Where this browser keeps nothing ----------
+   Croix, 21 Oct 2026, on Tally inside a Google Site: "Tally won't even save itself between sessions … If I accidentally
+   navigate away from the site I lose it all." A page embedded in Google Sites runs in a sandboxed frame on a
+   googleusercontent.com address, and what it writes to the browser does not come back. Nothing inside the frame can
+   change that, so Tally says so in a strip under the header, keeps Full save one tap away, and asks before the page is
+   left with work that is in no Full save. Opened as its own page (GitHub Pages, or the file on the laptop) none of
+   this shows. */
+var storageFragile = (() => {   // var: save() can run before this line without a TDZ error
+  let ok = false; try { const k = LS_KEY + '.probe'; localStorage.setItem(k, '1'); ok = localStorage.getItem(k) === '1'; localStorage.removeItem(k); } catch (e) {}
+  let framed = false; try { framed = window.self !== window.top; } catch (e) { framed = true; }
+  const anc = (() => { try { return [...(location.ancestorOrigins || [])].join(' '); } catch (e) { return ''; } })();
+  return !ok || location.origin === 'null' || /(^|\.)googleusercontent\.com$/.test(location.hostname || '') || (framed && /sites\.google\.com/.test(document.referrer + ' ' + anc));
+})();
+function renderKeep() {
+  const k = $('#keep'); if (!k) return; const on = storageFragile && !state.board; k.classList.toggle('hidden', !on); document.body.classList.toggle('fragile', on); if (!on) return;
+  const lb = state.lastBackup; const due = unsavedWork(); const when = lb ? (ageDays(localDay(lb)) === 0 ? new Date(lb).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : fmtDate(localDay(lb))) : '';
+  k.innerHTML = `<span><b>This page can't keep your work after you leave it.</b> ${!state.order.length ? 'Open your last Full save to pick up where you left off.' : due ? (lb ? `Changes since your Full save at ${esc(when)} are only on this page.` : 'Nothing here is saved yet.') : `Everything is in your Full save from ${esc(when)}.`}</span>${state.order.length ? `<button class="pill small ${due ? '' : 'pale'}" id="keepSave">Full save</button>` : `<button class="pill small" id="keepOpen">Open a save</button>`}`;
+  const ks = $('#keepSave'); if (ks) ks.onclick = () => saveFull(); const ko = $('#keepOpen'); if (ko) ko.onclick = () => $('#file').click();
+}
+window.addEventListener('beforeunload', e => { if (storageFragile && !state.board && unsavedWork()) { e.preventDefault(); e.returnValue = ''; } });
+try { if (!storageFragile && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}   // ask the browser not to clear Tally's storage to make room
 
 // state boots here, after every helper it needs is defined (a TDZ on a regex const once blanked the app on reload)
 let bootError = null;
@@ -1211,6 +1238,7 @@ function render() {
   [['#btnHome', !inStudents], ['#btnStudents', inStudents], ['#btnLb', false]].forEach(([id, on]) => { const b = $(id); b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   $('#btnDetails').setAttribute('aria-checked', String(!!state.settings.details));
   { const lb = state.lastBackup, el = $('#topBk'), d = lb ? ageDays(localDay(lb)) : null; el.textContent = lb == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`; el.classList.toggle('due', backupBehind()); }
+  renderKeep();
   if (seatSolving && !(view.mode === 'seating')) seatAbort();
   document.body.classList.toggle('details', !!state.settings.details);
   document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && (view.mode === 'grades' || view.mode === 'students' || view.mode === 'student')); document.body.classList.toggle('seating', has && view.mode === 'seating');
@@ -1231,7 +1259,7 @@ function renderBoardOnly() {
   state.settings.hideNames = true;
   $('#tabs').innerHTML = ''; $('#notices').innerHTML = ''; $('#bar').innerHTML = '';
   const b = state.board; const when = b && b.saved ? fmtDate(b.saved.slice(0, 10)) : '';
-  $('#gridwrap').innerHTML = `<div class="boardCard"><h2>Board file</h2><p>${when ? 'Saved ' + esc(when) + ' · ' : ''}${plural(state.order.length, 'class')} · no names</p><button class="pill" id="openBoard">Open the Board</button></div>`;
+  $('#gridwrap').innerHTML = `<div class="boardCard"><h2>Board save</h2><p>${when ? 'Saved ' + esc(when) + ' · ' : ''}${plural(state.order.length, 'class')} · no names</p><button class="pill" id="openBoard">Open the Board</button></div>`;
   $('#openBoard').onclick = () => enterProjected();
   renderLeaderboard();
 }
@@ -1680,7 +1708,7 @@ li{margin:3px 0}
 <li>Look at <b>Needs attention</b> on the Overview (<b>Classes</b> in the header) and the "N to fix" count beside a class's name: roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}).</li>
 <li>Tap <b>Copy</b> on a unit → paste into that unit's Focus column (rows are already in Focus order). The unit header then shows <i>copied ‹date›</i>.</li>
 <li>After the next Focus export each unit's <b>Focus badge</b> says ${ico('check', 'a check')}, "N up since copy" or "N off". Tap it to see who, and <b>Copy corrections</b>.</li>
-<li><b>Save a backup</b> to your school Drive (the header's ⋯ menu; it says how long ago the last one was). A <b>Full save</b> (Settings) carries the exports too, so another computer becomes this one; a <b>Board file</b> (Settings) carries only the Race and the Data Lab, with no names, for the classroom panel. Any of the three loads through Import.</li>
+<li><b>Full save</b> to your school Drive (the header's ⋯ menu; it says how long ago the last one was). It is everything, so another computer opens it and becomes this one. A <b>Board save</b> carries only the Race and the Data Lab, with no names, for the classroom panel. Either opens through Import.</li>
 </ol>
 <div class="two">
 <div>
@@ -1724,7 +1752,7 @@ li{margin:3px 0}
 <p><b>FAST</b> — import the FAST report from Focus like any other file. Scores are matched by student ID and show on the student's page and the conference form.</p>
 <p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade; <b>Average</b> marks each class's average, and <b>Class averages</b> puts the classes side by side). Names never show. Hold the exit button to leave.</p>
 <p><b>Names</b> — the eye button in the header. Crossed out = initials only, for projecting.</p>
-<p><b>⋯</b> — Details view (every count, notice and legend at once), Settings, this Guide, Save backup.</p>
+<p><b>⋯</b> — Details view (every count, notice and legend at once), Settings, this Guide, Full save, Board save.</p>
 </div>
 </div>
 </body></html>`;
@@ -1885,24 +1913,35 @@ function matchReport(s, rosterText) {
   if (s.rosterAt) h += `<div class="hint">Roster pasted ${fmtDate(s.rosterAt.slice(0, 10))}.</div>`;
   return h;
 }
-// The backup is the bridge between the laptop and the tablet, and the only copy if this browser's storage is cleared.
 /* ---------- Saving and loading Tally files ----------
-   Three kinds of file, told apart by what is inside:
+   Two saves (Croix, 21 Oct 2026: "I need a full save and a board save, that's it. No settings save." He had made a
+   settings-only backup believing it was everything, refreshed, and lost the work). Three kinds of file still load:
    · a FULL SAVE (`full`): everything this browser holds — exports, rosters, gradebooks, settings. Loading it on another
      computer makes that computer this one. Student names and scores are in it: it belongs in the school Drive.
    · a BOARD FILE (`board`): only what the Race and the Data Lab draw — no names, no IDs, no rosters, no seating, and no
      student's row of Focus grades (each assignment's scores are shuffled on their own, so no row is a person). A Tally
      that loads one shows the Board and nothing else. For the classroom panel.
-   · a BACKUP (neither): rosters, goals, skips, matches, history and kept quarters — no scores — merged onto the classes
-     that exist here. The weekly one, for the school Drive; it has always been this.
+   · an old BACKUP (neither), written until 21 Oct 2026: rosters, goals, skips, matches, history and kept quarters, no
+     scores, merged onto the classes that exist here. Tally no longer writes one; files in his Drive still load.
    Croix, 19 Oct 2026: the backup from his laptop would not load on the Promethean — a backup carries no scores, so with
    no exports there was nothing to show, and the picker only let Android offer files typed .json. */
 function saveFull() {
-  const cfg = { tally: 4, full: { saved: new Date().toISOString(), classes: state.order.length }, state: stateForSave() };
-  downloadJson(cfg, 'tally-full-' + new Date().toISOString().slice(0, 10) + '.json');
-  state.lastBackup = new Date().toISOString(); save();
-  toast('Full save written — it holds every export, roster and gradebook in this browser, with student names, so keep it in your school Drive.', false, 5000);
+  const now = new Date().toISOString(); state.lastBackup = now; state.savedPrint = workPrint();
+  const cfg = { tally: 4, full: { saved: now, classes: state.order.length }, state: stateForSave() };
+  downloadJson(cfg, 'tally-full-' + localDay(now) + '.json'); save(); render();
+  toast('Full save downloaded. It holds everything, student names included, so keep it in your school Drive.', false, 5000);
 }
+/* What a Full save would hold, as a short fingerprint, leaving out where the screen is (the open class, view switches).
+   Compared with the fingerprint taken at the last Full save, it tells whether there is work a Full save doesn't have. */
+let printCache = { n: -1, v: '' };
+function workPrint() {
+  if (printCache.n === saveCount) return printCache.v;
+  const { active, lastBackup, savedPrint, lastImport, settings, ...rest } = stateForSave(); const st = settings || {};
+  const txt = JSON.stringify([rest, st.currentUnit, st.curUnitTouched, st.skipFirst, st.useBest, st.teacherName, st.gradeLevel, st.courseNames, st.remindDays, st.copyMode]);
+  let h = 0x811c9dc5; for (let i = 0; i < txt.length; i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  const v = (h >>> 0).toString(36) + '.' + txt.length.toString(36); printCache = { n: saveCount, v }; return v;
+}
+const unsavedWork = () => state.order.length > 0 && state.savedPrint !== workPrint();
 function downloadJson(obj, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
 // Two-letter stand-in names ("Aa", "Ab", …): one token, letters only, so every name helper treats them as distinct students.
 const pseudoName = (j, prefix) => (prefix || '') + String.fromCharCode(65 + Math.floor(j / 26) % 26) + String.fromCharCode(97 + j % 26) + (j >= 676 ? String(Math.floor(j / 676)) : '');
@@ -1932,37 +1971,29 @@ function boardFile() {
 function saveBoardFile() {
   const cfg = boardFile(); if (!cfg.board.classes) { toast('Nothing to put on the Board yet.', true); return; }
   downloadJson(cfg, 'tally-board-' + new Date().toISOString().slice(0, 10) + '.json');
-  toast('Board file written — no names, no rosters, no student\'s row of grades. Load it on the classroom panel.', false, 5000);
+  toast('Board save downloaded. No names, no rosters, no student\'s row of grades. Open it on the classroom panel.', false, 5000);
 }
 // Any Tally file, dropped on the page or chosen through Import or Settings.
 async function loadTallyFile(file, cfg) {
   if (!cfg || !cfg.tally) throw new Error('not tally');
   if (cfg.board || cfg.full) {
-    const kind = cfg.board ? 'Board file' : 'full save'; const meta = cfg.board || cfg.full; const when = meta && meta.saved ? fmtDate(meta.saved.slice(0, 10)) : '?';
+    const kind = cfg.board ? 'Board save' : 'Full save'; const meta = cfg.board || cfg.full; const when = meta && meta.saved ? fmtDate(meta.saved.slice(0, 10)) : '?';
     const here = state.order.length ? `This replaces everything Tally holds in this browser (${plural(state.order.length, 'class')}).` : '';
     if (state.order.length && !confirm(`Load the ${kind} from ${when} (${plural(meta.classes || 0, 'class')})? ${here}`)) return false;
     const s = JSON.parse(JSON.stringify(cfg.state || {})); if (!s.sections || typeof s.sections !== 'object') throw new Error('not tally');
     if (cfg.board) { s.board = cfg.board; s.settings = { ...(s.settings || {}), hideNames: true, leaderboard: true }; } else delete s.board;
-    localStorage.setItem(LS_KEY, JSON.stringify(s)); state = load() || s; migrate(); view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();
-    toast(cfg.board ? `Board file loaded: ${plural(state.order.length, 'class')}, no names.` : `Full save loaded: ${plural(state.order.length, 'class')}.`, false, 5000);
+    state = hydrate(s) || s; migrate(); if (cfg.full) { state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
+    toast(cfg.board ? `Board save loaded: ${plural(state.order.length, 'class')}, no names.` : `Full save loaded: ${plural(state.order.length, 'class')}.`, false, 5000);
     return true;
   }
   return loadSettingsBackup(cfg);
-}
-function saveBackup() {
-  const cfg = { tally: 4, exported: new Date().toISOString(), settings: { copyMode: state.settings.copyMode, useBest: state.settings.useBest, remindDays: state.settings.remindDays, skipFirst: state.settings.skipFirst, skipFirstV2: true, currentUnit: state.settings.currentUnit, curUnitTouched: state.settings.curUnitTouched, teacherName: state.settings.teacherName, gradeLevel: state.settings.gradeLevel, courseNames: state.settings.courseNames }, assigned: state.assigned, tests: state.tests || {}, custom: state.custom, grading: state.grading, room: state.room, seatWeights: state.seatWeights, seatBasis: state.seatBasis, seatPairs: state.seatPairs, quarters: quarters(), sections: {} };
-  for (const k of state.order) { const x = state.sections[k]; cfg.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [], seating: x.seating || null, seatInfo: x.seatInfo || {}, stuNotes: x.stuNotes || {}, confForms: x.confForms || {}, qArchive: x.qArchive || {}, overrides: x.overrides || {} }; }
-  for (const k in state.pendingCfg) if (!cfg.sections[k]) cfg.sections[k] = state.pendingCfg[k];
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = 'tally-backup-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  state.lastBackup = new Date().toISOString(); save();
-  toast(`Backup saved — it contains student names, weekly skill counts and computed Focus grades${Object.values(state.sections).some(x => x.qArchive && Object.keys(x.qArchive).length) ? ', and the Focus scores of closed quarters' : ''}, so keep it in your school Drive.`, false, 5000);
 }
 // How full this browser's storage is. Pages opened from files (and every project on one Pages site) share one allowance
 // of about five million characters, so "other saved pages" is counted too.
 function storageUse() { const quota = 5242880; let total = 0, tally = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); const n = k.length + (localStorage.getItem(k) || '').length; total += n; if (k.indexOf(LS_KEY) === 0) tally += n; } } catch (e) {} return { quota, total, tally, other: total - tally, pct: Math.round(total / quota * 100), mb: n => (n / 1048576).toFixed(1) }; }
 // The newest thing imported (an IXL export or a gradebook), to tell whether the last backup is behind it.
 function latestImportAt() { let m = ''; for (const k of state.order) { const s = state.sections[k]; [s.importedAt, s.grades && s.grades.importedAt].forEach(v => { if (typeof v === 'string' && v > m) m = v; }); } return m || null; }
-const backupBehind = () => { const li = latestImportAt(); return !!(li && (!state.lastBackup || state.lastBackup < li)); };
+const backupBehind = () => { if (storageFragile) return unsavedWork(); const li = latestImportAt(); return !!(li && (!state.lastBackup || state.lastBackup < li)); };   // where this browser keeps nothing, any unsaved work is due
 function openSettings(key) {
   const s = state.sections[key && state.sections[key] ? key : state.active]; if (!s) return;   // `key`: the class picked inside the dialog — the page behind stays where it was
   const m = $('#modal'); m.classList.remove('hidden'); const H = state.settings.hideNames;
@@ -1989,22 +2020,17 @@ function openSettings(key) {
       <section class="scope">
         <div class="scopeHead"><b>This course</b><span id="courseOf">every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class</span></div>
         <div class="field"><label>Units not assigned at the start</label><div class="seg small" id="skipFirst">${[0, 1, 2, 3].map(n => `<button data-skip="${n}" class="${(state.settings.skipFirst || {})[s.prep] === n ? 'on' : ''}">${n === 0 ? 'None' : 'First ' + n}</button>`).join('')}</div><p style="margin-top:4px">Review units students don't do. They leave the Race, Data Lab, Focus check and copies. A unit you mark Assigned by hand still wins.</p></div>
-        <h3 class="mt">Course settings file</h3>
+        <h3 class="mt">Share with another teacher</h3>
         <p>Goal, skipped skills and assigned units — no rosters, no names. Another teacher loads it to run on the same rules.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="exportCourse">Save course settings</button><button class="pill pale small" id="importCourse">Load course settings</button><input type="file" id="courseFile" accept=".json" class="hidden"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="exportCourse">Share this setup</button><button class="pill pale small" id="importCourse">Use a shared setup</button><input type="file" id="courseFile" accept=".json" class="hidden"></div>
         <div class="scopeHead second"><b>All of Tally</b><span>every class, both courses</span></div>
         <div class="field"><label class="check" style="margin:0"><input type="checkbox" id="useBest" ${state.settings.useBest ? 'checked' : ''}> Grade on each student's best score across imports</label><p style="margin-top:4px">SmartScores drop when a student keeps practicing and misses; this keeps a point once it's earned.</p></div>
         <div class="field"><label>Remind me when an export gets old</label><div class="seg small" id="remind">${REMIND.map(d => `<button data-remind="${d}" class="${state.settings.remindDays === d ? 'on' : ''}">${d ? d + ' days' : 'Off'}</button>`).join('')}</div><p style="margin-top:4px">A note appears on any class whose IXL export or Focus gradebook is older than this.</p></div>
         <div class="field"><label>Copy puts on the clipboard</label><div class="seg" id="copyMode">${[['points', 'Points only'], ['names', 'Name + points'], ['ids', 'ID + points']].map(([k, n]) => `<button data-cm="${k}" class="${state.settings.copyMode === k ? 'on' : ''}">${n}</button>`).join('')}</div><p style="margin-top:4px">Roster students missing from IXL get a blank line so the column stays aligned. Students on a modified list get their own "out of" after the points.</p></div>
-        <h3 class="mt">Backup</h3>
-        <p>Rosters, goals, skips, matches, category weights, each student's weekly skill counts (for the race) and their computed Focus grade per import (for trends). Not raw scores. Load it on another computer before or after importing exports.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportCfg">Save backup</button><button class="pill pale small" id="importCfg">Load a Tally file</button><input type="file" id="cfgFile" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last saved ${esc(ageDays(localDay(state.lastBackup)) === 0 ? 'today' : fmtDate(localDay(state.lastBackup)))}.` : 'Never saved from this browser.'}</small></div>
-        <h3 class="mt">Full save</h3>
-        <p>Everything in this browser: exports, rosters, gradebooks, settings. Load it on another computer and that computer is this one. It holds student names and scores, so keep it in your school Drive.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportFull">Full save</button></div>
-        <h3 class="mt">Board file</h3>
-        <p>For the classroom panel: only what the Race and the Data Lab draw. No names, no IDs, no rosters, no seating, and no student's row of Focus grades. A Tally that loads it shows the Board and nothing else.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill pale small" id="exportBoard">Save Board file</button></div>
+        <h3 class="mt">Saving</h3>
+        <p><b>Full save</b> is everything: exports, rosters, gradebooks, notes, settings. Open it on another computer and that computer is this one. It holds student names and scores, so keep it in your school Drive.</p>
+        <p><b>Board save</b> is for the classroom panel: only what the Race and the Data Lab draw. No names, IDs, rosters, seating or anyone's row of grades. A Tally that opens it shows the Board and nothing else.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill small" id="exportFull">Full save</button><button class="pill pale small" id="exportBoard">Board save</button><button class="pill pale small" id="importCfg">Open a save</button><input type="file" id="cfgFile" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last full save ${esc(ageDays(localDay(state.lastBackup)) === 0 ? 'today' : fmtDate(localDay(state.lastBackup)))}.` : 'No full save from this browser yet.'}</small></div>
         <h3 class="mt">Our own data (Data Lab)</h3>
         <p>Numbers the classes collected themselves — minutes to school, letters in a first name. One list per class; no names.</p>
         <div id="customList">${state.custom.map(c => `<div class="customRow"><b>${esc(c.label)}</b> <span>${c.prep === 'acc' ? 'accelerated' : 'on-level'} · ${Object.values(c.values).filter(v => v.length).length} classes</span> <button class="pill pale small" data-editc="${esc(c.id)}">Edit</button> <button class="pill danger small" data-delc="${esc(c.id)}">Delete</button></div>`).join('') || '<p>None yet.</p>'}</div>
@@ -2069,7 +2095,7 @@ function openSettings(key) {
     const skipped = Object.keys(s.excluded).map(k => { const sk = s.skills.find(x => skillKey(x) === k); return { key: k, name: sk ? sk.name : k, unit: sk ? sk.unit : '' }; });
     const cfg = { tally: 'course', prep: s.prep, goal: s.threshold, assigned: state.assigned[s.prep], skipped, exported: new Date().toISOString() };
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = `tally-course-${s.prep === 'acc' ? 'accelerated' : 'on-level'}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    toast('Course settings saved — no names in this file.', false);
+    toast('Course setup downloaded. No names in this file.', false);
   };
   $('#importCourse').onclick = () => $('#courseFile').click();
   $('#courseFile').onchange = async e => {
@@ -2083,8 +2109,7 @@ function openSettings(key) {
   };
   $('#saveRace').onclick = () => downloadLeaderboard('race'); $('#saveLab').onclick = () => downloadLeaderboard('lab');
   const dg = $('#dropGrades'); if (dg) dg.onclick = () => { if (!confirm(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.`)) return; delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
-  $('#exportCfg').onclick = () => { saveBackup(); const lb = $('#lastBk'); if (lb) lb.textContent = 'Last saved today.'; };
-  $('#exportBoard').onclick = () => saveBoardFile(); $('#exportFull').onclick = () => saveFull();
+  $('#exportBoard').onclick = () => saveBoardFile(); $('#exportFull').onclick = () => { saveFull(); const lb = $('#lastBk'); if (lb) lb.textContent = 'Last full save today.'; };
   $('#importCfg').onclick = () => $('#cfgFile').click();
   $('#cfgFile').onchange = async e => {
     const f = e.target.files[0]; if (!f) return; e.target.value = '';
@@ -2152,7 +2177,7 @@ $('#launch').onclick = () => $('#file').click();
 $('#file').onchange = e => { importFiles([...e.target.files]); e.target.value = ''; };
 $('#btnSettings').onclick = () => openSettings();
 $('#btnGuide').onclick = openGuide; $('#btnGuide0').onclick = openGuide;
-$('#btnBackup').onclick = () => { saveBackup(); render(); };
+$('#btnFullSave').onclick = () => saveFull(); $('#btnBoardSave').onclick = () => saveBoardFile();
 wireMenu($('#btnMore'), $('#topMenu'), () => keepInside($('#topMenu')));
 $('#btnHide').onclick = () => { state.settings.hideNames = !state.settings.hideNames; save(); render(); };
 $('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
@@ -2188,7 +2213,7 @@ document.addEventListener('keydown', e => {
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { get state() { return state; }, save, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { get state() { return state; }, save, workPrint, saveFull, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.

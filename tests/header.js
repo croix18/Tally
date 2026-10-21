@@ -27,7 +27,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   check(await p.locator('#topMenu.hidden').count()===1,'the menu is closed until asked for');
   await p.click('#btnMore'); await p.waitForTimeout(200);
   const items=await p.evaluate(()=>[...document.querySelectorAll('#topMenu button')].map(x=>x.childNodes.length && [...x.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent.trim()).join('')).join(' | '));
-  check(items==='Details view | Settings | Guide | Save backup' && await p.getAttribute('#btnMore','aria-expanded')==='true','the menu holds Details view, Settings, Guide and Save backup: '+items);
+  check(items==='Details view | Settings | Guide | Full save | Board save' && await p.getAttribute('#btnMore','aria-expanded')==='true','the menu holds Details view, Settings, Guide, Full save and Board save, and no settings-only backup: '+items);
   check(await p.evaluate(()=>document.activeElement.id)==='btnDetails','focus moves to the first item');
   await p.keyboard.press('ArrowDown'); check(await p.evaluate(()=>document.activeElement.id)==='btnSettings','arrow keys move through it');
   await p.keyboard.press('Escape'); await p.waitForTimeout(150);
@@ -40,12 +40,12 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   const sw=await p.evaluate(()=>getComputedStyle(document.querySelector('#btnDetails .sw')).backgroundColor); check(sw!=='rgb(232, 226, 213)' && await vis('#btnDetails .sw'),'…and its switch shows on ('+sw+')');
   await p.click('#btnDetails'); await p.waitForTimeout(200); check(await p.locator('body.details').count()===0,'…and off again');
   await p.click('#btnMore'); await p.click('#btnSettings'); await p.waitForTimeout(300);
-  check(await p.locator('#modal:not(.hidden) #exportCfg').count()===1,'Settings opens from the menu'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  check(await p.locator('#modal:not(.hidden) #exportFull').count()===1,'Settings opens from the menu'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   check(await p.evaluate(()=>document.activeElement.id)==='btnMore','closing Settings returns focus to the menu button');
   await p.click('#btnMore'); await p.waitForTimeout(150);
-  check((await p.textContent('#topBk')).trim()==='never' && await p.locator('#topBk.due').count()===1,'Save backup says no backup has been made, and that one is due');
-  const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#btnBackup')]); await p.waitForTimeout(300);
-  check(/^tally-backup-.*\.json$/.test(dl.suggestedFilename()),'Save backup downloads the backup: '+dl.suggestedFilename());
+  check((await p.textContent('#topBk')).trim()==='never' && await p.locator('#topBk.due').count()===1,'Full save says none has been made, and that one is due');
+  const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#btnFullSave')]); await p.waitForTimeout(300);
+  check(/^tally-full-.*\.json$/.test(dl.suggestedFilename()),'Full save downloads the full save: '+dl.suggestedFilename());
   await p.click('#btnMore'); await p.waitForTimeout(150); check((await p.textContent('#topBk')).trim()==='today' && await p.locator('#topBk.due').count()===0,'…and then reads "today"'); await p.keyboard.press('Escape');
   const [pop]=await Promise.all([ctx.waitForEvent('page'), (async()=>{ await p.click('#btnMore'); await p.click('#btnGuide'); })()]); await pop.waitForLoadState();
   const g=await pop.textContent('body'); check(/Every week or two/.test(g) && /eye button/.test(g) && /Board/.test(g) && !/Header toggle/.test(g),'the Guide opens from the menu and describes this header'); await pop.close();
@@ -82,7 +82,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   check(await p.evaluate(()=>!document.querySelector('#btnHome').hasAttribute('aria-pressed') && !document.querySelector('#btnStudents').hasAttribute('aria-pressed') && document.querySelector('#btnHome').getAttribute('aria-current')==='page'),'the places say where you are with aria-current only (no contradictory pressed state)');
   await p.click('#btnMore'); await p.waitForTimeout(150);
   check(await p.evaluate(()=>document.querySelector('#topMenu').getAttribute('role')==='menu' && [...document.querySelectorAll('#topMenu button')].every(x=>/^menuitem/.test(x.getAttribute('role')))),'the menu and its items are announced as a menu');
-  await p.keyboard.press('End'); const endId=await p.evaluate(()=>document.activeElement.id); await p.keyboard.press('Home'); check(endId==='btnBackup' && await p.evaluate(()=>document.activeElement.id)==='btnDetails','End and Home jump to the last and first item');
+  await p.keyboard.press('End'); const endId=await p.evaluate(()=>document.activeElement.id); await p.keyboard.press('Home'); check(endId==='btnBoardSave' && await p.evaluate(()=>document.activeElement.id)==='btnDetails','End and Home jump to the last and first item');
   await p.evaluate(()=>window.__tally.render()); await p.waitForTimeout(150);   // what an import finishing does while a menu is open
   check(await p.locator('#topMenu.hidden').count()===1 && await p.locator('#menuOverlay').count()===0 && await p.getAttribute('#btnMore','aria-expanded')==='false','a re-render (an import finishing) closes an open menu and removes its overlay');
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); const before=await p.inputValue('#curUnit'); await p.focus('#curUnit'); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(200);

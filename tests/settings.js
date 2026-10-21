@@ -1,6 +1,6 @@
 // Settings is three scopes under three headings — this class, this course, all of Tally — and the class is chosen in
 // the dialog, not inherited from whichever tab was last open.
-const { chromium, fs, path, exe, check, done, tmp, pick, more, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, pick, more, APP , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1536,height:864}}); const p=await ctx.newPage();
   const errs=[]; let dialogs=[], answer=true; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>{ dialogs.push(d.message()); answer?d.accept():d.dismiss(); });
@@ -12,7 +12,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, more, APP } = require('
   // 1. the three scopes, in order, each owning its controls
   const lay=await p.evaluate(()=>{ const m=document.querySelector('#modal'); const heads=[...m.querySelectorAll('.scopeHead')]; const scopeOf=id=>{ const el=m.querySelector(id); if (!el) return 'missing'; let best=null; heads.forEach(h=>{ if (h.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING) best=h; }); return best?best.querySelector('b').textContent:'none'; };
     return { title:m.querySelector('header h2').textContent, heads:heads.map(h=>h.querySelector('b').textContent).join(' | '), sub:heads.map(h=>(h.querySelector('span')||{textContent:''}).textContent).join(' | '),
-      cls:['#secLabel','#thr','[data-prep]','#roster','#matchReport','#dropGrades','#forget'].map(scopeOf), course:['#skipFirst','#exportCourse','#importCourse'].map(scopeOf), all:['#useBest','#remind','#copyMode','#exportCfg','#importCfg','#addCustom','#saveRace','#saveLab','#storeLine','#wipe'].map(scopeOf), small:/Applies to every class|for every class of this course/.test(m.textContent) }; });
+      cls:['#secLabel','#thr','[data-prep]','#roster','#matchReport','#dropGrades','#forget'].map(scopeOf), course:['#skipFirst','#exportCourse','#importCourse'].map(scopeOf), all:['#useBest','#remind','#copyMode','#exportFull','#exportBoard','#importCfg','#addCustom','#saveRace','#saveLab','#storeLine','#wipe'].map(scopeOf), small:/Applies to every class|for every class of this course/.test(m.textContent) }; });
   check(lay.title==='Settings' && lay.heads==='This class | This course | All of Tally','the dialog is "Settings" with three headings: '+lay.heads);
   check(lay.cls.every(x=>x==='This class'),'this class: name, goal, course, roster, match report, gradebook, remove — '+[...new Set(lay.cls)].join());
   check(lay.course.every(x=>x==='This course'),'this course: review units and the course settings file — '+[...new Set(lay.course)].join());
@@ -51,8 +51,8 @@ const { chromium, fs, path, exe, check, done, tmp, pick, more, APP } = require('
   const sv=await p.evaluate(()=>{ const T=window.__tally; return { p1:T.state.sections['period-1'].threshold, p2:T.state.sections['period-2'].threshold, cm:T.state.settings.copyMode }; });
   check(sv.p1===70 && sv.p2===60 && sv.cm==='ids','Save: the goal changed for this class only, the copy format for all of Tally: '+JSON.stringify(sv));
   // 4b. while a dialog is open a message goes to the top of the screen, never onto Save / Cancel
-  await more(p,'#btnSettings'); await p.waitForTimeout(300); const [bk]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); await p.waitForTimeout(300);
-  check(await p.evaluate(()=>{ const t=document.querySelector('#toast').getBoundingClientRect(); const f=document.querySelector('#modal footer').getBoundingClientRect(); return document.querySelector('#toast').classList.contains('show') && (t.bottom<=f.top || t.top>=f.bottom); }),'the "Backup saved" message does not cover the dialog\'s Save / Cancel row');
+  await more(p,'#btnSettings'); await p.waitForTimeout(300); const [bk]=await Promise.all([p.waitForEvent('download'), p.click('#exportFull')]); await p.waitForTimeout(300);
+  check(await p.evaluate(()=>{ const t=document.querySelector('#toast').getBoundingClientRect(); const f=document.querySelector('#modal footer').getBoundingClientRect(); return document.querySelector('#toast').classList.contains('show') && (t.bottom<=f.top || t.top>=f.bottom); }),'the "Full save downloaded" message does not cover the dialog\'s Save / Cancel row');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   // 5. one class: no picker, just its name
   await p.evaluate(()=>{ const T=window.__tally; delete T.state.sections['period-2']; T.state.order=['period-1']; T.state.active='period-1'; T.save(); T.render(); });

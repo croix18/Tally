@@ -58,7 +58,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(bm.hide && bm.nav && bm.eye && bm.more,'names are hidden and cannot be shown; the Classes / Students places, the eye and the ⋯ menu are gone');
   await q.locator('#lbExit').dispatchEvent('pointerdown'); await q.waitForTimeout(1700);
   const card=await q.evaluate(()=>({ card:(document.querySelector('.boardCard')||{textContent:''}).textContent.replace(/\s+/g,' ').trim(), grid:document.querySelectorAll('table.grid').length, cards:document.querySelectorAll('.hcard').length, lbHidden:document.querySelector('#lb').classList.contains('hidden') }));
-  check(card.lbHidden && /Board file/.test(card.card) && /no names/.test(card.card) && card.grid===0 && card.cards===0,'leaving the Board shows one card — the file, its date, "no names" and Open the Board — and no grid, no class cards: "'+card.card+'"');
+  check(card.lbHidden && /Board save/.test(card.card) && /no names/.test(card.card) && card.grid===0 && card.cards===0,'leaving the Board shows one card — the file, its date, "no names" and Open the Board — and no grid, no class cards: "'+card.card+'"');
   await q.click('#openBoard'); await q.waitForTimeout(500); check(await q.evaluate(()=>!document.querySelector('#lb').classList.contains('hidden')),'Open the Board opens it again');
   await q.reload(); await q.waitForTimeout(700); check(await q.evaluate(()=>!!window.__tally.state.board && !document.querySelector('#lb').classList.contains('hidden')),'and it survives a reload as a Board-only Tally');
   // the same numbers as the laptop
@@ -84,7 +84,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   // loading over a Tally that has classes asks first; declining changes nothing
   let asked=''; r.removeAllListeners('dialog'); r.on('dialog',d=>{ asked=d.message(); d.dismiss(); });
   await r.setInputFiles('#file',[boardPath]); await r.waitForTimeout(700);
-  check(/Load the Board file/.test(asked) && /replaces everything/.test(asked) && await r.evaluate(()=>!window.__tally.state.board && window.__tally.state.order.length>0),'loading a Board file over a working Tally asks first, and No leaves everything as it was: "'+asked.slice(0,90)+'…"');
+  check(/Load the Board save/.test(asked) && /replaces everything/.test(asked) && await r.evaluate(()=>!window.__tally.state.board && window.__tally.state.order.length>0),'loading a Board file over a working Tally asks first, and No leaves everything as it was: "'+asked.slice(0,90)+'…"');
   await ctx3.close();
   // ---- an older settings backup still loads the old way (merged onto existing classes) ------------------------------------
   const legacy=await p.evaluate(()=>{ const T=window.__tally; const cfg={ tally:4, exported:new Date().toISOString(), settings:{ copyMode:'ids' }, sections:{} }; T.state.order.forEach(k=>{ const x=T.state.sections[k]; cfg.sections[k]={ label:x.label+' (old)', prep:x.prep, threshold:x.threshold, roster:x.roster, history:x.history, gradeHistory:x.gradeHistory||[] }; }); return cfg; });

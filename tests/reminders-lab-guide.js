@@ -1,5 +1,5 @@
 // Export age + reminder, Data Lab values, receipt viewer, guide, header button kinds
-const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); await ctx.grantPermissions(['clipboard-read','clipboard-write']); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -71,8 +71,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   check(kinds.filter(k=>k.endsWith('primary')).length===1 && kinds.find(k=>k.startsWith('btnImport')).endsWith('primary'),'one primary button in the header: '+kinds.join(' '));
   await p.screenshot({path:path.join(tmp,'shot29.png')});
   // backup carries the reminder
-  const [dl2]=await Promise.all([p.waitForEvent('download'), p.evaluate(()=>{ document.querySelector('#btnSettings').click(); setTimeout(()=>document.querySelector('#exportCfg').click(),100); })]);
-  const cfg=JSON.parse(fs.readFileSync(await dl2.path(),'utf8')); check(cfg.settings.remindDays===7,'backup keeps the reminder setting');
+  await p.evaluate(()=>document.querySelector('#btnSettings').click()); await p.waitForTimeout(300); const cfg=(await fullSave(p)).json.state; check(cfg.settings.remindDays===7,'the full save keeps the reminder setting');
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();
 })();

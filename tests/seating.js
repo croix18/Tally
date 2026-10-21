@@ -1,7 +1,7 @@
 // Seating: room editor (templates, desks), solver + options, moves with consequences, locks, save/reload, live
 // standing from Focus + IXL, student sheet, print copies, Names-off masking, and import of the standalone Seating
 // Chart's JSON backup (photos, FAST scores, flags, room, saved chart) matched onto Tally's rosters.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -88,8 +88,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.setInputFiles('#file',[tb]); await p.waitForTimeout(600); check(/Loaded settings/.test(await p.textContent('#toast')),'a Tally backup on the drop zone loads like any Tally file');
   // 8. backup round-trip carries room, weights, seating and seatInfo
   await more(p,'#btnSettings'); await p.waitForTimeout(200);
-  const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8'));
-  check(cfg.room && cfg.room.desks.length===24 && cfg.seatWeights.behavior===10 && cfg.sections[K].seating && Object.keys(cfg.sections[K].seatInfo).length>=5,'Tally backup carries the room, weights, saved chart and seating info');
+  const cfg=(await fullSave(p)).json.state;
+  check(cfg.room && cfg.room.desks.length===24 && cfg.seatWeights.behavior===10 && cfg.sections[K].seating && Object.keys(cfg.sections[K].seatInfo).length>=5,'the full save carries the room, weights, saved chart and seating info');
   await p.keyboard.press('Escape');
   // 9. round-4 regressions
   // fit does not collapse after Save (the saved chart is not scored against itself as "previous partners")

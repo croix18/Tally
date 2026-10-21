@@ -1,7 +1,7 @@
 // "Working in" must never quietly change which units count. Each check here is a case an independent verifier broke
 // on 4 Oct 2026 (review/verify-4oct.md): an older save losing a copied unit, a backup erasing the unit, Settings
 // swallowing it, a toggled unit staying hidden for good. Synthetic fixtures only.
-const { chromium, fs, path, exe, check, done, tmp, pick, more, APP } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, pick, more, APP , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1366,height:768},acceptDownloads:true}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -44,8 +44,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, more, APP } = require('
 
   // 3. A backup saved before any unit was picked must not erase this device's unit; a course it leaves empty gets one
   await p.click(`[data-k="${K}"]`); await p.waitForTimeout(300);
-  await more(p,'#btnSettings'); await p.waitForTimeout(200); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]);
-  const cfg=JSON.parse(fs.readFileSync(await dl.path(),'utf8')); cfg.settings.currentUnit={ acc:null, on:null }; cfg.settings.curUnitTouched={ acc:false, on:false }; const nul=path.join(tmp,'backup-null.json'); fs.writeFileSync(nul, JSON.stringify(cfg));
+  const cfg=legacyOf((await fullSave(p)).json.state); cfg.settings.currentUnit={ acc:null, on:null }; cfg.settings.curUnitTouched={ acc:false, on:false }; const nul=path.join(tmp,'backup-null.json'); fs.writeFileSync(nul, JSON.stringify(cfg));
   await p.setInputFiles('#cfgFile',nul); await p.waitForTimeout(600);
   const s4=await st(); check(s4.cur.acc===2 && s4.cur.on===3 && s4.assigned==='1,2','loading a backup that has no Working in keeps the units this device had: '+JSON.stringify(s4.cur));
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.currentUnit={ acc:null, on:null }; T.state.settings.curUnitTouched={ acc:false, on:false }; T.save(); });

@@ -17,14 +17,14 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   const l0=await p.evaluate(()=>[...document.querySelectorAll('.hatt li:not(.more)')].map(l=>l.textContent.replace(/\s+/g,' ').trim()));
   check(!l0.some(t=>/assigned by guess/.test(t)) && !l0.some(t=>/pick the unit you're working in/.test(t)),'nothing is assigned by guess and nobody is asked to pick a unit: every course has one ('+l0.length+' lines)');
   // 0b. backup: asked for once after an import, one tap, then quiet
-  check(await p.locator('#hBackup').count()===1 && /nothing has been backed up/.test(await p.textContent('#hBackup')) && await p.locator('#hAtt:not([open])').count()===1 && Number(await p.textContent('#hAtt .hcount'))>=1,'the Overview offers a backup after an import (inside the Needs attention line, which is closed with a count)');
+  check(await p.locator('#hBackup').count()===1 && /Full save — nothing has been saved/.test(await p.textContent('#hBackup')) && await p.locator('#hAtt:not([open])').count()===1 && Number(await p.textContent('#hAtt .hcount'))>=1,'the Overview offers a Full save after an import (inside the Needs attention line, which is closed with a count)');
   await p.click('#hAtt > summary'); await p.waitForTimeout(200);
   const [bk]=await Promise.all([p.waitForEvent('download'), p.click('#hBackup')]); await p.waitForTimeout(400);
   const cfg=JSON.parse(fs.readFileSync(await bk.path(),'utf8'));
-  check(cfg.tally===4 && Object.keys(cfg.sections).length===2 && await p.locator('#hBackup').count()===0 && /backed up today/.test(await p.textContent('#bar .meta')),'one tap saves the backup; the line goes and the bar says "backed up today"');
-  await p.reload(); await p.waitForTimeout(600); check(await p.locator('#hBackup').count()===0 && /^\d{4}-/.test(await p.evaluate(()=>window.__tally.state.lastBackup)),'the backup date survives a reload');
-  await more(p,'#btnSettings'); await p.waitForTimeout(200); check(/Last saved today/.test(await p.textContent('#lastBk')),'Settings shows when the backup was last saved'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  const [gd]=await Promise.all([ctx.waitForEvent('page'), more(p,'#btnGuide')]); await gd.waitForLoadState(); check(/Save a backup/.test(await gd.evaluate(()=>document.body.innerText)),'the Guide\'s weekly list includes the backup'); await gd.close();
+  check(cfg.tally===4 && cfg.full && Object.keys(cfg.state.sections).length===2 && /^tally-full-/.test(bk.suggestedFilename()) && await p.locator('#hBackup').count()===0 && /saved today/.test(await p.textContent('#bar .meta')),'one tap downloads a Full save; the line goes and the bar says "saved today"');
+  await p.reload(); await p.waitForTimeout(600); check(await p.locator('#hBackup').count()===0 && /^\d{4}-/.test(await p.evaluate(()=>window.__tally.state.lastBackup)),'the save date survives a reload');
+  await more(p,'#btnSettings'); await p.waitForTimeout(200); check(/Last full save today/.test(await p.textContent('#lastBk')),'Settings shows when the last Full save was made'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  const [gd]=await Promise.all([ctx.waitForEvent('page'), more(p,'#btnGuide')]); await gd.waitForLoadState(); check(/Full save to your school Drive/.test(await gd.evaluate(()=>document.body.innerText)),'the Guide\'s weekly list includes the Full save'); await gd.close();
   // 1. "No IXL account" is an answer: the flag, the count, the tab dot and the Overview line all go
   await p.click(`[data-k="${K}"]`); await p.waitForTimeout(400);
   const before=await p.evaluate(K=>{ const T=window.__tally; return { warn:T.sectionWarn(T.state.sections[K]), chip:(document.querySelector('#nToggle')||{}).textContent||'', flags:document.querySelectorAll('button.flag:not(.quiet)').length }; },K);

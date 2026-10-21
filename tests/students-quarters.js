@@ -1,7 +1,7 @@
 // Students and quarters: the Students directory, a student's page (trends, what-ifs, Q1 final), the Show-student screen,
 // and closing a quarter — its record is kept, its alerts stop, the next quarter's exports start fresh.
 // Runs against the scrubbed real class; focus_gradebook_scrubbed_q2.csv is the same class with Quarter 2 dates.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
+const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000},acceptDownloads:true}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -140,15 +140,15 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
 
   // 7. Backup carries the quarter record; reopen/close
   await more(p,'#btnSettings'); await p.waitForTimeout(300);
-  const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportCfg')]); const f=path.join(tmp,'bk.json'); await dl.saveAs(f); await p.keyboard.press('Escape');
-  const bk=JSON.parse(fs.readFileSync(f,'utf8'));
-  check(bk.quarters && bk.quarters.closed['1'] && bk.sections[K].qArchive['1'].gb.assignments.length===13,'the backup carries the closed quarters and each class\'s Q1 record');
+  const fsv=await fullSave(p); const f=fsv.file; await p.keyboard.press('Escape');
+  const bk=fsv.json.state;
+  check(bk.quarters && bk.quarters.closed['1'] && bk.sections[K].qArchive['1'].gb.assignments.length===13,'the full save carries the closed quarters and each class\'s Q1 record');
   const p2=await ctx.newPage(); await p2.goto('file://'+path.resolve(APP)); await p2.evaluate(()=>localStorage.clear()); await p2.reload();
   p2.on('dialog',d=>d.accept());
   await p2.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p2.waitForTimeout(500);
   await more(p2,'#btnSettings'); await p2.waitForTimeout(300); await p2.setInputFiles('#cfgFile',f); await p2.waitForTimeout(600);
   const r2=await p2.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; return { closed:T.currentQuarter(), arch:s.qArchive && s.qArchive['1'] ? s.qArchive['1'].gb.assignments.length : 0 }; }, K);
-  check(r2.closed===2 && r2.arch===13,'a backup loaded on another device brings Q1 back closed, with its record');
+  check(r2.closed===2 && r2.arch===13,'a full save opened on another device brings Q1 back closed, with its record');
   await p2.close();
   const ro=await p.evaluate(K=>{ const T=window.__tally; T.reopenQuarter(1); const a=T.currentQuarter(); T.closeQuarter(1,{acc:[],on:[]}); return [a, T.currentQuarter()]; }, K);
   check(ro[0]===1 && ro[1]===2,'reopen and close again');
