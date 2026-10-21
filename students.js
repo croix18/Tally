@@ -94,7 +94,7 @@ function wireNotes(sec, name) {
   const add = $('#noteAdd'), ta = $('#noteText'); if (!add || !ta) return;
   const go = () => { if (addNote(sec, name, ta.value)) { save(); render(); const t = $('#noteText'); if (t) t.focus(); } };
   add.onclick = go; ta.onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); go(); } };
-  document.querySelectorAll('#pNotes [data-ndel]').forEach(b => b.onclick = () => { if (!confirm('Remove this note?')) return; dropNote(sec, name, b.dataset.ndel); save(); render(); });
+  document.querySelectorAll('#pNotes [data-ndel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this note?')) return; dropNote(sec, name, b.dataset.ndel); save(); render(); });
 }
 
 /* ---------- Retake eligibility ----------

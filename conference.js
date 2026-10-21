@@ -151,7 +151,7 @@ function openConference(sec, name) {
   const close = () => { keep(); m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-cfadd]').forEach(b => b.onclick = () => { const n = d.notes.find(x => x.id === b.dataset.nid); if (!n) return; const ta = $(b.dataset.cfadd === 'strengths' ? '#cfStrengths' : '#cfConcerns'); ta.value = (ta.value.trim() ? ta.value.replace(/\s+$/, '') + '\n' : '') + n.text; ta.focus(); });
-  const rf = $('#cfRefill'); if (rf) rf.onclick = () => { if (!confirm('Replace your edits with a fresh draft from Tally?')) return; delete sec.confForms[k]; save(); openConference(sec, name); };
+  const rf = $('#cfRefill'); if (rf) rf.onclick = async () => { if (!await ask('Replace your edits with a fresh draft from Tally?')) return; delete sec.confForms[k]; save(); openConference(sec, name); };
   $('#cfPrint').onclick = () => { keep(); printConference({ name: val('cfName') || niceName(name), grade: val('cfGrade'), teacher: val('cfTeacher'), course: val('cfCourse'), period: val('cfPeriod'), current: val('cfCurrent'),
     rc: Object.fromEntries(['Q1', 'Q2', 'S1', 'Q3', 'Q4', 'S2'].map(q => [q, val('cf' + q)])), tests: val('cfTests'), strengths: val('cfStrengths'), concerns: val('cfConcerns'), work: val('cfWork') }); };
 }
@@ -196,8 +196,4 @@ ${block('Student Strengths in Class:', x.strengths)}${block('Student Concerns in
 document.querySelectorAll('.t').forEach(function(t){ var s=10.5; while (t.scrollHeight > t.clientHeight + 1 && s > 7) { s -= 0.25; t.style.fontSize = s + 'pt'; } });
 <\/script></body></html>`;   // <\/script>: a literal close tag would end Tally's own script
 }
-function printConference(x) {
-  const html = conferenceHtml(x); const w = window.open('', '_blank');
-  if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = 'Conference form - ' + x.name.replace(/[^\w -]+/g, '') + '.html'; a.click(); toast('Pop-ups are blocked, so the form was saved as a file instead.', false, 5000); return; }
-  w.document.open(); w.document.write(html); w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 400);
-}
+function printConference(x) { openPrint(conferenceHtml(x), 'Conference form - ' + x.name.replace(/[^\w -]+/g, '') + '.html', true); }

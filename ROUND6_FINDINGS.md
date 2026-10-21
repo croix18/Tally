@@ -204,6 +204,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   screen, old files still open). Inside a Google Site Tally's storage never lasts: Tally now says so in a strip, keeps
   Full save one tap away, and asks before the page is left with unsaved work; a Full save opens even where storage is
   refused. New suite `tests/saving.js`. 35 suites, 1138 checks.
+- 21 Oct: built for Google Sites: autosave to Downloads (timer and on leaving), Ctrl+S / Ctrl+O, minute-stamped file
+  names, a strip that counts unsaved minutes, opening a save saves the current work first and flags an older file,
+  Tally's own question dialog where the browser's is blocked, and printing that survives a sandboxed frame (found: a
+  sandboxed frame could not write into its own print window, so every print there failed). 35 suites, 1151 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

@@ -432,6 +432,28 @@ per-section-file era and many items in them are now done).
     or the downloaded Tally.html opened in Chrome on the laptop both keep their data. On the Google Site, link to the
     Pages address (opens in a new tab) instead of embedding the file.
   - New suite `tests/saving.js` (the frame case is a sandboxed iframe with no storage).
+- **21 Oct 2026 — Built for living in Google Sites.** Croix: "Assume it's going to live in Google Sites so I need it
+  to be as fluid in the handoff as possible. Fortify the safeguards and do whatever else you think may be necessary."
+  The exact sandbox flags of a Sites embed could not be read (Google's frame page refuses fetching), so every feature
+  is built to work without storage, without the browser's confirm/print boxes and without writing into a pop-up:
+  - **Questions** (`ask()`): in that mode Tally asks in its own dialog (named button, Escape cancels) — a sandboxed
+    frame without allow-modals answers the browser's confirm() with an instant No, which would have silently blocked
+    removing a note, opening a save over work, etc. Elsewhere the browser's box stays (all 19 call sites now await it).
+  - **Autosave** (`settings.autosave`, default 10 min; Off/5/10/15/30 in Settings → Saving; travels in the Full save):
+    a Full save downloads after that long with unsaved work, and when the page is hidden (tab switch, lid, the Site
+    navigating), at most every two minutes. Marked `full.how: 'auto'`. Chrome may ask once to allow multiple downloads.
+  - **File names to the minute** (`tally-full-2026-10-21-1432.json`, Board the same) so the newest sorts last.
+  - **The strip**: green "Everything is in ‹file› (today 2:32 PM)", yellow "Changes from the last N minutes are only on
+    this page. Autosave every 10 min is on.", orange after 10 minutes; Ctrl+S hint and a Full save button. Empty Tally
+    there opens on "Open your newest Full save" with an Open a save button.
+  - **Ctrl+S = Full save, Ctrl+O = open a save**, in every mode (not on the Board or Show student).
+  - **Opening a save never loses work**: unsaved work on screen is Full-saved first; a save older than the one open
+    says so in the question; the strip then names the opened file.
+  - **Printing** (`openPrint()`, all six printed pages): pop-up blocked → the page downloads to open and print; a
+    sandboxed frame can't write into its own pop-up (a new opaque origin), so the pop-up is sent to a blob: URL of the
+    page instead; there the page carries "If Print does nothing, press Ctrl+P."
+  - `tests/saving.js` runs Tally in frames sandboxed without allow-same-origin and allow-modals (and one without
+    allow-popups) and checks all of the above, including an autosave with no click behind it.
   - GitHub is blocked on the school wifi, so Pages is not an option at school. Offered: Tally served from Google Apps
     Script, autosaving to a file in his school Drive (one Tally across laptop, panel and tablet). Croix: "Let's hold
     off on that option and stick to the html for now." So: the HTML file, opened directly in Chrome on the laptop,

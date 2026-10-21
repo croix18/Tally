@@ -191,7 +191,8 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 .pill.small{font-size:var(--t-s);padding:5px 14px;min-height:var(--h-s)}
 
 /* ---- section chips ---- */
-#keep{margin:12px 28px 0;flex-shrink:0;display:flex;align-items:center;gap:14px;padding:10px 12px 10px 18px;border-radius:var(--r-m);background:var(--g-c-wash);color:var(--navy);font-size:var(--t-m);line-height:1.35}#keep span{flex:1}#keep .pill{flex:none}
+#ask{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(22,33,58,.45)}#ask .askBox{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:22px 24px 18px;max-width:520px;width:100%}#ask p{margin:0 0 18px;font-size:var(--t-m);line-height:1.45;color:var(--navy)}#ask .askRow{display:flex;gap:10px;justify-content:flex-end}
+#keep{margin:12px 28px 0;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 18px;border-radius:var(--r-m);background:var(--g-c-wash);color:var(--navy);font-size:var(--t-m);line-height:1.35}#keep span{flex:1}#keep .pill{flex:none}#keep.ok{background:var(--g-a-wash)}#keep.late{background:var(--g-d-wash);box-shadow:inset 4px 0 0 var(--g-d)}#keep .keepKey{font-size:var(--t-xs);color:var(--ink-soft);font-weight:var(--w-bold);white-space:nowrap}@media (max-width:700px){#keep .keepKey{display:none}}
 @media (max-width:900px){#keep{margin:12px 14px 0}}
 #tabs{display:flex;gap:12px;padding:20px 28px 0;flex-wrap:wrap;align-items:center;flex-shrink:0}
 .tab{
@@ -587,6 +588,7 @@ body:has(#modal:not(.hidden)) #toast{bottom:auto;top:18px}   /* while a dialog i
 
 <div id="lb" class="hidden" aria-label="Leaderboard"></div>
 <div id="modal" class="hidden" role="dialog" aria-modal="true" aria-label="Settings"></div>
+<div id="ask" class="hidden"></div>
 <div id="toast" aria-live="polite"></div>
 
 <script>

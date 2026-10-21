@@ -203,5 +203,5 @@ function openQuarters(keep) {
     const per = closeQuarter(n, picks); save(); m.classList.add('hidden'); m.innerHTML = ''; render();
     toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'} — it won't come up again unless you reopen it.`, false, 5000);
   };
-  const ro = $('#qReopen'); if (ro) ro.onclick = () => { if (!confirm(`Reopen ${Q_NAMES[lastClosed - 1]}? Its missing work, Focus checks and still-owed lines come back. The saved copy stays.`)) return; reopenQuarter(lastClosed); save(); openQuarters({}); };
+  const ro = $('#qReopen'); if (ro) ro.onclick = async () => { if (!await ask(`Reopen ${Q_NAMES[lastClosed - 1]}? Its missing work, Focus checks and still-owed lines come back. The saved copy stays.`)) return; reopenQuarter(lastClosed); save(); openQuarters({}); };
 }

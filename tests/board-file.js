@@ -33,7 +33,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.keyboard.press('Escape');
   const full=JSON.parse(fs.readFileSync(fullPath,'utf8')), board=JSON.parse(fs.readFileSync(boardPath,'utf8'));
   check(full.tally===4 && full.full && full.state && Object.keys(full.state.sections).length===nLaptop.classes && Object.values(full.state.sections).some(s=>s.grades),'the full save is a Tally file holding every class, scores and gradebooks');
-  check(/tally-full-\d{4}-\d{2}-\d{2}\.json/.test(d1.suggestedFilename()) && /tally-board-\d{4}-\d{2}-\d{2}\.json/.test(d2.suggestedFilename()),'the files are named by kind and date: '+d1.suggestedFilename()+', '+d2.suggestedFilename());
+  check(/tally-full-\d{4}-\d{2}-\d{2}-\d{4}\.json/.test(d1.suggestedFilename()) && /tally-board-\d{4}-\d{2}-\d{2}-\d{4}\.json/.test(d2.suggestedFilename()),'the files are named by kind and date: '+d1.suggestedFilename()+', '+d2.suggestedFilename());
   // ---- what the Board file does not contain ----------------------------------------------------------------------------
   const txt=fs.readFileSync(boardPath,'utf8'); const realNames=[]; Object.values(full.state.sections).forEach(s=>{ realNames.push(...s.students); if (s.grades) realNames.push(...s.grades.students); if (s.roster) realNames.push(...s.roster.split('\n').map(x=>x.trim()).filter(Boolean)); }); Object.values(full.state.pools||{}).forEach(pl=>realNames.push(...(pl.students||[])));
   const leaked=[...new Set(realNames)].filter(n=>n && n.length>3 && txt.includes(n)).concat([...new Set(realNames)].flatMap(n=>n.split(/[,\s]+/)).filter(w=>w.length>4 && txt.includes(w)));
@@ -84,7 +84,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   // loading over a Tally that has classes asks first; declining changes nothing
   let asked=''; r.removeAllListeners('dialog'); r.on('dialog',d=>{ asked=d.message(); d.dismiss(); });
   await r.setInputFiles('#file',[boardPath]); await r.waitForTimeout(700);
-  check(/Load the Board save/.test(asked) && /replaces everything/.test(asked) && await r.evaluate(()=>!window.__tally.state.board && window.__tally.state.order.length>0),'loading a Board file over a working Tally asks first, and No leaves everything as it was: "'+asked.slice(0,90)+'…"');
+  check(/Open the Board save/.test(asked) && /replaces everything/.test(asked) && await r.evaluate(()=>!window.__tally.state.board && window.__tally.state.order.length>0),'loading a Board file over a working Tally asks first, and No leaves everything as it was: "'+asked.slice(0,90)+'…"');
   await ctx3.close();
   // ---- an older settings backup still loads the old way (merged onto existing classes) ------------------------------------
   const legacy=await p.evaluate(()=>{ const T=window.__tally; const cfg={ tally:4, exported:new Date().toISOString(), settings:{ copyMode:'ids' }, sections:{} }; T.state.order.forEach(k=>{ const x=T.state.sections[k]; cfg.sections[k]={ label:x.label+' (old)', prep:x.prep, threshold:x.threshold, roster:x.roster, history:x.history, gradeHistory:x.gradeHistory||[] }; }); return cfg; });

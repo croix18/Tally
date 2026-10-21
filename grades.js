@@ -333,9 +333,7 @@ function studentReportSection(s0, i, ixlRow) {
 function printStudentReports(s, indices, title) {
   const rows = gbRows(s);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}</body></html>`;
-  const w = window.open('', '_blank');
-  if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = title.replace(/[^\w-]+/g, '_') + '.html'; a.click(); toast('Pop-ups are blocked, so the page was saved as a file instead.', false, 5000); return; }
-  w.document.open(); w.document.write(html); w.document.close(); if (indices.length === 1) setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 300);
+  openPrint(html, title.replace(/[^\w-]+/g, '_') + '.html', indices.length === 1);
 }
 function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.students[i]} — report`); }
 // Class-level chooser: everyone, or only students with something owed (missing work or IXL below goal).

@@ -68,6 +68,7 @@ function migrate() {
     skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line', 'avg'].includes(st.labKind) ? st.labKind : 'box', labAvg: !!st.labAvg, labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null },
     curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) },
+    autosave: [0, 5, 10, 15, 30].includes(st.autosave) ? st.autosave : 10,   // minutes, where the page keeps nothing (Google Sites)
     teacherName: typeof st.teacherName === 'string' ? st.teacherName.slice(0, 80) : '', gradeLevel: typeof st.gradeLevel === 'string' ? st.gradeLevel.slice(0, 4) : '', courseNames: { acc: st.courseNames && typeof st.courseNames.acc === 'string' ? st.courseNames.acc.slice(0, 80) : '', on: st.courseNames && typeof st.courseNames.on === 'string' ? st.courseNames.on.slice(0, 80) : '' } };   // the conference form's header   // the unit each course is working in: everything up to it is assigned, later units are gathered under Ahead   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
   state.tests = cleanTests(state.tests);   // FAST results, by student ID and by name
@@ -77,6 +78,7 @@ function migrate() {
   state.pools = state.pools && typeof state.pools === 'object' ? state.pools : {};
   state.lastBackup = typeof state.lastBackup === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(state.lastBackup) ? state.lastBackup.slice(0, 30) : null;   // when the last Full save was made
   state.savedPrint = typeof state.savedPrint === 'string' ? state.savedPrint.slice(0, 20) : null;   // what was in it (workPrint)
+  state.lastSaveName = typeof state.lastSaveName === 'string' ? state.lastSaveName.slice(0, 80) : null;   // the file it went to
   const li = state.lastImport; state.lastImport = li && typeof li === 'object' && typeof li.at === 'string' ? { at: li.at.slice(0, 30), lines: (Array.isArray(li.lines) ? li.lines : []).filter(l => l && typeof l === 'object').map(l => ({ label: String(l.label || '').slice(0, 80), text: String(l.text || '').slice(0, 300), pool: l.pool === 'acc' || l.pool === 'on' ? l.pool : null, wi: typeof l.wi === 'string' && /^(acc|on):\d+$/.test(l.wi) ? l.wi : null })).slice(0, 20), fails: (Array.isArray(li.fails) ? li.fails : []).map(x => String(x).slice(0, 300)).slice(0, 20), skipped: Number(li.skipped) || 0 } : null;
   roomOK(); state.seatWeights = state.seatWeights && typeof state.seatWeights === 'object' ? state.seatWeights : {};
   state.seatBasis = typeof state.seatBasis === 'string' ? state.seatBasis : 'blend'; state.seatPairs = typeof state.seatPairs === 'string' ? state.seatPairs : 'mix';
@@ -185,13 +187,40 @@ var storageFragile = (() => {   // var: save() can run before this line without 
   const anc = (() => { try { return [...(location.ancestorOrigins || [])].join(' '); } catch (e) { return ''; } })();
   return !ok || location.origin === 'null' || /(^|\.)googleusercontent\.com$/.test(location.hostname || '') || (framed && /sites\.google\.com/.test(document.referrer + ' ' + anc));
 })();
+// "today 2:32 PM", "yesterday 3:05 PM", "Oct 18, 2:32 PM"
+function whenText(iso) { if (!iso) return '?'; const d = new Date(iso); if (isNaN(d)) return '?'; const t = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); const a = ageDays(localDay(iso)); return a === 0 ? 'today ' + t : a === 1 ? 'yesterday ' + t : fmtDate(localDay(iso)) + ', ' + t; }
+let dirtySince = null, lastAutoSave = 0, wiping = false;
+// How long work has been only on this page. Read on every paint and every half minute.
+function unsavedFor() { if (!unsavedWork()) { dirtySince = null; return null; } if (dirtySince == null) dirtySince = Date.now(); return Date.now() - dirtySince; }
 function renderKeep() {
   const k = $('#keep'); if (!k) return; const on = storageFragile && !state.board; k.classList.toggle('hidden', !on); document.body.classList.toggle('fragile', on); if (!on) return;
-  const lb = state.lastBackup; const due = unsavedWork(); const when = lb ? (ageDays(localDay(lb)) === 0 ? new Date(lb).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : fmtDate(localDay(lb))) : '';
-  k.innerHTML = `<span><b>This page can't keep your work after you leave it.</b> ${!state.order.length ? 'Open your last Full save to pick up where you left off.' : due ? (lb ? `Changes since your Full save at ${esc(when)} are only on this page.` : 'Nothing here is saved yet.') : `Everything is in your Full save from ${esc(when)}.`}</span>${state.order.length ? `<button class="pill small ${due ? '' : 'pale'}" id="keepSave">Full save</button>` : `<button class="pill small" id="keepOpen">Open a save</button>`}`;
+  const lb = state.lastBackup; const ms = unsavedFor(); const due = ms != null; const mins = due ? Math.floor(ms / 60000) : 0; const auto = state.settings.autosave;
+  const level = !state.order.length ? 'empty' : !due ? 'ok' : mins >= 10 ? 'late' : 'due'; k.className = 'keep ' + level;
+  const age = mins < 1 ? 'less than a minute' : plural(mins, 'minute');
+  const msg = level === 'empty' ? 'Each visit starts from your newest Full save.'
+    : level === 'ok' ? `Everything is in ${state.lastSaveName ? esc(state.lastSaveName) : 'your Full save'} (${esc(whenText(lb))}).`
+    : `${lb ? `Changes from the last ${esc(age)} are only on this page.` : `Nothing here is saved yet (${esc(age)}).`}${auto ? ` Autosave every ${auto} min is on.` : ''}`;
+  k.innerHTML = `<span><b>This page can't keep your work after you leave it.</b> ${msg}</span>${state.order.length ? `<small class="keepKey">Ctrl+S</small><button class="pill small ${due ? '' : 'pale'}" id="keepSave">Full save</button>` : `<button class="pill small" id="keepOpen">Open a save</button>`}`;
   const ks = $('#keepSave'); if (ks) ks.onclick = () => saveFull(); const ko = $('#keepOpen'); if (ko) ko.onclick = () => $('#file').click();
 }
-window.addEventListener('beforeunload', e => { if (storageFragile && !state.board && unsavedWork()) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { if (storageFragile && !wiping && !state.board && unsavedWork()) { e.preventDefault(); e.returnValue = ''; } });
+// Autosave, where the page keeps nothing: a Full save downloads once work has been only on this page for the chosen
+// minutes, and again when the page is hidden (another tab, the laptop closing, the Site navigating away), at most
+// every two minutes. It is a download like any other; the strip says when the last one went.
+function autoTick() { try { const n = state.settings.autosave; if (n && autoSaveDue(n * 60000) && unsavedFor() >= n * 60000) saveFull('auto'); else renderKeep(); } catch (e) {} }
+function autoSaveDue(minGap) { const n = state.settings.autosave; if (!storageFragile || !n || state.board || !state.order.length) return false; const ms = unsavedFor(); return ms != null && Date.now() - lastAutoSave >= minGap; }
+if (storageFragile) {
+  setInterval(autoTick, 30000);
+  const away = () => { try { if (autoSaveDue(120000)) saveFull('auto'); } catch (e) {} };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') away(); });
+  window.addEventListener('pagehide', away);
+}
+// Ctrl+S makes a Full save and Ctrl+O opens one, everywhere (not on the student-facing Board).
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return; const k = e.key.toLowerCase(); if (k !== 's' && k !== 'o') return;
+  if (document.body.classList.contains('lbMode') || document.body.classList.contains('showMode') || state.board) return;
+  e.preventDefault(); if (k === 's') { if (state.order.length) saveFull(); else toast('Nothing to save yet.', false); } else $('#file').click();
+});
 try { if (!storageFragile && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}   // ask the browser not to clear Tally's storage to make room
 
 // state boots here, after every helper it needs is defined (a TDZ on a regex const once blanked the app on reload)
@@ -316,9 +345,9 @@ async function importFiles(files) {
       if (!SAFE_KEY(meta.key)) throw new Error('unusable file name');
       if (!meta.section && g.students.length) {   // a course-wide export (no section code): the pool every class of that course is carved from
         const prep = meta.accelerated ? 'acc' : 'on'; const prevPool = state.pools[prep];
-        if (prevPool && prevPool.date && meta.date && meta.date < prevPool.date && !confirm(`${f.name}\n\nThis export is dated ${meta.date}, but the ${prep === 'acc' ? 'accelerated' : 'on-level'} course already has data from ${prevPool.date}. Replace the newer data with this older file?`)) { skipped++; continue; }
+        if (prevPool && prevPool.date && meta.date && meta.date < prevPool.date && !await ask(`${f.name}\n\nThis export is dated ${meta.date}, but the ${prep === 'acc' ? 'accelerated' : 'on-level'} course already has data from ${prevPool.date}. Replace the newer data with this older file?`)) { skipped++; continue; }
         if (prevPool && prevPool.students.length) { const have = new Set(prevPool.students.map(n => norm(n))); const same = g.students.filter(n => have.has(norm(n))).length; const share = same / Math.max(prevPool.students.length, g.students.length);
-          if ((share < 0.5 || !meta.date) && !confirm(`${f.name}\n\n${!meta.date ? 'This file has no export date in its name' : `Only ${same} of its ${g.students.length} students are in the ${prep === 'acc' ? 'accelerated' : 'on-level'} course already`}. Replace the course's IXL data (${prevPool.students.length} students, ${prevPool.date || 'undated'}) with it?`)) { skipped++; continue; } }
+          if ((share < 0.5 || !meta.date) && !await ask(`${f.name}\n\n${!meta.date ? 'This file has no export date in its name' : `Only ${same} of its ${g.students.length} students are in the ${prep === 'acc' ? 'accelerated' : 'on-level'} course already`}. Replace the course's IXL data (${prevPool.students.length} students, ${prevPool.date || 'undated'}) with it?`)) { skipped++; continue; } }
         state.pools[prep] = { students: g.students, skills: g.skills, scores: g.scores, date: meta.date, file: f.name, importedAt: new Date().toISOString() };
         const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === prep);
         fed.forEach(x => { materialize(x); ok.push(x); });
@@ -340,7 +369,7 @@ async function importFiles(files) {
       const allBlank = !g.scores.some(row => row.some(v => v != null));
       const prev = state.sections[meta.key];
       if (prev && prev.date && meta.date && meta.date < prev.date) {
-        if (!confirm(`${f.name}\n\nThis export is dated ${meta.date}, but ${prev.label} already has data from ${prev.date}. Replace the newer data with this older file?`)) { skipped++; continue; }
+        if (!await ask(`${f.name}\n\nThis export is dated ${meta.date}, but ${prev.label} already has data from ${prev.date}. Replace the newer data with this older file?`)) { skipped++; continue; }
       }
       const pend = state.pendingCfg[meta.key] || {};
       const keep = prev || pend;
@@ -1219,7 +1248,9 @@ function render() {
   $('#empty').classList.toggle('hidden', has);
   if (!has) {   // the landing: after a course export with no class yet, say what landed and what comes next instead of "Drop here" again
     const li = state.lastImport, pools = ['acc', 'on'].filter(p => state.pools[p]); const d = $('#drop');
-    d.querySelector('h2').innerHTML = pools.length ? `${pools.length === 2 ? 'Both course exports are in' : (pools[0] === 'acc' ? 'Accelerated' : 'On-level') + ' course export is in'}<span>.</span>` : 'Drop your IXL and Focus exports here<span>.</span>';
+    d.querySelector('h2').innerHTML = pools.length ? `${pools.length === 2 ? 'Both course exports are in' : (pools[0] === 'acc' ? 'Accelerated' : 'On-level') + ' course export is in'}<span>.</span>` : storageFragile ? 'Open your newest Full save<span>.</span>' : 'Drop your IXL and Focus exports here<span>.</span>';
+    $('#launch').textContent = storageFragile && !pools.length ? 'Open a save' : 'Choose files';
+    { const fine = d.querySelector('.fine'); if (fine) fine.textContent = storageFragile && !pools.length ? 'It is the newest tally-full file in your Downloads or Drive (on the classroom panel, the newest tally-board file). Or drop IXL and Focus exports here to start fresh.' : 'A Full save opens the same way. Student data stays in this browser.'; }
     const lp = d.querySelector('p'); lp.hidden = !pools.length; lp.textContent = pools.length ? `Now drop a Focus gradebook for each period${pools.length === 1 ? ` (and the ${pools[0] === 'acc' ? 'on-level' : 'accelerated'} IXL export when you have it)` : ''}.` : '';
     let r = d.querySelector('.himport'); if (li && (li.lines.length || li.fails.length)) { if (!r) { r = document.createElement('div'); r.className = 'himport'; d.appendChild(r); } r.classList.toggle('warn', !!li.fails.length); r.innerHTML = `<h3>Last import <small>${esc(fmtTime(li.at))}</small></h3><ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}</ul>`; } else if (r) r.remove(); }
   else { const r = $('#drop .himport'); if (r) r.remove(); }
@@ -1595,7 +1626,7 @@ async function copyUnit(sec, unit) {
   const rs = rosterState(sec);
   const rowsAll = buildRows(sec).filter(r => r.status !== 'ixlOnly');
   const anyPts = rowsAll.some(r => r.ixl != null && points(sec, unit, r.ixl) > 0);
-  if (!anyPts && !confirm(`Nobody in ${sec.label} has earned a point in ${unit.short} yet. Copy a column of zeros anyway?`)) return;
+  if (!anyPts && !await ask(`Nobody in ${sec.label} has earned a point in ${unit.short} yet. Copy a column of zeros anyway?`)) return;
   const mode = !rs.count ? 'names' : state.settings.copyMode;   // no roster → always a checklist, never a bare column
   const lines = unitColumn(sec, unit, mode); const text = lines.join('\n');
   const modified = rowsAll.filter(r => r.ixl != null && totalFor(sec, unit, r.ixl) !== unit.total).length;
@@ -1666,9 +1697,7 @@ h1{font-size:16pt;margin:0 0 2px}
 <p class="meta">IXL export of ${fmtDate(sec.date) || '?'} · goal SmartScore ${t} · one point per skill · ${plural(rows.length, 'student')}${all.length > rows.length ? ` (${all.length - rows.length} not matched to IXL)` : ''} · ${units.length ? 'assigned: ' + esc(units.map(u => u.short).join(', ')) : 'no units assigned'}${initials ? ' · initials' : ''}${slips ? ' · one page per student' : ''}</p>
 ${all.map(block).join('')}
 </body></html>`;
-  const w = window.open('', '_blank');
-  if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `Still-owed_${sec.label.replace(/[^\w-]+/g, '_')}.html`; a.click(); toast('Pop-ups are blocked, so the page was saved as a file instead.', false, 5000); return; }
-  w.document.open(); w.document.write(html); w.document.close();
+  openPrint(html, `Still-owed_${sec.label.replace(/[^\w-]+/g, '_')}.html`);
 }
 
 /* ---------- Guide: one printable page for you and the co-teacher ---------- */
@@ -1750,15 +1779,14 @@ li{margin:3px 0}
 <p><b>Conference form</b> — on a student's page. Tally fills in the school's parent conference form (grades, FAST, missing work, assessments under 70%, retakes) and drafts Strengths and Concerns. Edit anything, then Print. Your edits to a student's form are kept.</p>
 <p><b>Notes</b> — on a student's page. Dated, only for you: hidden when names are hidden and never on the Board.</p>
 <p><b>FAST</b> — import the FAST report from Focus like any other file. Scores are matched by student ID and show on the student's page and the conference form.</p>
+<p><b>Google Site</b> — the page forgets everything when you leave, so open your newest Full save each visit. Tally autosaves one after 10 minutes of changes and when you switch away; Ctrl+S saves. If Chrome asks about multiple downloads, Allow.</p>
 <p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade; <b>Average</b> marks each class's average, and <b>Class averages</b> puts the classes side by side). Names never show. Hold the exit button to leave.</p>
 <p><b>Names</b> — the eye button in the header. Crossed out = initials only, for projecting.</p>
 <p><b>⋯</b> — Details view (every count, notice and legend at once), Settings, this Guide, Full save, Board save.</p>
 </div>
 </div>
 </body></html>`;
-  const w = window.open('', '_blank');
-  if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = 'Tally-guide.html'; a.click(); toast('Pop-ups are blocked, so the guide was saved as a file instead.', false, 5000); return; }
-  w.document.open(); w.document.write(html); w.document.close();
+  openPrint(html, 'Tally-guide.html');
 }
 
 /* ---------- Receipt: what was copied to Focus for a unit, and what has changed since ---------- */
@@ -1872,9 +1900,9 @@ function openFocusCheck(sec, unitName) {
   m.dataset.fc = sec.key + '|' + unitName; openFolds.forEach(c => { const d = m.querySelector('details.' + c.trim().split(/\s+/).join('.')); if (d) d.open = true; });
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; delete m.dataset.fc; render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  $('#gbMap').onchange = () => { const v = $('#gbMap').value; const to = v ? (unitsOf(sec).find(u => u.name === v) || {}).short : null;
+  $('#gbMap').onchange = async () => { const v = $('#gbMap').value; const to = v ? (unitsOf(sec).find(u => u.name === v) || {}).short : null;
     // this takes the column out of the check (or points it at another unit) for good, so it asks, and says where the way back is
-    if (!confirm(v ? `Check Focus's "${rc.assignment.name}" against ${to} instead of ${rc.unit.short}?\n\nYou can undo this in Settings → This class → Focus gradebook.` : `Stop checking Focus's "${rc.assignment.name}" against Tally?\n\nIts badge will go. You can undo this in Settings → This class → Focus gradebook.`)) { $('#gbMap').value = rc.unit.name; return; }
+    if (!await ask(v ? `Check Focus's "${rc.assignment.name}" against ${to} instead of ${rc.unit.short}?\n\nYou can undo this in Settings → This class → Focus gradebook.` : `Stop checking Focus's "${rc.assignment.name}" against Tally?\n\nIts badge will go. You can undo this in Settings → This class → Focus gradebook.`)) { $('#gbMap').value = rc.unit.name; return; }
     sec.gbUnitMap = sec.gbUnitMap || {}; sec.gbUnitMap[rc.assignment.name] = v; save(); close(); toast(v ? `Focus's "${esc(rc.assignment.name)}" is now checked against ${esc(to)}.` : `Focus's "${esc(rc.assignment.name)}" is no longer checked — undo in Settings → This class → Focus gradebook.`, false, 7000); if (v && reconcile(sec).some(x => x.unit.name === v)) openFocusCheck(sec, v); };
   const put = async (text, msg) => { let ok = legacyCopy(text); if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} } if (ok) toast(msg, false); else showCopyBox(text, rc.assignment.name); };
   const sc = $('#skipCand'); if (sc) {
@@ -1925,19 +1953,23 @@ function matchReport(s, rosterText) {
      scores, merged onto the classes that exist here. Tally no longer writes one; files in his Drive still load.
    Croix, 19 Oct 2026: the backup from his laptop would not load on the Promethean — a backup carries no scores, so with
    no exports there was nothing to show, and the picker only let Android offer files typed .json. */
-function saveFull() {
-  const now = new Date().toISOString(); state.lastBackup = now; state.savedPrint = workPrint();
-  const cfg = { tally: 4, full: { saved: now, classes: state.order.length }, state: stateForSave() };
-  downloadJson(cfg, 'tally-full-' + localDay(now) + '.json'); save(); render();
-  toast('Full save downloaded. It holds everything, student names included, so keep it in your school Drive.', false, 5000);
+// File names carry the minute, so the newest save is the last one in the folder: tally-full-2026-10-21-1432.json
+const stamp = iso => { const d = new Date(iso); const p2 = n => String(n).padStart(2, '0'); return `${localDay(iso)}-${p2(d.getHours())}${p2(d.getMinutes())}`; };
+function saveFull(how) {
+  if (state.board) { toast('A Board save holds only the Board. Make a Full save on the computer that has your classes.', true); return; }
+  const now = new Date().toISOString(); state.lastBackup = now; state.savedPrint = workPrint(); dirtySince = null; if (how === 'auto') lastAutoSave = Date.now();
+  const cfg = { tally: 4, full: { saved: now, classes: state.order.length, how: how === 'auto' ? 'auto' : 'manual' }, state: stateForSave() };
+  const name = 'tally-full-' + stamp(now) + '.json'; state.lastSaveName = name;
+  downloadJson(cfg, name); save(); render();
+  toast(how === 'auto' ? `Autosaved: ${esc(name)} is in your Downloads.` : storageFragile ? `Saved as ${esc(name)}. Next visit, open the newest save to pick up here.` : 'Full save downloaded. It holds everything, student names included, so keep it in your school Drive.', false, how === 'auto' ? 4000 : 5000);
 }
 /* What a Full save would hold, as a short fingerprint, leaving out where the screen is (the open class, view switches).
    Compared with the fingerprint taken at the last Full save, it tells whether there is work a Full save doesn't have. */
 let printCache = { n: -1, v: '' };
 function workPrint() {
   if (printCache.n === saveCount) return printCache.v;
-  const { active, lastBackup, savedPrint, lastImport, settings, ...rest } = stateForSave(); const st = settings || {};
-  const txt = JSON.stringify([rest, st.currentUnit, st.curUnitTouched, st.skipFirst, st.useBest, st.teacherName, st.gradeLevel, st.courseNames, st.remindDays, st.copyMode]);
+  const { active, lastBackup, savedPrint, lastSaveName, lastImport, settings, ...rest } = stateForSave(); const st = settings || {};
+  const txt = JSON.stringify([rest, st.currentUnit, st.curUnitTouched, st.skipFirst, st.useBest, st.teacherName, st.gradeLevel, st.courseNames, st.remindDays, st.copyMode, st.autosave]);
   let h = 0x811c9dc5; for (let i = 0; i < txt.length; i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 0x01000193); }
   const v = (h >>> 0).toString(36) + '.' + txt.length.toString(36); printCache = { n: saveCount, v }; return v;
 }
@@ -1970,20 +2002,23 @@ function boardFile() {
 }
 function saveBoardFile() {
   const cfg = boardFile(); if (!cfg.board.classes) { toast('Nothing to put on the Board yet.', true); return; }
-  downloadJson(cfg, 'tally-board-' + new Date().toISOString().slice(0, 10) + '.json');
+  downloadJson(cfg, 'tally-board-' + stamp(new Date().toISOString()) + '.json');
   toast('Board save downloaded. No names, no rosters, no student\'s row of grades. Open it on the classroom panel.', false, 5000);
 }
 // Any Tally file, dropped on the page or chosen through Import or Settings.
 async function loadTallyFile(file, cfg) {
   if (!cfg || !cfg.tally) throw new Error('not tally');
   if (cfg.board || cfg.full) {
-    const kind = cfg.board ? 'Board save' : 'Full save'; const meta = cfg.board || cfg.full; const when = meta && meta.saved ? fmtDate(meta.saved.slice(0, 10)) : '?';
-    const here = state.order.length ? `This replaces everything Tally holds in this browser (${plural(state.order.length, 'class')}).` : '';
-    if (state.order.length && !confirm(`Load the ${kind} from ${when} (${plural(meta.classes || 0, 'class')})? ${here}`)) return false;
+    const kind = cfg.board ? 'Board save' : 'Full save'; const meta = cfg.board || cfg.full || {}; const when = meta.saved ? whenText(meta.saved) : 'an unknown time';
+    // never lose what is on screen: work that is in no Full save is saved first, before anything replaces it
+    if (state.order.length && !state.board && unsavedWork()) { saveFull(); toast(`Your work here was saved first (${esc(state.lastSaveName || 'a Full save')}).`, false, 6000); }
+    const older = cfg.full && meta.saved && state.lastBackup && meta.saved < state.lastBackup && !state.board;
+    const here = state.order.length ? ` It replaces everything open here (${plural(state.order.length, 'class')}).` : '';
+    if ((state.order.length || older) && !await ask(`Open the ${kind} from ${when} (${plural(meta.classes || 0, 'class')})?${older ? ` It is older than the Full save already open here (${whenText(state.lastBackup)}).` : ''}${here}`, 'Open it')) return false;
     const s = JSON.parse(JSON.stringify(cfg.state || {})); if (!s.sections || typeof s.sections !== 'object') throw new Error('not tally');
     if (cfg.board) { s.board = cfg.board; s.settings = { ...(s.settings || {}), hideNames: true, leaderboard: true }; } else delete s.board;
-    state = hydrate(s) || s; migrate(); if (cfg.full) { state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
-    toast(cfg.board ? `Board save loaded: ${plural(state.order.length, 'class')}, no names.` : `Full save loaded: ${plural(state.order.length, 'class')}.`, false, 5000);
+    state = hydrate(s) || s; migrate(); if (cfg.full) { state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
+    toast(cfg.board ? `Board save opened: ${plural(state.order.length, 'class')}, no names.` : `Full save from ${esc(whenText(meta.saved))} opened: ${plural(state.order.length, 'class')}.`, false, 5000);
     return true;
   }
   return loadSettingsBackup(cfg);
@@ -2031,6 +2066,7 @@ function openSettings(key) {
         <p><b>Full save</b> is everything: exports, rosters, gradebooks, notes, settings. Open it on another computer and that computer is this one. It holds student names and scores, so keep it in your school Drive.</p>
         <p><b>Board save</b> is for the classroom panel: only what the Race and the Data Lab draw. No names, IDs, rosters, seating or anyone's row of grades. A Tally that opens it shows the Board and nothing else.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill small" id="exportFull">Full save</button><button class="pill pale small" id="exportBoard">Board save</button><button class="pill pale small" id="importCfg">Open a save</button><input type="file" id="cfgFile" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last full save ${esc(ageDays(localDay(state.lastBackup)) === 0 ? 'today' : fmtDate(localDay(state.lastBackup)))}.` : 'No full save from this browser yet.'}</small></div>
+        <div class="field" style="margin-top:12px"><label>Autosave where the page can't keep your work (inside a Google Site)</label><div class="seg small" id="autosave">${[0, 5, 10, 15, 30].map(n => `<button data-auto="${n}" class="${state.settings.autosave === n ? 'on' : ''}">${n ? n + ' min' : 'Off'}</button>`).join('')}</div><p style="margin-top:4px">${storageFragile ? 'This page is one of them. ' : ''}A Full save downloads after that long with unsaved changes, and when you switch away from the page. Ctrl+S saves any time.</p></div>
         <h3 class="mt">Our own data (Data Lab)</h3>
         <p>Numbers the classes collected themselves — minutes to school, letters in a first name. One list per class; no names.</p>
         <div id="customList">${state.custom.map(c => `<div class="customRow"><b>${esc(c.label)}</b> <span>${c.prep === 'acc' ? 'accelerated' : 'on-level'} · ${Object.values(c.values).filter(v => v.length).length} classes</span> <button class="pill pale small" data-editc="${esc(c.id)}">Edit</button> <button class="pill danger small" data-delc="${esc(c.id)}">Delete</button></div>`).join('') || '<p>None yet.</p>'}</div>
@@ -2057,10 +2093,10 @@ function openSettings(key) {
   // anything typed or tapped but not saved — asked about before the picker shows another class (Cancel still just cancels)
   const unsaved = () => dirty() || ($('#secLabel').value.trim() || s.autoLabel) !== s.label || String($('#thr').value) !== String(s.threshold) || prep !== s.prep || skipTouched || remind !== state.settings.remindDays || copyMode !== state.settings.copyMode || $('#useBest').checked !== !!state.settings.useBest;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; render(); };
-  const cancel = () => { if (dirty() && !confirm('Discard the roster changes you pasted?')) return; close(); };
+  const cancel = async () => { if (dirty() && !await ask('Discard the roster changes you pasted?')) return; close(); };
   m._cancel = cancel;
-  m.querySelectorAll('[data-unmap]').forEach(b => b.onclick = () => { if (unsaved() && !confirm('Discard the changes you haven\'t saved?')) return; delete s.gbUnitMap[b.dataset.unmap]; save(); toast(`Focus's "${esc(b.dataset.unmap)}" is matched to its unit by name again.`, false, 5000); openSettings(s.key); });
-  const sc = $('#setClass'); if (sc) sc.onchange = () => { if (unsaved() && !confirm(dirty() ? 'Discard the roster changes you pasted?' : `Discard the changes to ${s.label} you haven't saved?`)) { sc.value = s.key; return; } const to = sc.value; openSettings(to); const again = $('#setClass'); if (again) again.focus(); };
+  m.querySelectorAll('[data-unmap]').forEach(b => b.onclick = async () => { if (unsaved() && !await ask('Discard the changes you haven\'t saved?')) return; delete s.gbUnitMap[b.dataset.unmap]; save(); toast(`Focus's "${esc(b.dataset.unmap)}" is matched to its unit by name again.`, false, 5000); openSettings(s.key); });
+  const sc = $('#setClass'); if (sc) sc.onchange = async () => { if (unsaved() && !await ask(dirty() ? 'Discard the roster changes you pasted?' : `Discard the changes to ${s.label} you haven't saved?`)) { sc.value = s.key; return; } const to = sc.value; openSettings(to); const again = $('#setClass'); if (again) again.focus(); };
   $('#mClose').onclick = cancel; $('#mCancel').onclick = cancel;
   m.onclick = e => { if (e.target === m) cancel(); };
   const wireReport = () => {
@@ -2082,15 +2118,15 @@ function openSettings(key) {
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     const wi = defaultWorkingIn(); noteWorkingIn(wi); save(); close(); render(); toast('Saved' + wi.map(x => `<br>${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join(''), false, wi.length ? 9000 : undefined);
   };
-  $('#forget').onclick = () => { if (!confirm(`Remove ${s.label} from Tally? Its roster and exclusions go too.`)) return; delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
-  $('#wipe').onclick = () => {
+  $('#forget').onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Its roster and exclusions go too.`)) return; delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
+  $('#wipe').onclick = async () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
-    if (!confirm(`Clear everything Tally has saved in this browser — ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? Save a backup first if you want the rosters back.`)) return;
-    localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); try { sessionStorage.removeItem(GB_KEY); } catch (e) {} location.reload();
+    if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? Make a Full save first if you want any of it back.`, 'Clear everything')) return;
+    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); } catch (e) {} try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; location.reload();
   };
   $('#addCustom').onclick = () => { close(); openCustomEditor(null, s.prep); };
   m.querySelectorAll('[data-editc]').forEach(b => b.onclick = () => { close(); openCustomEditor(b.dataset.editc); });
-  m.querySelectorAll('[data-delc]').forEach(b => b.onclick = () => { const c = state.custom.find(x => x.id === b.dataset.delc); if (!confirm(`Delete "${c.label}"?`)) return; state.custom = state.custom.filter(x => x.id !== c.id); save(); close(); openSettings(s.key); });
+  m.querySelectorAll('[data-delc]').forEach(b => b.onclick = async () => { const c = state.custom.find(x => x.id === b.dataset.delc); if (!await ask(`Delete "${c.label}"?`)) return; state.custom = state.custom.filter(x => x.id !== c.id); save(); close(); openSettings(s.key); });
   $('#exportCourse').onclick = () => {
     const skipped = Object.keys(s.excluded).map(k => { const sk = s.skills.find(x => skillKey(x) === k); return { key: k, name: sk ? sk.name : k, unit: sk ? sk.unit : '' }; });
     const cfg = { tally: 'course', prep: s.prep, goal: s.threshold, assigned: state.assigned[s.prep], skipped, exported: new Date().toISOString() };
@@ -2101,14 +2137,15 @@ function openSettings(key) {
   $('#courseFile').onchange = async e => {
     try { const cfg = JSON.parse(await e.target.files[0].text()); if (cfg.tally !== 'course' || !['acc', 'on'].includes(cfg.prep)) throw 0;
       const targets = state.order.map(k => state.sections[k]).filter(x => x.prep === cfg.prep);
-      if (!confirm(`Apply the ${cfg.prep === 'acc' ? 'accelerated' : 'on-level'} course settings (goal ${cfg.goal}, ${Object.keys(cfg.assigned || {}).length} unit marks, ${(cfg.skipped || []).length} skipped skills) to ${plural(targets.length, 'class')}?`)) return;
+      if (!await ask(`Apply the ${cfg.prep === 'acc' ? 'accelerated' : 'on-level'} course settings (goal ${cfg.goal}, ${Object.keys(cfg.assigned || {}).length} unit marks, ${(cfg.skipped || []).length} skipped skills) to ${plural(targets.length, 'class')}?`)) return;
       state.assigned[cfg.prep] = Object.assign({}, state.assigned[cfg.prep], cfg.assigned || {});
       targets.forEach(x => { x.threshold = clampThr(cfg.goal, x.threshold); (cfg.skipped || []).forEach(sk => { x.excluded[sk.key] = true; }); snapshot(x); });
       save(); close(); render(); toast(`Course settings applied to ${plural(targets.length, 'class')}`, false);
     } catch (err) { toast('That file is not a Tally course settings file.', true); }
   };
   $('#saveRace').onclick = () => downloadLeaderboard('race'); $('#saveLab').onclick = () => downloadLeaderboard('lab');
-  const dg = $('#dropGrades'); if (dg) dg.onclick = () => { if (!confirm(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.`)) return; delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
+  const dg = $('#dropGrades'); if (dg) dg.onclick = async () => { if (!await ask(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.`)) return; delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
+  m.querySelectorAll('[data-auto]').forEach(b => b.onclick = () => { state.settings.autosave = Number(b.dataset.auto); save(); m.querySelectorAll('[data-auto]').forEach(x => x.classList.toggle('on', x === b)); renderKeep(); });
   $('#exportBoard').onclick = () => saveBoardFile(); $('#exportFull').onclick = () => { saveFull(); const lb = $('#lastBk'); if (lb) lb.textContent = 'Last full save today.'; };
   $('#importCfg').onclick = () => $('#cfgFile').click();
   $('#cfgFile').onchange = async e => {
@@ -2169,6 +2206,41 @@ function openCustomEditor(id, prep) {
 /* ---------- toast ---------- */
 let toastT, lastSaveFail = 0;
 // A toast can be tapped away (it sits over the grid's bottom-right cells); buttons inside it keep their own handlers.
+/* Yes/no questions. A page inside a Google Site may not be allowed to open the browser's own confirm box (a sandboxed
+   frame without "allow-modals" gets an instant, silent No), so there Tally asks in its own dialog; everywhere else the
+   browser's box is kept. Resolves true for the named action, false for Cancel, Escape or a tap outside. */
+function ask(msg, okLabel) {
+  if (!storageFragile) return Promise.resolve(confirm(msg));
+  return new Promise(res => {
+    const d = $('#ask'); const prev = document.activeElement;
+    d.innerHTML = `<div class="askBox" role="alertdialog" aria-modal="true" aria-labelledby="askMsg"><p id="askMsg">${esc(msg).replace(/\n/g, '<br>')}</p><div class="askRow"><button class="pill pale" id="askNo">Cancel</button><button class="pill" id="askYes">${esc(okLabel || 'OK')}</button></div></div>`;
+    d.classList.remove('hidden');
+    const done = v => { d.classList.add('hidden'); d.innerHTML = ''; document.removeEventListener('keydown', key, true); try { if (prev && prev.focus) prev.focus(); } catch (e) {} res(v); };
+    const key = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); } else if (e.key === 'Enter' && document.activeElement && document.activeElement.id !== 'askNo') { e.preventDefault(); e.stopPropagation(); done(true); } };
+    document.addEventListener('keydown', key, true);
+    $('#askYes').onclick = () => done(true); $('#askNo').onclick = () => done(false); d.onclick = e => { if (e.target === d) done(false); };
+    $('#askYes').focus();
+  });
+}
+/* Every printed page opens in its own window. Where pop-ups are blocked it downloads as a file to open and print
+   instead, and where the window can't start printing by itself (a page inside a Google Site may not be allowed to
+   open the print box) the page says to press Ctrl+P. */
+function openPrint(html, file, autoPrint) {
+  const hint = storageFragile ? '<small style="margin-left:10px;font:12px Arial,sans-serif;color:#555">If Print does nothing, press Ctrl+P.</small>' : '';
+  const bar = `<div class="tprint" style="position:fixed;top:8px;right:8px;z-index:9;background:#fff;padding:4px 6px;border-radius:6px;box-shadow:0 1px 6px rgba(0,0,0,.2)"><button onclick="window.print()" style="font:14px Arial,sans-serif;padding:6px 14px">Print</button>${hint}</div><style>@media print{.tprint{display:none!important}}</style>`;
+  if (!/window\.print\(\)/.test(html)) html = html.replace(/<body([^>]*)>/i, m => m + bar);
+  else if (hint) html = html.replace(/(<button onclick="window\.print\(\)">Print<\/button>)/, '$1' + hint);
+  let w = null; try { w = window.open('', '_blank'); } catch (e) {}
+  if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = file; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Pop-ups are blocked here, so it downloaded as a file instead. Open it and print.', false, 6000); return null; }
+  try { w.document.open(); w.document.write(html); w.document.close(); }
+  catch (e) {   // a sandboxed page (a Google Site) may not write into its own pop-up: send the pop-up to the page as a file instead
+    const url = URL.createObjectURL(new Blob([autoPrint ? html.replace(/<\/body>/i, '<script>addEventListener("load",function(){setTimeout(function(){try{print()}catch(e){}},300)})<\/script></body>') : html], { type: 'text/html' }));
+    try { w.location.href = url; } catch (x) { try { w.close(); } catch (y) {} const a = document.createElement('a'); a.href = url; a.download = file; a.click(); toast('This page could not open the print window, so it downloaded as a file instead. Open it and print.', false, 6000); }
+    setTimeout(() => URL.revokeObjectURL(url), 60000); return null;
+  }
+  if (autoPrint) setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 400);
+  return w;
+}
 function toast(html, err, ms, fromLb) { if (document.body.classList.contains('lbMode') && !fromLb) return; if (!err && Date.now() - lastSaveFail < 1500) return; /* the save just failed: leave that message up */ const t = $('#toast'); t.innerHTML = html; t.classList.toggle('err', !!err); t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || (err ? 6000 : 3200)); }
 
 /* ---------- wiring ---------- */
@@ -2213,7 +2285,7 @@ document.addEventListener('keydown', e => {
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { get state() { return state; }, save, workPrint, saveFull, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.
