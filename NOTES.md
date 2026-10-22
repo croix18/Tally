@@ -495,6 +495,31 @@ per-section-file era and many items in them are now done).
     Script, autosaving to a file in his school Drive (one Tally across laptop, panel and tablet). Croix: "Let's hold
     off on that option and stick to the html for now." So: the HTML file, opened directly in Chrome on the laptop,
     with Full saves to Drive.
+## Sync on mrshaffer.org (22 Oct 2026)
+
+Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
+`Tally.html` in with `tools/sync.py`). There Tally keeps its data, and ⋯ → **Sync** keeps one Tally on every computer
+(laptop, Promethean, tablet). He asked for it ("working on my laptop, how will the data get to the Promethean?"), chose a
+passphrase lock over carrying files, and said the panel must not ask for the passphrase again ("my board is very secure").
+
+- `sync.js` (spliced into app.js at `/*__SYNC__*/`; the word list `sync-words.txt` at `/*__WORDS__*/`). Only where
+  `/api/sync/ping` answers, over https, with storage that works: a file, GitHub Pages or a Google Site show nothing.
+- The lock: PBKDF2-SHA-256 × 600,000 over the normalised passphrase (case, dashes, spacing ignored) → AES-256-GCM key +
+  a second secret the server checks (it stores only its SHA-256). State → gzip → AES-GCM, fresh IV, magic `TSY1`. The
+  edit number is sealed inside and must equal the server's `x-rev`, so an old copy can't pass as new. Each computer keeps
+  the two derived secrets in `localStorage["tally.sync"]`, never the passphrase. "Suggest one" gives five BIP-39 words.
+- The server (`worker.js` in mrshaffer-site) is one Durable Object: requests run one at a time, so "send only if nothing
+  newer arrived" (X-Base-Rev, 409) is exact. KV was tried first and dropped after review: it can be a minute stale between
+  locations. Claiming an empty store, and resetting a lost passphrase, need the Worker secret `SYNC_SETUP`. A new
+  passphrase is one PUT (`X-New-Key`), so the store is never empty in between.
+- Rhythm: a change goes out ≥4 s after the save, at most once a minute, and when the page is hidden. Others look every
+  minute and on coming back to the front; a copy waits while a dialog is open or a field has focus. A change on both
+  computers asks which to keep and downloads the one not kept as a Full save (`…-other-computer.json` for the other's).
+- Only `{error:"passphrase"}` or `{empty:true}` turns sync off on a computer; a filter page, a timeout or an outage
+  never forgets the key. A computer joining with no classes starts with names hidden.
+- `tests/sync.js` drives two computers against a mock of the Worker (56 checks). The real Worker was also run with
+  `wrangler dev` against the shipped page.
+
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.

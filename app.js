@@ -119,7 +119,7 @@ function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (f
 // of everything stored. The saved class carries poolSkills instead, and load() points it back at the pool.
 let saveCount = 0;
 function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = state.sections[k]; const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
-function save() { saveCount++; try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
+function save() { saveCount++; try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); syncSoon(); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
 function norm(s) {
@@ -1239,6 +1239,7 @@ let lastViewKey = '';
 let landOnCurrent = false;   // on arriving at a class grid (or moving "Working in"), bring the current unit and Ahead into view: late in the year the early units are the ones to scroll back to
 function render() {
   if (closeOpenMenu) closeOpenMenu();   // a menu never outlives the screen it was opened on (its key listener and overlay go with it)
+  syncUI();
   document.querySelectorAll('#aheadMenu').forEach(m => m.remove());   // the grid's floating list of later units belongs to one render
   rowCache = new Map();   // students.js name-match cache: never outlives one render
   attCache = new Map();   // home.js attention items per class: the tabs, the cards and the list read the same answer once per render
@@ -1783,7 +1784,7 @@ li{margin:3px 0}
 <p><b>Google Site</b> — the page forgets everything when you leave, so open your newest Full save each visit. Tally autosaves one after 10 minutes of changes and when you switch away; Ctrl+S saves. If Chrome asks about multiple downloads, Allow.</p>
 <p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade; <b>Average</b> marks each class's average, and <b>Class averages</b> puts the classes side by side). Names never show. Hold the exit button to leave.</p>
 <p><b>Names</b> — the eye button in the header. Crossed out = initials only, for projecting.</p>
-<p><b>⋯</b> — Details view (every count, notice and legend at once), Settings, this Guide, Full save, Board save.</p>
+<p><b>⋯</b> — Details view (every count, notice and legend at once), Settings, this Guide, Sync, Full save, Board save.</p>
 </div>
 </div>
 </body></html>`;
@@ -2123,7 +2124,7 @@ function openSettings(key) {
   $('#wipe').onclick = async () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
     if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? Make a Full save first if you want any of it back.`, 'Clear everything')) return;
-    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); } catch (e) {} try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; location.reload();
+    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); localStorage.removeItem(SYNC_KEY); } catch (e) {} try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; location.reload();   // this computer forgets its sync key too; the synced copy stays
   };
   $('#addCustom').onclick = () => { close(); openCustomEditor(null, s.prep); };
   m.querySelectorAll('[data-editc]').forEach(b => b.onclick = () => { close(); openCustomEditor(b.dataset.editc); });
@@ -2251,6 +2252,7 @@ $('#file').onchange = e => { importFiles([...e.target.files]); e.target.value = 
 $('#btnSettings').onclick = () => openSettings();
 $('#btnGuide').onclick = openGuide; $('#btnGuide0').onclick = openGuide;
 $('#btnFullSave').onclick = () => saveFull(); $('#btnBoardSave').onclick = () => saveBoardFile();
+$('#launchSync').onclick = () => openSync();
 wireMenu($('#btnMore'), $('#topMenu'), () => keepInside($('#topMenu')));
 $('#btnHide').onclick = () => { state.settings.hideNames = !state.settings.hideNames; save(); render(); };
 $('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
@@ -2286,11 +2288,13 @@ document.addEventListener('keydown', e => {
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+/*__SYNC__*/
+window.__tally = { get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.
 try { const wi = bootError ? [] : defaultWorkingIn(); if (wi.length) { noteWorkingIn(wi); save(); setTimeout(() => toast(wi.map(x => `${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join('<br>'), false, 9000), 400); } } catch (e) { console.error('Tally: could not set Working in', e); }
 render();
+syncBoot();
 if (bootError) setTimeout(() => toast('Saved Tally data could not be read and was set aside (kept as a backup in this browser). Re-import your exports.', true, 8000), 300);
 })();

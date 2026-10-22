@@ -12,6 +12,7 @@ if (!suites.length) { console.error('no suites match', only.join(' ')); process.
 
 const build = spawnSync('python3', ['build.py', '--test'], { stdio: 'inherit' });
 if (build.status !== 0) process.exit(build.status);
+if (process.env.CSP) { for (const f of ['Tally.test.html']) { const h = fs.readFileSync(f, 'utf8'); const o = h.replace(/<meta charset[^>]*>/i, m => m + '<meta http-equiv="Content-Security-Policy" content="' + process.env.CSP + '">'); if (o === h) { console.error('CSP inject failed'); process.exit(3); } fs.writeFileSync(f, o); } console.log('CSP injected'); }
 
 const rows = []; let failed = 0;
 for (const f of suites) {
