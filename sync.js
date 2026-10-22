@@ -169,10 +169,13 @@ function syncUI() {
   if (SY && SY.waiting && !SY.busy && syncOn() && Date.now() >= SY.snooze) setTimeout(() => { if (SY.waiting && !syncBusyHere()) syncPull(); }, 400);   // a dialog just closed: the copy that waited comes in
   const sm = $('#topSync'); if (sm) { const st = !syncOn() ? 'Off' : SY.status === 'offline' ? 'Offline' : SY.status === 'error' ? 'Trouble' : 'On'; sm.textContent = st; sm.classList.toggle('due', syncOn() && st !== 'On'); }
 }
+// The passphrase is hidden as it is typed (audit, 22 Oct 2026: typed on the panel it was readable by the room);
+// Show reveals both fields, and Suggest one shows the words it picked so they can be written down.
+function syncShowWire() { const b = $('#syShow'); if (!b) return; const set = on => { ['#syPass', '#syAgain'].forEach(id => { const el = $(id); if (el) el.type = on ? 'text' : 'password'; }); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'Hide' : 'Show'; }; b.onclick = () => set(b.getAttribute('aria-pressed') !== 'true'); const sg = $('#sySuggest'); if (sg) sg.addEventListener('click', () => set(true)); }
 const SYNC_PASS_FIELDS = (lab1, lab2) => `
-    <div class="field"><label for="syPass">${lab1}</label><div class="syRow"><input type="text" id="syPass" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="pill pale small" id="sySuggest" type="button">Suggest one</button></div></div>
-    <div class="field hidden" id="syAgainF"><label for="syAgain">${lab2}</label><input type="text" id="syAgain" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-    <p class="ghint">Five random words, like the ones Suggest one gives. Write it down somewhere safe; capitals and dashes don't matter. It's typed once on each computer.</p>`;
+    <div class="field"><label for="syPass">${lab1}</label><div class="syRow"><input type="password" id="syPass" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="pill pale small" id="syShow" type="button" aria-pressed="false">Show</button><button class="pill pale small" id="sySuggest" type="button">Suggest one</button></div></div>
+    <div class="field hidden" id="syAgainF"><label for="syAgain">${lab2}</label><input type="password" id="syAgain" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <p class="ghint">Five random words, like the ones Suggest one gives. Write it down somewhere safe; capitals and dashes don't matter. It's typed once on each computer, so never type it while the screen is projected.</p>`;
 function openSync() {
   if (!SY || !SY.ready) return;
   const m = $('#modal'); m.classList.remove('hidden');
@@ -201,7 +204,7 @@ function openSync() {
     <p class="ghint hidden" id="syResetP"><button class="pill pale small" id="syReset" type="button">Lost the passphrase? Start over</button></p>`,
     `<button class="pill pale" id="syCancel">Cancel</button><button class="pill" id="syGo">Turn on sync</button>`);
   $('#syCancel').onclick = close; $('#sySuggest').onclick = () => { $('#syPass').value = syncSuggest(); $('#syPass').dispatchEvent(new Event('input')); };
-  const pass = $('#syPass'), again = $('#syAgain'), go = $('#syGo');
+  syncShowWire(); const pass = $('#syPass'), again = $('#syAgain'), go = $('#syGo');
   let fresh = false;   // the store is empty: this computer claims it (the passphrase twice, and the setup code)
   pass.oninput = () => { if (fresh) again.value = ''; };
   [pass, again, $('#sySetup')].forEach(i => i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go.click(); } });
@@ -267,7 +270,7 @@ function syncChangeSheet() {
     <footer><div class="spacer"></div><button class="pill pale" id="syCancel">Cancel</button><button class="pill" id="syGo">Change it</button></footer></div>`;
   const close = () => openSync(); m._cancel = close; $('#mClose').onclick = close; $('#syCancel').onclick = close;
   $('#syAgainF').classList.remove('hidden');
-  $('#sySuggest').onclick = () => { $('#syPass').value = syncSuggest(); $('#syAgain').value = ''; };
+  $('#sySuggest').onclick = () => { $('#syPass').value = syncSuggest(); $('#syAgain').value = ''; }; syncShowWire();
   const say = t => { const msg = $('#syMsg'); msg.textContent = t; msg.classList.toggle('hidden', !t); };
   $('#syGo').onclick = async () => {
     const p = $('#syPass').value; say('');

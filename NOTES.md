@@ -502,6 +502,15 @@ per-section-file era and many items in them are now done).
   Found on the way: a class keyed by its own export rebuilt its object from a fixed list on every weekly import, so
   student notes, conference text and Focus column links (`gbUnitMap`) were dropped each week; it now starts from the
   class as it was. New suite `tests/period-twin.js`.
+- **22 Oct 2026 — Full audit.** Croix: "Set up a plan to run a full audit looking for any other critical bugs and
+  strengthening and hardening the things Tally does." Plan, every finding and what was fixed: `AUDIT_PLAN.md`. Six
+  parallel auditors (imports, grades/plans, keeping data, time, privacy, flows). Five Critical and eighteen High fixed,
+  each with a failing-first check in `tests/audit-oct22.js`. Patterns to keep in mind: (1) anything rebuilt from a list
+  of fields drops what the list forgot — spread the old object; (2) `materialize()` is called from many places, so it
+  must respect data the class already holds; (3) Copy must follow the open gradebook, never a roster that can go stale;
+  (4) a file's quarter and age decide whether it may replace what is in use; (5) a `//` comment added mid-line in these
+  long one-line functions silently comments out the rest of the line (it happened twice in this pass: chartDots and a
+  test) — use `/* */` inside a line.
   - GitHub is blocked on the school wifi, so Pages is not an option at school. Offered: Tally served from Google Apps
     Script, autosaving to a file in his school Drive (one Tally across laptop, panel and tablet). Croix: "Let's hold
     off on that option and stick to the html for now." So: the HTML file, opened directly in Chrome on the laptop,

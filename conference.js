@@ -45,7 +45,7 @@ function conferenceData(sec, name) {
   const prev = s && !s._closed ? prevGradeSnap(s) : null;
   const rt = retakeStatus(sec, name); const ix = ixlFor(sec, f.ixl);
   const first = state.settings.hideNames ? mask(name) : niceName(name).split(' ')[0];
-  return { sec, name, first, f, sum, r, q: openB ? openB.q : currentQuarter(), rc, missing, missedTests, tests, redo, graded, ifDone, ixlGrade, prevDate: prev ? prev.date : null, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
+  return { sec, name, first, f, sum, r, q: liveQuarter(sec), rc, missing, missedTests, tests, redo, graded, ifDone, ixlGrade, prevDate: prev ? prev.date : null, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
 }
 
 // Strengths and Concerns: a few full sentences each, every one tied to a number, the biggest effect on the grade first.
@@ -144,7 +144,8 @@ function matchPerson(people, name, id) {
   const m = String(name || '').match(/^([^,]+),\s*(.+)$/); const nn = norm(name); const last = m ? norm(m[1]) : nn.split(' ').pop(); const first = (m ? norm(m[2]) : nn).split(' ')[0] || '';
   const byId = id ? people.filter(p => p.id && p.id === String(id).trim()) : [];
   const passes = [p => p.nn === nn, p => p.last === last && p.first === first, p => p.last === last && first && p.first && (p.first.startsWith(first) || first.startsWith(p.first))];
-  if (name) for (const pass of passes) { const c = people.filter(pass); if (c.length === 1) return { p: c[0], how: 'name' }; if (c.length > 1) { const pick = c.find(p => byId.includes(p)); if (pick) return { p: pick, how: 'name' }; break; } }
+  const idClash = p => id && p.id && p.id !== String(id).trim();   // both have an ID and they differ: not this student (audit: a near-name took another student's scores)
+  if (name) for (const pass of passes) { const c = people.filter(pass).filter(p => !idClash(p)); if (c.length === 1) return { p: c[0], how: 'name' }; if (c.length > 1) { const pick = c.find(p => byId.includes(p)); if (pick) return { p: pick, how: 'name' }; break; } }
   if (byId.length === 1) return { p: byId[0], how: 'id' };
   return null;
 }
@@ -277,4 +278,4 @@ ${block('Student Strengths in Class:', x.strengths)}${block('Student Concerns in
 document.querySelectorAll('.t').forEach(function(t){ var s=10.5; while (t.scrollHeight > t.clientHeight + 1 && s > 7) { s -= 0.25; t.style.fontSize = s + 'pt'; } });
 <\/script></body></html>`;   // <\/script>: a literal close tag would end Tally's own script
 }
-function printConference(x) { openPrint(conferenceHtml(x), 'Conference form - ' + x.name.replace(/[^\w -]+/g, '') + '.html', true); }
+async function printConference(x) { if (state.settings.hideNames && !await ask(`Names are hidden, but the form opens with ${x.name ? 'the student\'s full name' : 'the student\'s details'}, grades and notes on screen. Open it?`, 'Open the form')) return; openPrint(conferenceHtml(x), 'Conference form - ' + x.name.replace(/[^\w -]+/g, '') + '.html', true); }

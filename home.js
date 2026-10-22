@@ -5,13 +5,13 @@ function gradeSummary(sec0) {
   // Only the open quarter counts here: a closed quarter's missing work and grades don't raise anything.
   const sec = openSec(sec0);
   const lastQ = [4, 3, 2, 1].find(n => qClosed(n) && sec0.qArchive && sec0.qArchive[n]); const qFinal = lastQ ? { q: lastQ, avg: mean(sec0.qArchive[lastQ].final) } : null;
-  if (!sec.grades.assignments.length) return { waiting: true, q: currentQuarter(), qFinal, avg: null, prevAvg: null, prevDate: null, letters: { A: 0, B: 0, C: 0, D: 0, F: 0 }, missing: 0, missingStudents: 0, sliding: 0, fit: null, date: sec0.grades.importedAt.slice(0, 10) };
+  if (!sec.grades.assignments.length) return { waiting: true, q: currentQuarter(), qFinal, avg: null, prevAvg: null, prevDate: null, letters: { A: 0, B: 0, C: 0, D: 0, F: 0 }, missing: 0, missingStudents: 0, sliding: 0, fit: null, date: localDayOf(sec0.grades.importedAt) };
   const gs = gradeAll(sec); const prev = prevGradeSnap(sec); const letters = { A: 0, B: 0, C: 0, D: 0, F: 0 }; gs.forEach(r => { if (r && r.letter) letters[r.letter]++; });
   const avg = classAverage(sec); const pv = prev ? prev.grade.filter(v => v != null) : []; const prevAvg = pv.length ? pv.reduce((a, b) => a + b, 0) / pv.length : null;
   const prevIdx = prev ? new Map(prev.students.map((n, i) => [n, i])) : null; let sliding = 0, missingStudents = 0;
   sec.grades.students.forEach((name, i) => { const r = gs[i]; const miss = sec.grades.assignments.filter(a => a.status && a.status[i] === 'missing').length; if (miss) missingStudents++;
     if (prevIdx && prevIdx.has(name)) { const j = prevIdx.get(name); const d = r && r.rounded != null && prev.grade[j] != null ? r.rounded - prev.grade[j] : null; if ((d != null && d <= -3) || miss > (prev.missing[j] || 0)) sliding++; } });
-  return { avg, prevAvg, prevDate: prev ? prev.date : null, letters, missing: sec.grades.assignments.reduce((a, x) => a + x.missing, 0), missingStudents, sliding, fit: sec === sec0 ? fitCategories(sec) : null, date: sec.grades.importedAt.slice(0, 10), qFinal };
+  return { avg, prevAvg, prevDate: prev ? prev.date : null, letters, missing: sec.grades.assignments.reduce((a, x) => a + x.missing, 0), missingStudents, sliding, fit: sec === sec0 ? fitCategories(sec) : null, date: localDayOf(sec.grades.importedAt), qFinal };
 }
 // Everything a class could need a look at, one line each, in priority order.
 function attentionItems(sec) {
@@ -50,7 +50,7 @@ function renderHome() {
   const H = state.settings.hideNames;
   const card = s => { const r = byKey.get(s.key); const g = gradeSummary(s); const att = attentionItems(s); const warn = att.filter(a => a.level === 'warn').length;
     const checks = s.grades ? reconcile(s) : []; const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK).length; const staleN = off ? 0 : checks.reduce((n, c) => n + (c.counts.stale || 0), 0);
-    const ixlCols = s.grades ? s.grades.assignments.filter(a => gbUnitFor(s, a)) : [];
+    const og = s.grades ? openSec(s).grades : null; const ixlCols = og ? og.assignments.filter(a => gbUnitFor(s, a)) : [];   // the open quarter's columns: a closed unit is not "not counted" (audit)
     const waiting = !!(g && g.waiting);   // the quarter was closed and the new one has no gradebook yet: say that, not zeros
     const focusChip = waiting ? '' : !s.grades ? '<span class="hchip muted">no gradebook</span>' : !checks.length ? (ixlCols.length ? `<span class="hchip muted" title="Focus has an IXL column for a unit Tally isn't counting (a review unit, or past Working in)">Focus IXL ${esc(ixlCols.map(a => gbUnitFor(s, a).short).join(', '))} not counted</span>` : '<span class="hchip muted">no IXL columns in Focus</span>') : off ? `<span class="hchip warn">Focus: ${off} unit${off === 1 ? '' : 's'} off</span>` : staleN ? `<span class="hchip stale">Focus: ${staleN} up since copy</span>` : `<span class="hchip ok">Focus ${ico('check', 'matches')}</span>`;
     // The calm Overview shows the class, its four numbers and what needs a look. The lines under them (counts, goal,
@@ -61,7 +61,7 @@ function renderHome() {
       <div class="hnums">
         <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b>${sub(r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : 'first import', !r)}</div>
         ${waiting ? `<div><small>Focus${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final` : ''}</small><b>${g.qFinal && g.qFinal.avg != null ? Math.round(g.qFinal.avg) + '%' : '—'}</b>${sub([1, 2, 3, 4].every(qClosed) ? 'every quarter is closed' : `Q${g.q} gradebook not in yet`, true)}</div>` : `
-        <div><small>Focus average${anyClosed() ? ' · Q' + currentQuarter() : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b>${sub(g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : '', false)}</div>
+        <div><small>Focus average${anyClosed() ? ' · Q' + liveQuarter(s) : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b>${sub(g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : '', false)}</div>
         <div><small>Missing work</small><b>${g ? g.missing : '—'}</b>${sub(g ? plural(g.missingStudents, 'student') : '', false)}</div>
         <div title="Students whose grade is down 3 points or more, or who have more missing work, since the last gradebook"><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b>${sub(g && g.prevDate ? 'since ' + esc(fmtDate(g.prevDate)) : 'needs 2 gradebooks', !(g && g.prevDate))}</div>`}
       </div>

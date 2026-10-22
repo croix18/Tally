@@ -123,6 +123,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   const cfg=legacyOf((await fullSave(p)).json.state);
   check(cfg.sections['1205050-7T1A'].threshold===67 && cfg.sections['1205050-7T1A'].aliases['Aiden, Carter'],'the full save carries threshold + alias (checked here through an old-style backup built from it)');
   cfg.sections['1205050-7T1A'].threshold='sixty'; cfg.sections['NEW-1']={}; fs.writeFileSync('/tmp/bad.json',JSON.stringify(cfg));
+  dialogAnswer=true;   // an old-style backup now asks before it adds to what is here
   await p.setInputFiles('#cfgFile','/tmp/bad.json'); await p.waitForTimeout(300);
   check((await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].threshold))===67 && (await p.evaluate(()=>window.__tally.state.pendingCfg['NEW-1'].label))==='NEW-1','bad backup values sanitized');
   // six sections, no page scroll

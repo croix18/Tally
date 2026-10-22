@@ -61,7 +61,7 @@ function mdToISO(md) {
   return `${y}-${pad2(mo)}-${pad2(d)}`;
 }
 function quarterOf(iso) { if (!iso) return null; const e = quarters().ends; for (let i = 0; i < 4; i++) if (iso <= e[i]) return i + 1; return 4; }
-const aDate = (a, gb) => mdToISO(a.due) || mdToISO(a.assignedOn) || (gb && gb.importedAt ? gb.importedAt.slice(0, 10) : null);
+const aDate = (a, gb) => mdToISO(a.due) || mdToISO(a.assignedOn) || (gb && gb.importedAt ? localDayOf(gb.importedAt) : null);
 const aQuarter = (a, gb) => quarterOf(aDate(a, gb));
 const qClosed = n => !!(n && quarters().closed[n]);
 const anyClosed = () => Object.keys(quarters().closed).length > 0;
@@ -75,7 +75,7 @@ function unitClosed(sec, u) {
   const gb = sec.grades; return !(gb && gb.assignments.some(a => !aClosed(a, gb) && (gbUnitFor(sec, a) || {}).name === u.name));
 }
 // The quarter a gradebook describes: the latest quarter any of its assignments falls in (a fresh Q2 export is all Q2).
-function gbQuarter(gb) { if (!gb) return null; let q = 0; gb.assignments.forEach(a => { const n = aQuarter(a, gb); if (n > q) q = n; }); return q || quarterOf(gb.importedAt ? gb.importedAt.slice(0, 10) : null); }
+function gbQuarter(gb) { if (!gb) return null; let q = 0; gb.assignments.forEach(a => { const n = aQuarter(a, gb); if (n > q) q = n; }); return q || quarterOf(gb.importedAt ? localDayOf(gb.importedAt) : null); }
 // The class seen through one quarter. n omitted = the open part of the live gradebook (the same object when nothing is
 // closed or nothing in it is). With n = the kept copy of that quarter, read-only, when it is closed or the live gradebook
 // has moved past it; null when there is none. (_arch: a kept copy; _closed: its quarter is closed.)
@@ -91,7 +91,14 @@ function qSec(sec, n) {
   if (keep.length === gb.assignments.length) return sec;
   return { ...sec, grades: { ...gb, assignments: keep, overall: null }, _q: currentQuarter(), _partial: true };
 }
+// The local calendar day of an ISO time (a 9 pm import is today, not tomorrow's UTC date). A declaration: the boot can
+// reach it before app.js's consts exist.
+function localDayOf(iso) { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 const openSec = sec => qSec(sec);
+// The quarter the open gradebook is in: a Q2 export that arrived before Q1 was closed is Quarter 2, not "Quarter 1"
+// (audit, 22 Oct 2026: the student page and Show student labelled Q2 grades "Quarter 1"). liveQ(): across every class.
+function liveQuarter(sec) { const cq = currentQuarter(); try { const o = openSec(sec); const q = o && o.grades && o.grades.assignments.length ? gbQuarter(o.grades) : null; return q && q > cq ? q : cq; } catch (e) { return cq; } }
+function liveQ() { let q = currentQuarter(); state.order.forEach(k => { const s = state.sections[k]; if (s && s.grades && !s.board) q = Math.max(q, liveQuarter(s)); }); return q; }
 const hasOpenGrades = sec => { const o = openSec(sec); return !!(o && o.grades && o.grades.assignments.length); };
 // The quarters a class has anything for, oldest first: every kept copy, then the live gradebook's quarter when it has open work.
 function classQuarters(sec) { const out = []; for (let n = 1; n <= 4; n++) { const k = qSec(sec, n); if (k && k._arch) out.push(n); else if (!qClosed(n) && sec.grades && hasOpenGrades(sec) && gbQuarter(openSec(sec).grades) === n) out.push(n); } return out; }
@@ -118,7 +125,9 @@ function mergeArchive(sec, n, src, refreshCats) {
     cols.forEach(a => { map[a.name] = catOf(sec.prep, a.name, a); });
   }
   const cats = refreshCats || !old || !old.cats ? gradingFor(sec.prep).cats.map(c => ({ ...c })) : old.cats;
-  const tmp = { ...sec, grades: gb, _map: map, _cats: cats }; const final = gb.students.map((_, i) => { const r = computeGrade(tmp, i); return r ? r.rounded : null; });
+  // a whole one-quarter export carries Focus's own Grade column: that is the final (audit: closing again recomputed it with today's weights)
+  const own = gb.overall && gb.overall.length === gb.students.length ? gb.overall : null;
+  const tmp = { ...sec, grades: gb, _map: map, _cats: cats }; const final = gb.students.map((_, i) => { if (own && own[i] != null && isFinite(own[i])) return Number(own[i]); const r = computeGrade(tmp, i); return r ? r.rounded : null; });
   sec.qArchive[n] = { gb, map, cats, final, at: new Date().toISOString(), file: gb.file || '' };
   return gb.assignments.length;
 }
@@ -166,11 +175,11 @@ function openQuarters(keep) {
   const courseUnits = p => { const s = secs.find(x => x.prep === p && !x.placeholder && x.skills && x.skills.length); return s ? unitsOf(s).filter(u => u.total || u.idx.length) : []; };
   const due = { acc: unitsDueIn('acc', n), on: unitsDueIn('on', n) };
   const liveN = s => s.grades ? s.grades.assignments.filter(a => aQuarter(a, s.grades) === n).length : 0;
-  const isStale = s => liveN(s) > 0 && s.grades.importedAt.slice(0, 10) < q.ends[n - 1];
+  const isStale = s => liveN(s) > 0 && localDayOf(s.grades.importedAt) < q.ends[n - 1];
   const withWork = secs.filter(s => liveN(s) > 0).length, staleN = secs.filter(isStale).length, allStale = staleN > 0 && staleN === withWork; const ended = !!quarterDue();
   // One row per class: what will be kept. The caution above the table carries the "why"; a row only says which.
   const rows = secs.map(s => { const gb = s.grades; const live = liveN(s); const kept = s.qArchive && s.qArchive[n] ? s.qArchive[n].gb.assignments.length : 0; const cnt = live || kept;
-    return `<tr><td><span class="qdot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</td><td>${cnt ? plural(cnt, 'assignment') : '<small>nothing to keep</small>'}</td><td>${live ? 'exported ' + esc(fmtDate(gb.importedAt.slice(0, 10))) : kept ? 'kept from an earlier export' : gb ? '' : '<small>no gradebook</small>'}${ended && live && isStale(s) && !allStale ? ' <small class="stale">older</small>' : ''}</td></tr>`; }).join('');
+    return `<tr><td><span class="qdot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</td><td>${cnt ? plural(cnt, 'assignment') : '<small>nothing to keep</small>'}</td><td>${live ? 'exported ' + esc(fmtDate(localDayOf(gb.importedAt))) : kept ? 'kept from an earlier export' : gb ? '' : '<small>no gradebook</small>'}${ended && live && isStale(s) && !allStale ? ' <small class="stale">older</small>' : ''}</td></tr>`; }).join('');
   // a tick made by hand survives a redraw (changing a date redraws the dialog)
   const unitPick = p => { const us = courseUnits(p); if (!us.length) return ''; return `<div class="field"><label>${p === 'acc' ? 'Accelerated' : 'On-level'}</label><div class="qunits">${us.map(u => { const cur = q.units[p][u.name]; const key = p + '|' + u.name; const on = keep.picks && key in keep.picks ? keep.picks[key] : (cur === n || (!cur && due[p].has(u.name))); const other = cur && cur !== n && qClosed(cur); return `<label class="${other ? 'dim' : ''}"><input type="checkbox" data-qu="${esc(key)}" data-short="${esc(u.short)}" ${on || other ? 'checked' : ''} ${other ? 'disabled' : ''}> ${esc(u.short)}${other ? ` <small>Q${cur}</small>` : due[p].has(u.name) ? ' <small>due in Q' + n + '</small>' : ''}</label>`; }).join('')}</div></div>`; };
   const dates = `<div class="qdates">${q.ends.map((d, i) => `<label class="${qClosed(i + 1) ? 'closed' : i + 1 === n ? 'now' : ''}"><span>${Q_NAMES[i]} ends</span><input type="date" data-qend="${i}" value="${esc(d)}" ${qClosed(i + 1) ? 'disabled' : ''}><small>${qClosed(i + 1) ? 'closed ' + esc(fmtDate((q.closed[i + 1].at || '').slice(0, 10))) : i + 1 === n ? 'now' : ''}</small></label>`).join('')}</div>

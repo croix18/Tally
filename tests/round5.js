@@ -69,7 +69,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(ticks.length && Math.max(...ticks)<=100,'percent mode axis ends at 100: max tick '+Math.max(...ticks));
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(200);
   // 10. CSV cells that look like formulas are quoted
-  await p.evaluate(K=>{ const s=window.__tally.state.sections[K]; s.roster='=HYPERLINK("x"), EVIL\n'+s.roster; window.__tally.save(); window.__tally.render(); }, 'period-1');
+  await p.evaluate(K=>{ const s=window.__tally.state.sections[K]; s.roster='=HYPERLINK("x"), EVIL\n'+s.roster; if (s.grades) s.grades.students[0]='=HYPERLINK("x"), EVIL'; window.__tally.save(); window.__tally.render(); }, 'period-1');   // the CSV follows the gradebook's list when there is one
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('th.unit .ulink'); await p.waitForTimeout(300);
   const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#csvUnit')]); const csv=fs.readFileSync(await dl.path(),'utf8');
   check(/"'=HYPERLINK/.test(csv),'a roster name starting with = is neutralised in the CSV');

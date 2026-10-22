@@ -92,7 +92,7 @@ function notesSection(sec, name) {
 }
 function wireNotes(sec, name) {
   const add = $('#noteAdd'), ta = $('#noteText'); if (!add || !ta) return;
-  const go = () => { if (addNote(sec, name, ta.value)) { save(); render(); const t = $('#noteText'); if (t) t.focus(); } };
+  const go = () => { if (!ta.value.trim()) { toast('Type the note first.', false, 2500); ta.focus(); return; } if (addNote(sec, name, ta.value)) { save(); render(); const t = $('#noteText'); if (t) t.focus(); } };
   add.onclick = go; ta.onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); go(); } };
   document.querySelectorAll('#pNotes [data-ndel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this note?')) return; dropNote(sec, name, b.dataset.ndel); save(); render(); });
 }
@@ -103,7 +103,7 @@ function wireNotes(sec, name) {
    One function decides; every screen shows its answer. */
 function retakeStatus(sec, name) {
   const f = findStudent(sec, name); const o = openSec(sec);
-  const missing = o && o.grades && f.gi >= 0 ? o.grades.assignments.filter(a => a.status && a.status[f.gi] === 'missing').map(a => a.name) : [];
+  const missing = o && o.grades && f.gi >= 0 ? o.grades.assignments.filter(a => a.status && a.status[f.gi] === 'missing' && !/\bixl\b/i.test(a.name)).map(a => a.name) : [];   // an IXL column is judged by the skills below, not by its Focus cell (one meaning of "missing" everywhere)
   const cur = (state.settings.currentUnit || {})[sec.prep]; const units = unitsOf(sec); const unit = (cur && units.find(u => u.num === cur)) || units.filter(u => u.assigned).pop() || null;
   let short = [], noIxl = f.ixl == null, nUnit = 0;
   if (unit && !noIxl) { const t = sec.threshold; const own = activeFor(sec, unit, f.ixl); nUnit = own.length; short = own.filter(k => { const v = eff(sec, k, f.ixl); return v == null || v < t; }).map(k => ({ name: sec.skills[k].name, v: eff(sec, k, f.ixl) })); }
@@ -134,7 +134,7 @@ function renderStudentsView() {
   else if (stuSort === 'sliding') rows.sort((a, b) => (b.sliding ? 1 : 0) - (a.sliding ? 1 : 0) || (a.d ?? 0) - (b.d ?? 0) || g(a) - g(b));
   else if (stuSort === 'name') rows.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
   else if (stuSort === 'retake') rows.sort((a, b) => (b.retake.ok ? 1 : 0) - (a.retake.ok ? 1 : 0) || (a.retake.missing.length + a.retake.short.length) - (b.retake.missing.length + b.retake.short.length) || g(a) - g(b));
-  const cq = currentQuarter(); const closedQs = [1, 2, 3, 4].filter(n => qClosed(n));
+  const cq = liveQ(); const closedQs = [1, 2, 3, 4].filter(n => qClosed(n));
   $('#bar').innerHTML = `<h2>Students</h2><span class="meta">${plural(rows.length, 'student')}${stuL30 && anyL30 && !H ? ' in the lowest 30%' : ''}${q ? ` matching “${esc(search)}”` : ''} · grades are ${esc(Q_NAMES[cq - 1])}${closedQs.length ? ` · ${closedQs.map(n => 'Q' + n).join(', ')} closed` : ''}</span><div class="spacer"></div>
     <label class="curUnit">Class <select id="stuClass"><option value="">Every class</option>${state.order.map(k => `<option value="${esc(k)}" ${k === stuClass ? 'selected' : ''}>${esc(state.sections[k].label)}</option>`).join('')}</select></label>
     ${anyL30 && !H ? `<button class="pill toggle small ${stuL30 ? 'on' : ''}" id="stuL30" aria-pressed="${stuL30}" title="Only students the FAST report marks as the lowest 30%">L30</button>` : ''}<div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding'], ['retake', 'Retake']].map(([k, l]) => `<button data-sort="${k}" class="${stuSort === k ? 'on' : ''}" aria-pressed="${stuSort === k}">${l}</button>`).join('')}</div>`;
@@ -184,7 +184,7 @@ function renderProfile() {
   const st = view.stu; const sec = state.sections[st.key]; if (!sec) { view = { mode: 'students', unit: null }; return render(); }
   const H = state.settings.hideNames; const name = st.name; const shownName = H ? mask(name) : niceName(name); const nm = d => esc(H ? mask(d) : niceName(d));
   const f = findStudent(sec, name); const sum = studentSummary(sec, name); const books = studentBooks(sec, name);
-  const openB = books.find(b => !b.closed); const cq = currentQuarter();
+  const openB = books.find(b => !b.closed); const cq = liveQuarter(sec);
   const list = classStudents(sec); const at = list.findIndex(n => norm(n) === norm(name));
   const backLabel = profileBack && profileBack.mode === 'grades' ? 'Grades' : profileBack && profileBack.mode === 'home' ? 'Overview' : profileBack && profileBack.mode === 'seating' ? 'Seating' : profileBack && (profileBack.mode === 'units' || profileBack.mode === 'unit') ? sec.label : 'Students';
   $('#bar').innerHTML = `<div class="crumb"><button id="back">‹ ${esc(backLabel)}</button><h2>${esc(shownName)}</h2></div><span class="meta"><span class="qdot" style="--cc:${classColor(sec)}"></span>${esc(sec.label)}${f.id && !H ? ` · ID ${esc(f.id)}` : ''}${at >= 0 ? ` · ${at + 1} of ${list.length}` : ''}</span><div class="spacer"></div>
@@ -205,7 +205,7 @@ function renderProfile() {
     <div class="gcard"><small>Missing now</small><b>${openB ? sum.missing : '—'}${openB ? tileSpark(missHist, { color: 'var(--bad)', label: 'missing assignments at each Focus import' }) : ''}</b><span>${openB ? (sum.dMissing > 0 ? `+${sum.dMissing} since the last import` : sum.missing ? 'not handed in (counts as 0)' : 'nothing missing') : ''}</span></div>
     <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}${it ? tileSpark(it.mine, { ref: it.cls, label: 'IXL skills at goal at each export, with the class average dashed' }) : ''}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}${clsNow != null && !ix.basisClosed ? ` · class average ${fmtN(Math.round(clsNow * 10) / 10)} skills` : ''}` : f.ixl == null ? (f.noAccount ? 'no IXL account' : 'not matched to an IXL account') : 'no units assigned'}</span></div>
     <div class="gcard"><small>Tests &amp; quizzes</small><b>${assessNow != null ? Math.round(assessNow) + '%' : '—'}</b><span>${assessNow != null ? 'IXL columns left out' : ''}</span></div>
-    ${openB ? (() => { const rt = retakeStatus(sec, name); return `<div class="gcard ${rt.ok ? 'rtOk' : 'rtNo'}" id="pRetake"><small>Retake</small><b>${rt.ok ? `${ico('check', 'eligible')} Eligible` : 'Not yet'}</b><span>${rt.ok ? 'nothing missing, ' + rt.unit.short + ' IXL at goal' : esc(retakeWhy(rt))}</span></div>`; })() : ''}
+    ${openB ? (() => { const rt = retakeStatus(sec, name); return `<div class="gcard ${rt.ok ? 'rtOk' : 'rtNo'}" id="pRetake"><small>Retake</small><b>${rt.ok ? `${ico('check', 'eligible')} Eligible` : 'Not yet'}</b><span>${rt.ok ? 'nothing missing' + (rt.unit ? ', ' + rt.unit.short + ' IXL at goal' : '') : esc(retakeWhy(rt))}</span></div>`; })() : ''}
   </div>`;
 
   // trends
@@ -275,16 +275,25 @@ function quickestPath(sec, s, i, ixlIdx) {
   const tgt = NEXT_UP.find(([t]) => base.rounded < t); if (!tgt) return { top: true, base };
   const [target, letter] = tgt; const gb = s.grades;
   const ixlCol = a => /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing');
-  const nowOf = a => a.status[i] === 'missing' ? 0 : (Number(a.values[i]) || 0);
+  // IXL as it really stands (audit, 22 Oct 2026): Tally's points can be ahead of the Focus column (not copied yet) —
+  // that gap is a copy, not student work — and no student is planned more skills than their own list holds.
+  const focusOf = a => a.status[i] === 'missing' ? 0 : (Number(a.values[i]) || 0);
+  const ixlInfo = {};
+  if (ixlIdx != null) gb.assignments.filter(ixlCol).forEach(a => { const u = gbUnitFor(sec, a); const unit = u ? unitsOf(sec).find(x => x.name === u.name) : null; if (!unit) return;
+    const tp = points(sec, unit, ixlIdx), n = activeFor(sec, unit, ixlIdx).length; ixlInfo[a.name] = { tp, cap: Math.min(a.max, Math.max(n, focusOf(a))), unit: u }; });
+  const copies = gb.assignments.filter(a => ixlInfo[a.name] && ixlInfo[a.name].tp > focusOf(a)).map(a => ({ a, from: focusOf(a), to: Math.min(a.max, ixlInfo[a.name].tp), unit: ixlInfo[a.name].unit }));
+  const copyTo = n => { const c = copies.find(x => x.a.name === n); return c ? c.to : null; };
+  const nowOf = a => { const c = copyTo(a.name); return c != null ? c : focusOf(a); };
+  const capOf = a => ixlInfo[a.name] ? ixlInfo[a.name].cap : a.max;
   const nhi = gb.assignments.filter(a => a.max > 0 && a.status && a.status[i] === 'missing' && !ixlCol(a));
-  const ixl = gb.assignments.filter(a => ixlCol(a) && nowOf(a) < a.max);
-  const over = {}; const done = new Set(); const ixlPlus = {}; const g = () => computeGrade(s, i, over).rounded;
+  const ixl = gb.assignments.filter(a => ixlCol(a) && nowOf(a) < capOf(a));
+  const over = {}; copies.forEach(c => over[c.a.name] = c.to); const done = new Set(); const ixlPlus = {}; const g = () => computeGrade(s, i, over).rounded;
   let cur = g(); let guard = 0;
   // phase 1: missing work and IXL skills, best gain first (ties go to missing work: one assignment, done)
   while (cur < target && guard++ < 400) {
     let best = null;
     nhi.forEach(a => { if (done.has(a.name)) return; over[a.name] = a.max; const v = computeGrade(s, i, over).pct; delete over[a.name]; if (!best || v > best.v + 1e-9) best = { v, kind: 'nhi', a }; });
-    ixl.forEach(a => { const at = nowOf(a) + (ixlPlus[a.name] || 0); if (at >= a.max) return; const prev = over[a.name]; over[a.name] = at + 1; const v = computeGrade(s, i, over).pct; if (prev == null) delete over[a.name]; else over[a.name] = prev; if (!best || v > best.v + 1e-9) best = { v, kind: 'ixl', a }; });
+    ixl.forEach(a => { const at = nowOf(a) + (ixlPlus[a.name] || 0); if (at >= capOf(a)) return; const prev = over[a.name]; over[a.name] = at + 1; const v = computeGrade(s, i, over).pct; if (prev == null) delete over[a.name]; else over[a.name] = prev; if (!best || v > best.v + 1e-9) best = { v, kind: 'ixl', a }; });
     if (!best) break;
     if (best.kind === 'nhi') { over[best.a.name] = best.a.max; done.add(best.a.name); }
     else { ixlPlus[best.a.name] = (ixlPlus[best.a.name] || 0) + 1; over[best.a.name] = nowOf(best.a) + ixlPlus[best.a.name]; }
@@ -293,7 +302,7 @@ function quickestPath(sec, s, i, ixlIdx) {
   // prune: greedy can overshoot — drop any assignment, then any IXL skill, the plan still reaches the letter without
   if (cur >= target) {
     [...done].forEach(n => { const v = over[n]; delete over[n]; if (g() >= target) done.delete(n); else over[n] = v; });
-    Object.keys(ixlPlus).forEach(n => { const a = gb.assignments.find(x => x.name === n); while (ixlPlus[n] > 0) { ixlPlus[n]--; if (ixlPlus[n]) over[n] = nowOf(a) + ixlPlus[n]; else delete over[n]; if (g() < target) { ixlPlus[n]++; over[n] = nowOf(a) + ixlPlus[n]; break; } } if (!ixlPlus[n]) delete ixlPlus[n]; });
+    Object.keys(ixlPlus).forEach(n => { const a = gb.assignments.find(x => x.name === n); while (ixlPlus[n] > 0) { ixlPlus[n]--; if (ixlPlus[n]) over[n] = nowOf(a) + ixlPlus[n]; else if (copyTo(n) != null) over[n] = copyTo(n); else delete over[n]; if (g() < target) { ixlPlus[n]++; over[n] = nowOf(a) + ixlPlus[n]; break; } } if (!ixlPlus[n]) delete ixlPlus[n]; });
     cur = g();
   }
   // phase 2: retakes, only when missing work and IXL can't reach the letter. A retake is never a shortcut (Croix,
@@ -307,7 +316,7 @@ function quickestPath(sec, s, i, ixlIdx) {
     if (rt.noIxl) retakeBlocked = 'IXL is not linked to this student in Tally, so retake readiness is unknown';
     else if (rt.short.length && rt.unit) {
       const col = gb.assignments.find(a => ixlCol(a) && (gbUnitFor(sec, a) || {}).name === rt.unit.name);
-      if (col) { const need = Math.min(rt.short.length, col.max - nowOf(col)); if (need > (ixlPlus[col.name] || 0)) { ixlPlus[col.name] = need; over[col.name] = nowOf(col) + need; } }
+      if (col) { const need = Math.min(rt.short.length, capOf(col) - nowOf(col)); if (need > (ixlPlus[col.name] || 0)) { ixlPlus[col.name] = need; over[col.name] = nowOf(col) + need; } }
       else needUnit = { unit: rt.unit, n: rt.short.length };   // the unit's IXL isn't in Focus yet: required, but no grade change
     }
     cur = g();
@@ -330,6 +339,7 @@ function quickestPath(sec, s, i, ixlIdx) {
   // (Croix, 7 Oct: the list was in gradebook order, so a +3 worksheet sat above a +7 one and read as the tool's first pick.)
   const pend = [...nhi.filter(a => done.has(a.name)).map(a => ({ kind: 'nhi', a, n: 1, to: a.max })), ...ixlSteps.map(x => ({ kind: 'ixl', a: x.a, n: x.n, to: nowOf(x.a) + x.n, unit: x.unit, skills: x.skills }))];
   const plan = []; const acc = {}; let at = base.pct;
+  copies.forEach(c => { acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ kind: 'copy', a: c.a, n: 0, from: c.from, to: c.to, unit: c.unit, after: r.rounded }); });   // the teacher's copy comes first: it needs no student work
   while (pend.length) { let bi = 0, bv = -Infinity; pend.forEach((c, k) => { acc[c.a.name] = c.to; const v = (computeGrade(s, i, acc).pct - at) / c.n; delete acc[c.a.name]; if (v > bv + 1e-9) { bv = v; bi = k; } });
     const c = pend.splice(bi, 1)[0]; acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ ...c, after: r.rounded }); }
   retakes.forEach(a => { acc[a.name] = over[a.name]; plan.push({ kind: 'retake', a, n: 1, to: over[a.name], after: computeGrade(s, i, acc).rounded }); });
@@ -340,7 +350,7 @@ const anLetter = l => (/^[AF]/.test(l) ? 'an ' : 'a ') + l;
 // One line for the Students list: "2 missing + 3 IXL skills → C".
 function quickestShort(q) {
   if (!q) return ''; if (q.top) return '<small>has an A</small>';
-  const parts = []; if (q.nhi.length) parts.push(q.nhi.length + ' missing'); const ix = q.ixl.reduce((a, x) => a + x.n, 0); if (ix) parts.push(plural(ix, 'IXL skill')); if (q.retakes.length) parts.push(plural(q.retakes.length, 'retake'));
+  const parts = []; if (q.nhi.length) parts.push(q.nhi.length + ' missing'); const ix = q.plan.filter(x => x.kind === 'ixl' || x.kind === 'ixlreq').reduce((a, x) => a + x.n, 0); if (ix) parts.push(plural(ix, 'IXL skill')); if (q.retakes.length) parts.push(plural(q.retakes.length, 'retake')); if (q.plan.some(x => x.kind === 'copy')) parts.unshift('copy IXL');   // the same steps the student page lists (audit: the ixlreq step was left out)
   return q.reached ? `${parts.join(' + ')} → <b>${q.letter}</b>` : `<small>${q.letter} needs more than missing work, IXL and retakes</small>`;
 }
 // The plan as a list, for the teacher's page, the student's screen and the printed report.
@@ -349,6 +359,7 @@ function quickestList(q, forStudent) {
   const after = x => `<span class="qafter" title="The grade once this and everything above it is done">→ ${x.after}%</span>`;
   const items = q.plan.map(x => x.kind === 'nhi' ? `<li>${after(x)}<b>Turn in ${esc(x.a.name)}</b> <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small></li>`
     : x.kind === 'ixl' ? `<li>${after(x)}<b>Pass ${plural(x.n, 'more IXL skill')}${x.unit ? ' in ' + esc(x.unit.short) : ''}</b> <small>${esc(x.a.name)}</small>${x.skills.length ? `<div class="qsk">${x.skills.map(k => `${esc(k.name)} <small>${k.v == null ? 'not started' : 'at ' + k.v}</small>`).join(' · ')}</div>` : ''}</li>`
+    : x.kind === 'copy' ? `<li>${after(x)}<b>${forStudent ? `Your ${esc(x.unit ? x.unit.short : x.a.name)} IXL goes into Focus` : `Copy ${esc(x.unit ? x.unit.short : x.a.name)} IXL into Focus`}</b> <small>${forStudent ? 'already earned' : `IXL has ${fmtN(x.to)}, Focus shows ${fmtN(x.from)}`}</small></li>`
     : x.kind === 'ixlreq' ? `<li>${after(x)}<b>Finish ${plural(x.n, 'IXL skill')} in ${esc(x.unit.short)}</b> <small>needed before a retake</small></li>`
     : `<li>${after(x)}<b>Retake ${esc(x.a.name)}</b> <small>score at least ${fmtN(x.to)} / ${x.a.max} · ${forStudent ? 'once everything above is done' : 'allowed once everything above is done'}</small></li>`);
   return `<ol class="qpath">${items.join('')}</ol>`;
@@ -423,7 +434,7 @@ function openShow(sec, name) {
       ${kind === 'miss' ? `<label class="shSw"><input type="checkbox" class="shOn"><span>Turn it in</span></label>` : ''}
       <div class="shS ${kind === 'miss' ? 'off' : ''}"><input type="range" class="shPts" min="${lo}" max="${a.max}" step="0.5" value="${kind === 'miss' ? a.max : now}" aria-label="${esc(a.name)} score"><output>${fmtN(kind === 'miss' ? a.max : now)} / ${a.max}</output></div></div>`;
   const el = document.createElement('div'); el.id = 'show'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'What-ifs for ' + who);
-  el.innerHTML = `<div class="shTop"><div><div class="shWho">${esc(who)}</div><div class="shSub">${esc(sec.label)} · ${esc(Q_NAMES[currentQuarter() - 1])} · Focus of ${esc(fmtDate(gb.importedAt.slice(0, 10)))}</div></div>
+  el.innerHTML = `<div class="shTop"><div><div class="shWho">${esc(who)}</div><div class="shSub">${esc(sec.label)} · ${esc(Q_NAMES[liveQuarter(sec) - 1])} · Focus of ${esc(fmtDate(localDayOf(gb.importedAt)))}</div></div>
       <div class="shTools"><button class="pill pale" id="shReset">Start over</button><button class="pill small exitPill" id="shExit" title="Teacher: press and hold to exit"><span class="ring"></span>Hold to exit</button></div>
       <div class="shGrade"><div class="shNow"><small>Your grade now</small><b>${base.rounded}<span>%</span></b><em class="lt ${base.letter}">${base.letter}</em></div>
         <div class="shArrow" aria-hidden="true">→</div>
@@ -432,7 +443,7 @@ function openShow(sec, name) {
       <div class="shQuick">${quickestCard(plan, true)}</div>
       <div class="shTry">
         ${missing.length ? `<section><h3>Turn in missing work</h3>${missing.map(a => row('miss', a, 0, 0)).join('')}</section>` : ''}
-        ${retake.length ? (() => { const rt = retakeStatus(sec, name); return `<section><h3>Retake an assessment</h3>${rt.ok ? `<p class="shHint rtLine ok">${ico('check', 'eligible')} You can retake: nothing is missing and ${esc(rt.unit.short)} IXL is at goal.</p>` : `<p class="shHint rtLine">To retake: ${esc(retakeWhy(rt, true))}.</p>`}${retake.map(a => row('re', a, a.values[i], a.values[i])).join('')}</section>`; })() : ''}
+        ${retake.length ? (() => { const rt = retakeStatus(sec, name); return `<section><h3>Retake an assessment</h3>${rt.ok ? `<p class="shHint rtLine ok">${ico('check', 'eligible')} You can retake: nothing is missing${rt.unit ? ` and ${esc(rt.unit.short)} IXL is at goal` : ''}.</p>` : `<p class="shHint rtLine">To retake: ${esc(retakeWhy(rt, true))}.</p>`}${retake.map(a => row('re', a, a.values[i], a.values[i])).join('')}</section>`; })() : ''}
         ${ixlCols.length ? `<section><h3>Finish IXL</h3>${ixlCols.map(a => row('ix', a, st.ix[a.name], st.ix[a.name])).join('')}</section>` : ''}
         <section><h3>Your next assessment</h3><div class="shRow" data-k="next"><div class="shL"><b>Next test or quiz</b><small>out of <input type="number" id="shNextMax" value="${nx}" min="1" max="200"> points</small></div><label class="shSw"><input type="checkbox" class="shOn" id="shNextOn"><span>Count it</span></label>
           <div class="shS off"><input type="range" class="shPts" id="shNextPts" min="0" max="${nx}" step="0.5" value="${st.next.pts}" aria-label="Next assessment score"><output>${st.next.pts} / ${nx}</output></div></div>

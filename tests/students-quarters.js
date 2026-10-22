@@ -61,7 +61,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   // 3b. Quickest way to the next letter: missing work and IXL first, fewest steps
   const qk=await p.evaluate(({K,MICAH})=>{ const T=window.__tally; const s=T.state.sections[K]; const i=s.grades.students.indexOf(MICAH); const f=T.findStudent(s,MICAH); const q=T.quickestPath(s,s,i,f.ixl);
     // check it is minimal: no single step can be dropped and still reach the target
-    const over=q.over; const names=Object.keys(over); const drop=names.some(n=>{ const o={...over}; delete o[n]; return T.computeGrade(s,i,o).rounded>=q.target; });
+    const over=q.over; const names=[...new Set(q.plan.filter(x=>x.kind!=='copy'&&x.kind!=='ixlreq').map(x=>x.a.name))];   /* a copy of IXL already earned is the record catching up, not a step to drop */ const drop=names.some(n=>{ const o={...over}; delete o[n]; return T.computeGrade(s,i,o).rounded>=q.target; });
     const all=T.state.sections[K].grades.students.map((n,j)=>{ const p=T.quickestPath(s,s,j,null); return p && !p.top && p.reached ? T.computeGrade(s,j,p.over).rounded>=p.target && T.computeGrade(s,j).rounded<p.target : true; });
     return { letter:q.letter, reached:q.reached, res:q.result.rounded, nhi:q.nhi.length, ixl:q.ixl.reduce((a,x)=>a+x.n,0), re:q.retakes.length, drop, allOk:all.every(Boolean), skills:q.ixl.flatMap(x=>x.skills.map(k=>k.name)).length }; },{K,MICAH});
   check(qk.letter==='D' && qk.reached && qk.res>=60 && qk.re===0 && qk.nhi+qk.ixl>0,'Micah (47 F): quickest way to a D uses missing work / IXL only → '+qk.res+' ('+qk.nhi+' missing, '+qk.ixl+' IXL skills)');
@@ -136,7 +136,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   check(await p.locator('.profile .qmark').count()>=1,'the year chart marks where Q2 starts');
   // a late Q1 export (the final one) refreshes the record
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); const ds2=await p.$('[data-sec]'); if(ds2){ await ds2.click(); await p.waitForTimeout(500); }
-  check(/updated the closed-quarter record/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'a Q1 export imported after closing updates the kept Q1 record');
+  check(/updated the kept Quarter 1 record/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))) && await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].grades.assignments.some(a=>window.__tally.aQuarter(a,window.__tally.state.sections['1205050-7T1A'].grades)===2)),'a Q1 export imported after closing (with Q2 in) asks, updates the kept Q1 record, and leaves the Q2 gradebook in place');
 
   // 7. Backup carries the quarter record; reopen/close
   await more(p,'#btnSettings'); await p.waitForTimeout(300);

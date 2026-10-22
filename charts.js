@@ -80,7 +80,7 @@ const meanMark = (x, yTop, yAxis, label) => `<g class="mean"><line x1="${x.toFix
 // Dot plot on a 0..max axis; stacks dots at equal values (shrinks radius when tall).
 function chartDots(values, max, o) {
   o = o || {}; const w = o.w || 800, v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[x] = (counts[x] || 0) + 1);
-  const tallest = Math.max(1, ...Object.values(counts)); const r = tallest > 12 ? 4 : 6; const pad = o.mean != null ? 18 : 0; const h = Math.max(60, tallest * (r * 2 + 1) + 34) + pad;   /* dots hang from the axis, so extra height is headroom for the average's diamond */
+  const tallest = Math.max(1, o.stack || 0, ...Object.values(counts));   /* o.stack: the tallest stack across the rows drawn together */ const r = tallest > 12 ? 4 : 6; const pad = o.mean != null ? 18 : 0; const h = Math.max(60, tallest * (r * 2 + 1) + 34) + pad;   /* dots hang from the axis, so extra height is headroom for the average's diamond */
   const X = x => 30 + x / (max || 1) * (w - 60);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="dot plot">`;
   const step = max > 40 ? 10 : max > 10 ? 5 : 1; for (let x = 0; x <= max; x += step) s += `<line x1="${X(x)}" y1="${h - 26}" x2="${X(x)}" y2="${h - 20}" class="ax"/><text x="${X(x)}" y="${h - 6}" text-anchor="middle" class="tl">${x}</text>`;

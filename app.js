@@ -102,6 +102,7 @@ function migrate() {
     s.seatInfo = s.seatInfo && typeof s.seatInfo === 'object' ? s.seatInfo : {}; for (const k in s.seatInfo) s.seatInfo[k] = cleanSeatInfo(s.seatInfo[k]); if (s.seating && (typeof s.seating !== 'object' || !s.seating.seats || typeof s.seating.seats !== 'object')) delete s.seating;
     s.gradeHistory = Array.isArray(s.gradeHistory) ? s.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade) && Array.isArray(h.students) && Array.isArray(h.missing) && Array.isArray(h.assignments)) : [];
     // snapshots once carried per-student mastered/touched arrays that nothing reads; keep only the aggregate fields
+    { const okDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d + 'T12:00:00')); if (s.date != null && !okDay(s.date)) s.date = null; if (Array.isArray(s.history)) s.history = s.history.filter(h => h && okDay(h.date)); if (Array.isArray(s.gradeHistory)) s.gradeHistory = s.gradeHistory.filter(h => h && okDay(h.date)); }   // one bad date used to blank Tally for good (audit)
     s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
     { const course = state.skips[s.prep === 'acc' ? 'acc' : 'on']; if (s.excluded && s.excluded !== course) Object.keys(s.excluded).forEach(key => { if (s.excluded[key]) course[key] = true; }); s.excluded = course; }   // older saves kept skips per class
     if (s.threshold == null) s.threshold = s.accelerated ? (st.thrAcc || DEFAULT_THR.acc) : (st.thrOn || DEFAULT_THR.on);
@@ -111,7 +112,7 @@ function migrate() {
     s.ignored = ig;
   }
   quarters(); for (const k of Object.keys(state.sections)) state.sections[k].qArchive = cleanArchive(state.sections[k].qArchive);
-  state.order = (Array.isArray(state.order) ? state.order : []).filter(k => SAFE_KEY(k) && Object.prototype.hasOwnProperty.call(state.sections, k));
+  state.order = [...new Set((Array.isArray(state.order) ? state.order : []).filter(k => SAFE_KEY(k) && Object.prototype.hasOwnProperty.call(state.sections, k)))];
   for (const k of Object.keys(state.sections)) if (!state.order.includes(k)) state.order.push(k);
   foldPeriodTwins();
 }
@@ -129,6 +130,10 @@ function foldPeriodTwins() {
       Object.assign(y, { students: x.students, skills: x.skills, scores: x.scores, date: x.date, file: x.file, importedAt: x.importedAt, placeholder: false, allBlank: x.allBlank, awaitingPool: false, fromSection: !!y.pool, _keys: null });
       const have = new Set((y.history || []).map(h => h.date)); y.history = [...(y.history || []), ...(x.history || []).filter(h => !have.has(h.date))].sort((a, b) => a.date.localeCompare(b.date));
     }
+    // what the duplicate held of its own comes along (audit): Focus copy receipts, per-student skips, kept best scores
+    y.receipts = { ...(x.receipts || {}), ...(y.receipts || {}) }; Object.keys(x.receipts || {}).forEach(u => { if (y.receipts[u] && x.receipts[u].at > (y.receipts[u].at || '')) y.receipts[u] = x.receipts[u]; });
+    y.studentSkips = { ...(x.studentSkips || {}), ...(y.studentSkips || {}) };
+    if (x.best && !y.best) y.best = x.best;
     delete state.sections[x.key]; state.order = state.order.filter(k => k !== x.key); if (state.active === x.key) state.active = y.key; foldedTwins.push(y.label);
   }
 }
@@ -136,7 +141,8 @@ function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (f
 // A pool class reads its skills from the course pool (the same array in memory); writing a copy per class was a quarter
 // of everything stored. The saved class carries poolSkills instead, and load() points it back at the pool.
 let saveCount = 0;
-function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = state.sections[k]; const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
+const noCache = s => { if (!s || typeof s !== 'object') return s; const o = {}; for (const k of Object.keys(s)) if (k[0] !== '_') o[k] = s[k]; return o; };   // _keys and the like are caches, rebuilt on the next paint: saving them made the same work look changed
+function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = noCache(state.sections[k]); const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
 function save() { saveCount++; try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); syncSoon(); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
@@ -222,6 +228,14 @@ function renderKeep() {
   k.innerHTML = `<span><b>This page can't keep your work after you leave it.</b> ${msg}</span>${state.order.length ? `<small class="keepKey">Ctrl+S</small><button class="pill small ${due ? '' : 'pale'}" id="keepSave">Full save</button>` : `<button class="pill small" id="keepOpen">Open a save</button>`}`;
   const ks = $('#keepSave'); if (ks) ks.onclick = () => saveFull(); const ko = $('#keepOpen'); if (ko) ko.onclick = () => $('#file').click();
 }
+/* Tally open in two tabs (or windows) of one browser: each save in one is taken up by the other at once, so a tab
+   left open can never write its older copy over newer work (audit, 22 Oct 2026: a stale tab's next save erased a
+   note added in the other, and Sync then spread the loss). An open dialog in this tab is closed first. */
+window.addEventListener('storage', e => {
+  if (e.key !== LS_KEY || e.newValue == null || wiping || bootError) return;
+  try { const s2 = hydrate(JSON.parse(e.newValue)); if (!s2) return; const m = $('#modal'); if (m && !m.classList.contains('hidden')) { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; }
+    state = s2; migrate(); printCache = { n: -1, v: '' }; saveCount++; render(); toast('Updated with the changes made in another Tally tab.', false, 3500); } catch (err) { console.error(err); }
+});
 window.addEventListener('beforeunload', e => { if (storageFragile && !wiping && !state.board && unsavedWork()) { e.preventDefault(); e.returnValue = ''; } });
 // Autosave, where the page keeps nothing: a Full save downloads once work has been only on this page for the chosen
 // minutes, and again when the page is hidden (another tab, the laptop closing, the Site navigating away), at most
@@ -243,9 +257,9 @@ document.addEventListener('keydown', e => {
 try { if (!storageFragile && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}   // ask the browser not to clear Tally's storage to make room
 
 // state boots here, after every helper it needs is defined (a TDZ on a regex const once blanked the app on reload)
-let bootError = null;
-try { state = load() || { settings: {}, sections: {}, order: [], active: null, pendingCfg: {}, pools: {} }; migrate(); }
-catch (e) { console.error('Tally: could not load saved data', e); bootError = e; try { localStorage.setItem(LS_KEY + '.broken', localStorage.getItem(LS_KEY) || ''); } catch (x) {} state = { settings: {}, sections: {}, order: [], active: null, pendingCfg: {}, pools: {} }; migrate(); }
+let bootError = null; var bootRaw = '';   // what could not be read: downloaded before anything can be saved over it
+try { state = load() || { settings: {}, sections: {}, order: [], active: null, pendingCfg: {}, pools: {} }; const pre = state.savedPrint ? workPrint() : null; migrate(); if (pre && pre === state.savedPrint) { printCache = { n: -1, v: '' }; state.savedPrint = workPrint(); } }
+catch (e) { console.error('Tally: could not load saved data', e); bootError = e; try { bootRaw = localStorage.getItem(LS_KEY) || ''; } catch (x) {} try { localStorage.setItem(LS_KEY + '.broken', bootRaw); } catch (x) {} state = { settings: {}, sections: {}, order: [], active: null, pendingCfg: {}, pools: {} }; migrate(); }
 
 // rows: [{ display, sub, ixl, key, status:'ok'|'rosterOnly'|'ambiguous'|'ixlOnly'|'noAccount', tier:'exact'|'loose'|'alias'|'' }]
 // Matching runs in PASSES over the whole roster (exact for everyone, then loose), so a nickname never steals an exact match.
@@ -338,7 +352,7 @@ function points(sec, unit, si) {
 
 /* ---------- import ---------- */
 async function importFiles(files) {
-  let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [], poolImported = [], sameData = [];
+  let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [], poolImported = [], sameData = [], courseFixed = [];
   for (const f of files) {
     try {
       if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts) — a Tally backup goes through Settings
@@ -363,11 +377,20 @@ async function importFiles(files) {
       const meta = parseIxlFilename(f.name);
       if (!SAFE_KEY(meta.key)) throw new Error('unusable file name');
       if (!meta.section && g.students.length) {   // a course-wide export (no section code): the pool every class of that course is carved from
-        const prep = meta.accelerated ? 'acc' : 'on'; const prevPool = state.pools[prep];
+        // Which course: the file name says, but a renamed file can't (audit, 22 Oct 2026: "Accel IXL 10-20.csv" was read as
+        // on-level and put the on-level classes on the accelerated plan). The skills themselves settle it when a course
+        // export is already in: the one whose skill list this file shares more of.
+        let prep = meta.accelerated ? 'acc' : 'on';
+        { const ids = new Set(g.skills.map(skillKey)); const share = p => { const pl = state.pools[p]; if (!pl || !pl.skills.length || !ids.size) return null; return pl.skills.filter(sk => ids.has(skillKey(sk))).length / Math.max(pl.skills.length, ids.size); };
+          const here = share(prep), there = share(prep === 'acc' ? 'on' : 'acc'); if (there != null && there > 0.8 && (here == null || there > here + 0.15)) { prep = prep === 'acc' ? 'on' : 'acc'; meta.accelerated = prep === 'acc'; courseFixed.push(`${f.name}: read as the ${prep === 'acc' ? 'accelerated' : 'on-level'} course from its skills (the file name didn't say)`); } }
+        const prevPool = state.pools[prep];
         if (prevPool && prevPool.date && meta.date && meta.date < prevPool.date && !await ask(`${f.name}\n\nThis export is dated ${meta.date}, but the ${prep === 'acc' ? 'accelerated' : 'on-level'} course already has data from ${prevPool.date}. Replace the newer data with this older file?`)) { skipped++; continue; }
         if (prevPool && prevPool.students.length) { const have = new Set(prevPool.students.map(n => norm(n))); const same = g.students.filter(n => have.has(norm(n))).length; const share = same / Math.max(prevPool.students.length, g.students.length);
           if ((share < 0.5 || !meta.date) && !await ask(`${f.name}\n\n${!meta.date ? 'This file has no export date in its name' : `Only ${same} of its ${g.students.length} students are in the ${prep === 'acc' ? 'accelerated' : 'on-level'} course already`}. Replace the course's IXL data (${prevPool.students.length} students, ${prevPool.date || 'undated'}) with it?`)) { skipped++; continue; } }
         state.pools[prep] = { students: g.students, skills: g.skills, scores: g.scores, date: meta.date, file: f.name, importedAt: new Date().toISOString() };
+        // a class first made from its own class export takes the course export too once it is newer (audit: it never did,
+        // and the import card asked for gradebooks that were already in)
+        state.order.map(k => state.sections[k]).filter(x => x && !x.pool && !x.placeholder && x.prep === prep && x.period && /^\d{5,8}-/.test(x.key) && rosterState(x).count && (!x.date || !meta.date || meta.date > x.date)).forEach(x => { x.pool = true; x.fromSection = false; });
         const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === prep);
         fed.forEach(x => { if (x.fromSection && x.date && meta.date && x.date > meta.date) return; materialize(x); ok.push(x); });   // a class's own newer IXL export stays
         poolImported.push({ prep, students: g.students.length, skills: g.skills.length });
@@ -412,7 +435,7 @@ async function importFiles(files) {
         grades: keep.grades, gradeHistory: keep.gradeHistory || [], qArchive: keep.qArchive || {}, seating: keep.seating, seatInfo: keep.seatInfo || {}, overrides: keep.overrides || {}, period: keep.period != null ? keep.period : (meta.period || undefined),   // the weekly re-import must not drop what the gradebook, the seating chart and the backup put here
         placeholder, allBlank, awaitingPool: false, fromSection: !!(prev && prev.pool)
       };
-      if (meta.date) state.sections[meta.key].history = (state.sections[meta.key].history || []).filter(h => h.date <= meta.date);   // an older file accepted on purpose: nothing newer than it is "now"
+      // an older file accepted on purpose keeps the newer weeks' history (audit: they used to be deleted for good)
       snapshot(state.sections[meta.key]);
       state.sections[meta.key].best = prev ? prev.best : null; state.sections[meta.key].receipts = prev ? prev.receipts : {}; state.sections[meta.key]._keys = null; mergeBest(state.sections[meta.key]);
       delete state.pendingCfg[meta.key];
@@ -431,9 +454,27 @@ async function importFiles(files) {
     const how = mt.auto && target === mt.auto ? ` · placed by its students (${mt.best.n} of ${gb.students.length})` : '';
     if (target) placed.add(target);
     if (!target) { skipped++; continue; }
-    const sec = state.sections[target]; sec.grades = sec.grades || { assignments: [], students: [] };
+    const sec = state.sections[target];
+    /* An earlier quarter's file, or an older copy of this quarter's, must never replace the gradebook in use (audit,
+       22 Oct 2026: an old Q1 file dropped after Q2 was in rewrote the closed Q1 finals and threw the Q2 columns away). */
+    const curGb = sec.grades && sec.grades.assignments && sec.grades.assignments.length ? sec.grades : null;
+    const newQ = gbQuarter(gb), curQ = curGb ? gbQuarter(curGb) : null;
+    if (curGb && newQ && curQ && newQ < curQ) {
+      if (qClosed(newQ)) {
+        const before = ((sec.qArchive || {})[newQ] || {}).final || [];
+        if (!await ask(`${f.name}\n\nThis is a ${Q_NAMES[newQ - 1]} gradebook, and ${sec.label} is already on ${Q_NAMES[curQ - 1]}. ${Q_NAMES[newQ - 1]} is closed. Use this file to update the kept ${Q_NAMES[newQ - 1]} record? Final grades may change. The ${Q_NAMES[curQ - 1]} gradebook stays as it is.`, 'Update the record')) { skipped++; continue; }
+        mergeArchive(sec, newQ, gb); const a = sec.qArchive[newQ]; const changed = a.gb.students.filter((n, i) => before[i] != null && a.final[i] != null && before[i] !== a.final[i]);
+        gbImported.push({ key: sec.key, label: sec.label, text: `${Q_NAMES[newQ - 1]} gradebook: updated the kept ${Q_NAMES[newQ - 1]} record${changed.length ? ` (final grade changed for ${changed.length}: ${changed.slice(0, 3).map(n => shown(n)).join('; ')}${changed.length > 3 ? '…' : ''})` : ''}; ${Q_NAMES[curQ - 1]} unchanged` });
+      } else { mergeArchive(sec, newQ, gb); gbImported.push({ key: sec.key, label: sec.label, text: `${Q_NAMES[newQ - 1]} gradebook: kept as the ${Q_NAMES[newQ - 1]} record; the ${Q_NAMES[curQ - 1]} gradebook is unchanged` }); }
+      continue;
+    }
+    const lastDue = g => { let m = ''; g.assignments.forEach(a => { if ((a.values || []).some(v => v != null)) { const d = mdToISO(a.due) || ''; if (d > m) m = d; } }); return m; };
+    const newAt = f.lastModified ? new Date(f.lastModified).toISOString() : null;
+    if (curGb && newQ === curQ && ((lastDue(gb) && lastDue(curGb) && lastDue(gb) < lastDue(curGb)) || (newAt && curGb.exportedAt && newAt < curGb.exportedAt && gb.assignments.length < curGb.assignments.length))
+      && !await ask(`${f.name}\n\nThis gradebook looks older than the one ${sec.label} already has (its newest graded work is ${fmtDate(lastDue(gb)) || 'earlier'}, the one in Tally has ${fmtDate(lastDue(curGb)) || 'later work'}). Replace the newer gradebook with it?`, 'Replace it')) { skipped++; continue; }
+    sec.grades = sec.grades || { assignments: [], students: [] };
     const keptNote = keepOutgoing(sec, gb);   // a file that starts a new quarter mustn't take the old quarter's scores with it
-    sec.grades.students = gb.students; sec.grades.ids = gb.ids || []; sec.grades.overall = gb.overall || null; sec.grades.importedAt = new Date().toISOString(); sec.grades.file = f.name; sec.grades.raw = gb.raw || {};
+    sec.grades.students = gb.students; sec.grades.ids = gb.ids || []; sec.grades.overall = gb.overall || null; sec.grades.importedAt = new Date().toISOString(); sec.grades.exportedAt = newAt; sec.grades.file = f.name; sec.grades.raw = gb.raw || {};
     sec.grades.assignments = gb.assignments;   // whole-gradebook exports replace, so stale columns and index drift can't happen
     const cats = applyCategories(sec);
     if (cats.ask.length) await askCategories(sec, cats.ask, cats.fit);
@@ -441,7 +482,9 @@ async function importFiles(files) {
     gradeSnapshot(sec);
     // The gradebook's student column IS the Focus roster, in Focus order — use it when no roster has been pasted.
     let rosterNote = '';
-    if (!rosterState(sec).count) {
+    if (rosterState(sec).count) { const diff = rosterVsGradebook(sec);
+      if (diff) { sec.roster = rosterFromGradebook(sec, gb); sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ` · roster updated from Focus${diff.added.length ? `: ${plural(diff.added.length, 'student')} joined` : ''}${diff.gone.length ? `${diff.added.length ? ',' : ':'} ${diff.gone.length} left` : ''}`; } }
+    else if (!rosterState(sec).count) {
       const text = gradebookRosterText(gb); let okN = 0; try { okN = buildRows({ ...sec, roster: text }).filter(r => r.status === 'ok').length; } catch (e) {}
       if (sec.pool || okN >= Math.max(3, gb.students.length / 2)) { sec.roster = text; sec.rosterAt = new Date().toISOString(); sec.skipRoster = false; rosterNote = ' · roster filled in from the gradebook'; }   // only when its names really are this class
     }
@@ -455,6 +498,7 @@ async function importFiles(files) {
   const pools = poolImported.map(poolLine);
   const classes = ok.filter(s => !s.pool || s.fromSection).map(s => ({ label: s.label, text: `IXL export — goal ${s.threshold}, ${plural(s.students.length, 'student')}` }));
   const same = sameData.map(l => ({ label: l, text: 'IXL export — no change: this class already has the course export from the same day or later' }));
+  courseFixed.forEach(t => same.push({ label: 'IXL course export', text: t }));
   const lines = [...pools, ...classes, ...same, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook — ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: wiText(x) }))];
   if (lines.length || fails.length || skipped) {   // files dropped within a quarter of an hour read as one import; a newer line for the same class replaces the older
     const prev = state.lastImport && Date.now() - new Date(state.lastImport.at) < 15 * 60000 ? state.lastImport : { lines: [], fails: [], skipped: 0 };
@@ -525,7 +569,7 @@ function snapshot(sec) {
   const t = sec.threshold, per = {}, pu = {}, ua = {}; const list = ixlList(sec); const units = unitsOf(sec);
   list.forEach(x => per[x.key] = 0);
   units.forEach(u => { const m = {}; ua[u.name] = u.active.length; list.forEach((x, si) => { let n = 0; activeFor(sec, u, si).forEach(k => { const v = eff(sec, k, si); if (v != null && v >= t) n++; }); m[x.key] = n; if (u.assigned) per[x.key] += n; }); pu[u.name] = m; });
-  const snap = { date: sec.date || sec.importedAt.slice(0, 10), at: sec.importedAt, thr: t, students: sec.students.length, per, pu, ua };
+  const snap = { date: sec.date || localDayOf(sec.importedAt), at: sec.importedAt, thr: t, students: sec.students.length, per, pu, ua };
   sec.history = (sec.history || []).filter(h => h.date !== snap.date).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua }));
   sec.history.push(snap); sec.history.sort((a, b) => a.date.localeCompare(b.date));
   if (sec.history.length > 60) sec.history = sec.history.slice(-60);
@@ -607,7 +651,7 @@ const localDay = iso => { const d = new Date(iso); return isNaN(d) ? '' : `${d.g
 const ageDays = d => { if (!d) return null; const [y, m, dd] = String(d).slice(0, 10).split('-').map(Number); const then = new Date(y, m - 1, dd); const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); return Math.max(0, Math.round((today - then) / 86400000)); };
 const ageText = d => { const n = ageDays(d); if (n == null) return ''; if (n === 0) return 'today'; if (n === 1) return 'yesterday'; if (n < 14) return n + ' days ago'; if (n < 60) return Math.round(n / 7) + ' weeks ago'; return Math.round(n / 30) + ' months ago'; };
 // The date a class's IXL data is from: the export date in the file name, else the day it was imported.
-const dataDate = s => s.date || (s.importedAt ? s.importedAt.slice(0, 10) : null);
+const dataDate = s => s.date || (s.importedAt ? localDayOf(s.importedAt) : null);
 const REMIND = [0, 7, 14, 30];
 function overdue(s) { const r = state.settings.remindDays; if (!r) return null; const n = ageDays(dataDate(s)); return n != null && n > r ? n : null; }
 function lbMarkup(data, focus) {
@@ -740,7 +784,7 @@ function labDatasets(prep) {
   const add = (group, id, label) => { let g = groups.find(x => x.group === group); if (!g) { g = { group, items: [] }; groups.push(g); } if (!g.items.some(x => x.id === id)) g.items.push({ id, label }); };
   secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden && u.total) add('IXL units (points)', 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')); }));
   add('IXL units (points)', 'unit:__all__', 'All assigned units · skills at goal');
-  if (secs.some(hasOpenGrades)) add('Focus course grade', 'grade:course', 'Course grade · ' + Q_NAMES[currentQuarter() - 1]);
+  if (secs.some(hasOpenGrades)) add('Focus course grade', 'grade:course', 'Course grade · ' + Q_NAMES[liveQ() - 1]);
   secs.forEach(s => { const cats = {}; (s.grades ? s.grades.assignments : []).forEach(a => { cats[catOf(s.prep, a.name, a)] = 1; }); Object.keys(cats).sort().forEach(c => (s.grades.assignments.filter(a => catOf(s.prep, a.name, a) === c)).forEach(a => add(c, 'gb:' + a.name, a.name))); });
   state.custom.filter(c => c.prep === prep).forEach(c => add('Our own data', 'custom:' + c.id, c.label));
   secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden) u.idx.forEach(k => { const sk = s.skills[k]; add('IXL skills (SmartScore), ' + u.short, 'skill:' + skillKey(sk), u.short + ' · ' + sk.name); }); }));
@@ -772,7 +816,7 @@ function boxSVG(st, scale, w, o) {
   // horizontal box plot above an optional dot plot, on a shared scale
   const L = 14, R = 30, X = v => L + (w - L - R) * (scale ? v / scale : 0);
   const counts = {}; st.values.forEach(v => counts[v] = (counts[v] || 0) + 1);
-  const maxStack = Math.max(1, ...Object.values(counts));
+  const maxStack = Math.max(1, o.stack || 0, ...Object.values(counts));
   const spacing = (w - L - R) / Math.max(scale, 1);
   let r = Math.min(5, Math.max(2.5, spacing / 2.2)); let rowH = r * 2 + 1;
   if (o.dots && maxStack * rowH > 150) { rowH = 150 / maxStack; r = Math.max(1.5, rowH / 2 - 0.5); }
@@ -814,7 +858,7 @@ function valuesMarkup(st, tukey, pct) {
 function labPlot(kind, x, scale, id, o) {
   const vals = x.values.filter(v => v != null); const max = Math.max(scale, 1);
   if (x.kind === 'gb' && !FOCUS_KINDS.includes(kind)) return `<div class="labNotYet">Focus scores are shown as a box plot, histogram, circle graph, line graph or class averages only.</div>`;
-  const mk = o.avg ? { mean: x.st.mean, meanLabel: 'Average ' + fmtAvg(x) } : {};
+  const mk = o.avg ? { mean: x.st.mean, meanLabel: 'Average ' + fmtAvg(x), stack: o.stack } : { stack: o.stack };
   if (kind === 'dots') return chartDots(vals, max, mk);
   if (kind === 'hist') return chartHist(vals, max, o.bin || 0, mk);
   if (kind === 'stem') return chartStem(vals, max);
@@ -839,7 +883,7 @@ const unitSpan = names => names.length > 1 && names.every((n, i) => /^Unit \d+$/
 const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph'], ['avg', 'Class averages']];
 // Focus data (an assignment's scores, the course grade) stays aggregate on the Board: these forms only, never one mark per student.
 const FOCUS_KINDS = ['box', 'hist', 'circle', 'line', 'avg']; const focusSet = id => /^(gb|grade):/.test(id || '');
-const labAsOf = (secs, focus) => secs.map(s => focus ? (s.grades && s.grades.importedAt ? s.grades.importedAt.slice(0, 10) : null) : s.date).filter(Boolean).sort().pop();   // a Focus data set is as of its gradebook, not the IXL export
+const labAsOf = (secs, focus) => secs.map(s => focus ? (s.grades && s.grades.importedAt ? localDayOf(s.grades.importedAt) : null) : s.date).filter(Boolean).sort().pop();   // a Focus data set is as of its gradebook, not the IXL export
 const fmtAvg = x => x.st.mean.toFixed(1) + (x.pct ? '%' : '');   // a class average, one decimal, everywhere it is shown
 const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
@@ -875,10 +919,13 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
       <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labAvgBars">${bars}${thin.length ? `<div class="labNotYet">${esc(thin.map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}</div></div></div>`;
   }
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
-  const marks = avgOn && ['box', 'dots', 'hist', 'bar'].includes(kind);   // the forms that can carry a mark at the average; the others show the number only
+  const marks = avgOn && ['box', 'dots', 'hist', 'bar'].includes(kind);
+  // every row stacks its dots to the same height, so every row is drawn to one scale (audit: a taller stack in one class
+  // squeezed that row's axis, and the classes could not be compared by eye)
+  const stackAll = Math.max(1, ...series.map(x => { const c = {}; let m = 0; x.values.forEach(v => { if (v != null) { c[v] = (c[v] || 0) + 1; if (c[v] > m) m = c[v]; } }); return m; }));   // the forms that can carry a mark at the average; the others show the number only
   const row = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return `<div class="labRow" style="--cc:${classColor(x.sec)}">
       <div class="labSide"><div class="labName">${esc(labShort(x.name))}<small><b>n = ${x.st.n}</b>${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}</small></div>${avgOn ? `<div class="labAvg"><b>${fmtAvg(x)}</b><span>average</span></div>` : ''}</div>
-      <div class="labPlot">${labPlot(kind, x, scale, unitName, { stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 || avgOn, avg: avgOn, bin: gbSet ? Math.max(5, state.settings.labBin || 5) : state.settings.labBin, pct: x.pct })}</div>
+      <div class="labPlot">${labPlot(kind, x, scale, unitName, { stack: stackAll, stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 || avgOn, avg: avgOn, bin: gbSet ? Math.max(5, state.settings.labBin || 5) : state.settings.labBin, pct: x.pct })}</div>
       ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
       ${statsLevel > 0 ? `<div class="labStats">
         ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
@@ -1138,7 +1185,9 @@ function periodTwin(meta) {
   return c.find(x => x.prep === prep) || (c.length === 1 ? c[0] : null);
 }
 function materialize(sec) {
-  const pool = state.pools[sec.prep]; if (pool) sec.fromSection = false;
+  const pool = state.pools[sec.prep];
+  if (pool && sec.fromSection && sec.date && pool.date && sec.date > pool.date) { sec._keys = null; return; }   // the class's own newer IXL export stays (audit: a gradebook import used to undo it)
+  if (pool) sec.fromSection = false;
   if (!pool) { sec.students = sec.students || []; sec.skills = sec.skills || []; sec.scores = sec.scores || []; sec.awaitingPool = true; return; }
   // No roster means no students — never the whole course (an emptied roster once handed a class all 91 pool students).
   const idx = rosterState(sec).count ? poolIdx(sec) : [];
@@ -1148,7 +1197,14 @@ function materialize(sec) {
 }
 // The pool students a class could still claim: everyone in the course not already matched by another class of the same prep.
 // Returns pool ixlList entries (with their pool keys, so two students who share a name stay distinct).
-function poolRows(sec) { const pool = state.pools[sec.prep]; if (!pool) return []; const tmp = { ...sec, students: pool.students, skills: pool.skills, scores: pool.scores, _keys: null, ignored: {} }; return buildRows(tmp).filter(r => r.status === 'ok' && r.ixl != null); }
+// A student another class of the course matches by exact name (or alias) is that class's: a loose match here may not
+// take them (audit, 22 Oct 2026: "PRYOR, GRE" on one roster took GREER PRYOR's IXL row from another class).
+function poolRows(sec) { const pool = state.pools[sec.prep]; if (!pool) return [];
+  const view = x => ({ ...x, students: pool.students, skills: pool.skills, scores: pool.scores, _keys: null, ignored: {} });
+  const taken = {}; state.order.map(k => state.sections[k]).filter(x => x && x !== sec && x.pool && x.prep === sec.prep && rosterState(x).count).forEach(o => { try { buildRows(view(o)).forEach(r => { if (r.ixl != null && r.key && (r.tier === 'exact' || r.tier === 'alias')) taken[r.key] = true; }); } catch (e) {} });
+  const mine = buildRows(view(sec)); const own = new Set(mine.filter(r => r.key && (r.tier === 'exact' || r.tier === 'alias')).map(r => r.key));
+  Object.keys(taken).forEach(k => { if (own.has(k)) delete taken[k]; });   // two classes naming the same student exactly: leave it to the roster fixer, as before
+  return (Object.keys(taken).length ? buildRows({ ...view(sec), ignored: taken }) : mine).filter(r => r.status === 'ok' && r.ixl != null); }
 function poolIdx(sec) { return poolRows(sec).map(r => r.ixl); }
 function poolLeftovers(sec) {
   const pool = state.pools[sec.prep]; if (!pool) return [];
@@ -1179,7 +1235,7 @@ function askNewClass(fileName, gb, orExisting) {
       state.sections[key] = { key, label, autoLabel: label, period, pool: true, accelerated: prep === 'acc', prep, threshold: prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on,
         date: null, file: '', importedAt: new Date().toISOString(), students: [], skills: [], scores: [], roster: '', rosterAt: null, skipRoster: false,
         excluded: state.skips[prep], ignored: {}, aliases: {}, hiddenUnits: {}, studentSkips: {}, history: [], team: '', placeholder: false, allBlank: false, best: null, receipts: {}, _keys: null };
-      const held = state.pendingCfg[key]; if (held) { const s0 = state.sections[key]; ['threshold', 'roster', 'rosterAt', 'skipRoster', 'ignored', 'aliases', 'studentSkips', 'history', 'gradeHistory', 'seating', 'seatInfo', 'qArchive'].forEach(f => { if (held[f] != null) s0[f] = held[f]; }); if (held.label) s0.label = held.label; delete state.pendingCfg[key]; }   // a backup loaded before the class existed
+      const held = state.pendingCfg[key]; if (held) { const s0 = state.sections[key]; ['threshold', 'roster', 'rosterAt', 'skipRoster', 'ignored', 'aliases', 'studentSkips', 'history', 'gradeHistory', 'seating', 'seatInfo', 'qArchive', 'stuNotes', 'confForms', 'overrides', 'hiddenUnits'].forEach(f => { if (held[f] != null) s0[f] = held[f]; }); if (held.label) s0.label = held.label; delete state.pendingCfg[key]; }   // a backup loaded before the class existed
       if (!state.order.includes(key)) state.order.push(key); state.active = key;
       done(key);
     };
@@ -1270,7 +1326,14 @@ const EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.94 17.
 /* ---------- render ---------- */
 let lastViewKey = '';
 let landOnCurrent = false;   // on arriving at a class grid (or moving "Working in"), bring the current unit and Ahead into view: late in the year the early units are the ones to scroll back to
+// Nothing in a save may leave Tally blank: if a screen can't be drawn, say so and keep the ways out working.
 function render() {
+  try { renderInner(); }
+  catch (e) { console.error('Tally: render failed', e); try { const gw = $('#gridwrap'); $('#empty').classList.add('hidden'); $('#app').classList.remove('hidden');
+    if (gw) gw.innerHTML = `<div class="gsec" style="margin:24px;padding:22px"><h3>This screen couldn't be drawn</h3><p>Something in Tally's data didn't make sense here (${esc(String(e && e.message || e)).slice(0, 160)}). Your data is still in this browser.</p><p style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill" id="rfHome">Go to the Overview</button><button class="pill pale" id="rfSave">Full save</button><button class="pill pale" id="rfOpen">Open a save</button></p></div>`;
+    const h = $('#rfHome'); if (h) h.onclick = () => { view = { mode: 'home', unit: null }; render(); }; const sv = $('#rfSave'); if (sv) sv.onclick = () => saveFull(); const op = $('#rfOpen'); if (op) op.onclick = () => $('#file').click(); } catch (x) {} }
+}
+function renderInner() {
   if (closeOpenMenu) closeOpenMenu();   // a menu never outlives the screen it was opened on (its key listener and overlay go with it)
   syncUI();
   document.querySelectorAll('#aheadMenu').forEach(m => m.remove());   // the grid's floating list of later units belongs to one render
@@ -1357,11 +1420,11 @@ function renderNotices() {
   if (rvg) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>The Focus gradebook's class list differs from the pasted roster</b> — ${rvg.added.length ? `${plural(rvg.added.length, 'student')} in the gradebook but not on the roster${list(rvg.added.map(d => ({ display: d })))}` : ''}${rvg.added.length && rvg.gone.length ? '; ' : ''}${rvg.gone.length ? `${plural(rvg.gone.length, 'student')} on the roster but not in the gradebook${list(rvg.gone.map(d => ({ display: d })))}` : ''}.</span><button data-gbroster="1">Use the gradebook's list</button></div>`;
   if ((ro.length || am.length || io.length) && !(s.pool && s.awaitingPool)) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>Roster mismatch</b> — ${ro.length ? `${ro.length} on the roster but not in IXL${list(ro)}. ` : ''}${am.length ? `${am.length} with two IXL matches${list(am)}. ` : ''}${io.length ? `${plural(io.length, 'IXL account')} not on the roster${list(io)}. ` : ''}${io.length ? 'IXL students not on the roster are left out of copies — tap their flag: re-paste the roster for a new student, skip for one who left. ' : ''}Tap a flag to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.</span></div>`;
   const od = overdue(s); const gbOd = s.grades && state.settings.remindDays && ageDays(s.grades.importedAt) > state.settings.remindDays ? ageDays(s.grades.importedAt) : null;
-  if (od || gbOd) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span>${od ? `<b>This IXL export is ${plural(od, 'day')} old</b> (${fmtDate(dataDate(s))}). ` : ''}${gbOd ? `<b>The Focus gradebook is ${plural(gbOd, 'day')} old</b> (${fmtDate(s.grades.importedAt.slice(0, 10))}). ` : ''}You asked to be reminded after ${state.settings.remindDays} days — export ${od && gbOd ? 'fresh copies' : 'a fresh copy'} and import ${od && gbOd ? 'them' : 'it'}.</span><button data-import="1">Import</button></div>`;
+  if (od || gbOd) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span>${od ? `<b>This IXL export is ${plural(od, 'day')} old</b> (${fmtDate(dataDate(s))}). ` : ''}${gbOd ? `<b>The Focus gradebook is ${plural(gbOd, 'day')} old</b> (${fmtDate(localDayOf(s.grades.importedAt))}). ` : ''}You asked to be reminded after ${state.settings.remindDays} days — export ${od && gbOd ? 'fresh copies' : 'a fresh copy'} and import ${od && gbOd ? 'them' : 'it'}.</span><button data-import="1">Import</button></div>`;
   if (rs.count && s.rosterAt && s.date && s.rosterAt.slice(0, 10) < s.date && (Date.now() - new Date(s.rosterAt)) > 21 * 86400000) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>Roster pasted ${fmtDate(s.rosterAt.slice(0, 10))}</b> — older than this export. If anyone enrolled or left since, re-paste it before you copy.</span><button data-open="roster">Re-paste</button></div>`;
   if (s.grades) { const checks = reconcile(s); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); const stale = checks.filter(c => c.counts.stale > 0 && !off.includes(c));
     if (off.length) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>Focus doesn't match Tally</b> — ${off.map(c => `${esc(c.unit.short)}: ${!c.maxOK ? 'points possible differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(' · ')}. Tap the unit's Focus badge to see who.</span></div>`;
-    else if (checks.length && !stale.length) el.innerHTML += `<div class="notice soft"><span>${ico('check')}</span><span><b>Focus matches Tally</b> for ${checks.map(c => esc(c.unit.short)).join(', ')} (gradebook from ${fmtDate(s.grades.importedAt.slice(0, 10))}).</span></div>`;
+    else if (checks.length && !stale.length) el.innerHTML += `<div class="notice soft"><span>${ico('check')}</span><span><b>Focus matches Tally</b> for ${checks.map(c => esc(c.unit.short)).join(', ')} (gradebook from ${fmtDate(localDayOf(s.grades.importedAt))}).</span></div>`;
     else if (stale.length) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>Focus matches what you copied</b>, but ${stale.map(c => `${esc(c.unit.short)}: ${plural(c.counts.stale, 'student')}`).join(' · ')} have moved up since. Copy again when you're ready.</span></div>`; }
   if (loose.length) el.innerHTML += `<div class="notice soft"><span>≈</span><span><b>${plural(loose.length, 'name')} matched loosely</b> (nickname or extra name)${H ? '' : ': ' + esc(loose.map(r => r.display + ' → ' + r.ixlName).join('; '))}. Check once; tap the name to change it.</span></div>`;
   noticeCount = { warn: 0, info: 0 };
@@ -1621,7 +1684,7 @@ function openFixer(s, display) {
 
 /* ---------- copy ---------- */
 function unitColumn(sec, unit, mode) {
-  const rows = buildRows(sec).filter(r => r.status !== 'ixlOnly');
+  const rows = copyRows(sec);
   const rc = sec.grades ? reconcile(sec).find(c => c.unit.name === unit.name) : null; const kept = rc ? new Map(rc.rows.filter(x => x.status === 'accepted').map(x => [x.display, x.focus])) : new Map();
   return rows.map(r => {
     const p = r.ixl == null ? '' : kept.has(r.display) ? (kept.get(r.display) == null ? '' : String(kept.get(r.display))) : String(points(sec, unit, r.ixl));   // "Keep Focus" on a blank means the cell stays blank
@@ -1632,7 +1695,7 @@ function unitColumn(sec, unit, mode) {
   });
 }
 function downloadUnitCSV(sec, unit) {
-  const rows = buildRows(sec).filter(r => r.status !== 'ixlOnly');
+  const rows = copyRows(sec);
   const q = v => { let t = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };   // a name that starts like a formula stays text in Excel
   const lines = [['Student ID', 'Student', 'IXL ' + unit.short, 'Out of', 'Goal', 'Export date'].map(q).join(',')];
   rows.forEach(r => lines.push([r.id || '', r.display, r.ixl == null ? '' : points(sec, unit, r.ixl), r.ixl == null ? '' : totalFor(sec, unit, r.ixl), sec.threshold, sec.date || ''].map(q).join(',')));
@@ -1659,7 +1722,7 @@ async function copyUnit(sec, unit) {
   if (sec.placeholder) { toast('Copy is disabled for this export because it has no student names.', true); return; }
   if (!unit.total) { toast(`${esc(unit.short)} has no skills that count — include at least one.`, true); return; }
   const rs = rosterState(sec);
-  const rowsAll = buildRows(sec).filter(r => r.status !== 'ixlOnly');
+  const rowsAll = copyRows(sec);
   const anyPts = rowsAll.some(r => r.ixl != null && points(sec, unit, r.ixl) > 0);
   if (!anyPts && !await ask(`Nobody in ${sec.label} has earned a point in ${unit.short} yet. Copy a column of zeros anyway?`)) return;
   const mode = !rs.count ? 'names' : state.settings.copyMode;   // no roster → always a checklist, never a bare column
@@ -1858,6 +1921,16 @@ function gbUnitFor(sec, a) {
   return units.find(u => u.short === 'Unit ' + m[1]) || null;
 }
 // Gradebook rows → IXL student indices, using the same matcher as the roster (names and IDs come from the same Focus screen)
+/* The rows a Copy pastes, in the order Focus lists them. With a gradebook loaded that is the gradebook's own list —
+   the Focus page being pasted into — so a student who left or joined can never shift everyone below by a row (audit,
+   22 Oct 2026: a stale roster put 16 of 22 students' points on the wrong row). Without one, the roster. */
+function copyRows(sec) { const gb = openGb(sec); return gb && gb.students.length ? gbRows({ ...sec, grades: gb }) : buildRows(sec).filter(r => r.status !== 'ixlOnly'); }
+const openGb = sec => { if (!sec.grades) return null; try { const o = openSec(sec); return o && o.grades && o.grades.students && o.grades.students.length ? o.grades : sec.grades; } catch (e) { return sec.grades; } };
+// The roster follows Focus: the newest gradebook's list, in its order, keeping any "= IXL name" written on a line.
+function rosterFromGradebook(sec, gb) {
+  const old = new Map(parseRosterText(sec.roster).filter(r => r.alias).map(r => [norm(r.display), r.alias]));
+  return gb.students.map((n, i) => (gb.ids && gb.ids[i] ? gb.ids[i] + '\t' : '') + n + (old.has(norm(n)) ? ' = ' + old.get(norm(n)) : '')).join('\n');
+}
 function gbRows(sec) {
   if (!sec.grades) return [];
   const roster = sec.grades.students.join('\n');
@@ -1877,7 +1950,7 @@ function reconcile(sec) {
       const tally = points(sec, u, r.ixl), own = totalFor(sec, u, r.ixl);
       const rcv = rc ? (rc.rows.find(x => x[0] === r.display) || [])[1] : undefined;
       let status = 'match';
-      if (focus == null) status = tally > 0 ? 'missing' : 'match';
+      if (focus == null) status = tally > 0 ? 'missing' : (excused || (a.status && (a.status[i] === 'missing' || a.status[i] === 'excused')) ? 'match' : 'missing');   // a blank cell is left out of the grade, a 0 is not (audit): only NHI or an excused code equals Tally's 0
       else if (Math.abs(focus - tally) < 0.01) status = 'match';
       else if (rcv != null && Math.abs(focus - rcv) < 0.01) status = 'stale';   // Focus has exactly what was copied; the student moved since
       else status = 'differ';
@@ -2000,9 +2073,9 @@ function saveFull(how) {
 }
 /* What a Full save would hold, as a short fingerprint, leaving out where the screen is (the open class, view switches).
    Compared with the fingerprint taken at the last Full save, it tells whether there is work a Full save doesn't have. */
-let printCache = { n: -1, v: '' };
+var printCache = { n: -1, v: "" };   // var: the boot reads it before this line runs
 function workPrint() {
-  if (printCache.n === saveCount) return printCache.v;
+  if (printCache && printCache.n === saveCount) return printCache.v;
   const { active, lastBackup, savedPrint, lastSaveName, lastImport, settings, ...rest } = stateForSave(); const st = settings || {};
   const txt = JSON.stringify([rest, st.currentUnit, st.curUnitTouched, st.skipFirst, st.useBest, st.teacherName, st.gradeLevel, st.courseNames, st.remindDays, st.copyMode, st.autosave]);
   let h = 0x811c9dc5; for (let i = 0; i < txt.length; i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 0x01000193); }
@@ -2029,7 +2102,7 @@ function boardFile() {
       sec.grades = { importedAt: gb.importedAt, file: '', students: gb.students.map((_, j) => pseudoName(j, 'G')), assignments: gb.assignments.map(a => { const idx = shuffled(n); return { name: a.name, category: a.category, categoryFromFile: a.categoryFromFile, max: a.max, percent: a.percent, due: a.due, assignedOn: a.assignedOn, missing: a.missing, excused: a.excused, unread: a.unread, values: idx.map(j => a.values[j]), status: a.status ? idx.map(j => a.status[j]) : undefined }; }) };
       const o = openSec(s); sec.boardGrades = o && o.grades ? shuffled(n).map(j => { const r = computeGrade(o, j); return r ? r.rounded : null; }).filter(v => v != null) : [];
     }
-    sec.gradeHistory = (s.gradeHistory || []).map(h => { const idx = shuffled(h.students.length); return { date: h.date, at: h.at, q: h.q, file: '', students: idx.map(j => pseudoName(j, 'G')), grade: idx.map(j => h.grade[j]), missing: idx.map(j => h.missing[j]), cats: Object.fromEntries(Object.entries(h.cats || {}).map(([c, arr]) => [c, idx.map(j => arr[j])])), assignments: h.assignments }; });
+    sec.gradeHistory = (s.gradeHistory || []).map(h => { const idx = shuffled(h.students.length); return { date: h.date, at: h.at, q: h.q, file: '', students: idx.map(j => pseudoName(j, 'G')), grade: idx.map(j => h.grade[j]), missing: shuffled(h.students.length).map(j => (h.missing || [])[j]), cats: Object.fromEntries(Object.entries(h.cats || {}).map(([c, arr]) => { const ci = shuffled(h.students.length); return [c, ci.map(j => arr[j])]; })), assignments: h.assignments }; });   // each list shuffled on its own: no row ties a grade to a missing count (audit)
     sections[s.key] = sec;
   });
   const settings = { hideNames: true, leaderboard: true, lbFocus: st.lbFocus, lbTab: st.lbTab, labUnit: st.labUnit, labStats: st.labStats, labTukey: false, labDots: {}, labPrep: st.labPrep, labValues: false, labPct: st.labPct, labKind: st.labKind, labBin: st.labBin, labAvg: st.labAvg, useBest: true, skipFirst: st.skipFirst, skipFirstV2: true, currentUnit: st.currentUnit, curUnitTouched: st.curUnitTouched, details: false, copyMode: st.copyMode, remindDays: st.remindDays };
@@ -2055,6 +2128,9 @@ async function loadTallyFile(file, cfg) {
     state = hydrate(s) || s; migrate(); if (cfg.full) { state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
     toast(cfg.board ? `Board save opened: ${plural(state.order.length, 'class')}, no names.` : `Full save from ${esc(whenText(meta.saved))} opened: ${plural(state.order.length, 'class')}.`, false, 5000);
     return true;
+  }
+  if (state.order.length && !state.board) {
+    if (!await ask(`${file && file.name ? file.name + '\n\n' : ''}This is an old-style backup${cfg.exported ? ` from ${whenText(cfg.exported)}` : ''}: rosters, goals, skips and history, no scores. Add it to what is here? Nothing here is removed.`, 'Add it')) return false;
   }
   return loadSettingsBackup(cfg);
 }
@@ -2083,7 +2159,7 @@ function openSettings(key) {
         <div class="field"><label>Roster — paste from FOCUS, one student per line</label>${H ? '<p class="warnline">Names are hidden. Turn on Show names to view or edit the roster.</p>' : `<textarea id="roster" placeholder="Doe, Jane&#10;Smith, John&#10;…&#10;&#10;Pasting straight from the FOCUS gradebook works, ID columns and all.">${esc(s.roster)}</textarea>`}</div>
         <div class="report" id="matchReport">${matchReport(s, s.roster)}</div>
         <p>${esc(s.file)} · imported ${fmtTime(s.importedAt)}</p>
-        ${s.grades ? `<h3 class="mt">Focus gradebook</h3><p>${plural(s.grades.assignments.length, 'assignment')} · ${plural(s.grades.students.length, 'student')} · imported ${fmtDate(s.grades.importedAt.slice(0, 10))} from ${esc(s.grades.file || 'file')}</p><button class="pill danger small" id="dropGrades">Remove this gradebook</button>${Object.keys(s.gbUnitMap || {}).length ? `<div id="gbMaps"><p style="margin:12px 0 4px">Focus columns you changed in a Focus check ("Wrong column?"):</p>${Object.keys(s.gbUnitMap).map(n => `<div class="customRow"><b>${esc(n)}</b> <span>${s.gbUnitMap[n] ? 'checked against ' + esc((unitsOf(s).find(u => u.name === s.gbUnitMap[n]) || { short: s.gbUnitMap[n] }).short) : 'not checked against any unit'}</span> <button class="pill pale small" data-unmap="${esc(n)}">Reset</button></div>`).join('')}</div>` : ''}` : ''}
+        ${s.grades ? `<h3 class="mt">Focus gradebook</h3><p>${plural(s.grades.assignments.length, 'assignment')} · ${plural(s.grades.students.length, 'student')} · imported ${fmtDate(localDayOf(s.grades.importedAt))} from ${esc(s.grades.file || 'file')}</p><button class="pill danger small" id="dropGrades">Remove this gradebook</button>${Object.keys(s.gbUnitMap || {}).length ? `<div id="gbMaps"><p style="margin:12px 0 4px">Focus columns you changed in a Focus check ("Wrong column?"):</p>${Object.keys(s.gbUnitMap).map(n => `<div class="customRow"><b>${esc(n)}</b> <span>${s.gbUnitMap[n] ? 'checked against ' + esc((unitsOf(s).find(u => u.name === s.gbUnitMap[n]) || { short: s.gbUnitMap[n] }).short) : 'not checked against any unit'}</span> <button class="pill pale small" data-unmap="${esc(n)}">Reset</button></div>`).join('')}</div>` : ''}` : ''}
         <h3 class="mt">Remove</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="forget">Remove this class</button></div>
       </section>
@@ -2153,11 +2229,11 @@ function openSettings(key) {
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     const wi = defaultWorkingIn(); noteWorkingIn(wi); save(); close(); render(); toast('Saved' + wi.map(x => `<br>${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join(''), false, wi.length ? 9000 : undefined);
   };
-  $('#forget').onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Its roster and exclusions go too.`)) return; delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
+  $('#forget').onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Everything Tally holds for it goes: IXL data, gradebook, kept quarters, roster, notes, conference text, seating. ${unsavedWork() ? 'A Full save downloads first, so you can get it back.' : 'Your last Full save still has it.'}`, 'Remove the class')) return; if (unsavedWork()) saveFull(); delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#wipe').onclick = async () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
-    if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? Make a Full save first if you want any of it back.`, 'Clear everything')) return;
-    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); localStorage.removeItem(SYNC_KEY); } catch (e) {} try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; location.reload();   // this computer forgets its sync key too; the synced copy stays
+    if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? ${unsavedWork() ? 'A Full save downloads first, so you can get it back.' : 'Your last Full save still has it.'}`, 'Clear everything')) return; if (unsavedWork()) saveFull();
+    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); localStorage.removeItem(SYNC_KEY); } catch (e) {} try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; setTimeout(() => location.reload(), 700);   // lets the Full save finish downloading   // this computer forgets its sync key too; the synced copy stays
   };
   $('#addCustom').onclick = () => { close(); openCustomEditor(null, s.prep); };
   m.querySelectorAll('[data-editc]').forEach(b => b.onclick = () => { close(); openCustomEditor(b.dataset.editc); });
@@ -2179,7 +2255,7 @@ function openSettings(key) {
     } catch (err) { toast('That file is not a Tally course settings file.', true); }
   };
   $('#saveRace').onclick = () => downloadLeaderboard('race'); $('#saveLab').onclick = () => downloadLeaderboard('lab');
-  const dg = $('#dropGrades'); if (dg) dg.onclick = async () => { if (!await ask(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.`)) return; delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
+  const dg = $('#dropGrades'); if (dg) dg.onclick = async () => { if (!await ask(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.${unsavedWork() ? ' A Full save downloads first.' : ''}`, 'Remove the gradebook')) return; if (unsavedWork()) saveFull(); delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
   m.querySelectorAll('[data-auto]').forEach(b => b.onclick = () => { state.settings.autosave = Number(b.dataset.auto); save(); m.querySelectorAll('[data-auto]').forEach(x => x.classList.toggle('on', x === b)); renderKeep(); });
   $('#exportBoard').onclick = () => saveBoardFile(); $('#exportFull').onclick = () => { saveFull(); const lb = $('#lastBk'); if (lb) lb.textContent = 'Last full save today.'; };
   $('#importCfg').onclick = () => $('#cfgFile').click();
@@ -2211,7 +2287,15 @@ function loadSettingsBackup(cfg) {
         studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, qArchive: mergeArchives(prev ? prev.qArchive : {}, cleanArchive(c.qArchive)), prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, gradeHistory: Array.isArray(c.gradeHistory) ? c.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : (prev ? prev.gradeHistory : []), history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })) : (prev ? prev.history : [])
       });
       let applied = 0, held = 0;
-      for (const k in cfg.sections) { if (!SAFE_KEY(k)) continue; const c = cfg.sections[k] || {}; if (state.sections[k]) { const cl = clean(c, state.sections[k]); Object.assign(state.sections[k], cl); applied++; } else { const cl = clean(c, null); if (!cl.label) cl.label = k; state.pendingCfg[k] = cl; held++; } }
+      // An old backup adds to what is here, never takes it away (audit, 22 Oct 2026: its histories, skips, ignores and
+      // aliases used to replace this computer's wholesale): histories join by date, the rest unite with this side winning.
+      const byDate = (a, b, key) => { const seen = new Set((a || []).map(key)); return [...(a || []), ...(b || []).filter(h => !seen.has(key(h)))].sort((x, y) => String(x.date).localeCompare(String(y.date))); };
+      const join = (here, back) => ({ ...(back || {}), ...(here || {}) });
+      for (const k in cfg.sections) { if (!SAFE_KEY(k)) continue; const c = cfg.sections[k] || {}; if (state.sections[k]) { const prev = state.sections[k]; const cl = clean(c, prev);
+        cl.history = byDate(prev.history, cl.history, h => h.date); cl.gradeHistory = byDate(prev.gradeHistory, cl.gradeHistory, h => h.date + '|' + (h.q || ''));
+        cl.studentSkips = join(prev.studentSkips, cl.studentSkips); cl.ignored = join(prev.ignored, cl.ignored); cl.aliases = join(prev.aliases, cl.aliases);
+        if (prev.grades && rosterState(prev).count) { cl.roster = prev.roster; cl.rosterAt = prev.rosterAt; }   // the roster here follows Focus; an old one would bring back students who left
+        Object.assign(state.sections[k], cl); applied++; } else { const cl = clean(c, null); if (!cl.label) cl.label = k; state.pendingCfg[k] = cl; held++; } }
       migrate(); state.order.map(k => state.sections[k]).forEach(x => { if (x.pool) materialize(x); }); const wi = defaultWorkingIn(); noteWorkingIn(wi); save(); render(); toast(`Loaded settings for ${plural(applied, 'class')}${held ? ` · ${held} waiting for their exports to be imported` : ''}${wi.map(x => `<br>${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join('')}`, false, wi.length ? 9000 : 5000);
       return true;
     } catch (err) { console.error(err); toast('That file is not a Tally backup.', true); return false; }
@@ -2322,7 +2406,7 @@ document.addEventListener('keydown', e => {
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
 /*__SYNC__*/
-window.__tally = { get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { gbUnitFor, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.
@@ -2330,5 +2414,9 @@ try { const wi = bootError ? [] : defaultWorkingIn(); if (wi.length) { noteWorki
 render();
 syncBoot();
 if (foldedTwins.length && !bootError) { save(); setTimeout(() => toast(`${esc(foldedTwins.join(', '))} ${foldedTwins.length === 1 ? 'was' : 'were'} in Tally twice: an IXL export had made a second copy. ${foldedTwins.length === 1 ? 'It is' : 'They are'} one class again, with the newer IXL data.`, false, 9000), 500); }
-if (bootError) setTimeout(() => toast('Saved Tally data could not be read and was set aside (kept as a backup in this browser). Re-import your exports.', true, 8000), 300);
+// Saved data that can't be read is downloaded as a file before Tally may write anything (audit, 22 Oct 2026: on a big
+// Tally the in-browser copy failed for space, the message still said it was kept, and the first save wrote over it).
+if (bootError) { let fileName = '';
+  if (bootRaw && bootRaw.length > 2) { try { fileName = 'tally-unreadable-' + stamp(new Date().toISOString()) + '.json'; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bootRaw], { type: 'application/json' })); a.download = fileName; a.click(); } catch (e) { fileName = ''; } }
+  setTimeout(() => toast(`Tally couldn't read what this browser had saved, so it started empty.${fileName ? ` The unreadable data was downloaded as ${esc(fileName)}; keep it.` : ''} Open your newest Full save to carry on.`, true, 12000), 300); }
 })();

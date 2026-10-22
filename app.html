@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Nothing leaves this page except to its own site (Sync), even if a bug let a file's contents run: student data cannot be sent elsewhere (audit, 22 Oct 2026). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'self'; media-src data: blob:; worker-src blob:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tally — IXL unit points for FOCUS</title>
 <style id="tallyFont">/*__FONT__*/

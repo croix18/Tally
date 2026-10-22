@@ -214,6 +214,8 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 22 Oct: a class's own IXL export no longer starts a second class for its period (it updates the class already there;
   an existing duplicate folds back on load). Also fixed: weekly class exports dropped notes, conference text and Focus
   column links. New suite `tests/period-twin.js`. 37 suites, 1233 checks (with Sync merged in).
+- 22 Oct: full audit (AUDIT_PLAN.md): 5 Critical, 18 High and several Medium findings fixed, each with a failing-first
+  check in `tests/audit-oct22.js`; six decisions listed for Croix. 38 suites, 1256 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.
