@@ -3461,6 +3461,24 @@ function migrate() {
   quarters(); for (const k of Object.keys(state.sections)) state.sections[k].qArchive = cleanArchive(state.sections[k].qArchive);
   state.order = (Array.isArray(state.order) ? state.order : []).filter(k => SAFE_KEY(k) && Object.prototype.hasOwnProperty.call(state.sections, k));
   for (const k of Object.keys(state.sections)) if (!state.order.includes(k)) state.order.push(k);
+  foldPeriodTwins();
+}
+/* A second class for a period, made by a class IXL export before Tally knew to put it on the class already there
+   (22 Oct 2026). It holds nothing of its own — no gradebook, roster, notes, seating, kept quarter — so it folds into
+   the real class: its IXL data moves over if it is newer, then it goes. */
+var foldedTwins = [];
+function foldPeriodTwins() {
+  const secs = () => state.order.map(k => state.sections[k]).filter(Boolean);
+  const empty = x => /^\d{5,8}-/.test(x.key) && !x.grades && !String(x.roster || '').trim() && !Object.keys(x.stuNotes || {}).length && !x.seating && !Object.keys(x.confForms || {}).length && !Object.keys(x.qArchive || {}).length;
+  for (const x of secs()) {
+    if (!x.period || !empty(x)) continue;
+    const y = secs().find(o => o !== x && Number(o.period) === Number(x.period) && (o.prep === x.prep || !o.prep) && !empty(o)); if (!y) continue;
+    if (x.date && (!y.date || x.date > y.date) && Array.isArray(x.students) && x.students.length) {
+      Object.assign(y, { students: x.students, skills: x.skills, scores: x.scores, date: x.date, file: x.file, importedAt: x.importedAt, placeholder: false, allBlank: x.allBlank, awaitingPool: false, fromSection: !!y.pool, _keys: null });
+      const have = new Set((y.history || []).map(h => h.date)); y.history = [...(y.history || []), ...(x.history || []).filter(h => !have.has(h.date))].sort((a, b) => a.date.localeCompare(b.date));
+    }
+    delete state.sections[x.key]; state.order = state.order.filter(k => k !== x.key); if (state.active === x.key) state.active = y.key; foldedTwins.push(y.label);
+  }
 }
 function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (fallback != null ? fallback : DEFAULT_THR.on) : Math.max(1, Math.min(100, n)); }
 // A pool class reads its skills from the course pool (the same array in memory); writing a copy per class was a quarter
@@ -3668,7 +3686,7 @@ function points(sec, unit, si) {
 
 /* ---------- import ---------- */
 async function importFiles(files) {
-  let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [], poolImported = [];
+  let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [], poolImported = [], sameData = [];
   for (const f of files) {
     try {
       if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts) — a Tally backup goes through Settings
@@ -3699,7 +3717,7 @@ async function importFiles(files) {
           if ((share < 0.5 || !meta.date) && !await ask(`${f.name}\n\n${!meta.date ? 'This file has no export date in its name' : `Only ${same} of its ${g.students.length} students are in the ${prep === 'acc' ? 'accelerated' : 'on-level'} course already`}. Replace the course's IXL data (${prevPool.students.length} students, ${prevPool.date || 'undated'}) with it?`)) { skipped++; continue; } }
         state.pools[prep] = { students: g.students, skills: g.skills, scores: g.scores, date: meta.date, file: f.name, importedAt: new Date().toISOString() };
         const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === prep);
-        fed.forEach(x => { materialize(x); ok.push(x); });
+        fed.forEach(x => { if (x.fromSection && x.date && meta.date && x.date > meta.date) return; materialize(x); ok.push(x); });   // a class's own newer IXL export stays
         poolImported.push({ prep, students: g.students.length, skills: g.skills.length });
         continue;
       }
@@ -3716,6 +3734,13 @@ async function importFiles(files) {
         placeholder = true;
       }
       const allBlank = !g.scores.some(row => row.some(v => v != null));
+      /* A class's own IXL export for a period Tally already has (made from the course export and a gradebook, so keyed
+         "period-5"): it is that class, not a new one. Croix, 22 Oct 2026: "It keeps adding an extra 5th period class
+         when I try to upload IXL data." If the class already reads a course export at least as new, nothing changes. */
+      if (!state.sections[meta.key] && meta.period) { const tw = periodTwin(meta);
+        if (tw) { const pool = tw.pool ? state.pools[tw.prep] : null;
+          if (pool && pool.date && meta.date && pool.date >= meta.date && !tw.fromSection) { skipped++; sameData.push(tw.label); continue; }
+          meta.key = tw.key; } }
       const prev = state.sections[meta.key];
       if (prev && prev.date && meta.date && meta.date < prev.date) {
         if (!await ask(`${f.name}\n\nThis export is dated ${meta.date}, but ${prev.label} already has data from ${prev.date}. Replace the newer data with this older file?`)) { skipped++; continue; }
@@ -3723,6 +3748,7 @@ async function importFiles(files) {
       const pend = state.pendingCfg[meta.key] || {};
       const keep = prev || pend;
       state.sections[meta.key] = {
+        ...(prev || {}),   // whatever else the class holds (notes, conference text, Focus column links…) stays
         key: meta.key, label: prev ? prev.label : (pend.label || meta.label), autoLabel: meta.label,
         accelerated: meta.accelerated,
         threshold: clampThr(keep.threshold != null ? keep.threshold : (meta.accelerated ? DEFAULT_THR.acc : DEFAULT_THR.on)),
@@ -3732,7 +3758,7 @@ async function importFiles(files) {
         excluded: state.skips[keep.prep || (meta.accelerated ? 'acc' : 'on')], ignored: keep.ignored || {}, aliases: keep.aliases || {}, hiddenUnits: {}, studentSkips: keep.studentSkips || {},
         history: keep.history || [], team: keep.team || '', prep: keep.prep || (meta.accelerated ? 'acc' : 'on'),
         grades: keep.grades, gradeHistory: keep.gradeHistory || [], qArchive: keep.qArchive || {}, seating: keep.seating, seatInfo: keep.seatInfo || {}, overrides: keep.overrides || {}, period: keep.period != null ? keep.period : (meta.period || undefined),   // the weekly re-import must not drop what the gradebook, the seating chart and the backup put here
-        placeholder, allBlank
+        placeholder, allBlank, awaitingPool: false, fromSection: !!(prev && prev.pool)
       };
       if (meta.date) state.sections[meta.key].history = (state.sections[meta.key].history || []).filter(h => h.date <= meta.date);   // an older file accepted on purpose: nothing newer than it is "now"
       snapshot(state.sections[meta.key]);
@@ -3775,8 +3801,9 @@ async function importFiles(files) {
   // The result stays on the Overview until the next import (one line per file, failures in red); the toast is one line.
   const poolLine = p => { const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === p.prep && !x.awaitingPool).length; return { label: p.prep === 'acc' ? 'Accelerated IXL' : 'On-level IXL', pool: p.prep, text: `${plural(p.students, 'student')}, ${plural(p.skills, 'skill')}${fed ? ` → ${plural(fed, 'class')} updated` : ' — no class uses it yet: import a Focus gradebook for each period'}` }; };
   const pools = poolImported.map(poolLine);
-  const classes = ok.filter(s => !s.pool).map(s => ({ label: s.label, text: `IXL export — goal ${s.threshold}, ${plural(s.students.length, 'student')}` }));
-  const lines = [...pools, ...classes, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook — ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: wiText(x) }))];
+  const classes = ok.filter(s => !s.pool || s.fromSection).map(s => ({ label: s.label, text: `IXL export — goal ${s.threshold}, ${plural(s.students.length, 'student')}` }));
+  const same = sameData.map(l => ({ label: l, text: 'IXL export — no change: this class already has the course export from the same day or later' }));
+  const lines = [...pools, ...classes, ...same, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook — ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: wiText(x) }))];
   if (lines.length || fails.length || skipped) {   // files dropped within a quarter of an hour read as one import; a newer line for the same class replaces the older
     const prev = state.lastImport && Date.now() - new Date(state.lastImport.at) < 15 * 60000 ? state.lastImport : { lines: [], fails: [], skipped: 0 };
     const fresh = lines.map(l => ({ label: String(l.label).slice(0, 80), text: String(l.text).replace(/<[^>]+>/g, '').slice(0, 300), pool: l.pool || null, wi: l.wi || null }));
@@ -4452,8 +4479,14 @@ function parseGradebook(rows) {
    file. The file is kept as state.pools[prep]; each class made from a Focus gradebook (sec.pool = true) is carved from
    it: its roster names are matched against the pool and the class gets exactly those students' columns. */
 const PERIOD_ORD = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+// The class already in Tally for an IXL export's period (any key but the export's own), same course first.
+function periodTwin(meta) {
+  const prep = meta.accelerated ? 'acc' : 'on';
+  const c = state.order.map(k => state.sections[k]).filter(x => x && x.key !== meta.key && !x.placeholder && Number(x.period) === meta.period);
+  return c.find(x => x.prep === prep) || (c.length === 1 ? c[0] : null);
+}
 function materialize(sec) {
-  const pool = state.pools[sec.prep];
+  const pool = state.pools[sec.prep]; if (pool) sec.fromSection = false;
   if (!pool) { sec.students = sec.students || []; sec.skills = sec.skills || []; sec.scores = sec.scores || []; sec.awaitingPool = true; return; }
   // No roster means no students — never the whole course (an emptied roster once handed a class all 91 pool students).
   const idx = rosterState(sec).count ? poolIdx(sec) : [];
@@ -5977,6 +6010,7 @@ $('#toast').addEventListener('click', e => { if (e.target.closest('button')) ret
 try { const wi = bootError ? [] : defaultWorkingIn(); if (wi.length) { noteWorkingIn(wi); save(); setTimeout(() => toast(wi.map(x => `${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join('<br>'), false, 9000), 400); } } catch (e) { console.error('Tally: could not set Working in', e); }
 render();
 syncBoot();
+if (foldedTwins.length && !bootError) { save(); setTimeout(() => toast(`${esc(foldedTwins.join(', '))} ${foldedTwins.length === 1 ? 'was' : 'were'} in Tally twice: an IXL export had made a second copy. ${foldedTwins.length === 1 ? 'It is' : 'They are'} one class again, with the newer IXL data.`, false, 9000), 500); }
 if (bootError) setTimeout(() => toast('Saved Tally data could not be read and was set aside (kept as a backup in this browser). Re-import your exports.', true, 8000), 300);
 })();
 

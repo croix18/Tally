@@ -211,6 +211,9 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 21 Oct: FAST keeps every column (L30 tag and filter in Students), matching by name; Strengths/Concerns rewritten after
   three agent reviews (rules tested over the whole class); retakes in the quickest path now wait for every missing
   assignment and the unit's IXL (the old plan skipped them for 10 fixture students). 35 suites, 1166 checks.
+- 22 Oct: a class's own IXL export no longer starts a second class for its period (it updates the class already there;
+  an existing duplicate folds back on load). Also fixed: weekly class exports dropped notes, conference text and Focus
+  column links. New suite `tests/period-twin.js`. 37 suites, 1233 checks (with Sync merged in).
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

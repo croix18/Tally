@@ -491,6 +491,17 @@ per-section-file era and many items in them are now done).
     assignment and finishes the current unit's IXL (an "ixlreq" line when that unit isn't in Focus yet); a retake is
     listed only if that catch-up still falls short, and its line says "allowed once everything above is done". No IXL
     link in Tally → no retake is planned, and the teacher's card says why.
+- **22 Oct 2026 — One class per period.** Croix: "It keeps adding an extra 5th period class when I try to upload IXL
+  data." A class made from the course export plus a gradebook is keyed `period-N`; a class's own IXL export is keyed
+  by its section code (`1205050-7T5A`), so the export started a second class. Now (`periodTwin()` in importFiles) a
+  class export for a period Tally already has goes to that class: if the class reads a course export from the same
+  day or later, nothing changes (the import line says so); if the class export is newer, its data replaces the
+  class's IXL data (`fromSection`), and an older course export no longer overwrites it (a newer one takes over
+  again). On load, `foldPeriodTwins()` folds an existing duplicate (section-keyed, holding no gradebook, roster,
+  notes, seating, conference text or kept quarter) into the real class, taking its IXL data if newer, and says so.
+  Found on the way: a class keyed by its own export rebuilt its object from a fixed list on every weekly import, so
+  student notes, conference text and Focus column links (`gbUnitMap`) were dropped each week; it now starts from the
+  class as it was. New suite `tests/period-twin.js`.
   - GitHub is blocked on the school wifi, so Pages is not an option at school. Offered: Tally served from Google Apps
     Script, autosaving to a file in his school Drive (one Tally across laptop, panel and tablet). Croix: "Let's hold
     off on that option and stick to the html for now." So: the HTML file, opened directly in Chrome on the laptop,
