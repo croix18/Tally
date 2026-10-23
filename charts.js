@@ -20,36 +20,40 @@ const gradeFill = pct => pct == null ? 'var(--teal)' : LETTER_COLORS[letterOf(Ma
 const NEUTRAL_FILL = '#C9CED8';   // "not started" and other no-data slices: a grey that still shows on a white card
 // One colour per class, fixed by period when known (1st = slot 1, …) else by position, so every screen agrees.
 function classColor(sec) { const i = sec && Number.isInteger(sec.period) ? sec.period - 1 : Math.max(0, state.order.indexOf(sec ? sec.key : '')); return seriesColor(i); }
+// On a phone a chart is drawn at phone width, so its text stays readable instead of shrinking with a desktop-wide drawing.
+const PHONE = () => typeof matchMedia === 'function' && matchMedia('(max-width:640px), (max-height:500px) and (pointer:coarse)').matches;   // the same test as the phone stylesheet in app.html (a phone on its side counts)
+const CW = n => PHONE() ? Math.min(n, Math.max(360, Math.round(innerWidth * 0.95))) : n;
+const phoneLabel = t => PHONE() ? String(t).split(' · ')[0] : t;   // "1st Period · Accelerated" → "1st Period"
 const fmtV = v => v == null ? '—' : (Math.round(v * 10) / 10).toString();
 const niceMax = (v, step) => { if (!(v > 0)) return step || 10; const s = step || (v > 200 ? 50 : v > 100 ? 20 : v > 40 ? 10 : v > 10 ? 5 : 1); return Math.ceil(v / s) * s; };
 
 // Horizontal bars: items [{ label, value, max?, hint? }]. One hue; value labels on every bar (few bars, so they're the point).
 function chartBars(items, o) {
-  o = o || {}; const w = o.w || 640, rowH = o.rowH || 30, barH = o.barH || 16, lw = o.labelW || 150, h = items.length * rowH + 28;
+  o = o || {}; const w = CW(o.w || 640), rowH = o.rowH || 30, barH = o.barH || 16, lw = PHONE() ? Math.min(o.labelW || 150, 110) : o.labelW || 150, h = items.length * rowH + 28;
   const max = o.max || niceMax(Math.max(...items.map(i => i.value || 0), 1));
   const X = v => lw + (v / max) * (w - lw - 60);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'bar chart')}">`;
   (o.ticks || [0, max / 2, max]).forEach(tv => { s += `<line x1="${X(tv)}" y1="6" x2="${X(tv)}" y2="${h - 22}" class="gl"/><text x="${X(tv)}" y="${h - 6}" text-anchor="middle" class="tl">${o.pct ? Math.round(tv) + '%' : fmtV(tv)}</text>`; });   /* o.ticks: round numbers when the maximum isn't one (0, 5, 10, 15, 20 for a test out of 21) */
   items.forEach((it, i) => { const y = 8 + i * rowH + (rowH - barH) / 2 - 7; const v = it.value || 0;   /* y + 3 is the bar's top, as it always was at the default sizes */
     const lab = o.fmt ? o.fmt(v) : o.pct ? Math.round(v) + '%' : fmtV(v);   /* o.fmt: the caller's own number format (the Data Lab's class averages keep one decimal) */
-    s += `<text x="${lw - 10}" y="${y + barH / 2 + 7}" text-anchor="end" class="lbl">${esc(it.label)}</text><rect x="${X(0)}" y="${y + 3}" width="${Math.max(X(v) - X(0), 0)}" height="${barH}" rx="4" class="bar" style="fill:${it.color || 'var(--teal)'}"><title>${esc(it.label)}: ${lab}${it.hint ? ' · ' + esc(it.hint) : ''}</title></rect><text x="${X(v) + 6}" y="${y + barH / 2 + 7}" class="val">${lab}</text>`; });
+    s += `<text x="${lw - 10}" y="${y + barH / 2 + 7}" text-anchor="end" class="lbl">${esc(phoneLabel(it.label))}</text><rect x="${X(0)}" y="${y + 3}" width="${Math.max(X(v) - X(0), 0)}" height="${barH}" rx="4" class="bar" style="fill:${it.color || 'var(--teal)'}"><title>${esc(it.label)}: ${lab}${it.hint ? ' · ' + esc(it.hint) : ''}</title></rect><text x="${X(v) + 6}" y="${y + barH / 2 + 7}" class="val">${lab}</text>`; });
   return s + '</svg>';
 }
 // Stacked horizontal bars: rows [{ label, parts: { key: value } }], keys in fixed order with colours; legend always.
 function chartStacked(rows, keys, o) {
-  o = o || {}; const w = o.w || 640, rowH = 30, lw = o.labelW || 150, h = rows.length * rowH + 40;
+  o = o || {}; const w = CW(o.w || 640), rowH = 30, lw = PHONE() ? Math.min(o.labelW || 150, 110) : o.labelW || 150, h = rows.length * rowH + 40, step = PHONE() ? 46 : 80;
   const tot = r => keys.reduce((a, k) => a + (r.parts[k] || 0), 0); const max = o.max || Math.max(...rows.map(tot), 1);
   const X = v => lw + (v / max) * (w - lw - 20);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'stacked bar chart')}">`;
-  rows.forEach((r, i) => { const y = 8 + i * rowH; let x = 0; s += `<text x="${lw - 10}" y="${y + 15}" text-anchor="end" class="lbl">${esc(r.label)}</text>`;
+  rows.forEach((r, i) => { const y = 8 + i * rowH; let x = 0; s += `<text x="${lw - 10}" y="${y + 15}" text-anchor="end" class="lbl">${esc(phoneLabel(r.label))}</text>`;
     keys.forEach((k, j) => { const v = r.parts[k] || 0; if (!v) return; s += `<rect x="${X(x) + (x ? 1 : 0)}" y="${y + 3}" width="${Math.max(X(x + v) - X(x) - (x ? 1 : 0), 0)}" height="16" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}" stroke="#16213A" stroke-opacity=".18" stroke-width="1"><title>${esc(r.label)}, ${esc(k)}: ${v}</title></rect>${v / max > 0.06 ? `<text x="${(X(x) + X(x + v)) / 2}" y="${y + 15}" text-anchor="middle" class="${(o.dark || []).includes(k) ? 'inv' : 'val'}">${v}</text>` : ''}`; x += v; }); });
-  s += `<g class="legend">${keys.map((k, j) => `<rect x="${lw + j * 80}" y="${h - 20}" width="12" height="12" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}" stroke="#16213A" stroke-opacity=".25" stroke-width="1"/><text x="${lw + j * 80 + 16}" y="${h - 10}" class="tl">${esc(k)}</text>`).join('')}</g>`;
+  s += `<g class="legend">${keys.map((k, j) => `<rect x="${lw + j * step}" y="${h - 20}" width="12" height="12" rx="3" style="fill:${(o.colors || {})[k] || seriesColor(j)}" stroke="#16213A" stroke-opacity=".25" stroke-width="1"/><text x="${lw + j * step + 16}" y="${h - 10}" class="tl">${esc(k)}</text>`).join('')}</g>`;
   return s + '</svg>';
 }
 // Line chart over labelled x steps: series [{ name, values: [y|null] }], labels [x]. Direct labels at the line ends + legend.
 function chartLines(labels, series, o) {
-  o = o || {}; const w = o.w || 640, h = o.h || 220, l = 44, t = 12, b = 30;
-  const longest = Math.max(0, ...series.map(x => String(x.name).length)) + 6; const r = Math.max(o.labelW || 170, Math.min(w * 0.45, longest * 6.8 + 24));   // room for the longest direct label
+  o = o || {}; const w = CW(o.w || 640), h = o.h || 220, l = 44, t = 12, b = 30;
+  const longest = Math.max(0, ...series.map(x => String(phoneLabel(x.name)).length)) + 6; const r = PHONE() ? Math.min(w * 0.34, longest * 6.8 + 24) : Math.max(o.labelW || 170, Math.min(w * 0.45, longest * 6.8 + 24));   // room for the longest direct label
   const ys = series.flatMap(x => x.values).filter(v => v != null); if (!ys.length) return '<div class="lbEmpty">Nothing to plot yet.</div>';
   const lo = o.min != null ? o.min : Math.max(0, Math.floor(Math.min(...ys) / 10) * 10 - 10), hi = o.max != null ? o.max : niceMax(Math.max(...ys), 10);
   const X = i => l + (labels.length > 1 ? i / (labels.length - 1) : 0.5) * (w - l - r), Y = v => h - b - (v - lo) / (hi - lo || 1) * (h - t - b);
@@ -69,7 +73,7 @@ function chartLines(labels, series, o) {
   ends.sort((a, b) => a.want - b.want); const gap = 15;
   for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < gap) ends[i].y = ends[i - 1].y + gap;
   const over = ends.length ? ends[ends.length - 1].y - (h - b - 2) : 0; if (over > 0) { for (let i = ends.length - 1; i >= 0; i--) { ends[i].y -= over; if (i && ends[i].y - ends[i - 1].y >= gap) break; } }
-  ends.forEach(e => { const lbl = esc(e.name) + ' '; const val = o.pct ? Math.round(e.v) + '%' : fmtV(e.v);
+  ends.forEach(e => { const lbl = esc(phoneLabel(e.name)) + ' '; const val = o.pct ? Math.round(e.v) + '%' : fmtV(e.v);
     if (Math.abs(e.y - e.want) > 2) s += `<line x1="${e.x + 5}" y1="${e.want}" x2="${w - r + 6}" y2="${e.y}" class="gl" style="stroke:${e.c};opacity:.6"/>`;
     s += `<text x="${w - r + 8}" y="${e.y + 4}" class="lbl">${lbl}<tspan class="val">${val}</tspan></text>`; });
   return s + '</svg>';
@@ -79,7 +83,7 @@ function chartLines(labels, series, o) {
 const meanMark = (x, yTop, yAxis, label) => `<g class="mean"><line x1="${x.toFixed(1)}" y1="${yTop}" x2="${x.toFixed(1)}" y2="${yAxis}" class="meanLine"/><rect x="${(x - 6).toFixed(1)}" y="${yTop - 6}" width="12" height="12" transform="rotate(45 ${x.toFixed(1)} ${yTop})" class="meanDia"/><title>${esc(label)}</title></g>`;
 // Dot plot on a 0..max axis; stacks dots at equal values (shrinks radius when tall).
 function chartDots(values, max, o) {
-  o = o || {}; const w = o.w || 800, v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[x] = (counts[x] || 0) + 1);
+  o = o || {}; const w = CW(o.w || 800), v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[x] = (counts[x] || 0) + 1);
   const tallest = Math.max(1, o.stack || 0, ...Object.values(counts));   /* o.stack: the tallest stack across the rows drawn together */ const r = tallest > 12 ? 4 : 6; const pad = o.mean != null ? 18 : 0; const h = Math.max(60, tallest * (r * 2 + 1) + 34) + pad;   /* dots hang from the axis, so extra height is headroom for the average's diamond */
   const X = x => 30 + x / (max || 1) * (w - 60);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="dot plot">`;
@@ -92,7 +96,7 @@ function chartDots(values, max, o) {
 // Histogram with a bin size; bars touch (histograms do), 1px surface gap for legibility.
 const autoBin = max => max > 40 ? 10 : max > 10 ? 5 : 1;
 function chartHist(values, max, bin, o) {
-  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = o.w || 800, h = 200 + pad, v = values.filter(x => x != null); bin = bin || autoBin(max);
+  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = CW(o.w || 800), h = 200 + pad, v = values.filter(x => x != null); bin = bin || autoBin(max);
   // Bins are [lo, hi) with the top bin closed at max, so 100 with bins of 10 gives ten bins, not an empty 100–110.
   const nb = Math.max(1, Math.ceil(max / bin - 1e-9)); const c = new Array(nb).fill(0); v.forEach(x => c[Math.max(0, Math.min(nb - 1, Math.floor(x / bin)))]++);
   const ints = v.every(x => Number.isInteger(x)); const range = (lo, hi, last) => !ints ? `${lo}–${hi}` : bin === 1 ? `${lo}` : last ? `${lo}–${Math.max(lo, Math.round(max))}` : `${lo}–${hi - 1}`;
@@ -118,7 +122,7 @@ function chartFreq(values, max, o) {
   const v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[Math.round(x)] = (counts[Math.round(x)] || 0) + 1);
   const items = []; for (let x = 0; x <= max; x++) items.push({ label: String(x), value: counts[x] || 0 });
   if (items.length > 26) return chartHist(values, max, Math.ceil(max / 20), o);   // too many bars: bin them
-  o = o || {}; const pad = o.mean != null ? 16 : 0; const sh = o.share ? (x => x / Math.max(v.length, 1) * 100) : (x => x); const w = o.w || 800, h = 200 + pad, top = o.share ? Math.ceil(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1) / 10) * 10 : niceMax(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1), 1); const X = i => 40 + i / items.length * (w - 60), Yv = t => h - 30 - t / top * (h - 50 - pad), Y = n => Yv(sh(n));
+  o = o || {}; const pad = o.mean != null ? 16 : 0; const sh = o.share ? (x => x / Math.max(v.length, 1) * 100) : (x => x); const w = CW(o.w || 800), h = 200 + pad, top = o.share ? Math.ceil(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1) / 10) * 10 : niceMax(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1), 1); const X = i => 40 + i / items.length * (w - 60), Yv = t => h - 30 - t / top * (h - 50 - pad), Y = n => Yv(sh(n));
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="bar graph">`;
   for (let n = 0; n <= top; n += o.share ? (top > 50 ? 20 : 10) : Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Yv(n)}" x2="${w - 20}" y2="${Yv(n)}" class="gl"/><text x="34" y="${Yv(n) + 4}" text-anchor="end" class="tl">${n}${o.share ? '%' : ''}</text>`;
   items.forEach((it, i) => { s += `<rect x="${X(i) + 3}" y="${Y(it.value)}" width="${Math.max(X(i + 1) - X(i) - 6, 2)}" height="${Y(0) - Y(it.value)}" rx="3" class="bar" style="fill:var(--cc,var(--teal))"><title>${it.label}: ${it.value} student${it.value === 1 ? '' : 's'}</title></rect><text x="${(X(i) + X(i + 1)) / 2}" y="${h - 10}" text-anchor="middle" class="tl">${it.label}</text>`; });

@@ -879,7 +879,7 @@ function labPlot(kind, x, scale, id, o) {
     const edge = i => Math.ceil(m * i / 4); const rng = i => { const lo = edge(i), hi = i === 3 ? m : edge(i + 1) - 1; return hi < lo ? 'no whole score' : lo === hi ? `${lo}` : `${lo}–${hi}`; };
     return chartCircle([0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${rng(i)} of ${m})`, value: q[i], color: QUARTER_COLORS[i] })));
   }
-  return boxSVG(x.st, scale, 800, o);
+  return boxSVG(x.st, scale, CW(800), o);
 }
 // The Board's heading. The title is the thing being shown; the line under it is an ordinary phrase — who, what is
 // measured, as of when — not a chain of fragments.
@@ -1117,7 +1117,8 @@ function renderLeaderboard() {
        ${kindNow === 'box' && (!anyFocus || fullSuite) ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`
     : (hasBoth ? `<div class="seg lbFocus">${[['both', 'Both'], ['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-focus="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '');
   el.innerHTML = `<div class="lbWrap">${lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues, kindNow) : lbMarkup(data, f)}</div>
-    <div class="lbTools">${tabs}${controls}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
+    <div class="lbTools ${lbOptsOpen ? 'open' : ''}">${tabs}${controls ? `<button class="pill small" id="lbOpts" aria-expanded="${lbOptsOpen}">${lbOptsOpen ? 'Done' : 'Options'}</button>` : ''}${controls}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
+  const lo = el.querySelector('#lbOpts'); if (lo) lo.onclick = () => { lbOptsOpen = !lbOptsOpen; el.querySelector('.lbTools').classList.toggle('open', lbOptsOpen); lo.setAttribute('aria-expanded', lbOptsOpen); lo.textContent = lbOptsOpen ? 'Done' : 'Options'; };   /* phones only: the Board's controls fold behind one button */
   el.querySelectorAll('[data-focus]').forEach(b => b.onclick = () => { st.lbFocus = b.dataset.focus; if (st.lbFocus !== 'both') st.labPrep = st.lbFocus; save(); renderLeaderboard(); });
   el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { st.lbTab = b.dataset.tab; save(); renderLeaderboard(); });
   // a course switch keeps what was showing: the same assignment (or skill, grade, data set) in the other course when it
@@ -2491,6 +2492,21 @@ $('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen
 $('#btnStudents').onclick = () => { view = { mode: 'students', unit: null }; render(); };
 $('#btnDetails').onclick = () => { state.settings.details = !state.settings.details; save(); render(); };
 $('#btnLb').onclick = enterProjected;
+/* Phones: a table wider than its box becomes one card per row (its column headings become each value's label), so
+   nothing scrolls sideways. The class grid and the Students list have their own phone layouts. (Croix, 23 Oct 2026.) */
+var lbOptsOpen = false;   // the Board's controls on a phone: folded behind Options until opened
+function phoneTables() {
+  if (!PHONE()) return;
+  document.querySelectorAll('#gridwrap table.checkTable, #modal table.checkTable').forEach(t => {
+    if (t.classList.contains('sdir') || t.dataset.phone) return; t.dataset.phone = '1';
+    const heads = t.tHead ? [...t.tHead.rows[0].cells].flatMap(th => Array(th.colSpan || 1).fill(th.textContent.trim())) : [];
+    if (heads.length) t.querySelectorAll('tbody tr').forEach(tr => { let c = 0; [...tr.cells].forEach(td => { if (!td.dataset.l && heads[c] && c > 0) td.dataset.l = heads[c]; c += td.colSpan || 1; }); });
+    const box = t.parentElement; if (t.scrollWidth > (box ? box.clientWidth : innerWidth) + 2) t.classList.add('asCards');
+  });
+}
+var phoneT = 0; const phoneObs = new MutationObserver(() => { cancelAnimationFrame(phoneT); phoneT = requestAnimationFrame(phoneTables); });
+['#gridwrap', '#modal'].forEach(id => { const el = $(id); if (el) phoneObs.observe(el, { childList: true, subtree: true }); });
+requestAnimationFrame(phoneTables);
 $('#search').oninput = e => { search = e.target.value; if (view.mode === 'home' || view.mode === 'students' || view.mode === 'student') { view = { mode: 'students', unit: null }; render(); return; }   // from the Overview, "Find a student" searches every class
   if (view.mode === 'grades' || view.mode === 'seating') { if (!state.active) return; view = { mode: 'units', unit: null }; render(); return; } renderGrid(); };
 let dragDepth = 0;
