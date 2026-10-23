@@ -220,6 +220,8 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   closed-early notice with one-tap Reopen); category mistakes fixed in one tap from Focus's own grades, with Undo;
   conference form as short notes, each box kept on its own; Data Lab compares the two courses; class colours clear of
   grade colours; light dialog headers. New suite `tests/design-oct23.js`.
+- 23 Oct: phones: a layout for 640 px and below (page scrolls, compact header, Students as cards, full-screen
+  dialogs, Board controls in one row). New suite `tests/phone.js`. 40 suites, 1292 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

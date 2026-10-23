@@ -145,9 +145,9 @@ function renderStudentsView() {
     const o = openSec(r.sec); const qs = r.grade && r.f.gi >= 0 ? quickestPath(r.sec, o, r.f.gi, r.f.ixl) : null;
     const ix = r.ixl; const fin = r.finals.map(x => `<span class="qfin">Q${x.q} ${x.g}<small>${letterOf(x.g)}</small></span>`).join('');
     body += `<tr data-open="${esc(r.sec.key)}" data-name="${esc(r.name)}" class="${r.sliding ? 'sliding' : ''}"><td><button class="nm nmbtn">${nm(r.name)}</button>${r.l30 && !H ? ' <span class="fflag l30 small">L30</span>' : ''}${r.sliding ? ' <span class="gtag">sliding</span>' : ''}</td>
-      <td><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td><td>${r.grade ? gradeChip(r.grade) : '<small>no grade yet</small>'}</td>
-      <td class="${r.d < 0 ? 'down' : r.d > 0 ? 'up' : ''}">${r.d == null ? '' : signedPts(r.d)}</td><td>${r.missing || ''}</td>
-      <td>${ix && ix.pct != null ? `${Math.round(ix.pct)}% <small>${ix.done}/${ix.poss}</small>` : '<small>—</small>'}</td><td class="qcol">${quickestShort(qs)}</td><td>${r.retake.hasGrades ? retakeChip(r.retake) : ''}</td><td>${fin}</td></tr>`;
+      <td class="sCls"><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td><td class="sGr">${r.grade ? gradeChip(r.grade) : '<small>no grade yet</small>'}</td>
+      <td class="${r.d < 0 ? 'down' : r.d > 0 ? 'up' : ''}" data-l="Since last import">${r.d == null ? '' : signedPts(r.d)}</td><td data-l="Missing">${r.missing || ''}</td>
+      <td data-l="IXL">${ix && ix.pct != null ? `${Math.round(ix.pct)}% <small>${ix.done}/${ix.poss}</small>` : '<small>—</small>'}</td><td class="qcol">${quickestShort(qs)}</td><td>${r.retake.hasGrades ? retakeChip(r.retake) : ''}</td><td>${fin}</td></tr>`;
   });
   $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th><th>Class</th><th>${esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Retake</th><th>Closed quarters</th></tr></thead><tbody>${body || `<tr><td colspan="9" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet — import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
   $('#gridwrap').querySelectorAll('tr[data-open]').forEach(tr => tr.onclick = () => openProfile(tr.dataset.open, tr.dataset.name));

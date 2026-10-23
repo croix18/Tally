@@ -543,6 +543,14 @@ per-section-file era and many items in them are now done).
   - **Look:** class colours moved off the grade hues (purple, berry, bronze, cyan, slate, rose, olive; checked in
     `tests/colors.js`); dialog headers are light; F chips are no longer alert-coral; danger buttons are red-outlined.
     Not done (his call): gold and DM Serif Display from the house style; the ~230 em dashes in on-screen text.
+- **23 Oct 2026 — Phones.** Croix: "Oh man it's terrible for mobile." At 640 px and below (`@media (max-width:640px)`
+  at the end of app.html's main style): the page scrolls instead of the board, so the header scrolls away; the header
+  is three short rows (wordmark and buttons · Classes/Students/Board · search); class tabs are one sideways row;
+  wide tables scroll sideways inside their own section; the class grid drops the row numbers and narrows the name
+  column (a "not in IXL" tag sits under the name); Students is a list of cards (the cells carry `data-l` labels);
+  stat cards are two across; dialogs fill the screen; messages are a slim bar; on the Board the controls are one
+  sideways row under the chart. The IXL grid loses its sticky header on a phone (the page is the scroller). Checked
+  by `tests/phone.js` at 390 × 844.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

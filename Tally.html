@@ -547,6 +547,78 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
   .more .menu button,.menu.floating button{min-height:var(--h-l)}
   .nchip{min-height:var(--h-touch);padding:8px 16px}.ib{min-width:44px;min-height:var(--h-touch)}.mini{min-height:var(--h-touch)}.seg.tiny button{min-width:38px;min-height:var(--h-m)}.ft{min-width:40px;min-height:var(--h-m)}.seatOpen{min-height:var(--h-touch)}.notice button{min-height:var(--h-touch)}.seatSide summary{min-height:var(--h-touch);display:flex;align-items:center}.chip.rel{min-height:var(--h-touch)}
 }
+/* ---- phone (Croix, 23 Oct 2026: "it's terrible for mobile") ----
+   The page scrolls, not the board: the header scrolls away, wide tables scroll sideways inside their own box, lists
+   become cards, dialogs fill the screen, and the Board's controls sit under the chart instead of over it. */
+@media (max-width:640px){
+  body{display:block;height:auto;min-height:100%;overflow-y:visible}
+  html{height:auto}
+  #top{display:grid;grid-template-columns:auto 1fr auto auto auto;align-items:center;gap:6px 8px;margin:8px 8px 0;padding:8px 10px;border-radius:var(--r-l)}
+  #top .brand{grid-column:1}#top .brand h1{font-size:18px}
+  #top .spacer{display:none}
+  #btnHide{grid-column:3}#topMore{grid-column:4}#btnImport{grid-column:5;padding:0 14px}
+  #btnGuide0{grid-column:3/5}
+  #top .nav{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(3,1fr);margin:0}
+  #top .nav.hidden{display:none}
+  #top .nav button{padding:6px 4px;font-size:14px}
+  #search{grid-column:1/-1;grid-row:3;width:100%;min-width:0}
+  #keep{margin:8px 8px 0}
+  #tabs{flex-wrap:nowrap;overflow-x:auto;padding:10px 8px 2px;gap:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #tabs::-webkit-scrollbar{display:none}#tabs>*{flex:none}
+  #notices{padding-left:8px;padding-right:8px}
+  #app{display:block}
+  #board{margin:10px 8px 24px;min-height:0;overflow:visible;flex:none}
+  #bar{padding:10px 12px;gap:8px 10px;min-height:0}
+  #bar h2{font-size:var(--t-l)}#bar .meta{flex-basis:100%;order:2}
+  #bar .spacer{display:none}
+  #bar .seg{flex-wrap:wrap}
+  #gridwrap{overflow-x:auto;overflow-y:visible;min-height:0}
+  /* tables that don't fit scroll sideways in their own section */
+  .gsec{overflow-x:auto;padding:12px 12px 8px}
+  .gtwo{grid-template-columns:1fr}
+  .grades{padding-bottom:24px;gap:12px}
+  .gcards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .gcard{min-width:0;padding:10px 12px}
+  .gcard b{font-size:var(--t-xl)}
+  /* the class grid: a narrower name column, no row numbers */
+  table.grid th.idx,table.grid td.idx{display:none}
+  table.grid th.stu,table.grid td.stu{left:0!important;width:132px;min-width:132px;max-width:132px;padding:0 8px}
+  table.grid th.ptsd,table.grid td.ptsd{left:132px!important;width:56px;min-width:56px;font-size:var(--t-m);padding:0 4px}
+  table.grid thead th{position:static}
+  /* Students: one card per student */
+  .sdir thead{display:none}
+  .sdir,.sdir tbody{display:block}
+  .sdir tr.sgroup{display:block}.sdir tr.sgroup th{display:block;padding:14px 4px 6px}
+  .sdir tr[data-open]{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:10px 4px;border-bottom:1px solid var(--grid)}
+  .sdir tr[data-open] td{display:block;padding:0;border:none;font-size:var(--t-s)}
+  .sdir tr[data-open] td:first-child{flex:1 1 60%;min-width:0;order:0}
+  .sdir tr[data-open] td.sGr{order:1;margin-left:auto}
+  .sdir tr[data-open] td.sCls{order:2;flex-basis:100%;color:var(--ink-soft)}
+  .sdir tr[data-open] td{order:3}
+  .sdir tr[data-open] td.qcol{order:4;flex-basis:100%}
+  .sdir tr[data-open] td:empty{display:none}
+  .sdir td[data-l]::before{content:attr(data-l) " ";color:var(--ink-soft);font-weight:var(--w-med)}
+  .sdir td .nm{white-space:normal;min-height:0}
+  .stuDir .gsec{overflow:visible}
+  /* Overview */
+  .hcards{grid-template-columns:1fr!important}
+  .notice{flex-wrap:wrap}.notice .pill{margin-left:0!important}
+  /* dialogs fill the screen */
+  #modal{padding:0;align-items:stretch}
+  #modal .panel,#modal .panel.narrow,#modal .panel.wide{width:100%;max-height:none;height:100%;border-radius:0}
+  #modal header{padding:12px 16px}
+  #modal .body{padding:14px 16px}
+  #modal footer{padding:10px 16px;flex-wrap:wrap}
+  .row3,.row3.r2,.row3.r3,.row3.r4{grid-template-columns:1fr!important}
+  /* messages: a slim bar along the bottom */
+  #toast{left:8px;right:8px;bottom:8px;width:auto;max-width:none;padding:10px 14px;font-size:14px;border-radius:var(--r-m);text-align:left}
+  /* the Board: the chart gets the screen, the controls follow it */
+  #lb .lbTools{position:sticky;bottom:0;right:auto;max-width:none;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;margin:0;padding:8px;border-radius:0;scrollbar-width:none}
+  #lb .lbTools::-webkit-scrollbar{display:none}#lb .lbTools>*{flex:none}
+  #lb .lbWrap{min-height:0;padding:12px 8px 16px}#lb .labRow{padding:8px 10px 4px;border-left-width:5px}
+  table.grid .stuname{flex-wrap:wrap;gap:2px 6px;padding:4px 0}table.grid .stuname .nm{flex:1 1 100%;min-height:0}
+  table.grid .flag{min-height:24px;padding:2px 8px}
+}
 </style>
 </head>
 <body>
@@ -2792,9 +2864,9 @@ function renderStudentsView() {
     const o = openSec(r.sec); const qs = r.grade && r.f.gi >= 0 ? quickestPath(r.sec, o, r.f.gi, r.f.ixl) : null;
     const ix = r.ixl; const fin = r.finals.map(x => `<span class="qfin">Q${x.q} ${x.g}<small>${letterOf(x.g)}</small></span>`).join('');
     body += `<tr data-open="${esc(r.sec.key)}" data-name="${esc(r.name)}" class="${r.sliding ? 'sliding' : ''}"><td><button class="nm nmbtn">${nm(r.name)}</button>${r.l30 && !H ? ' <span class="fflag l30 small">L30</span>' : ''}${r.sliding ? ' <span class="gtag">sliding</span>' : ''}</td>
-      <td><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td><td>${r.grade ? gradeChip(r.grade) : '<small>no grade yet</small>'}</td>
-      <td class="${r.d < 0 ? 'down' : r.d > 0 ? 'up' : ''}">${r.d == null ? '' : signedPts(r.d)}</td><td>${r.missing || ''}</td>
-      <td>${ix && ix.pct != null ? `${Math.round(ix.pct)}% <small>${ix.done}/${ix.poss}</small>` : '<small>—</small>'}</td><td class="qcol">${quickestShort(qs)}</td><td>${r.retake.hasGrades ? retakeChip(r.retake) : ''}</td><td>${fin}</td></tr>`;
+      <td class="sCls"><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td><td class="sGr">${r.grade ? gradeChip(r.grade) : '<small>no grade yet</small>'}</td>
+      <td class="${r.d < 0 ? 'down' : r.d > 0 ? 'up' : ''}" data-l="Since last import">${r.d == null ? '' : signedPts(r.d)}</td><td data-l="Missing">${r.missing || ''}</td>
+      <td data-l="IXL">${ix && ix.pct != null ? `${Math.round(ix.pct)}% <small>${ix.done}/${ix.poss}</small>` : '<small>—</small>'}</td><td class="qcol">${quickestShort(qs)}</td><td>${r.retake.hasGrades ? retakeChip(r.retake) : ''}</td><td>${fin}</td></tr>`;
   });
   $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th><th>Class</th><th>${esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Retake</th><th>Closed quarters</th></tr></thead><tbody>${body || `<tr><td colspan="9" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet — import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
   $('#gridwrap').querySelectorAll('tr[data-open]').forEach(tr => tr.onclick = () => openProfile(tr.dataset.open, tr.dataset.name));
