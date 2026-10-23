@@ -3,7 +3,7 @@
    class); class-vs-class in a fixed, validated categorical order, always direct-labeled; anything that means
    good → bad (letter grades, how much of a unit is done) wears LETTER_COLORS, green to red; thin marks; <title>
    tooltips; text in ink. */
-const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#008300'];
+const SERIES = ['#5B4BB7', '#B0417E', '#9A6A1C', '#2F8F9D', '#4B5563', '#C27BA0', '#6B7F1E'];   // class colours: kept clear of the grade colours (green, blue, yellow, orange, red) and the course navy and teal (round 7)
 const seriesColor = i => SERIES[i % SERIES.length];
 // Letter grades wear the colours anyone would guess: A green, B blue, C yellow, D orange, F red (Croix, 4 Oct: "common
 // sense colors… not different shades of aqua"). Red and green are the classic colour-blind trap, and in a circle graph
@@ -90,14 +90,16 @@ function chartDots(values, max, o) {
   return s + '</svg>';
 }
 // Histogram with a bin size; bars touch (histograms do), 1px surface gap for legibility.
+const autoBin = max => max > 40 ? 10 : max > 10 ? 5 : 1;
 function chartHist(values, max, bin, o) {
-  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = o.w || 800, h = 200 + pad, v = values.filter(x => x != null); bin = bin || (max > 40 ? 10 : max > 10 ? 5 : 1);
+  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = o.w || 800, h = 200 + pad, v = values.filter(x => x != null); bin = bin || autoBin(max);
   // Bins are [lo, hi) with the top bin closed at max, so 100 with bins of 10 gives ten bins, not an empty 100–110.
   const nb = Math.max(1, Math.ceil(max / bin - 1e-9)); const c = new Array(nb).fill(0); v.forEach(x => c[Math.max(0, Math.min(nb - 1, Math.floor(x / bin)))]++);
   const ints = v.every(x => Number.isInteger(x)); const range = (lo, hi, last) => !ints ? `${lo}–${hi}` : bin === 1 ? `${lo}` : last ? `${lo}–${Math.max(lo, Math.round(max))}` : `${lo}–${hi - 1}`;
-  const top = niceMax(Math.max(...c, 1), c.length && Math.max(...c) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Y = n => h - 30 - n / top * (h - 50 - pad);
+  const sh = o.share ? (x => x / Math.max(v.length, 1) * 100) : (x => x); const cv = c.map(sh);   // share: each bar as a percent of the row's students
+  const top = o.share ? Math.ceil(Math.max(o.top || 0, ...cv, 1) / 10) * 10 : niceMax(Math.max(o.top || 0, ...cv, 1), Math.max(o.top || 0, ...cv) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Yv = t => h - 30 - t / top * (h - 50 - pad), Y = n => Yv(sh(n));
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="histogram">`;
-  for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
+  for (let n = 0; n <= top; n += o.share ? (top > 50 ? 20 : 10) : Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Yv(n)}" x2="${w - 20}" y2="${Yv(n)}" class="gl"/><text x="34" y="${Yv(n) + 4}" text-anchor="end" class="tl">${n}${o.share ? '%' : ''}</text>`;
   c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--cc,var(--teal))"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
   s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${nb * bin}</text>`;
   if (o.mean != null) s += meanMark(X(Math.max(0, Math.min(nb, o.mean / bin))), 10, Y(0), o.meanLabel || 'Average');   /* the axis is labelled at bin edges, so a value sits at value ÷ bin */
@@ -116,9 +118,9 @@ function chartFreq(values, max, o) {
   const v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[Math.round(x)] = (counts[Math.round(x)] || 0) + 1);
   const items = []; for (let x = 0; x <= max; x++) items.push({ label: String(x), value: counts[x] || 0 });
   if (items.length > 26) return chartHist(values, max, Math.ceil(max / 20), o);   // too many bars: bin them
-  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = o.w || 800, h = 200 + pad, top = niceMax(Math.max(...items.map(i => i.value), 1), 1); const X = i => 40 + i / items.length * (w - 60), Y = n => h - 30 - n / top * (h - 50 - pad);
+  o = o || {}; const pad = o.mean != null ? 16 : 0; const sh = o.share ? (x => x / Math.max(v.length, 1) * 100) : (x => x); const w = o.w || 800, h = 200 + pad, top = o.share ? Math.ceil(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1) / 10) * 10 : niceMax(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1), 1); const X = i => 40 + i / items.length * (w - 60), Yv = t => h - 30 - t / top * (h - 50 - pad), Y = n => Yv(sh(n));
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="bar graph">`;
-  for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
+  for (let n = 0; n <= top; n += o.share ? (top > 50 ? 20 : 10) : Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Yv(n)}" x2="${w - 20}" y2="${Yv(n)}" class="gl"/><text x="34" y="${Yv(n) + 4}" text-anchor="end" class="tl">${n}${o.share ? '%' : ''}</text>`;
   items.forEach((it, i) => { s += `<rect x="${X(i) + 3}" y="${Y(it.value)}" width="${Math.max(X(i + 1) - X(i) - 6, 2)}" height="${Y(0) - Y(it.value)}" rx="3" class="bar" style="fill:var(--cc,var(--teal))"><title>${it.label}: ${it.value} student${it.value === 1 ? '' : 's'}</title></rect><text x="${(X(i) + X(i + 1)) / 2}" y="${h - 10}" text-anchor="middle" class="tl">${it.label}</text>`; });
   if (o.mean != null) s += meanMark(X(Math.max(0, Math.min(items.length, o.mean + 0.5))), 10, Y(0), o.meanLabel || 'Average');   /* each value's bar is centred on value + ½ */
   return s + '</svg>';
@@ -145,10 +147,10 @@ function chartCircle(parts, o) {
 const CHART_CSS = `
 .chart{width:100%;height:auto;display:block}.chart .gl{stroke:var(--grid);stroke-width:1}.chart .ax{stroke:var(--navy);stroke-width:1.5}
 .chart .tl{font-size:12px;fill:var(--ink-soft)}.chart .lbl{font-size:13px;font-weight:var(--w-bold);fill:var(--navy)}.chart .val{font-size:12px;font-weight:var(--w-black);fill:var(--navy)}.chart .inv{font-size:12px;font-weight:var(--w-black);fill:#fff}
-#lb .chart .tl{font-size:16px}#lb .chart .lbl{font-size:17px}#lb .chart .val{font-size:16px}#lb .chart .inv{font-size:16px}
+#lb .chart .tl{font-size:16px;fill:var(--navy);font-weight:var(--w-bold)}#lb .chart .lbl{font-size:17px}#lb .chart .val{font-size:16px}#lb .chart .inv{font-size:16px}
 .chart .qmark{stroke:var(--ink-soft);stroke-width:1;stroke-dasharray:4 4;opacity:.7}.chart .qmarkl{font-size:11px;font-weight:var(--w-bold)}.chart .ln.ref{stroke-dasharray:5 4;stroke-width:2}
 .chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--cc,var(--teal));stroke:#fff;stroke-width:1.5}.chart .meanLine{stroke:var(--navy);stroke-width:1.5;stroke-dasharray:3 3;opacity:.7}.chart .meanDia{fill:var(--white);stroke:var(--navy);stroke-width:2}.chart .bar{stroke:none}
-.stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
+.stem{border-collapse:collapse;font-family:inherit;font-variant-numeric:tabular-nums;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.35em}
 .labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px;overflow:visible}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.35);margin:.4em 0 .2em}
 `;
 // The app page gets the chart styles at boot; the standalone Race/Lab export includes CHART_CSS through LAB_CSS.

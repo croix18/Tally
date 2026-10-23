@@ -164,6 +164,10 @@ function closeQuarter(n, unitPicks) {
 }
 function reopenQuarter(n) { delete quarters().closed[n]; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); }   // the archive stays; closing again refreshes it
 
+// A closed quarter whose end date hasn't come yet: its work is hidden as finished while the class is still doing it
+// (Croix, 23 Oct: an accidental close made the conference forms wrong). The latest one, or null.
+function todayISO() { const t = new Date(); return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`; }
+function closedEarly() { const n = [4, 3, 2, 1].find(qClosed); return n && todayISO() <= quarters().ends[n - 1] ? n : null; }
 // A quarter whose end date has passed and isn't closed yet (the Overview offers to close it).
 function quarterDue() { const n = currentQuarter(); const end = quarters().ends[n - 1]; const today = new Date(); const iso = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`; return !qClosed(n) && iso > end ? n : null; }
 
@@ -184,33 +188,44 @@ function openQuarters(keep) {
   const unitPick = p => { const us = courseUnits(p); if (!us.length) return ''; return `<div class="field"><label>${p === 'acc' ? 'Accelerated' : 'On-level'}</label><div class="qunits">${us.map(u => { const cur = q.units[p][u.name]; const key = p + '|' + u.name; const on = keep.picks && key in keep.picks ? keep.picks[key] : (cur === n || (!cur && due[p].has(u.name))); const other = cur && cur !== n && qClosed(cur); return `<label class="${other ? 'dim' : ''}"><input type="checkbox" data-qu="${esc(key)}" data-short="${esc(u.short)}" ${on || other ? 'checked' : ''} ${other ? 'disabled' : ''}> ${esc(u.short)}${other ? ` <small>Q${cur}</small>` : due[p].has(u.name) ? ' <small>due in Q' + n + '</small>' : ''}</label>`; }).join('')}</div></div>`; };
   const dates = `<div class="qdates">${q.ends.map((d, i) => `<label class="${qClosed(i + 1) ? 'closed' : i + 1 === n ? 'now' : ''}"><span>${Q_NAMES[i]} ends</span><input type="date" data-qend="${i}" value="${esc(d)}" ${qClosed(i + 1) ? 'disabled' : ''}><small>${qClosed(i + 1) ? 'closed ' + esc(fmtDate((q.closed[i + 1].at || '').slice(0, 10))) : i + 1 === n ? 'now' : ''}</small></label>`).join('')}</div>
       <p class="ghint">Lake County Schools 2026–27 dates.</p>`;
+  const early = !ended && !!keep.early;   // closing before the end date is only offered from Settings, behind a tick
   const form = `<p class="qlead">Tally keeps every ${esc(QN)} score and final grade, then stops bringing it up — no missing work, sliding, Focus checks or still-owed lines. It stays one tap away (Grades → <b>Q${n}</b>, and each student's page), and you can reopen it.</p>
-      ${!ended ? `<p class="warnline">${esc(QN)} doesn't end until ${esc(fmtDate(q.ends[n - 1]))}. Closing now keeps each class as of its last export.</p>` : staleN ? `<p class="warnline">${allStale ? (staleN === 1 ? 'The gradebook here was' : 'Every gradebook here was') : `${plural(staleN, 'gradebook')} here ${staleN === 1 ? 'was' : 'were'}`} exported before ${esc(QN)} ended (${esc(fmtDate(q.ends[n - 1]))}). If grades changed in Focus since, export ${esc(QN)} from Focus and import it first.</p>` : ''}
+      ${!ended ? `<p class="warnline">${esc(QN)} doesn't end until ${esc(fmtDate(q.ends[n - 1]))}. Closed early, its work stops showing as missing, on student pages and on conference forms, until you reopen it.</p>` : staleN ? `<p class="warnline">${allStale ? (staleN === 1 ? 'The gradebook here was' : 'Every gradebook here was') : `${plural(staleN, 'gradebook')} here ${staleN === 1 ? 'was' : 'were'}`} exported before ${esc(QN)} ended (${esc(fmtDate(q.ends[n - 1]))}). If grades changed in Focus since, export ${esc(QN)} from Focus and import it first.</p>` : ''}
       <table class="checkTable qkeep"><tbody>${rows}</tbody></table>
       ${unitPick('acc') || unitPick('on') ? `<details class="qmore" id="qUnits" ${keep.units ? 'open' : ''}><summary><span>IXL units in ${esc(QN)}: <b id="qUnitSum"></b></span> <u>Change</u></summary>${unitPick('acc')}${unitPick('on')}</details>` : ''}
-      <div class="rp-actions"><button class="pill" id="qClose">Close ${esc(QN)}</button><button class="pill pale" id="mCancel">Not yet</button></div>`;
+      ${early ? `<label class="check qsure"><input type="checkbox" id="qSure"> I know ${esc(QN)} runs until ${esc(fmtDate(q.ends[n - 1]))}</label>` : ''}
+      <div class="rp-actions"><button class="pill" id="qClose" ${early ? 'disabled' : ''}>${early ? `Close ${esc(QN)} early` : `Close ${esc(QN)}`}</button><button class="pill pale" id="mCancel">Cancel</button></div>`;
+  // One line per closed quarter. The latest reopens in one click (no question: reopening loses nothing); an earlier one
+  // waits for the ones after it.
+  const closedList = [1, 2, 3, 4].filter(qClosed).map(i => { const at = (q.closed[i].at || '').slice(0, 10); const soon = at && at < q.ends[i - 1];
+    return `<li><b>${esc(Q_NAMES[i - 1])}</b> <span>closed ${esc(fmtDate(at))}${soon ? ` <em class="qearlyTag">early, it ends ${esc(fmtDate(q.ends[i - 1]))}</em>` : ''}</span>${i === lastClosed ? `<button class="pill pale small" id="qReopen">Reopen</button>` : `<small>reopen ${esc(Q_NAMES[lastClosed - 1])} first</small>`}</li>`; }).join('');
+  const closedBox = closedList ? `<h3 class="mt">Closed</h3><ul class="qclosed">${closedList}</ul><p class="ghint">Reopening brings back its missing work, Focus checks and still-owed lines. The kept copy stays.</p>` : '';
   const m = $('#modal'); m.classList.remove('hidden');
-  // When the quarter has ended this dialog is about closing it. Before that it is the quarter dates, with closing early
-  // one deliberate step away — so the screen opened to reopen Q1 or fix a date doesn't lead with "Close Quarter 2".
-  m.innerHTML = `<div class="panel"><header><h2>${!allClosed && ended ? `Close ${esc(QN)}` : 'Quarters'}</h2><button id="mClose" aria-label="Close">×</button></header>
+  // When the quarter has ended this dialog is about closing it. Before that it is the quarter dates and nothing that
+  // closes: closing early lives in Settings, behind a tick, so a stray tap can't end a quarter in the middle of it.
+  m.innerHTML = `<div class="panel"><header><h2>${!allClosed && ended ? `Close ${esc(QN)}` : early ? `Close ${esc(QN)} early` : 'Quarters'}</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one quarters">
-      ${allClosed ? `<p><b>Every quarter is closed.</b></p>${dates}` : ended ? `${form}<details class="qmore" id="qDates" ${keep.dates ? 'open' : ''}><summary>Quarter dates…</summary>${dates}</details>`
-        : `${dates}<details class="qmore" id="qEarly" ${keep.early ? 'open' : ''}><summary><span>Close ${esc(QN)} early… <small>it ends ${esc(fmtDate(q.ends[n - 1]))}</small></span></summary>${form}</details>`}
-      ${lastClosed ? `<p class="ghint">Closed by mistake? <button class="linkbtn" id="qReopen">Reopen ${esc(Q_NAMES[lastClosed - 1])}</button> — its alerts come back; the saved copy stays.</p>` : ''}
+      ${allClosed ? `<p><b>Every quarter is closed.</b></p>${dates}` : ended || early ? `${form}<details class="qmore" id="qDates" ${keep.dates ? 'open' : ''}><summary>Quarter dates…</summary>${dates}</details>`
+        : `${dates}<p class="ghint">${esc(QN)} ends ${esc(fmtDate(q.ends[n - 1]))}. After that, Tally asks you to close it.</p>`}
+      ${closedBox}
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; render(); };
   m._cancel = close; $('#mClose').onclick = close; const mc = $('#mCancel'); if (mc) mc.onclick = close; m.onclick = e => { if (e.target === m) close(); };
   const isOpen = id => { const d = $('#' + id); return !!(d && d.open); };
   const picksNow = () => { const o = {}; m.querySelectorAll('[data-qu]:not(:disabled)').forEach(cb => { o[cb.dataset.qu] = cb.checked; }); return o; };
-  const again = extra => openQuarters({ dates: isOpen('qDates'), units: isOpen('qUnits'), early: isOpen('qEarly'), picks: picksNow(), ...(extra || {}) });
+  const again = extra => openQuarters({ dates: isOpen('qDates'), units: isOpen('qUnits'), early, picks: picksNow(), ...(extra || {}) });
   m.querySelectorAll('[data-qend]').forEach(inp => inp.onchange = () => { if (!ISO_RE.test(inp.value)) return; q.ends[Number(inp.dataset.qend)] = inp.value; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); again(); });
   const sum = $('#qUnitSum'); const unitSum = () => { if (!sum) return; const by = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => by[cb.dataset.qu.split('|')[0]].push(cb.dataset.short));
     const part = (p, label) => courseUnits(p).length ? `${label} ${by[p].length ? by[p].join(', ') : 'none'}` : ''; sum.textContent = [part('acc', 'Accelerated'), part('on', 'On-level')].filter(Boolean).join(' · '); };
   m.querySelectorAll('[data-qu]').forEach(cb => cb.onchange = unitSum); unitSum();
+  const sure = $('#qSure'); if (sure) sure.onchange = () => { $('#qClose').disabled = !sure.checked; };
   const qc = $('#qClose'); if (qc) qc.onclick = () => {
+    if (early && !(sure && sure.checked)) return;
     const picks = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => { const [p, u] = cb.dataset.qu.split(/\|(.*)/s); picks[p].push(u); });
+    const before = JSON.stringify({ units: q.units, closed: q.closed });
     const per = closeQuarter(n, picks); save(); m.classList.add('hidden'); m.innerHTML = ''; render();
-    toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'} — it won't come up again unless you reopen it.`, false, 5000);
+    toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'}. Its missing work stops coming up. <button class="tundo" id="qUndo">Undo</button>`, false, 9000);
+    const un = $('#qUndo'); if (un) un.onclick = () => { const b = JSON.parse(before); q.units = b.units; q.closed = b.closed; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); render(); toast(`${esc(QN)} is open again.`, false, 2500); };
   };
-  const ro = $('#qReopen'); if (ro) ro.onclick = async () => { if (!await ask(`Reopen ${Q_NAMES[lastClosed - 1]}? Its missing work, Focus checks and still-owed lines come back. The saved copy stays.`)) return; reopenQuarter(lastClosed); save(); openQuarters({}); };
+  const ro = $('#qReopen'); if (ro) ro.onclick = () => { const N = Q_NAMES[lastClosed - 1]; reopenQuarter(lastClosed); save(); openQuarters({}); toast(`<b>${esc(N)} is open again.</b> Its missing work and Focus checks are back. Close it again whenever you're ready.`, false, 6000); };
 }

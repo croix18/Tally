@@ -515,6 +515,34 @@ per-section-file era and many items in them are now done).
     Script, autosaving to a file in his school Drive (one Tally across laptop, panel and tablet). Croix: "Let's hold
     off on that option and stick to the html for now." So: the HTML file, opened directly in Chrome on the laptop,
     with Full saves to Drive.
+- **23 Oct 2026 — Round 7: design and usability (`tests/design-oct23.js`).** Croix: "solely focused on the design
+  elements … and especially usability", after two mistakes that were hard to undo.
+  - **Quarters close only after they end** (his pick). Before the end date the Quarters dialog has dates and nothing
+    that closes. Closing early is in Settings → All of Tally → Quarters → "Close Quarter N early…", behind a tick
+    ("I know Quarter N runs until …"). Every close has Undo; while a quarter is closed before its end date the
+    Overview leads with a coral notice and a one-tap Reopen; Reopen never asks; a gradebook for a quarter closed
+    early asks "Reopen and import" (Cancel only updates the kept record). Why it mattered: `currentQuarter()` is the
+    first open quarter, so a stray close hides every missing assignment of the quarter still being taught (that is
+    what made his conference forms wrong).
+  - **Category mistakes undo in one tap.** The import asker is one dropdown per assignment, already on Tally's guess;
+    only a row he changes becomes "Set by you" (Apply used to lock every row). Grades → Assignments says where each
+    category came from (Proved by Focus · From the file · Tally's guess · Set by you), offers "Use Focus's categories"
+    when the Focus Grade column fits better with the ones he set changed (`fitCategories().focusMap`), "Let Tally
+    decide" per row and for all, and Undo on every change. Needs attention says when categories he set disagree with
+    Focus, and when a quiz or test sits outside Assessments.
+  - **Conference form = short notes** (his pick: "short notes but also give me space to edit"). One bullet per fact,
+    each with its number ("• 45% on the Unit 1 Assessment (class average 60%)", "• 2 missing assignments, zeros until
+    turned in (grade 78% → up to 88% if turned in)"). The third box: Turn in · Not taken yet · Finish on IXL (only
+    when it stands between the student and a retake) · Can be retaken · "Retake allowed after: missing work + Unit 3
+    IXL". "Make up" is gone. Each box is kept on its own: an untouched box follows the numbers; an edited one says
+    when Tally's numbers changed since and offers "Add the new lines" or "Back to Tally's draft".
+  - **Board:** Data Lab compares the two courses (Accelerated | On-level | Both; By course | By class; an assignment
+    is paired with its twin in the other course, or he picks the pair). The course, chart and assignment are
+    remembered per course, so switching classes no longer resets the highlight. Axis numbers bold navy, stem-and-leaf
+    in DM Sans, "Q1 = 12", toolbar scales with the screen, messages go to the top on the Board.
+  - **Look:** class colours moved off the grade hues (purple, berry, bronze, cyan, slate, rose, olive; checked in
+    `tests/colors.js`); dialog headers are light; F chips are no longer alert-coral; danger buttons are red-outlined.
+    Not done (his call): gold and DM Serif Display from the house style; the ~230 em dashes in on-screen text.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

@@ -26,7 +26,11 @@ function attentionItems(sec) {
   if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings' });
   if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally — ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid', shared: off.every(c => !c.maxOK) });
     const stale = off.length ? [] : checks.filter(c => c.counts.stale > 0); if (stale.length) out.push({ level: 'info', text: 'moved up since you copied — ' + stale.map(c => `${c.unit.short}: ${plural(c.counts.stale, 'student')}`).join(' · ') + ' — copy again', go: 'grid' });
-    const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' }); if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' }); }
+    const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; const disN = fit ? Object.values(fit.disagree || {}).filter(Boolean).length : 0;
+    if (disN) out.push({ level: 'warn', text: `${disN} ${disN === 1 ? 'category' : 'categories'} you set ${disN === 1 ? 'disagrees' : 'disagree'} with Focus's grades`, go: 'grades', shared: true });
+    else if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' });
+    if (hasOpenGrades(sec)) { const g = gradingFor(sec.prep); const odd = g.cats.some(c => c.name === 'Assessments') ? openSec(sec).grades.assignments.filter(a => g.how[a.name] === 'user' && looksLikeTest(a.name) && g.map[a.name] !== 'Assessments') : [];
+      if (odd.length) out.push({ level: 'info', text: odd.length === 1 ? `"${odd[0].name}" is in ${g.map[odd[0].name]}, not Assessments` : `${odd.length} tests or quizzes are not in Assessments`, go: 'grades', shared: true }); } if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' }); }
   // No "Working in" unit (it is set by the first import, so this is a plan that has numbered units but lost its pick): nothing counts until one is chosen.
   if (!sec.placeholder && sec.students.length && !(state.settings.currentUnit || {})[sec.prep] && sec.skills.some(sk => /^Unit\s+\d+/i.test(sk.unit))) out.push({ level: 'info', text: 'pick the unit you\'re working in — no unit counts until you do', go: 'grid', shared: true });
   const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid' });
@@ -73,6 +77,7 @@ function renderHome() {
   const row = g => g.each ? `<li class="${g.level} each"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div></li>`
     : `<li class="${g.level}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"><i></i><span><b>${esc(g.who)}</b> — ${esc(g.text)}</span><em>›</em></button></li>`;
   const qdLine = qd ? `<li class="warn"><button id="qdGo"><i></i><span><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</span><em>›</em></button></li>` : '';
+  const ce = closedEarly(); const ceLine = ce ? `<div class="notice qce"><span>${ico('warn')}</span><span><b>${esc(Q_NAMES[ce - 1])} was closed early</b> on ${esc(fmtDate((quarters().closed[ce].at || '').slice(0, 10)))}. It runs until ${esc(fmtDate(quarters().ends[ce - 1]))}, so its missing work isn't showing on student pages or conference forms.</span><button class="pill small" id="ceReopen">Reopen ${esc(Q_NAMES[ce - 1])}</button></div>` : '';
   const lb = state.lastBackup; const bkDue = backupBehind();
   const bkLine = bkDue ? `<li class="info"><button id="hBackup" title="Download a Full save: everything in Tally. Keep it in your school Drive"><i></i><span><b>Full save</b> — ${storageFragile ? 'work on this page is in no Full save yet' : lb ? `new imports since the last one (${esc(ageDays(day(lb)) === 0 ? 'earlier today' : fmtDate(day(lb)))})` : 'nothing has been saved from this browser yet'}</span><em>Save</em></button></li>` : '';
   const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>This browser's storage is ${su.pct}% full</b> — ${su.other > su.tally ? `other saved pages hold most of it (${su.mb(su.other)} MB; Tally ${su.mb(su.tally)} MB). Make a Full save first` : 'make a Full save, then remove an old class or gradebook in Settings'}</span><em>›</em></button></li>` : '';
@@ -101,6 +106,7 @@ function renderHome() {
   const importLine = li && (li.lines.length || li.fails.length) ? `<details class="himport ${li.fails.length ? 'warn' : ''}" ${li.fails.length ? 'open' : ''}><summary><b>${nFiles || li.fails.length ? 'Last import' : 'Note'}</b> <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(day(li.at)))}, ${esc(fmtTime(li.at))}${nFiles || li.fails.length ? ` · ${plural(nFiles, 'file')}${li.fails.length ? ` · <span class="bad">${li.fails.length} couldn't be read</span>` : ' — all read'}` : ''}${li.lines.some(l => l.wi) ? ' · Working in was set for you' : ''}</small><button class="linkbtn" id="liHide" title="Remove this until the next import">Dismiss</button></summary>
     <ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}${li.skipped ? `<li class="muted">${plural(li.skipped, 'file')} skipped</li>` : ''}</ul></details>` : '';
   $('#gridwrap').innerHTML = `<div class="home">
+    ${ceLine}
     ${importLine}
     ${attList}
     <div class="hcards">${secs.map(card).join('')}</div>
@@ -116,6 +122,7 @@ function renderHome() {
   const hb = $('#hBackup'); if (hb) hb.onclick = () => saveFull();
   const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;
+  const cr = $('#ceReopen'); if (cr) cr.onclick = () => { const n = closedEarly(); if (!n) return; reopenQuarter(n); save(); render(); toast(`<b>${esc(Q_NAMES[n - 1])} is open again.</b> Its missing work and Focus checks are back.`, false, 5000); };
   $('#gridwrap').querySelectorAll('[data-digest]').forEach(b => b.onclick = e => { e.stopPropagation(); openDigest(state.sections[b.dataset.digest]); });
   $('#gridwrap').querySelectorAll('[data-go]').forEach(b => b.onclick = e => { e.stopPropagation(); const where = b.dataset.where || 'grid'; state.active = b.dataset.go;
     if (where === 'import') { $('#file').click(); return; }

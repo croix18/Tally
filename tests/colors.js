@@ -27,6 +27,9 @@ const rgb = h => 'rgb(' + hex(h).map(c => Math.round(c * 255)).join(', ') + ')';
   for (let i=0;i<5;i++) for (let j=i+1;j<5;j++) { for (const k of ['protan','deutan']) { const d=dE(L[ks[i]],L[ks[j]],k); if (d<worst[0]) worst=[d,ks[i]+'–'+ks[j]+' '+k]; } const d=dE(L[ks[i]],L[ks[j]]); if (d<worstN[0]) worstN=[d,ks[i]+'–'+ks[j]]; }
   check(worst[0]>=7.9,'every pair of grade colours stays apart with red-green colour blindness (worst '+worst[1]+' ΔE '+worst[0].toFixed(1)+', target 8)');
   check(worstN[0]>=15,'…and with full colour vision (worst '+worstN[1]+' ΔE '+worstN[0].toFixed(1)+')');
+  const SER=((charts.match(/const SERIES = \[([^\]]*)\]/)||[])[1]||'').match(/#[0-9a-fA-F]{6}/g)||[]; let near=[1e9,''];
+  SER.forEach(c=>Object.entries(L).forEach(([k,g])=>{ const d=dE(c,g); if (d<near[0]) near=[d,c+' vs '+k]; }));
+  check(SER.length>=5 && near[0]>=8,'class colours stay clear of the grade colours (closest '+near[1]+' ΔE '+near[0].toFixed(1)+')');
   check(!/GRADE_COLORS/.test(charts+fs.readFileSync('app.js','utf8')+fs.readFileSync('home.js','utf8')+fs.readFileSync('students.js','utf8')+fs.readFileSync('grades.js','utf8')),'no leftover reference to the old teal grade ramp');
   // ---- 2. in the running app ---------------------------------------------------------------------------------
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1536,height:864}}); const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());

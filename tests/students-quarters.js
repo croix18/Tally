@@ -95,7 +95,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const before=await p.evaluate(K=>{ const T=window.__tally; return T.reconcile(T.state.sections[K]).length; }, K);
   await p.click('#homeQuarters'); await p.waitForTimeout(300);
   // before the quarter's end date the dialog is "Quarters" and closing is one deliberate step away; after it, the dialog is the close form
-  if (await p.locator('#qEarly').count()) { check(/^Quarters/.test(await p.textContent('#modal h2')) && await p.locator('#qEarly:not([open])').count()===1 && !(await p.locator('#qClose').isVisible()),'before the end date the dialog opens on the dates; "Close Quarter 1 early…" is folded'); await p.click('#qEarly > summary'); await p.waitForTimeout(200); }
+  if (!(await p.locator('#qClose').count())) { check(/^Quarters/.test(await p.textContent('#modal h2')),'before the end date the Quarters dialog has no way to close the quarter'); await p.evaluate(()=>window.__tally.openQuarters({early:true})); await p.waitForTimeout(200);
+    check(await p.locator('#qClose[disabled]').count()===1,'closing early (from Settings) waits for "I know Quarter 1 runs until…"'); await p.check('#qSure'); }
   else check(/^Close Quarter 1/.test(await p.textContent('#modal h2')),'after the end date the dialog is the close form');
   const dlg=(await p.evaluate(()=>document.querySelector('#modal .panel').innerText)).split(/\s+/).length;
   check(dlg<190 && await p.locator('#modal .warnline').count()<=1 && await p.locator('#qUnits:not([open])').count()===1 && /IXL units in Quarter 1: Accelerated Unit 1, Unit 2/.test(await p.textContent('#qUnits summary')),'the close dialog is short: the caution once, dates and unit ticks folded away ('+dlg+' words)');

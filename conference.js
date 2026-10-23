@@ -39,55 +39,61 @@ function conferenceData(sec, name) {
   const graded = gb ? all.filter(a => a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && catIn(s, a) !== 'Participation').length : 0;
   // what turning in every missing assignment and making up every missed test at full credit would do to the grade
   let ifDone = null; if (r && missingAll.length) { const over = {}; missingAll.forEach(a => over[a.name] = a.max); ifDone = computeGrade(s, i, over).rounded; }
+  const ifWith = list => { if (!r || !list.length) return null; const over = {}; list.forEach(a => over[a.name] = a.max); return computeGrade(s, i, over).rounded; };
+  const ifWork = ifWith(missingAll.filter(a => !isAssess(s, a))), ifTests = ifWith(missingAll.filter(a => isAssess(s, a)));
   // the Focus IXL columns: how much of the grade's IXL is done
   const ixlCols = all.filter(a => ixlCol(a) && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
   const ixlGrade = ixlCols.length ? { got: ixlCols.reduce((p, a) => p + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), max: ixlCols.reduce((p, a) => p + a.max, 0) } : null;
   const prev = s && !s._closed ? prevGradeSnap(s) : null;
   const rt = retakeStatus(sec, name); const ix = ixlFor(sec, f.ixl);
   const first = state.settings.hideNames ? mask(name) : niceName(name).split(' ')[0];
-  return { sec, name, first, f, sum, r, q: liveQuarter(sec), rc, missing, missedTests, tests, redo, graded, ifDone, ixlGrade, prevDate: prev ? prev.date : null, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
+  return { sec, name, first, f, sum, r, q: liveQuarter(sec), rc, missing, missedTests, tests, redo, graded, ifDone, ifWork, ifTests, ixlGrade, prevDate: prev ? prev.date : null, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
 }
 
-// Strengths and Concerns: a few full sentences each, every one tied to a number, the biggest effect on the grade first.
+// Strengths and Concerns as short notes (Croix, 23 Oct 2026: "short notes, but give me space to edit and write in
+// stuff"). One fact per line, each with its number, the biggest effect on the grade first; the box keeps room to write.
+// Words a parent reads: "tests and quizzes", never "assessments"; no "pts", no "at goal", no year-long IXL totals.
 function conferenceDraft(d) {
-  const P = v => confRound(v) + '%'; const n = d.first; const S = [], C = [];
-  const of = t => `${fmtN(t.v)} of ${fmtN(t.max)}`;
-  const vsClass = t => t.avg != null && Math.abs(t.pct - t.avg) >= 5 ? ` The class average was ${P(t.avg)}.` : '';
+  const P = v => confRound(v) + '%'; const S = [], C = [];
+  const avgOf = t => t.avg != null ? ` (class average ${P(t.avg)})` : '';
   const real = d.tests.filter(t => t.real);
   const unitTests = real.filter(t => t.unit);
   // ---- strengths ----
   const bestUnit = unitTests.slice().sort((a, b) => b.pct - a.pct)[0];
   const bestReal = real.slice().sort((a, b) => b.pct - a.pct || b.max - a.max)[0];
   const stand = t => t && (confRound(t.pct) >= 85 || (confRound(t.pct) >= 75 && t.avg != null && t.pct - t.avg >= 10));
-  if (stand(bestUnit)) S.push(`${n} scored ${of(bestUnit)} (${P(bestUnit.pct)}) on the ${bestUnit.name}.${vsClass(bestUnit)}`);
-  else if (stand(bestReal)) S.push(`${n} scored ${of(bestReal)} (${P(bestReal.pct)}) on the ${bestReal.name}.${vsClass(bestReal)}`);
-  if (d.r && !d.missing.length && !d.missedTests.length && d.graded >= 3) S.push(`${n} has turned in every assignment this quarter.`);
-  if (!d.rt.noIxl && d.rt.unit && d.rt.nUnit && !d.rt.short.length) S.push(`${n} has finished every ${d.rt.unit.short} IXL practice skill.`);
-  if (d.sum.d != null && d.sum.d >= 3 && d.prevDate) S.push(`${n}'s grade has gone up ${d.sum.d} points since ${fmtDate(d.prevDate)}.`);
+  const best = stand(bestUnit) ? bestUnit : stand(bestReal) ? bestReal : null;
+  if (best) S.push(`• ${P(best.pct)} on the ${best.name}${avgOf(best)}`);
+  if (d.r && d.r.rounded != null && d.r.rounded >= 85 && d.graded >= 3) S.push(`• ${d.r.rounded}% in the class so far (${d.r.letter})`);
+  if (real.length >= 2) { const avg = real.reduce((a, t) => a + t.pct, 0) / real.length; if (confRound(avg) >= 85 && !(best && real.length === 2)) S.push(`• Tests and quizzes average ${P(avg)}`); }
+  if (d.r && !d.missing.length && !d.missedTests.length && d.graded >= 3) S.push('• Every assignment turned in');
+  if (!d.rt.noIxl && d.rt.unit && d.rt.nUnit && !d.rt.short.length) S.push(`• Every ${d.rt.unit.short} IXL skill finished`);
+  if (d.sum.d != null && d.sum.d >= 3 && d.prevDate && d.r) S.push(`• Grade up ${d.sum.d} points since ${fmtDate(d.prevDate)} (now ${d.r.rounded}%)`);
   // ---- concerns ----
-  if (d.missing.length) {
-    const k = d.missing.length; const gain = d.ifDone != null && d.r ? d.ifDone - d.r.rounded : 0;
-    C.push(`${n} has ${k === 1 ? '1 missing assignment' : k + ' missing assignments'}, which count${k === 1 ? 's' : ''} as ${k === 1 ? 'a zero' : 'zeros'} until turned in.${gain >= 2 && !d.missedTests.length ? ` Turning ${k === 1 ? 'it' : 'them'} in could raise the grade from ${d.r.rounded}% to as high as ${d.ifDone}%.` : ''}`);
-  }
-  if (d.missedTests.length) { const names = d.missedTests.slice(0, 2).map(t => 'the ' + t.name).join(' and '); const gain = d.ifDone != null && d.r ? d.ifDone - d.r.rounded : 0;
-    C.push(`${n} missed ${names}${d.missedTests.length > 2 ? ` and ${d.missedTests.length - 2} more` : ''} and needs to make ${d.missedTests.length === 1 ? 'it' : 'them'} up.${gain >= 2 ? ` ${d.missing.length ? 'Making these up and turning in the missing work' : `Making ${d.missedTests.length === 1 ? 'it' : 'them'} up`} could raise the grade from ${d.r.rounded}% to as high as ${d.ifDone}%.` : ''}`); }
+  const now = d.r ? d.r.rounded : null;
+  if (d.missing.length) { const k = d.missing.length; const up = d.ifWork != null && now != null && d.ifWork - now >= 1;
+    C.push(`• ${k === 1 ? '1 missing assignment' : k + ' missing assignments'}, ${k === 1 ? 'a zero' : 'zeros'} until turned in${up ? ` (grade ${now}% → up to ${d.ifWork}% if turned in)` : ''}`); }
+  if (d.missedTests.length) { const k = d.missedTests.length; const up = d.ifTests != null && now != null && d.ifTests - now >= 1;
+    C.push(`• ${k === 1 ? `${d.missedTests[0].name} not taken yet` : `${k} tests or quizzes not taken yet`}${up ? ` (grade → up to ${d.ifTests}% once taken)` : ''}`); }
   const low = real.filter(t => confRound(t.pct) < 70).sort((a, b) => a.pct - b.pct);
-  if (low.length) { const t = low[0];
-    const path = d.rt.ok ? ` ${n} can retake it now.` : d.rt.noIxl ? (d.rt.missing.length ? ` A retake opens once the missing work is turned in.` : '') : ` A retake opens once ${n} ${[d.rt.missing.length ? 'turns in the missing work' : '', d.rt.short.length ? `finishes ${plural(d.rt.short.length, d.rt.unit.short + ' IXL practice skill')}` : ''].filter(Boolean).join(' and ')}.`;
-    C.push(`${n} scored ${of(t)} (${P(t.pct)}) on the ${t.name}.${vsClass(t)}${path}${low.length > 1 ? ` ${low.length - 1} more ${low.length === 2 ? 'quiz or test is' : 'quizzes or tests are'} below 70% (listed below).` : ''}`); }
-  if (d.ixlGrade && d.ixlGrade.max && d.ixlGrade.got / d.ixlGrade.max < 0.6 && d.r && d.r.rounded < 80) C.push(`IXL practice counts in the grade. ${n} has finished ${d.ixlGrade.got} of the ${d.ixlGrade.max} IXL skills counted so far, and finishing the rest raises the grade.`);
-  if (d.sum.d != null && d.sum.d <= -3 && d.prevDate) C.push(`${n}'s grade has dropped ${-d.sum.d} points since ${fmtDate(d.prevDate)}.`);
-  if (d.r && d.graded >= 3 && !C.length) C.push('No concerns at this time.');   // with only participation graded there is nothing to judge yet
+  if (low.length) { C.push(`• ${P(low[0].pct)} on the ${low[0].name}${avgOf(low[0])}`);
+    if (low.length > 1) C.push(`• Also below 70%: ${low.slice(1, 3).map(t => `${t.name} (${P(t.pct)})`).join(', ')}${low.length > 3 ? ` and ${low.length - 3} more` : ''}`); }
+  if (d.ixlGrade && d.ixlGrade.max && d.ixlGrade.got / d.ixlGrade.max < 0.6 && now != null && now < 80) C.push(`• IXL in the grade: ${d.ixlGrade.got} of ${d.ixlGrade.max} points so far`);
+  if (d.sum.d != null && d.sum.d <= -3 && d.prevDate && now != null) C.push(`• Grade down ${-d.sum.d} points since ${fmtDate(d.prevDate)} (now ${now}%)`);
+  if (d.r && d.graded >= 3 && !C.length) C.push('• No concerns right now');   // with only participation graded there is nothing to judge yet
   return { strengths: confLines(S.slice(0, 4)), concerns: confLines(C.slice(0, 4)) };
 }
-// The third box: what to turn in, what to make up, what can be retaken, and when a retake opens.
+// The third box: what to turn in, what hasn't been taken, the IXL left, what can be retaken, and when a retake opens.
+// A retake needs everything caught up first (missing work and the unit's IXL), so that line says exactly what.
 function conferenceWork(d) {
-  const out = []; const due = a => a.due ? ` (due ${a.due})` : '';
-  if (d.missing.length) { out.push('Missing (zeros until turned in):'); d.missing.forEach(a => out.push(`• ${a.name}${due(a)}`)); }
-  if (d.missedTests.length) { if (out.length) out.push(''); out.push('Tests and quizzes to make up:'); d.missedTests.forEach(a => out.push(`• ${a.name}${due(a)}`)); }
-  if (d.redo.length) { if (out.length) out.push(''); out.push('Below 70%, can be retaken:'); d.redo.forEach(t => out.push(`• ${t.name}: ${fmtN(t.v)} of ${fmtN(t.max)} (${confRound(t.pct)}%)`));
-    const need = [d.rt.missing.length ? 'the missing work is turned in' : '', !d.rt.noIxl && d.rt.short.length ? `the ${plural(d.rt.short.length, d.rt.unit.short + ' IXL practice skill')} ${d.rt.short.length === 1 ? 'is' : 'are'} finished` : ''].filter(Boolean);
-    out.push(''); out.push(d.rt.ok ? `${d.first} can retake these now.` : need.length ? `Retakes open once ${need.join(' and ')}.` : 'Retakes open once all work is caught up.'); }
+  const out = []; const due = a => a.due ? ` (due ${a.due})` : ''; const group = (head, items) => { if (!items.length) return; if (out.length) out.push(''); out.push(head); items.forEach(x => out.push('• ' + x)); };
+  group('Turn in (zeros until turned in):', d.missing.map(a => a.name + due(a)));
+  group('Not taken yet:', d.missedTests.map(a => a.name + due(a)));
+  const ixlLeft = d.redo.length && !d.rt.noIxl && d.rt.unit && d.rt.short.length ? d.rt.short.length : 0;   // listed only when it stands between the student and a retake
+  group('Finish on IXL:', ixlLeft ? [`${d.rt.unit.short}: ${plural(ixlLeft, 'skill')} left`] : []);
+  group('Can be retaken (below 70%):', d.redo.map(t => `${t.name}: ${confRound(t.pct)}%`));
+  if (d.redo.length) { const need = [d.rt.missing.length ? 'missing work' : '', ixlLeft ? `${d.rt.unit.short} IXL` : ''].filter(Boolean);
+    out.push(d.rt.ok ? 'Retake: allowed now' : `Retake allowed after: ${need.length ? need.join(' + ') : `all work is caught up${d.rt.unit ? `, including ${d.rt.unit.short} IXL` : ''}`}`); }
   return out.join('\n');
 }
 // Things to look at before printing — shown beside the form, never on it.
@@ -189,16 +195,25 @@ function testsSection(sec, name) {
     return `<tr><th scope="row">${esc([h.pm, h.year].filter(Boolean).join(' '))}</th><td>${h.level != null ? `<span class="flvl l${Math.min(5, Math.max(1, h.level))}">Level ${h.level}</span>` : ''}</td><td class="num">${h.scale != null ? h.scale : ''}${dv != null ? ` <small class="${dv < 0 ? 'neg' : 'pos'}">${dv > 0 ? '+' : dv < 0 ? '−' : '±'}${Math.abs(dv)}</small>` : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct).replace(' percentile', ' pct')) : h.above ? 'above grade' : h.grade != null ? 'grade ' + h.grade + ' test' : ''}</td></tr>`; }).join('')}</tbody></table>${keys.length ? `<details class="fall"><summary>Everything in the report</summary><dl>${keys.map(k => `<dt>${esc(k)}</dt><dd>${esc(fi[k])}</dd>`).join('')}</dl></details>` : ''}</section>`;
 }
 
-// Kept conference text, per student: { tests, strengths, concerns, work, saved }.
-function cleanConfForms(o) { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue; const t = x => typeof x === 'string' ? x.slice(0, 4000) : ''; out[k] = { tests: t(v.tests).slice(0, 600), strengths: t(v.strengths), concerns: t(v.concerns), work: t(v.work), saved: typeof v.saved === 'string' ? v.saved.slice(0, 30) : '' }; } return out; }
+// Kept conference text, per student: only the boxes you edited ({ strengths, …, saved }), and base: Tally's draft each
+// edit started from, so the form can say when the numbers have moved on since.
+function cleanConfForms(o) { const out = {}; const BOX = ['tests', 'strengths', 'concerns', 'work']; const lim = b => b === 'tests' ? 600 : 4000;   // a box you never edited isn't kept: it follows Tally's numbers
+  if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue; const x = { saved: typeof v.saved === 'string' ? v.saved.slice(0, 30) : '' };
+    BOX.forEach(b => { if (typeof v[b] === 'string') x[b] = v[b].slice(0, lim(b)); }); if (v.base && typeof v.base === 'object') { x.base = {}; BOX.forEach(b => { if (typeof v.base[b] === 'string') x.base[b] = v.base[b].slice(0, lim(b)); }); }
+    if (BOX.some(b => b in x)) out[k] = x; }
+  return out; }
 
 function openConference(sec, name) {
   const d = conferenceData(sec, name); const st = state.settings; const k = norm(name);
   sec.confForms = sec.confForms || {}; const kept = sec.confForms[k] || null;
   const draft = conferenceDraft(d);
   const v = { grade: st.gradeLevel || '7', teacher: st.teacherName || '', course: (st.courseNames || {})[sec.prep] || (sec.prep === 'acc' ? 'Grade 7 Accelerated Math' : 'Grade 7 Math'), period: sec.period != null ? String(sec.period) : '',
-    current: d.r && d.r.rounded != null ? String(d.r.rounded) : '', rc: { ...d.rc }, tests: kept && kept.tests != null ? kept.tests : conferenceTests(d),
-    strengths: kept ? kept.strengths : draft.strengths, concerns: kept ? kept.concerns : draft.concerns, work: kept ? kept.work : conferenceWork(d) };
+    current: d.r && d.r.rounded != null ? String(d.r.rounded) : '', rc: { ...d.rc } };
+  const fresh = { tests: conferenceTests(d), strengths: draft.strengths, concerns: draft.concerns, work: conferenceWork(d) };
+  const has = b => !!kept && typeof kept[b] === 'string'; const base = { ...((kept && kept.base) || {}) };
+  ['tests', 'strengths', 'concerns', 'work'].forEach(b => { v[b] = has(b) ? kept[b] : fresh[b]; });
+  const BOXID = { tests: 'cfTests', strengths: 'cfStrengths', concerns: 'cfConcerns', work: 'cfWork' };
+  const boxNote = b => !has(b) ? '' : `<p class="cfEdited" data-for="${b}">${base[b] != null && base[b] !== fresh[b] ? `<b>Tally's numbers changed since you edited this.</b> <button class="linkbtn" data-cfmerge="${b}">Add the new lines</button> · ` : 'Your words. '}<button class="linkbtn" data-cfdraft="${b}">Back to Tally's draft</button></p>`;
   const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private');
   const H = st.hideNames; const shown = H ? mask(name) : niceName(name);
   const rcCell = q => `<label class="cf-rc">${q}<input type="text" id="cf${q}" value="${v.rc[q] == null ? '' : esc(String(v.rc[q]))}" inputmode="numeric" maxlength="4"></label>`;
@@ -208,10 +223,10 @@ function openConference(sec, name) {
         <div class="row3 r2"><div class="field"><label for="cfName">Student name</label><input type="text" id="cfName" value="${esc(H ? '' : niceName(name))}" ${H ? 'placeholder="hidden while names are hidden"' : ''}></div><div class="field sm"><label for="cfGrade">Grade</label><input type="text" id="cfGrade" value="${esc(v.grade)}" maxlength="4"></div></div>
         <div class="row3 r3"><div class="field"><label for="cfTeacher">Teacher</label><input type="text" id="cfTeacher" value="${esc(v.teacher)}"></div><div class="field"><label for="cfCourse">Course</label><input type="text" id="cfCourse" value="${esc(v.course)}"></div><div class="field sm"><label for="cfPeriod">Period</label><input type="text" id="cfPeriod" value="${esc(v.period)}" maxlength="4"></div></div>
         <div class="row3 r4"><div class="field sm"><label for="cfCurrent">Current grade %</label><input type="text" id="cfCurrent" value="${esc(v.current)}" maxlength="5"></div><div class="field cf-rcs"><label>Report card grades</label><div>${['Q1', 'Q2', 'S1', 'Q3', 'Q4', 'S2'].map(rcCell).join('')}</div></div></div>
-        <div class="field"><label for="cfTests">FAST / EBA test history</label><textarea id="cfTests" rows="2" placeholder="No test results in Tally yet">${esc(v.tests)}</textarea></div>
-        <div class="field"><label for="cfStrengths">Strengths in class</label><textarea id="cfStrengths" rows="4">${esc(v.strengths)}</textarea>${!kept && !draft.strengths ? '<p class="ghint" style="margin:2px 0 0">Nothing in the numbers stands out yet. Add something you have seen in class, or one of the notes beside the form.</p>' : ''}</div>
-        <div class="field"><label for="cfConcerns">Concerns in class</label><textarea id="cfConcerns" rows="4">${esc(v.concerns)}</textarea></div>
-        <div class="field"><label for="cfWork">Missing assignments &amp; assignments needing to be redone</label><textarea id="cfWork" rows="6">${esc(v.work)}</textarea></div>
+        <div class="field"><label for="cfTests">FAST / EBA test history</label><textarea id="cfTests" rows="2" placeholder="No test results in Tally yet">${esc(v.tests)}</textarea>${boxNote('tests')}</div>
+        <div class="field"><label for="cfStrengths">Strengths in class</label><textarea id="cfStrengths" rows="5">${esc(v.strengths)}</textarea>${boxNote('strengths')}${!has('strengths') && !draft.strengths ? '<p class="ghint" style="margin:2px 0 0">Nothing in the numbers stands out yet. Add something you have seen in class, or one of the notes beside the form.</p>' : ''}</div>
+        <div class="field"><label for="cfConcerns">Concerns in class</label><textarea id="cfConcerns" rows="5">${esc(v.concerns)}</textarea>${boxNote('concerns')}</div>
+        <div class="field"><label for="cfWork">Missing assignments &amp; assignments needing to be redone</label><textarea id="cfWork" rows="7">${esc(v.work)}</textarea>${boxNote('work')}</div>
       </div>
       <aside class="confSide">
         ${(() => { const ck = conferenceChecks(d); return ck.length ? `<h3>Check before printing</h3><ul class="cfChecks">${ck.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''; })()}
@@ -227,12 +242,17 @@ function openConference(sec, name) {
   const keep = () => {   // remember the teacher, course and grade for next time; the student's text for this student
     st.teacherName = val('cfTeacher').slice(0, 80); st.gradeLevel = val('cfGrade').slice(0, 4); st.courseNames = { ...(st.courseNames || {}), [sec.prep]: val('cfCourse').slice(0, 80) };
     const now = { tests: val('cfTests').slice(0, 600), strengths: val('cfStrengths').slice(0, 4000), concerns: val('cfConcerns').slice(0, 4000), work: val('cfWork').slice(0, 4000) };
-    const fresh = { tests: conferenceTests(d), strengths: draft.strengths, concerns: draft.concerns, work: conferenceWork(d) };
-    if (Object.keys(now).some(x => now[x] !== fresh[x])) sec.confForms[k] = { ...now, saved: new Date().toISOString() }; else delete sec.confForms[k];
+    const out = {}, b2 = {}; Object.keys(now).forEach(b => { if (now[b] !== fresh[b]) { out[b] = now[b]; b2[b] = base[b] != null ? base[b] : fresh[b]; } });   // each box on its own: an untouched box keeps following the numbers
+    if (Object.keys(out).length) sec.confForms[k] = { ...out, base: b2, saved: Object.keys(out).every(b => has(b) && kept[b] === out[b]) && kept.saved ? kept.saved : new Date().toISOString() }; else delete sec.confForms[k];
     save(); };
   const close = () => { keep(); m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-cfadd]').forEach(b => b.onclick = () => { const n = d.notes.find(x => x.id === b.dataset.nid); if (!n) return; const ta = $(b.dataset.cfadd === 'strengths' ? '#cfStrengths' : '#cfConcerns'); ta.value = (ta.value.trim() ? ta.value.replace(/\s+$/, '') + '\n' : '') + n.text; ta.focus(); });
+  const noteOf = b => m.querySelector(`.cfEdited[data-for="${b}"]`);
+  m.querySelectorAll('[data-cfmerge]').forEach(x => x.onclick = () => { const b = x.dataset.cfmerge; const ta = $('#' + BOXID[b]); const have = new Set(ta.value.split('\n').map(l => l.trim()).filter(Boolean));
+    const add = fresh[b].split('\n').filter(l => l.trim() && !have.has(l.trim()) && !/:$/.test(l.trim())); if (add.length) ta.value = ta.value.replace(/\s+$/, '') + '\n' + add.join('\n'); base[b] = fresh[b];
+    const n = noteOf(b); if (n) n.innerHTML = add.length ? `Added ${add.length === 1 ? '1 line' : add.length + ' lines'} from Tally at the end. Remove any you don't need.` : 'Nothing new to add.'; });
+  m.querySelectorAll('[data-cfdraft]').forEach(x => x.onclick = () => { const b = x.dataset.cfdraft; $('#' + BOXID[b]).value = fresh[b]; base[b] = fresh[b]; const n = noteOf(b); if (n) n.remove(); });
   const rf = $('#cfRefill'); if (rf) rf.onclick = async () => { if (!await ask('Replace your edits with a fresh draft from Tally?')) return; delete sec.confForms[k]; save(); openConference(sec, name); };
   $('#cfPrint').onclick = () => { keep(); printConference({ name: val('cfName') || niceName(name), grade: val('cfGrade'), teacher: val('cfTeacher'), course: val('cfCourse'), period: val('cfPeriod'), current: val('cfCurrent'),
     rc: Object.fromEntries(['Q1', 'Q2', 'S1', 'Q3', 'Q4', 'S2'].map(q => [q, val('cf' + q)])), tests: val('cfTests'), strengths: val('cfStrengths'), concerns: val('cfConcerns'), work: val('cfWork') }); };

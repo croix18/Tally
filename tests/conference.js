@@ -107,9 +107,9 @@ function fastCsv(rows) {
   const want=await p.evaluate(({K,nm})=>{ const T=window.__tally; const s=T.state.sections[K]; const i=s.grades.students.indexOf(nm); return { g:T.computeGrade(s,i).rounded, per:s.period, rt:T.retakeStatus(s,nm) }; },{K,nm:S[worst]});
   const ew=expectFor(worst);
   check(v.cfName===nice(S[worst]) && v.cfCurrent===String(want.g) && v.cfPeriod===String(want.per||'') && v.cfGrade==='7' && /Grade 7/.test(v.cfCourse),'header fields: '+[v.cfName,v.cfGrade,v.cfCourse,v.cfPeriod,v.cfCurrent+'%'].join(' · '));
-  check(ew.missing.every(n=>v.cfWork.includes('• '+n+' (due') || v.cfWork.includes('• '+n+'\n')) && (v.cfWork.match(/^• /gm)||[]).length===ew.missing.length+ew.redo.length && ew.redo.every(n=>v.cfWork.includes('• '+n+': ')) && /^Missing \(zeros until turned in\):/m.test(v.cfWork) && /^Below 70%, can be retaken:/m.test(v.cfWork),'"Missing & redo" lists exactly the '+ew.missing.length+' assignments not handed in and the '+ew.redo.length+' assessments under 70%');
-  check(/^Retakes open once the missing work is turned in( and the \d+ Unit \d+ IXL practice skills? (is|are) finished)?\.$/m.test(v.cfWork) && !want.rt.ok,'and says, in a full sentence, what opens a retake: "'+(v.cfWork.match(/^Retakes.*$/m)||[''])[0]+'"');
-  check(new RegExp(' has '+ew.missing.length+' missing assignments?, which counts? as (a zero|zeros) until turned in\\.').test(v.cfConcerns.split('\n')[0]),'Concerns is drafted from the numbers: "'+v.cfConcerns.split('\n')[0]+'"');
+  check(ew.missing.every(n=>v.cfWork.includes('• '+n+' (due') || v.cfWork.includes('• '+n+'\n')) && (v.cfWork.match(/^• (?!.*skills? left$)/gm)||[]).length===ew.missing.length+ew.redo.length && ew.redo.every(n=>v.cfWork.includes('• '+n+': ')) && /^Turn in \(zeros until turned in\):/m.test(v.cfWork) && /^Can be retaken \(below 70%\):/m.test(v.cfWork),'"Missing & redo" lists exactly the '+ew.missing.length+' assignments not handed in and the '+ew.redo.length+' assessments under 70%');
+  check(/^Retake allowed after: missing work( \+ Unit \d+ IXL)?$/m.test(v.cfWork) && !want.rt.ok,'and says what opens a retake: "'+(v.cfWork.match(/^Retake.*$/m)||[''])[0]+'"');
+  check(new RegExp('^• '+ew.missing.length+' missing assignments?, (a zero|zeros) until turned in').test(v.cfConcerns.split('\n')[0]),'Concerns is drafted from the numbers: "'+v.cfConcerns.split('\n')[0]+'"');
   check(['Q1','Q2','S1','Q3','Q4','S2'].every(q=>v['cf'+q]===''),'no report-card grade is filled while no quarter has been closed');
   // the draft rules, over the whole class (21 Oct 2026, after three reviews: a teacher's, a data auditor's, a parent's)
   const all=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; return s.grades.students.map(n=>{ const d=T.conferenceData(s,n); const dr=T.conferenceDraft(d); return { n, S:dr.strengths, C:dr.concerns, W:T.conferenceWork(d), poss:d.ix?d.ix.poss:null, graded:d.graded, redo:d.redo.length, missing:d.missing.length+d.missedTests.length, grade:d.r?d.r.rounded:null, noIxl:d.rt.noIxl, checks:T.conferenceChecks(d) }; }); },K);
@@ -119,12 +119,12 @@ function fastCsv(rows) {
   bad('no dashboard fragments or jargon: "Strong on assessments", "assessment average", "at goal", "pts", "(listed below)" only after a count',x=>/Strong on|assessment average|at goal|\bpts\b|Best assessment/i.test(x.S+x.C+x.W));
   bad('no IXL account wording ever reaches the form (it is a teacher check instead)',x=>/IXL account|no IXL|First no/i.test(x.S+x.C+x.W) || (x.noIxl && !x.checks.some(c=>/IXL isn't linked/.test(c))));
   bad('the year-long IXL total is never printed',x=>x.poss && new RegExp('of '+x.poss+'\\b').test(x.S+x.C));
-  bad('Strengths and Concerns are full sentences, at most four each',x=>[...lines(x.S),...lines(x.C)].some(l=>!/[.]$/.test(l) || !/^[A-Z]/.test(l)) || lines(x.S).length>4 || lines(x.C).length>4);
-  bad('a retake sentence appears only with something below 70%',x=>/Retakes open|retake these now/.test(x.W)!==(x.redo>0));
-  bad('missing work is always in Concerns, with what it costs',x=>x.missing>0 && !/missing assignment|missed the/.test(x.C));
-  bad('nothing is called a concern or a strength for a student with only participation graded',x=>x.graded<3 && (x.C!=='' || /turned in every/.test(x.S)));
-  bad('every student with something graded gets a Concerns line ("No concerns at this time." when there are none)',x=>x.graded>=3 && x.C==='');
-  bad('"turned in every assignment" never sits beside missing work',x=>/turned in every/.test(x.S) && x.missing>0);
+  bad('Strengths and Concerns are short notes: every line a bullet, no sentence full stops, at most four each',x=>[...lines(x.S),...lines(x.C)].some(l=>!/^• [A-Z0-9]/.test(l) || /[.]$/.test(l)) || lines(x.S).length>4 || lines(x.C).length>4);
+  bad('a retake line appears only with something below 70%',x=>/^Retake/m.test(x.W)!==(x.redo>0));
+  bad('missing work is always in Concerns',x=>x.missing>0 && !/missing assignment|not taken yet/.test(x.C));
+  bad('nothing is called a concern or a strength for a student with only participation graded',x=>x.graded<3 && (x.C!=='' || /Every assignment turned in/.test(x.S)));
+  bad('every student with something graded gets a Concerns line ("No concerns right now" when there are none)',x=>x.graded>=3 && x.C==='');
+  bad('"Every assignment turned in" never sits beside missing work',x=>/Every assignment turned in/.test(x.S) && x.missing>0);
   // report-card grades: quarters as closed, semesters the average of two quarters rounded half up
   const rc=await p.evaluate(()=>{ const R=window.__tally.reportCard; const c=(q,g,closed=true)=>({ q, g, closed });
     return [R([c(1,89),c(2,90)]), R([c(1,88),c(2,91)]), R([c(1,79),c(2,80,false)]), R([c(1,92),c(2,85),c(3,70),c(4,75)]), R([c(1,64),c(2,55)])]; });
@@ -134,7 +134,7 @@ function fastCsv(rows) {
   await p.evaluate(()=>{ window.__tally.reopenQuarter(1); }); await p.click('#mClose'); await p.waitForTimeout(300);
   await open(best); await p.click('#pConf'); await p.waitForTimeout(400);
   const vb=await p.evaluate(()=>({ s:document.querySelector('#cfStrengths').value, w:document.querySelector('#cfWork').value }));
-  check(/has turned in every assignment this quarter\./.test(vb.s) && (vb.w==='' || !/^Missing/m.test(vb.w)),'a student with nothing missing gets that as a strength, and no "not handed in" list');
+  check(/^• Every assignment turned in$/m.test(vb.s) && (vb.w==="" || !/^Turn in/m.test(vb.w)),'a student with nothing missing gets that as a strength, and no "not handed in" list');
   await p.click('#mClose'); await p.waitForTimeout(300);
   // notes go into the form on a click; edits, the teacher and the course are kept
   await open(0); await p.click('#pConf'); await p.waitForTimeout(400);

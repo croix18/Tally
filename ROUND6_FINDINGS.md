@@ -216,6 +216,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   column links. New suite `tests/period-twin.js`. 37 suites, 1233 checks (with Sync merged in).
 - 22 Oct: full audit (AUDIT_PLAN.md): 5 Critical, 18 High and several Medium findings fixed, each with a failing-first
   check in `tests/audit-oct22.js`; six decisions listed for Croix. 38 suites, 1256 checks.
+- 23 Oct: round 7, design and usability (39 suites, 1278 checks): quarters close only after they end (early close in Settings, Undo, a
+  closed-early notice with one-tap Reopen); category mistakes fixed in one tap from Focus's own grades, with Undo;
+  conference form as short notes, each box kept on its own; Data Lab compares the two courses; class colours clear of
+  grade colours; light dialog headers. New suite `tests/design-oct23.js`.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

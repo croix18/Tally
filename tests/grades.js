@@ -89,10 +89,12 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   fs.writeFileSync(path.join(tmp,'nograde.csv'),noGrade);
   await p2.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await p2.waitForTimeout(500); await p2.click('#rpSkip'); await p2.waitForTimeout(200);
   await p2.setInputFiles('#file',[path.join(tmp,'nograde.csv')]); await p2.waitForTimeout(500); await pick(p2); await p2.waitForTimeout(500);
-  check(/Which category\?/.test(await p2.textContent('#modal')) && await p2.locator('[data-ask]').count()===13,'without a Grade column, the asker lists every new assignment');
-  await p2.click('[data-ask="0"] [data-c="Classwork"]'); await p2.click('#askApply'); await p2.waitForTimeout(400);
-  const ng=await p2.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const g=T.gradingFor(s.prep); return {wb:g.map['Whiteboard Practice Week 9/21'], how:g.how['Whiteboard Practice Week 9/21'], ov:s.grades.overall}; });
-  check(ng.wb==='Classwork' && ng.how==='user' && ng.ov===null,'asker choice applied as user; no overall column');
+  check(/Check 13 categories/.test(await p2.textContent('#modal')) && await p2.locator('select[data-ask]').count()===13,'without a Grade column, the asker lists every new assignment, one dropdown each');
+  await p2.selectOption('[data-ask="0"]','Classwork'); await p2.waitForTimeout(100);
+  check(await p2.locator('.askcat tr.changed').count()===1 && /Save 1 change/.test(await p2.textContent('#askApply')),'the changed row is marked and the button says how many');
+  await p2.click('#askApply'); await p2.waitForTimeout(400);
+  const ng=await p2.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const g=T.gradingFor(s.prep); const other=s.grades.assignments.map(a=>a.name).filter(n=>n!=='Whiteboard Practice Week 9/21'); return {wb:g.map['Whiteboard Practice Week 9/21'], how:g.how['Whiteboard Practice Week 9/21'], ov:s.grades.overall, rest:other.filter(n=>g.how[n]==='user').length}; });
+  check(ng.wb==='Classwork' && ng.how==='user' && ng.ov===null && ng.rest===0,'only the row changed becomes yours; the rest stay guesses; no overall column');
   await p2.click('#openGrades'); await p2.waitForTimeout(400); check(/categories are name-based guesses/.test(await p2.textContent('#gridwrap')),'overview says categories are guesses');
   await p2.close();
   console.log('errors:',errs); check(errs.length===0,'no errors');

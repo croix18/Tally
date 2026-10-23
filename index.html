@@ -131,7 +131,7 @@ div.home{display:flex;flex-direction:column;gap:16px;padding:4px 0 40px}
   /* letter grades, good → bad: the colours anyone would guess. Same values as LETTER_COLORS in charts.js; the washes
      are the quiet version for chips that hold text. */
   --g-a:#55b872; --g-b:#1c7abb; --g-c:#efd127; --g-d:#d88018; --g-f:#c51d28;
-  --g-a-wash:#DDF2E3; --g-b-wash:#D9E9F5; --g-c-wash:#FBF3C6; --g-d-wash:#F8E4CB; --g-f-wash:#FBDAD2;
+  --g-a-wash:#DDF2E3; --g-b-wash:#D9E9F5; --g-c-wash:#FBF3C6; --g-d-wash:#F8E4CB; --g-f-wash:#F5E1E3;
 }
 </style>
 <style>
@@ -185,7 +185,7 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 .pill[aria-pressed="true"]{background:var(--navy);color:var(--white)}
 .pill.ghost[aria-pressed="true"]{background:var(--white);color:var(--navy);border-color:var(--white)}
 .pill.ghost[aria-pressed="false"]{color:var(--sand)}
-.pill.danger{background:var(--white);color:var(--navy);border:2px solid var(--coral);padding:6px 16px}
+.pill.danger{background:var(--white);color:var(--bad);border:2px solid var(--bad);padding:6px 16px}
 .pill:focus-visible{outline:3px solid var(--navy);outline-offset:2px}#top .pill:focus-visible,#top .nav button:focus-visible,#top .ibtn:focus-visible,#top #search:focus-visible,#modal header button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
 button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
 #menuOverlay{position:fixed;inset:0;z-index:29;background:transparent}.more .menu{z-index:30}
@@ -219,6 +219,14 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 #notices:empty{padding:0}
 .notice{padding:9px 16px;border-radius:var(--r-m);background:var(--coral);color:var(--navy);border:1px solid rgba(217,68,47,.25);font-weight:var(--w-reg);font-size:var(--t-m);display:flex;gap:10px;align-items:center;}
 .notice b{font-weight:var(--w-black)}
+.cfEdited{margin:3px 0 0;font-size:var(--t-s);color:var(--ink-soft)}.cfEdited b{color:var(--navy)}
+.askcat td{padding:6px 8px}.askcat td:last-child{width:1%;white-space:nowrap}.askcat tr.changed td{background:var(--paleturq)}.askcat tr.changed td:first-child{box-shadow:inset 3px 0 0 var(--teal)}
+.linkbtn.inl{margin-left:0;min-height:0;font-size:var(--t-s);padding:0 4px}.catsrc{color:var(--ink-soft);white-space:nowrap}.catsrc.src-user{color:var(--navy);font-weight:var(--w-bold)}.catsrc.off{color:var(--bad);font-weight:var(--w-bold)}
+.gsec p.catline{display:block}.gsec p.catline .linkbtn{display:inline}.notice.catfix{margin:0 0 10px}.notice.catfix .pill{margin-left:auto;flex:none}.catline{margin:0 0 8px}
+.notice.qce{margin-bottom:12px}.notice.qce .pill{margin-left:auto;flex:none}
+.qclosed{list-style:none;margin:6px 0 4px;padding:0}.qclosed li{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--grid)}.qclosed li:first-child{border-top:0}.qclosed li>span{flex:1;color:var(--ink-soft)}.qclosed small{color:var(--ink-soft)}
+.qearlyTag{font-style:normal;color:var(--bad);font-weight:var(--w-bold)}
+.check.qsure{display:flex;gap:8px;align-items:center;margin:12px 0 4px;font-weight:var(--w-bold)}
 .notice.info{background:var(--paleturq);box-shadow:none;border:1px solid rgba(15,118,110,.25)}
 .notice.soft{background:var(--white);box-shadow:none;border:1px solid var(--grid)}
 .notice button{margin-left:auto;background:var(--navy);color:var(--white);border:none;border-radius:var(--r-pill);padding:5px 14px;font-weight:var(--w-bold);font-size:var(--t-s);white-space:nowrap;min-height:var(--h-s)}
@@ -363,10 +371,10 @@ body.dragging::after{content:'Drop IXL exports anywhere';position:fixed;inset:0;
 /* one student's card: nothing behind it may be readable (other students' grades), so the backdrop goes near-opaque and heavily blurred */
 #modal.private{background:rgba(248,242,228,.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
 #modal .panel{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);width:min(940px,94vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
-#modal header{background:var(--navy);color:var(--white);padding:14px 26px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#modal header{background:var(--white);color:var(--navy);border-bottom:1px solid var(--grid);padding:14px 26px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 #modal header h2{font-weight:var(--w-black);letter-spacing:.02em;font-size:var(--t-xl)}#modal header h2 .hsub{display:block;font-size:var(--t-s);font-weight:var(--w-med);letter-spacing:0;text-transform:none;color:var(--ink-soft);margin:2px 0 0}
-#modal header button{background:none;border:none;color:var(--white);font-size:26px;font-weight:var(--w-black);width:var(--h-touch);height:var(--h-touch);line-height:1;opacity:.8;border-radius:var(--r-pill)}
-#modal header button:hover{opacity:1;background:rgba(255,255,255,.1)}
+#modal header button{background:none;border:none;color:var(--navy);font-size:26px;font-weight:var(--w-black);width:var(--h-touch);height:var(--h-touch);line-height:1;opacity:.7;border-radius:var(--r-pill)}
+#modal header button:hover{opacity:1;background:var(--sand)}#modal header button:focus-visible{outline-color:var(--navy)}
 #modal .body{padding:20px 26px;display:grid;grid-template-columns:1fr 1.15fr;gap:22px;overflow:auto}
 #modal section h3{font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-size:var(--t-m);margin-bottom:8px}
 #modal section h3.mt{margin-top:16px}
@@ -451,10 +459,10 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 .lbTools .pill.ghost{color:var(--navy);border-color:var(--shadow);opacity:.55}
 .lbTools .pill.ghost.holding{background:var(--sand);opacity:1}
 .lbTools .seg{background:var(--white);border-radius:var(--r-pill);padding:3px;gap:3px;box-shadow:var(--shadow-2)}
-.lbTools .seg button{border:none;padding:8px 14px;min-height:var(--h-m);font-size:13px;background:transparent}
+.lbTools .seg button{border:none;padding:8px 14px;min-height:var(--h-m);font-size:clamp(13px,.8vw,17px);background:transparent}
 .lbTools .seg button.on{background:var(--navy);color:var(--white)}
-.lbTools .pill.small{min-height:var(--h-m)}
-.lbTools .labSelect{border:2px solid var(--grid);border-radius:var(--r-pill);padding:8px 12px;background:var(--white);font-weight:var(--w-bold);font-size:13px;max-width:320px;min-height:var(--h-m);box-shadow:var(--shadow-2)}
+.lbTools .pill.small{min-height:var(--h-m);font-size:clamp(13px,.8vw,17px)}
+.lbTools .labSelect{border:2px solid var(--grid);border-radius:var(--r-pill);padding:8px 12px;background:var(--white);font-weight:var(--w-bold);font-size:clamp(13px,.8vw,17px);max-width:320px;min-height:var(--h-m);box-shadow:var(--shadow-2)}
 .lbTools{flex-wrap:wrap;justify-content:flex-end;max-width:92vw;align-items:center}
 .lbTools .pill[aria-pressed="false"]{background:var(--paleturq);color:var(--navy)}
 #lbExit{position:relative;overflow:hidden;opacity:1;background:var(--white);color:var(--navy);border:2px solid var(--navy);-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
@@ -467,6 +475,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 #toast{position:fixed;right:24px;bottom:22px;transform:translateY(12px);background:var(--navy);color:var(--white);border:2px solid var(--turq);padding:12px 24px;border-radius:var(--r-pill);box-shadow:var(--shadow-2);opacity:0;transition:all .18s;z-index:80;font-weight:var(--w-bold);font-size:15px;max-width:min(720px,80vw);pointer-events:none}#toast.show{pointer-events:auto;cursor:pointer}
 body:has(#modal:not(.hidden)) #toast{bottom:auto;top:18px}   /* while a dialog is open the message goes to the top, clear of the dialog's Save / Cancel row */
 #toast.show{opacity:1;transform:translateY(0)}
+body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at the bottom: the message goes to the top */
 #toast.err{background:var(--coral);color:var(--navy);border-color:var(--coral)}
 #toast b{color:var(--turq)}
 #toast.err b{color:var(--navy)}
@@ -1053,9 +1062,9 @@ function fitCategories(sec, opts) {
   const determined = {};
   if (best === 0) gb.assignments.forEach(a => { const cur = map[a.name]; determined[a.name] = names.every(c => { if (c === cur) return true; map[a.name] = c; const bad = err(map) > 0; map[a.name] = cur; return bad; }); });
   // a category you set by hand "disagrees" with Focus when letting everything float reproduces the Grade column better and lands it elsewhere
-  const disagree = {};
-  if (lock && gb.assignments.some(a => g.how[a.name] === 'user')) { const free = fitCategories(sec, { ignoreUser: true }); gb.assignments.forEach(a => { if (g.how[a.name] === 'user') disagree[a.name] = !!free && free.err < best && free.map[a.name] !== map[a.name]; }); }
-  return { map, err: best, exact: best === 0, determined, disagree, n: idx.length };
+  const disagree = {}; let focusMap = null;
+  if (lock && gb.assignments.some(a => g.how[a.name] === 'user')) { const free = fitCategories(sec, { ignoreUser: true }); focusMap = free && free.err < best ? free.map : null; gb.assignments.forEach(a => { if (g.how[a.name] === 'user') disagree[a.name] = !!free && free.err < best && free.map[a.name] !== map[a.name]; }); }
+  return { map, err: best, exact: best === 0, determined, disagree, focusMap, n: idx.length };
 }
 // Apply a fit after import: proved assignments are stored as `fit`; new ones the fit can't prove are returned so the
 // import can ask. Returns { ask: [names], proved: n, guessed: n }.
@@ -1072,6 +1081,17 @@ function applyCategories(sec) {
   });
   return { ask, proved, guessed, fit };
 }
+
+// Categories are course-wide. Every change keeps one step of undo and re-grades every class of the course.
+const catSnap = prep => { const g = gradingFor(prep); return JSON.stringify({ map: g.map, how: g.how }); };
+function catRefresh(prep) { state.order.map(k => state.sections[k]).filter(s => s.prep === prep && s.grades).forEach(s => gradeSnapshot(s)); }
+function catRestore(prep, snap) { const g = gradingFor(prep); const b = JSON.parse(snap); g.map = b.map; g.how = b.how; catRefresh(prep); }
+// "Let Tally decide": forget a hand-set category and fit it again from the Focus Grade column (the name decides where
+// Focus can't tell). Croix, 23 Oct: a few stray taps had locked IXL and tests into the wrong categories.
+function catLetTally(prep, names) { const g = gradingFor(prep); names.forEach(n => { delete g.map[n]; delete g.how[n]; }); state.order.map(k => state.sections[k]).filter(s => s.prep === prep && s.grades).forEach(s => applyCategories(s)); catRefresh(prep); }
+const looksLikeTest = n => /\b(test|exam|assessment|quiz|benchmark)\b/i.test(String(n || ''));
+function catUndoToast(prep, snap, html) { toast(`${html} <button class="tundo" id="catUndo">Undo</button>`, false, 9000); const u = $('#catUndo'); if (u) u.onclick = () => { catRestore(prep, snap); save(); render(); toast('Undone', false, 1500); }; }
+const courseWord = prep => prep === 'acc' ? 'accelerated' : 'on-level';
 
 /* ---------- what-ifs ---------- */
 // Minimum points out of `max` on a NEW assignment in `cat` to reach `target` percent (rounded), or null if impossible.
@@ -1216,6 +1236,12 @@ function renderGrades(s0) {
   const hist = (s.gradeHistory || []).filter(h => snapQ(h) === n); const trend = hist.length >= 2 ? hist.map(h => { const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) : null;
   const unverified = closedQ && s._closed ? `<div class="notice soft"><span>${ico('check')}</span><span><b>${esc(Q_NAMES[n - 1])} is closed.</b> This is the copy Tally kept on ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))} — every score and the final grades. Nothing here raises an alert.</span></div>` : closedQ ? `<div class="notice info"><span>${ico('info')}</span><span><b>${esc(Q_NAMES[n - 1])} isn't closed yet.</b> A newer export started the next quarter, so Tally kept this copy of ${esc(Q_NAMES[n - 1])} before it was replaced. Close it under <b>Quarters</b> when grades are final.</span></div>` : s._partial ? '' : !gb.overall ? `<div class="notice info"><span>${ico('info')}</span><span>This export has no Grade column, so assignment categories are name-based guesses — check them under <b>Categories</b>.</span></div>` : (fit && !fit.exact ? `<div class="notice"><span>${ico('warn')}</span><span><b>Tally's grades don't all match Focus</b> (off by ${fit.err} points in total across ${fit.n} students). A category or weight is probably wrong — open <b>Categories</b>.</span></div>` : '');
   const cell = (v, cls) => `<td class="${cls || ''}">${v}</td>`;
+  // Fixing a category mistake: Focus's own grades say which rows are wrong, so the fix is one button, and anything set by
+  // hand goes back to Tally in one more. A kept quarter is read-only; it says how to change it.
+  const course = courseWord(s0.prep); const userSet = closedQ ? [] : asg.filter(x => x.how === 'user').map(x => x.a.name); const dis = closedQ || !fit ? [] : asg.filter(x => x.disagree).map(x => x.a.name);
+  const catWord = k => k === 1 ? 'category' : 'categories';
+  const catBar = closedQ ? `<p class="ghint">To change a category in ${esc(Q_NAMES[n - 1])}, reopen it under <b>Quarters</b>, change it, then close it again.</p>`
+    : `${dis.length && fit.focusMap ? `<div class="notice info catfix"><span>${ico('info')}</span><span><b>Focus's grades disagree with ${dis.length === 1 ? 'a category' : dis.length + ' categories'} you set:</b> ${dis.slice(0, 3).map(esc).join(', ')}${dis.length > 3 ? ` and ${dis.length - 3} more` : ''}.</span><button class="pill small" id="catUseFocus">Use Focus's ${catWord(dis.length)}</button></div>` : ''}${userSet.length ? `<p class="ghint catline">You set ${userSet.length} ${catWord(userSet.length)} by hand. Changes apply to every ${course} class. <button class="linkbtn inl" id="catAllBack">Let Tally decide all ${userSet.length}</button></p>` : `<p class="ghint catline">A change here applies to every ${course} class.</p>`}`;
   const html = `<div class="grades">
     ${unverified}
     <div class="gcards">
@@ -1229,15 +1255,19 @@ function renderGrades(s0) {
       <section class="gsec"><h3>Categories</h3><table class="checkTable"><thead><tr><th>Category</th><th>Weight</th><th>Assignments</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th></tr></thead><tbody>
         ${catRows.map(x => `<tr><td>${esc(x.c.name)}</td><td>${x.c.w}%</td><td>${x.n}</td><td>${pct1(x.avg)}</td></tr>`).join('')}</tbody></table>
         ${fit && fit.exact ? `<p class="ghint"><b>Matches the Focus Grade column for all ${fit.n} students.</b></p>` : ''}</section>
-      <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 ? scatterSVG(pts, 420, 260, classColor(s0)) + `<p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)} — ${rWord}.</p>` : `<p class="ghint">Needs at least 8 students matched to IXL with an assessment on record (${pts.length} so far).</p>`}</section>
+      <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 && rr != null ? scatterSVG(pts, 420, 260, classColor(s0)) + `<p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)} — ${rWord}.</p>` : `<p class="ghint">${pts.length >= 8 ? 'The scores are all the same on one side, so there is nothing to compare yet.' : `Needs at least 8 students matched to IXL with an assessment on record (${pts.length} so far).`}</p>`}</section>
     </div>
-    <section class="gsec"><h3>Assignments</h3><table class="checkTable gasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th>Points</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th><th>Missing</th><th>Excused</th><th title="Class average now minus the class average without this assignment — negative means it pulls grades down">Effect</th></tr></thead><tbody>
-      ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}" ${closedQ ? 'disabled' : ''}>${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small title="${x.how === 'fit' ? 'proved by the Focus Grade column' : x.how === 'user' ? 'set by you' : x.how === 'file' ? 'stated in the export' : 'guessed from the name'}">${x.how === 'fit' ? ico('check', 'confirmed') : x.how === 'user' ? 'edited' : x.how === 'file' ? 'from file' : 'guess'}${x.disagree ? ' · Focus disagrees' : ''}</small></td><td>${esc(x.a.due || '')}</td><td>${x.a.max != null ? esc(fmtN(x.a.max)) : '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>
+    <section class="gsec" id="gAsg"><h3>Assignments</h3>${catBar}<table class="checkTable gasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th>Points</th><th title="Average of the scores turned in — work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th><th>Missing</th><th>Excused</th><th title="Class average now minus the class average without this assignment — negative means it pulls grades down">Effect</th></tr></thead><tbody>
+      ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}" ${closedQ ? 'disabled' : ''}>${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small class="catsrc src-${x.how}${x.disagree ? ' off' : ''}">${x.how === 'fit' ? `${ico('check', 'confirmed')} Proved by Focus` : x.how === 'user' ? 'Set by you' : x.how === 'file' ? 'From the file' : 'Tally\'s guess'}${x.disagree ? ' · Focus disagrees' : ''}</small>${x.how === 'user' && !closedQ ? ` <button class="linkbtn inl" data-back="${esc(x.a.name)}" title="Forget your choice; Focus's grades decide">Let Tally decide</button>` : ''}</td><td>${esc(x.a.due || '')}</td><td>${x.a.max != null ? esc(fmtN(x.a.max)) : '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>
     <section class="gsec"><h3>Students</h3><table class="checkTable gstu"><thead><tr><th>Student</th><th>Grade</th><th>Since ${prev ? esc(fmtDate(prev.date)) : 'last import'}</th><th>Missing</th><th>Weakest category</th><th>IXL at goal</th></tr></thead><tbody>
       ${rows.map(x => { const ix = ixlBy.get(x.i); return `<tr class="${x.sliding ? 'sliding' : ''}" data-stu="${x.i}"><td><button class="nm nmbtn">${nm(x.name)}</button>${x.sliding ? ' <span class="gtag">sliding</span>' : ''}</td><td>${gradeChip(x.r)}</td><td class="${x.d != null && x.d < 0 ? 'down' : x.d > 0 ? 'up' : ''}">${x.d == null ? '' : signedPts(x.d)}</td><td>${x.missing || ''}${x.dMissing > 0 ? ` <small>(+${x.dMissing})</small>` : ''}</td><td>${x.weakest ? `${esc(x.weakest)} <small>${pct1(x.r.cats[x.weakest].pct)}</small>` : ''}</td><td>${ix && ix.ixl != null ? pct1(ix.ixl) : '<small>not matched</small>'}</td></tr>`; }).join('')}</tbody></table></section>
   </div>`;
   const wrap = $('#gridwrap'); wrap.innerHTML = html;
-  wrap.querySelectorAll('[data-cat]').forEach(sel => sel.onchange = () => { if (closedQ) return; g.map[sel.dataset.cat] = sel.value; g.how[sel.dataset.cat] = 'user'; gradeSnapshot(s0); save(); render(); });
+  wrap.querySelectorAll('[data-cat]').forEach(sel => sel.onchange = () => { if (closedQ) return; const snap = catSnap(s0.prep); const nm0 = sel.dataset.cat; g.map[nm0] = sel.value; g.how[nm0] = 'user'; catRefresh(s0.prep); save(); render();
+    catUndoToast(s0.prep, snap, `<b>${esc(nm0)}</b> is ${esc(sel.value)} in every ${course} class.`); });
+  wrap.querySelectorAll('[data-back]').forEach(b => b.onclick = () => { const snap = catSnap(s0.prep); const nm0 = b.dataset.back; catLetTally(s0.prep, [nm0]); save(); render(); catUndoToast(s0.prep, snap, `<b>${esc(nm0)}</b> is back to Tally: ${esc(gradingFor(s0.prep).map[nm0] || '')}.`); });
+  const ab = $('#catAllBack'); if (ab) ab.onclick = () => { const snap = catSnap(s0.prep); catLetTally(s0.prep, userSet); save(); render(); catUndoToast(s0.prep, snap, `${userSet.length} ${catWord(userSet.length)} back to Tally.${fitCategories(s0) && fitCategories(s0).exact ? ' Grades match Focus.' : ''}`); };
+  const uf = $('#catUseFocus'); if (uf) uf.onclick = () => { const snap = catSnap(s0.prep); dis.forEach(nm0 => { g.map[nm0] = fit.focusMap[nm0]; g.how[nm0] = 'fit'; }); catRefresh(s0.prep); save(); render(); catUndoToast(s0.prep, snap, `Using Focus's ${catWord(dis.length)} for ${dis.length === 1 ? esc(dis[0]) : dis.length + ' assignments'}.`); };
   wrap.querySelectorAll('[data-stu]').forEach(tr => tr.onclick = () => openProfile(s0.key, gb.students[Number(tr.dataset.stu)]));
 }
 
@@ -1325,19 +1355,26 @@ function openStudentReports(s) {
   m.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => { const idx = gb.students.map((_, i) => i).filter(i => b.dataset.rep === 'all' || owes[i]); close(); printStudentReports(s, idx, `Student reports — ${s.label}`); });
 }
 
-// Asked at import for new assignments the Focus fit couldn't prove.
+// Asked at import for new assignments the Focus fit couldn't prove. One dropdown per assignment, already on Tally's
+// guess; only a row you change becomes yours (the rest stay guesses, so a later Focus export can still prove them).
+// Round 7 (Croix, 23 Oct): rows of pills took stray taps, and Apply locked every row at once.
 function askCategories(sec, names, fit) {
-  const g = gradingFor(sec.prep);
+  const g = gradingFor(sec.prep); const course = courseWord(sec.prep);
   return new Promise(resolve => {
     const m = $('#modal'); m.classList.remove('hidden');
-    m.innerHTML = `<div class="panel narrow"><header><h2>Which category?</h2><button id="mClose" aria-label="Close">×</button></header>
-      <div class="body one"><p>${fit && fit.exact ? 'The Focus Grade column proved every other assignment, but these could go in more than one category without changing anyone\'s grade.' : sec.grades.overall ? 'Tally couldn\'t match these to the Focus Grade column, so it\'s guessing from the names.' : 'This export has no Grade column, so categories are guesses from the names.'} Pick for ${esc(sec.label)}:</p>
-        ${names.map((n, k) => `<div class="field"><label>${esc(n)}</label><div class="seg small" data-ask="${k}">${g.cats.map(c => `<button data-c="${esc(c.name)}" class="${g.map[n] === c.name ? 'on' : ''}">${esc(c.name)}</button>`).join('')}</div></div>`).join('')}
-        <div class="rp-actions"><button class="pill" id="askApply">Apply</button><button class="pill pale" id="mCancel">Keep the guesses</button></div></div></div>`;
+    const why = fit && fit.exact ? 'Focus\'s grades proved every other assignment. These fit more than one category without changing anyone\'s grade.' : sec.grades.overall ? 'Tally couldn\'t prove these from the Focus Grade column, so it guessed from the names.' : 'This export has no Grade column, so these are guesses from the names.';
+    m.innerHTML = `<div class="panel narrow"><header><h2>Check ${names.length === 1 ? 'this category' : `${names.length} categories`}</h2><button id="mClose" aria-label="Close">×</button></header>
+      <div class="body one"><p>${why} Change only the ones that are wrong.</p>
+        <table class="checkTable askcat"><tbody>${names.map((n, k) => `<tr data-row="${k}"><td>${esc(n)}</td><td><select data-ask="${k}" aria-label="Category for ${esc(n)}">${g.cats.map(c => `<option ${g.map[n] === c.name ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table>
+        <p class="ghint" id="askSum">Every ${esc(course)} class uses these.</p>
+        <div class="rp-actions"><button class="pill" id="askApply">Save</button><button class="pill pale" id="mCancel">Decide later</button></div></div></div>`;
     const done = () => { m.classList.add('hidden'); m.innerHTML = ''; resolve(); };
     m._cancel = done; $('#mClose').onclick = done; $('#mCancel').onclick = done; m.onclick = e => { if (e.target === m) done(); };
-    m.querySelectorAll('[data-ask]').forEach(seg => seg.querySelectorAll('button').forEach(b => b.onclick = () => { seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); }));
-    $('#askApply').onclick = () => { m.querySelectorAll('[data-ask]').forEach(seg => { const n = names[Number(seg.dataset.ask)]; const on = seg.querySelector('button.on'); if (on) { g.map[n] = on.dataset.c; g.how[n] = 'user'; } }); done(); };
+    const changed = () => [...m.querySelectorAll('[data-ask]')].filter(sel => sel.value !== g.map[names[Number(sel.dataset.ask)]]);
+    const mark = () => { m.querySelectorAll('[data-row]').forEach(tr => tr.classList.remove('changed')); const ch = changed(); ch.forEach(sel => sel.closest('tr').classList.add('changed'));
+      $('#askSum').textContent = ch.length ? `${ch.length} changed. Saving changes ${ch.length === 1 ? 'it' : 'them'} in every ${course} class.` : `Every ${course} class uses these.`; $('#askApply').textContent = ch.length ? `Save ${ch.length} ${ch.length === 1 ? 'change' : 'changes'}` : 'Looks right'; };
+    m.querySelectorAll('[data-ask]').forEach(sel => sel.onchange = mark); mark();
+    $('#askApply').onclick = () => { changed().forEach(sel => { const n = names[Number(sel.dataset.ask)]; g.map[n] = sel.value; g.how[n] = 'user'; }); done(); };
   });
 }
 
@@ -1362,7 +1399,7 @@ function openWeights(sec) {
    class); class-vs-class in a fixed, validated categorical order, always direct-labeled; anything that means
    good → bad (letter grades, how much of a unit is done) wears LETTER_COLORS, green to red; thin marks; <title>
    tooltips; text in ink. */
-const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#008300'];
+const SERIES = ['#5B4BB7', '#B0417E', '#9A6A1C', '#2F8F9D', '#4B5563', '#C27BA0', '#6B7F1E'];   // class colours: kept clear of the grade colours (green, blue, yellow, orange, red) and the course navy and teal (round 7)
 const seriesColor = i => SERIES[i % SERIES.length];
 // Letter grades wear the colours anyone would guess: A green, B blue, C yellow, D orange, F red (Croix, 4 Oct: "common
 // sense colors… not different shades of aqua"). Red and green are the classic colour-blind trap, and in a circle graph
@@ -1449,14 +1486,16 @@ function chartDots(values, max, o) {
   return s + '</svg>';
 }
 // Histogram with a bin size; bars touch (histograms do), 1px surface gap for legibility.
+const autoBin = max => max > 40 ? 10 : max > 10 ? 5 : 1;
 function chartHist(values, max, bin, o) {
-  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = o.w || 800, h = 200 + pad, v = values.filter(x => x != null); bin = bin || (max > 40 ? 10 : max > 10 ? 5 : 1);
+  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = o.w || 800, h = 200 + pad, v = values.filter(x => x != null); bin = bin || autoBin(max);
   // Bins are [lo, hi) with the top bin closed at max, so 100 with bins of 10 gives ten bins, not an empty 100–110.
   const nb = Math.max(1, Math.ceil(max / bin - 1e-9)); const c = new Array(nb).fill(0); v.forEach(x => c[Math.max(0, Math.min(nb - 1, Math.floor(x / bin)))]++);
   const ints = v.every(x => Number.isInteger(x)); const range = (lo, hi, last) => !ints ? `${lo}–${hi}` : bin === 1 ? `${lo}` : last ? `${lo}–${Math.max(lo, Math.round(max))}` : `${lo}–${hi - 1}`;
-  const top = niceMax(Math.max(...c, 1), c.length && Math.max(...c) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Y = n => h - 30 - n / top * (h - 50 - pad);
+  const sh = o.share ? (x => x / Math.max(v.length, 1) * 100) : (x => x); const cv = c.map(sh);   // share: each bar as a percent of the row's students
+  const top = o.share ? Math.ceil(Math.max(o.top || 0, ...cv, 1) / 10) * 10 : niceMax(Math.max(o.top || 0, ...cv, 1), Math.max(o.top || 0, ...cv) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Yv = t => h - 30 - t / top * (h - 50 - pad), Y = n => Yv(sh(n));
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="histogram">`;
-  for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
+  for (let n = 0; n <= top; n += o.share ? (top > 50 ? 20 : 10) : Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Yv(n)}" x2="${w - 20}" y2="${Yv(n)}" class="gl"/><text x="34" y="${Yv(n) + 4}" text-anchor="end" class="tl">${n}${o.share ? '%' : ''}</text>`;
   c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--cc,var(--teal))"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
   s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${nb * bin}</text>`;
   if (o.mean != null) s += meanMark(X(Math.max(0, Math.min(nb, o.mean / bin))), 10, Y(0), o.meanLabel || 'Average');   /* the axis is labelled at bin edges, so a value sits at value ÷ bin */
@@ -1475,9 +1514,9 @@ function chartFreq(values, max, o) {
   const v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[Math.round(x)] = (counts[Math.round(x)] || 0) + 1);
   const items = []; for (let x = 0; x <= max; x++) items.push({ label: String(x), value: counts[x] || 0 });
   if (items.length > 26) return chartHist(values, max, Math.ceil(max / 20), o);   // too many bars: bin them
-  o = o || {}; const pad = o.mean != null ? 16 : 0; const w = o.w || 800, h = 200 + pad, top = niceMax(Math.max(...items.map(i => i.value), 1), 1); const X = i => 40 + i / items.length * (w - 60), Y = n => h - 30 - n / top * (h - 50 - pad);
+  o = o || {}; const pad = o.mean != null ? 16 : 0; const sh = o.share ? (x => x / Math.max(v.length, 1) * 100) : (x => x); const w = o.w || 800, h = 200 + pad, top = o.share ? Math.ceil(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1) / 10) * 10 : niceMax(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1), 1); const X = i => 40 + i / items.length * (w - 60), Yv = t => h - 30 - t / top * (h - 50 - pad), Y = n => Yv(sh(n));
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="bar graph">`;
-  for (let n = 0; n <= top; n += Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Y(n)}" x2="${w - 20}" y2="${Y(n)}" class="gl"/><text x="34" y="${Y(n) + 4}" text-anchor="end" class="tl">${n}</text>`;
+  for (let n = 0; n <= top; n += o.share ? (top > 50 ? 20 : 10) : Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Yv(n)}" x2="${w - 20}" y2="${Yv(n)}" class="gl"/><text x="34" y="${Yv(n) + 4}" text-anchor="end" class="tl">${n}${o.share ? '%' : ''}</text>`;
   items.forEach((it, i) => { s += `<rect x="${X(i) + 3}" y="${Y(it.value)}" width="${Math.max(X(i + 1) - X(i) - 6, 2)}" height="${Y(0) - Y(it.value)}" rx="3" class="bar" style="fill:var(--cc,var(--teal))"><title>${it.label}: ${it.value} student${it.value === 1 ? '' : 's'}</title></rect><text x="${(X(i) + X(i + 1)) / 2}" y="${h - 10}" text-anchor="middle" class="tl">${it.label}</text>`; });
   if (o.mean != null) s += meanMark(X(Math.max(0, Math.min(items.length, o.mean + 0.5))), 10, Y(0), o.meanLabel || 'Average');   /* each value's bar is centred on value + ½ */
   return s + '</svg>';
@@ -1504,10 +1543,10 @@ function chartCircle(parts, o) {
 const CHART_CSS = `
 .chart{width:100%;height:auto;display:block}.chart .gl{stroke:var(--grid);stroke-width:1}.chart .ax{stroke:var(--navy);stroke-width:1.5}
 .chart .tl{font-size:12px;fill:var(--ink-soft)}.chart .lbl{font-size:13px;font-weight:var(--w-bold);fill:var(--navy)}.chart .val{font-size:12px;font-weight:var(--w-black);fill:var(--navy)}.chart .inv{font-size:12px;font-weight:var(--w-black);fill:#fff}
-#lb .chart .tl{font-size:16px}#lb .chart .lbl{font-size:17px}#lb .chart .val{font-size:16px}#lb .chart .inv{font-size:16px}
+#lb .chart .tl{font-size:16px;fill:var(--navy);font-weight:var(--w-bold)}#lb .chart .lbl{font-size:17px}#lb .chart .val{font-size:16px}#lb .chart .inv{font-size:16px}
 .chart .qmark{stroke:var(--ink-soft);stroke-width:1;stroke-dasharray:4 4;opacity:.7}.chart .qmarkl{font-size:11px;font-weight:var(--w-bold)}.chart .ln.ref{stroke-dasharray:5 4;stroke-width:2}
 .chart .ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.chart .dot{fill:var(--cc,var(--teal));stroke:#fff;stroke-width:1.5}.chart .meanLine{stroke:var(--navy);stroke-width:1.5;stroke-dasharray:3 3;opacity:.7}.chart .meanDia{fill:var(--white);stroke:var(--navy);stroke-width:2}.chart .bar{stroke:none}
-.stem{border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.15em}
+.stem{border-collapse:collapse;font-family:inherit;font-variant-numeric:tabular-nums;font-size:15px}.stem th{text-align:right;padding:2px 10px;border-right:2px solid var(--navy);color:var(--navy)}.stem td{padding:2px 10px;letter-spacing:.35em}
 .labRow.one{grid-template-columns:1fr}.chart.circle{max-width:460px;overflow:visible}#lb .chart.circle{max-width:min(62vw,1150px)}.lbWrap .stem{font-size:calc(var(--bu)*1.9)}.lbWrap .stem+.ghint{font-size:calc(var(--bu)*1.35);margin:.4em 0 .2em}
 `;
 // The app page gets the chart styles at boot; the standalone Race/Lab export includes CHART_CSS through LAB_CSS.
@@ -1541,7 +1580,11 @@ function attentionItems(sec) {
   if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings' });
   if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally — ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid', shared: off.every(c => !c.maxOK) });
     const stale = off.length ? [] : checks.filter(c => c.counts.stale > 0); if (stale.length) out.push({ level: 'info', text: 'moved up since you copied — ' + stale.map(c => `${c.unit.short}: ${plural(c.counts.stale, 'student')}`).join(' · ') + ' — copy again', go: 'grid' });
-    const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' }); if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' }); }
+    const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; const disN = fit ? Object.values(fit.disagree || {}).filter(Boolean).length : 0;
+    if (disN) out.push({ level: 'warn', text: `${disN} ${disN === 1 ? 'category' : 'categories'} you set ${disN === 1 ? 'disagrees' : 'disagree'} with Focus's grades`, go: 'grades', shared: true });
+    else if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}) — check categories`, go: 'grades' });
+    if (hasOpenGrades(sec)) { const g = gradingFor(sec.prep); const odd = g.cats.some(c => c.name === 'Assessments') ? openSec(sec).grades.assignments.filter(a => g.how[a.name] === 'user' && looksLikeTest(a.name) && g.map[a.name] !== 'Assessments') : [];
+      if (odd.length) out.push({ level: 'info', text: odd.length === 1 ? `"${odd[0].name}" is in ${g.map[odd[0].name]}, not Assessments` : `${odd.length} tests or quizzes are not in Assessments`, go: 'grades', shared: true }); } if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column — categories are guesses', go: 'grades' }); }
   // No "Working in" unit (it is set by the first import, so this is a plan that has numbered units but lost its pick): nothing counts until one is chosen.
   if (!sec.placeholder && sec.students.length && !(state.settings.currentUnit || {})[sec.prep] && sec.skills.some(sk => /^Unit\s+\d+/i.test(sk.unit))) out.push({ level: 'info', text: 'pick the unit you\'re working in — no unit counts until you do', go: 'grid', shared: true });
   const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid' });
@@ -1588,6 +1631,7 @@ function renderHome() {
   const row = g => g.each ? `<li class="${g.level} each"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div></li>`
     : `<li class="${g.level}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"><i></i><span><b>${esc(g.who)}</b> — ${esc(g.text)}</span><em>›</em></button></li>`;
   const qdLine = qd ? `<li class="warn"><button id="qdGo"><i></i><span><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))} — close it so its missing work and Focus checks stop coming up</span><em>›</em></button></li>` : '';
+  const ce = closedEarly(); const ceLine = ce ? `<div class="notice qce"><span>${ico('warn')}</span><span><b>${esc(Q_NAMES[ce - 1])} was closed early</b> on ${esc(fmtDate((quarters().closed[ce].at || '').slice(0, 10)))}. It runs until ${esc(fmtDate(quarters().ends[ce - 1]))}, so its missing work isn't showing on student pages or conference forms.</span><button class="pill small" id="ceReopen">Reopen ${esc(Q_NAMES[ce - 1])}</button></div>` : '';
   const lb = state.lastBackup; const bkDue = backupBehind();
   const bkLine = bkDue ? `<li class="info"><button id="hBackup" title="Download a Full save: everything in Tally. Keep it in your school Drive"><i></i><span><b>Full save</b> — ${storageFragile ? 'work on this page is in no Full save yet' : lb ? `new imports since the last one (${esc(ageDays(day(lb)) === 0 ? 'earlier today' : fmtDate(day(lb)))})` : 'nothing has been saved from this browser yet'}</span><em>Save</em></button></li>` : '';
   const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>This browser's storage is ${su.pct}% full</b> — ${su.other > su.tally ? `other saved pages hold most of it (${su.mb(su.other)} MB; Tally ${su.mb(su.tally)} MB). Make a Full save first` : 'make a Full save, then remove an old class or gradebook in Settings'}</span><em>›</em></button></li>` : '';
@@ -1616,6 +1660,7 @@ function renderHome() {
   const importLine = li && (li.lines.length || li.fails.length) ? `<details class="himport ${li.fails.length ? 'warn' : ''}" ${li.fails.length ? 'open' : ''}><summary><b>${nFiles || li.fails.length ? 'Last import' : 'Note'}</b> <small>${liAge === 0 ? 'today' : liAge === 1 ? 'yesterday' : esc(fmtDate(day(li.at)))}, ${esc(fmtTime(li.at))}${nFiles || li.fails.length ? ` · ${plural(nFiles, 'file')}${li.fails.length ? ` · <span class="bad">${li.fails.length} couldn't be read</span>` : ' — all read'}` : ''}${li.lines.some(l => l.wi) ? ' · Working in was set for you' : ''}</small><button class="linkbtn" id="liHide" title="Remove this until the next import">Dismiss</button></summary>
     <ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}${li.skipped ? `<li class="muted">${plural(li.skipped, 'file')} skipped</li>` : ''}</ul></details>` : '';
   $('#gridwrap').innerHTML = `<div class="home">
+    ${ceLine}
     ${importLine}
     ${attList}
     <div class="hcards">${secs.map(card).join('')}</div>
@@ -1631,6 +1676,7 @@ function renderHome() {
   const hb = $('#hBackup'); if (hb) hb.onclick = () => saveFull();
   const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;
+  const cr = $('#ceReopen'); if (cr) cr.onclick = () => { const n = closedEarly(); if (!n) return; reopenQuarter(n); save(); render(); toast(`<b>${esc(Q_NAMES[n - 1])} is open again.</b> Its missing work and Focus checks are back.`, false, 5000); };
   $('#gridwrap').querySelectorAll('[data-digest]').forEach(b => b.onclick = e => { e.stopPropagation(); openDigest(state.sections[b.dataset.digest]); });
   $('#gridwrap').querySelectorAll('[data-go]').forEach(b => b.onclick = e => { e.stopPropagation(); const where = b.dataset.where || 'grid'; state.active = b.dataset.go;
     if (where === 'import') { $('#file').click(); return; }
@@ -2533,6 +2579,10 @@ function closeQuarter(n, unitPicks) {
 }
 function reopenQuarter(n) { delete quarters().closed[n]; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); }   // the archive stays; closing again refreshes it
 
+// A closed quarter whose end date hasn't come yet: its work is hidden as finished while the class is still doing it
+// (Croix, 23 Oct: an accidental close made the conference forms wrong). The latest one, or null.
+function todayISO() { const t = new Date(); return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`; }
+function closedEarly() { const n = [4, 3, 2, 1].find(qClosed); return n && todayISO() <= quarters().ends[n - 1] ? n : null; }
 // A quarter whose end date has passed and isn't closed yet (the Overview offers to close it).
 function quarterDue() { const n = currentQuarter(); const end = quarters().ends[n - 1]; const today = new Date(); const iso = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`; return !qClosed(n) && iso > end ? n : null; }
 
@@ -2553,35 +2603,46 @@ function openQuarters(keep) {
   const unitPick = p => { const us = courseUnits(p); if (!us.length) return ''; return `<div class="field"><label>${p === 'acc' ? 'Accelerated' : 'On-level'}</label><div class="qunits">${us.map(u => { const cur = q.units[p][u.name]; const key = p + '|' + u.name; const on = keep.picks && key in keep.picks ? keep.picks[key] : (cur === n || (!cur && due[p].has(u.name))); const other = cur && cur !== n && qClosed(cur); return `<label class="${other ? 'dim' : ''}"><input type="checkbox" data-qu="${esc(key)}" data-short="${esc(u.short)}" ${on || other ? 'checked' : ''} ${other ? 'disabled' : ''}> ${esc(u.short)}${other ? ` <small>Q${cur}</small>` : due[p].has(u.name) ? ' <small>due in Q' + n + '</small>' : ''}</label>`; }).join('')}</div></div>`; };
   const dates = `<div class="qdates">${q.ends.map((d, i) => `<label class="${qClosed(i + 1) ? 'closed' : i + 1 === n ? 'now' : ''}"><span>${Q_NAMES[i]} ends</span><input type="date" data-qend="${i}" value="${esc(d)}" ${qClosed(i + 1) ? 'disabled' : ''}><small>${qClosed(i + 1) ? 'closed ' + esc(fmtDate((q.closed[i + 1].at || '').slice(0, 10))) : i + 1 === n ? 'now' : ''}</small></label>`).join('')}</div>
       <p class="ghint">Lake County Schools 2026–27 dates.</p>`;
+  const early = !ended && !!keep.early;   // closing before the end date is only offered from Settings, behind a tick
   const form = `<p class="qlead">Tally keeps every ${esc(QN)} score and final grade, then stops bringing it up — no missing work, sliding, Focus checks or still-owed lines. It stays one tap away (Grades → <b>Q${n}</b>, and each student's page), and you can reopen it.</p>
-      ${!ended ? `<p class="warnline">${esc(QN)} doesn't end until ${esc(fmtDate(q.ends[n - 1]))}. Closing now keeps each class as of its last export.</p>` : staleN ? `<p class="warnline">${allStale ? (staleN === 1 ? 'The gradebook here was' : 'Every gradebook here was') : `${plural(staleN, 'gradebook')} here ${staleN === 1 ? 'was' : 'were'}`} exported before ${esc(QN)} ended (${esc(fmtDate(q.ends[n - 1]))}). If grades changed in Focus since, export ${esc(QN)} from Focus and import it first.</p>` : ''}
+      ${!ended ? `<p class="warnline">${esc(QN)} doesn't end until ${esc(fmtDate(q.ends[n - 1]))}. Closed early, its work stops showing as missing, on student pages and on conference forms, until you reopen it.</p>` : staleN ? `<p class="warnline">${allStale ? (staleN === 1 ? 'The gradebook here was' : 'Every gradebook here was') : `${plural(staleN, 'gradebook')} here ${staleN === 1 ? 'was' : 'were'}`} exported before ${esc(QN)} ended (${esc(fmtDate(q.ends[n - 1]))}). If grades changed in Focus since, export ${esc(QN)} from Focus and import it first.</p>` : ''}
       <table class="checkTable qkeep"><tbody>${rows}</tbody></table>
       ${unitPick('acc') || unitPick('on') ? `<details class="qmore" id="qUnits" ${keep.units ? 'open' : ''}><summary><span>IXL units in ${esc(QN)}: <b id="qUnitSum"></b></span> <u>Change</u></summary>${unitPick('acc')}${unitPick('on')}</details>` : ''}
-      <div class="rp-actions"><button class="pill" id="qClose">Close ${esc(QN)}</button><button class="pill pale" id="mCancel">Not yet</button></div>`;
+      ${early ? `<label class="check qsure"><input type="checkbox" id="qSure"> I know ${esc(QN)} runs until ${esc(fmtDate(q.ends[n - 1]))}</label>` : ''}
+      <div class="rp-actions"><button class="pill" id="qClose" ${early ? 'disabled' : ''}>${early ? `Close ${esc(QN)} early` : `Close ${esc(QN)}`}</button><button class="pill pale" id="mCancel">Cancel</button></div>`;
+  // One line per closed quarter. The latest reopens in one click (no question: reopening loses nothing); an earlier one
+  // waits for the ones after it.
+  const closedList = [1, 2, 3, 4].filter(qClosed).map(i => { const at = (q.closed[i].at || '').slice(0, 10); const soon = at && at < q.ends[i - 1];
+    return `<li><b>${esc(Q_NAMES[i - 1])}</b> <span>closed ${esc(fmtDate(at))}${soon ? ` <em class="qearlyTag">early, it ends ${esc(fmtDate(q.ends[i - 1]))}</em>` : ''}</span>${i === lastClosed ? `<button class="pill pale small" id="qReopen">Reopen</button>` : `<small>reopen ${esc(Q_NAMES[lastClosed - 1])} first</small>`}</li>`; }).join('');
+  const closedBox = closedList ? `<h3 class="mt">Closed</h3><ul class="qclosed">${closedList}</ul><p class="ghint">Reopening brings back its missing work, Focus checks and still-owed lines. The kept copy stays.</p>` : '';
   const m = $('#modal'); m.classList.remove('hidden');
-  // When the quarter has ended this dialog is about closing it. Before that it is the quarter dates, with closing early
-  // one deliberate step away — so the screen opened to reopen Q1 or fix a date doesn't lead with "Close Quarter 2".
-  m.innerHTML = `<div class="panel"><header><h2>${!allClosed && ended ? `Close ${esc(QN)}` : 'Quarters'}</h2><button id="mClose" aria-label="Close">×</button></header>
+  // When the quarter has ended this dialog is about closing it. Before that it is the quarter dates and nothing that
+  // closes: closing early lives in Settings, behind a tick, so a stray tap can't end a quarter in the middle of it.
+  m.innerHTML = `<div class="panel"><header><h2>${!allClosed && ended ? `Close ${esc(QN)}` : early ? `Close ${esc(QN)} early` : 'Quarters'}</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one quarters">
-      ${allClosed ? `<p><b>Every quarter is closed.</b></p>${dates}` : ended ? `${form}<details class="qmore" id="qDates" ${keep.dates ? 'open' : ''}><summary>Quarter dates…</summary>${dates}</details>`
-        : `${dates}<details class="qmore" id="qEarly" ${keep.early ? 'open' : ''}><summary><span>Close ${esc(QN)} early… <small>it ends ${esc(fmtDate(q.ends[n - 1]))}</small></span></summary>${form}</details>`}
-      ${lastClosed ? `<p class="ghint">Closed by mistake? <button class="linkbtn" id="qReopen">Reopen ${esc(Q_NAMES[lastClosed - 1])}</button> — its alerts come back; the saved copy stays.</p>` : ''}
+      ${allClosed ? `<p><b>Every quarter is closed.</b></p>${dates}` : ended || early ? `${form}<details class="qmore" id="qDates" ${keep.dates ? 'open' : ''}><summary>Quarter dates…</summary>${dates}</details>`
+        : `${dates}<p class="ghint">${esc(QN)} ends ${esc(fmtDate(q.ends[n - 1]))}. After that, Tally asks you to close it.</p>`}
+      ${closedBox}
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; render(); };
   m._cancel = close; $('#mClose').onclick = close; const mc = $('#mCancel'); if (mc) mc.onclick = close; m.onclick = e => { if (e.target === m) close(); };
   const isOpen = id => { const d = $('#' + id); return !!(d && d.open); };
   const picksNow = () => { const o = {}; m.querySelectorAll('[data-qu]:not(:disabled)').forEach(cb => { o[cb.dataset.qu] = cb.checked; }); return o; };
-  const again = extra => openQuarters({ dates: isOpen('qDates'), units: isOpen('qUnits'), early: isOpen('qEarly'), picks: picksNow(), ...(extra || {}) });
+  const again = extra => openQuarters({ dates: isOpen('qDates'), units: isOpen('qUnits'), early, picks: picksNow(), ...(extra || {}) });
   m.querySelectorAll('[data-qend]').forEach(inp => inp.onchange = () => { if (!ISO_RE.test(inp.value)) return; q.ends[Number(inp.dataset.qend)] = inp.value; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); again(); });
   const sum = $('#qUnitSum'); const unitSum = () => { if (!sum) return; const by = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => by[cb.dataset.qu.split('|')[0]].push(cb.dataset.short));
     const part = (p, label) => courseUnits(p).length ? `${label} ${by[p].length ? by[p].join(', ') : 'none'}` : ''; sum.textContent = [part('acc', 'Accelerated'), part('on', 'On-level')].filter(Boolean).join(' · '); };
   m.querySelectorAll('[data-qu]').forEach(cb => cb.onchange = unitSum); unitSum();
+  const sure = $('#qSure'); if (sure) sure.onchange = () => { $('#qClose').disabled = !sure.checked; };
   const qc = $('#qClose'); if (qc) qc.onclick = () => {
+    if (early && !(sure && sure.checked)) return;
     const picks = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => { const [p, u] = cb.dataset.qu.split(/\|(.*)/s); picks[p].push(u); });
+    const before = JSON.stringify({ units: q.units, closed: q.closed });
     const per = closeQuarter(n, picks); save(); m.classList.add('hidden'); m.innerHTML = ''; render();
-    toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'} — it won't come up again unless you reopen it.`, false, 5000);
+    toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'}. Its missing work stops coming up. <button class="tundo" id="qUndo">Undo</button>`, false, 9000);
+    const un = $('#qUndo'); if (un) un.onclick = () => { const b = JSON.parse(before); q.units = b.units; q.closed = b.closed; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); render(); toast(`${esc(QN)} is open again.`, false, 2500); };
   };
-  const ro = $('#qReopen'); if (ro) ro.onclick = async () => { if (!await ask(`Reopen ${Q_NAMES[lastClosed - 1]}? Its missing work, Focus checks and still-owed lines come back. The saved copy stays.`)) return; reopenQuarter(lastClosed); save(); openQuarters({}); };
+  const ro = $('#qReopen'); if (ro) ro.onclick = () => { const N = Q_NAMES[lastClosed - 1]; reopenQuarter(lastClosed); save(); openQuarters({}); toast(`<b>${esc(N)} is open again.</b> Its missing work and Focus checks are back. Close it again whenever you're ready.`, false, 6000); };
 }
  // quarters.js too
 /* ---------- students.js — Students: every student in one place, for the teacher ----------
@@ -3170,55 +3231,61 @@ function conferenceData(sec, name) {
   const graded = gb ? all.filter(a => a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && catIn(s, a) !== 'Participation').length : 0;
   // what turning in every missing assignment and making up every missed test at full credit would do to the grade
   let ifDone = null; if (r && missingAll.length) { const over = {}; missingAll.forEach(a => over[a.name] = a.max); ifDone = computeGrade(s, i, over).rounded; }
+  const ifWith = list => { if (!r || !list.length) return null; const over = {}; list.forEach(a => over[a.name] = a.max); return computeGrade(s, i, over).rounded; };
+  const ifWork = ifWith(missingAll.filter(a => !isAssess(s, a))), ifTests = ifWith(missingAll.filter(a => isAssess(s, a)));
   // the Focus IXL columns: how much of the grade's IXL is done
   const ixlCols = all.filter(a => ixlCol(a) && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
   const ixlGrade = ixlCols.length ? { got: ixlCols.reduce((p, a) => p + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), max: ixlCols.reduce((p, a) => p + a.max, 0) } : null;
   const prev = s && !s._closed ? prevGradeSnap(s) : null;
   const rt = retakeStatus(sec, name); const ix = ixlFor(sec, f.ixl);
   const first = state.settings.hideNames ? mask(name) : niceName(name).split(' ')[0];
-  return { sec, name, first, f, sum, r, q: liveQuarter(sec), rc, missing, missedTests, tests, redo, graded, ifDone, ixlGrade, prevDate: prev ? prev.date : null, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
+  return { sec, name, first, f, sum, r, q: liveQuarter(sec), rc, missing, missedTests, tests, redo, graded, ifDone, ifWork, ifTests, ixlGrade, prevDate: prev ? prev.date : null, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
 }
 
-// Strengths and Concerns: a few full sentences each, every one tied to a number, the biggest effect on the grade first.
+// Strengths and Concerns as short notes (Croix, 23 Oct 2026: "short notes, but give me space to edit and write in
+// stuff"). One fact per line, each with its number, the biggest effect on the grade first; the box keeps room to write.
+// Words a parent reads: "tests and quizzes", never "assessments"; no "pts", no "at goal", no year-long IXL totals.
 function conferenceDraft(d) {
-  const P = v => confRound(v) + '%'; const n = d.first; const S = [], C = [];
-  const of = t => `${fmtN(t.v)} of ${fmtN(t.max)}`;
-  const vsClass = t => t.avg != null && Math.abs(t.pct - t.avg) >= 5 ? ` The class average was ${P(t.avg)}.` : '';
+  const P = v => confRound(v) + '%'; const S = [], C = [];
+  const avgOf = t => t.avg != null ? ` (class average ${P(t.avg)})` : '';
   const real = d.tests.filter(t => t.real);
   const unitTests = real.filter(t => t.unit);
   // ---- strengths ----
   const bestUnit = unitTests.slice().sort((a, b) => b.pct - a.pct)[0];
   const bestReal = real.slice().sort((a, b) => b.pct - a.pct || b.max - a.max)[0];
   const stand = t => t && (confRound(t.pct) >= 85 || (confRound(t.pct) >= 75 && t.avg != null && t.pct - t.avg >= 10));
-  if (stand(bestUnit)) S.push(`${n} scored ${of(bestUnit)} (${P(bestUnit.pct)}) on the ${bestUnit.name}.${vsClass(bestUnit)}`);
-  else if (stand(bestReal)) S.push(`${n} scored ${of(bestReal)} (${P(bestReal.pct)}) on the ${bestReal.name}.${vsClass(bestReal)}`);
-  if (d.r && !d.missing.length && !d.missedTests.length && d.graded >= 3) S.push(`${n} has turned in every assignment this quarter.`);
-  if (!d.rt.noIxl && d.rt.unit && d.rt.nUnit && !d.rt.short.length) S.push(`${n} has finished every ${d.rt.unit.short} IXL practice skill.`);
-  if (d.sum.d != null && d.sum.d >= 3 && d.prevDate) S.push(`${n}'s grade has gone up ${d.sum.d} points since ${fmtDate(d.prevDate)}.`);
+  const best = stand(bestUnit) ? bestUnit : stand(bestReal) ? bestReal : null;
+  if (best) S.push(`• ${P(best.pct)} on the ${best.name}${avgOf(best)}`);
+  if (d.r && d.r.rounded != null && d.r.rounded >= 85 && d.graded >= 3) S.push(`• ${d.r.rounded}% in the class so far (${d.r.letter})`);
+  if (real.length >= 2) { const avg = real.reduce((a, t) => a + t.pct, 0) / real.length; if (confRound(avg) >= 85 && !(best && real.length === 2)) S.push(`• Tests and quizzes average ${P(avg)}`); }
+  if (d.r && !d.missing.length && !d.missedTests.length && d.graded >= 3) S.push('• Every assignment turned in');
+  if (!d.rt.noIxl && d.rt.unit && d.rt.nUnit && !d.rt.short.length) S.push(`• Every ${d.rt.unit.short} IXL skill finished`);
+  if (d.sum.d != null && d.sum.d >= 3 && d.prevDate && d.r) S.push(`• Grade up ${d.sum.d} points since ${fmtDate(d.prevDate)} (now ${d.r.rounded}%)`);
   // ---- concerns ----
-  if (d.missing.length) {
-    const k = d.missing.length; const gain = d.ifDone != null && d.r ? d.ifDone - d.r.rounded : 0;
-    C.push(`${n} has ${k === 1 ? '1 missing assignment' : k + ' missing assignments'}, which count${k === 1 ? 's' : ''} as ${k === 1 ? 'a zero' : 'zeros'} until turned in.${gain >= 2 && !d.missedTests.length ? ` Turning ${k === 1 ? 'it' : 'them'} in could raise the grade from ${d.r.rounded}% to as high as ${d.ifDone}%.` : ''}`);
-  }
-  if (d.missedTests.length) { const names = d.missedTests.slice(0, 2).map(t => 'the ' + t.name).join(' and '); const gain = d.ifDone != null && d.r ? d.ifDone - d.r.rounded : 0;
-    C.push(`${n} missed ${names}${d.missedTests.length > 2 ? ` and ${d.missedTests.length - 2} more` : ''} and needs to make ${d.missedTests.length === 1 ? 'it' : 'them'} up.${gain >= 2 ? ` ${d.missing.length ? 'Making these up and turning in the missing work' : `Making ${d.missedTests.length === 1 ? 'it' : 'them'} up`} could raise the grade from ${d.r.rounded}% to as high as ${d.ifDone}%.` : ''}`); }
+  const now = d.r ? d.r.rounded : null;
+  if (d.missing.length) { const k = d.missing.length; const up = d.ifWork != null && now != null && d.ifWork - now >= 1;
+    C.push(`• ${k === 1 ? '1 missing assignment' : k + ' missing assignments'}, ${k === 1 ? 'a zero' : 'zeros'} until turned in${up ? ` (grade ${now}% → up to ${d.ifWork}% if turned in)` : ''}`); }
+  if (d.missedTests.length) { const k = d.missedTests.length; const up = d.ifTests != null && now != null && d.ifTests - now >= 1;
+    C.push(`• ${k === 1 ? `${d.missedTests[0].name} not taken yet` : `${k} tests or quizzes not taken yet`}${up ? ` (grade → up to ${d.ifTests}% once taken)` : ''}`); }
   const low = real.filter(t => confRound(t.pct) < 70).sort((a, b) => a.pct - b.pct);
-  if (low.length) { const t = low[0];
-    const path = d.rt.ok ? ` ${n} can retake it now.` : d.rt.noIxl ? (d.rt.missing.length ? ` A retake opens once the missing work is turned in.` : '') : ` A retake opens once ${n} ${[d.rt.missing.length ? 'turns in the missing work' : '', d.rt.short.length ? `finishes ${plural(d.rt.short.length, d.rt.unit.short + ' IXL practice skill')}` : ''].filter(Boolean).join(' and ')}.`;
-    C.push(`${n} scored ${of(t)} (${P(t.pct)}) on the ${t.name}.${vsClass(t)}${path}${low.length > 1 ? ` ${low.length - 1} more ${low.length === 2 ? 'quiz or test is' : 'quizzes or tests are'} below 70% (listed below).` : ''}`); }
-  if (d.ixlGrade && d.ixlGrade.max && d.ixlGrade.got / d.ixlGrade.max < 0.6 && d.r && d.r.rounded < 80) C.push(`IXL practice counts in the grade. ${n} has finished ${d.ixlGrade.got} of the ${d.ixlGrade.max} IXL skills counted so far, and finishing the rest raises the grade.`);
-  if (d.sum.d != null && d.sum.d <= -3 && d.prevDate) C.push(`${n}'s grade has dropped ${-d.sum.d} points since ${fmtDate(d.prevDate)}.`);
-  if (d.r && d.graded >= 3 && !C.length) C.push('No concerns at this time.');   // with only participation graded there is nothing to judge yet
+  if (low.length) { C.push(`• ${P(low[0].pct)} on the ${low[0].name}${avgOf(low[0])}`);
+    if (low.length > 1) C.push(`• Also below 70%: ${low.slice(1, 3).map(t => `${t.name} (${P(t.pct)})`).join(', ')}${low.length > 3 ? ` and ${low.length - 3} more` : ''}`); }
+  if (d.ixlGrade && d.ixlGrade.max && d.ixlGrade.got / d.ixlGrade.max < 0.6 && now != null && now < 80) C.push(`• IXL in the grade: ${d.ixlGrade.got} of ${d.ixlGrade.max} points so far`);
+  if (d.sum.d != null && d.sum.d <= -3 && d.prevDate && now != null) C.push(`• Grade down ${-d.sum.d} points since ${fmtDate(d.prevDate)} (now ${now}%)`);
+  if (d.r && d.graded >= 3 && !C.length) C.push('• No concerns right now');   // with only participation graded there is nothing to judge yet
   return { strengths: confLines(S.slice(0, 4)), concerns: confLines(C.slice(0, 4)) };
 }
-// The third box: what to turn in, what to make up, what can be retaken, and when a retake opens.
+// The third box: what to turn in, what hasn't been taken, the IXL left, what can be retaken, and when a retake opens.
+// A retake needs everything caught up first (missing work and the unit's IXL), so that line says exactly what.
 function conferenceWork(d) {
-  const out = []; const due = a => a.due ? ` (due ${a.due})` : '';
-  if (d.missing.length) { out.push('Missing (zeros until turned in):'); d.missing.forEach(a => out.push(`• ${a.name}${due(a)}`)); }
-  if (d.missedTests.length) { if (out.length) out.push(''); out.push('Tests and quizzes to make up:'); d.missedTests.forEach(a => out.push(`• ${a.name}${due(a)}`)); }
-  if (d.redo.length) { if (out.length) out.push(''); out.push('Below 70%, can be retaken:'); d.redo.forEach(t => out.push(`• ${t.name}: ${fmtN(t.v)} of ${fmtN(t.max)} (${confRound(t.pct)}%)`));
-    const need = [d.rt.missing.length ? 'the missing work is turned in' : '', !d.rt.noIxl && d.rt.short.length ? `the ${plural(d.rt.short.length, d.rt.unit.short + ' IXL practice skill')} ${d.rt.short.length === 1 ? 'is' : 'are'} finished` : ''].filter(Boolean);
-    out.push(''); out.push(d.rt.ok ? `${d.first} can retake these now.` : need.length ? `Retakes open once ${need.join(' and ')}.` : 'Retakes open once all work is caught up.'); }
+  const out = []; const due = a => a.due ? ` (due ${a.due})` : ''; const group = (head, items) => { if (!items.length) return; if (out.length) out.push(''); out.push(head); items.forEach(x => out.push('• ' + x)); };
+  group('Turn in (zeros until turned in):', d.missing.map(a => a.name + due(a)));
+  group('Not taken yet:', d.missedTests.map(a => a.name + due(a)));
+  const ixlLeft = d.redo.length && !d.rt.noIxl && d.rt.unit && d.rt.short.length ? d.rt.short.length : 0;   // listed only when it stands between the student and a retake
+  group('Finish on IXL:', ixlLeft ? [`${d.rt.unit.short}: ${plural(ixlLeft, 'skill')} left`] : []);
+  group('Can be retaken (below 70%):', d.redo.map(t => `${t.name}: ${confRound(t.pct)}%`));
+  if (d.redo.length) { const need = [d.rt.missing.length ? 'missing work' : '', ixlLeft ? `${d.rt.unit.short} IXL` : ''].filter(Boolean);
+    out.push(d.rt.ok ? 'Retake: allowed now' : `Retake allowed after: ${need.length ? need.join(' + ') : `all work is caught up${d.rt.unit ? `, including ${d.rt.unit.short} IXL` : ''}`}`); }
   return out.join('\n');
 }
 // Things to look at before printing — shown beside the form, never on it.
@@ -3320,16 +3387,25 @@ function testsSection(sec, name) {
     return `<tr><th scope="row">${esc([h.pm, h.year].filter(Boolean).join(' '))}</th><td>${h.level != null ? `<span class="flvl l${Math.min(5, Math.max(1, h.level))}">Level ${h.level}</span>` : ''}</td><td class="num">${h.scale != null ? h.scale : ''}${dv != null ? ` <small class="${dv < 0 ? 'neg' : 'pos'}">${dv > 0 ? '+' : dv < 0 ? '−' : '±'}${Math.abs(dv)}</small>` : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct).replace(' percentile', ' pct')) : h.above ? 'above grade' : h.grade != null ? 'grade ' + h.grade + ' test' : ''}</td></tr>`; }).join('')}</tbody></table>${keys.length ? `<details class="fall"><summary>Everything in the report</summary><dl>${keys.map(k => `<dt>${esc(k)}</dt><dd>${esc(fi[k])}</dd>`).join('')}</dl></details>` : ''}</section>`;
 }
 
-// Kept conference text, per student: { tests, strengths, concerns, work, saved }.
-function cleanConfForms(o) { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue; const t = x => typeof x === 'string' ? x.slice(0, 4000) : ''; out[k] = { tests: t(v.tests).slice(0, 600), strengths: t(v.strengths), concerns: t(v.concerns), work: t(v.work), saved: typeof v.saved === 'string' ? v.saved.slice(0, 30) : '' }; } return out; }
+// Kept conference text, per student: only the boxes you edited ({ strengths, …, saved }), and base: Tally's draft each
+// edit started from, so the form can say when the numbers have moved on since.
+function cleanConfForms(o) { const out = {}; const BOX = ['tests', 'strengths', 'concerns', 'work']; const lim = b => b === 'tests' ? 600 : 4000;   // a box you never edited isn't kept: it follows Tally's numbers
+  if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue; const x = { saved: typeof v.saved === 'string' ? v.saved.slice(0, 30) : '' };
+    BOX.forEach(b => { if (typeof v[b] === 'string') x[b] = v[b].slice(0, lim(b)); }); if (v.base && typeof v.base === 'object') { x.base = {}; BOX.forEach(b => { if (typeof v.base[b] === 'string') x.base[b] = v.base[b].slice(0, lim(b)); }); }
+    if (BOX.some(b => b in x)) out[k] = x; }
+  return out; }
 
 function openConference(sec, name) {
   const d = conferenceData(sec, name); const st = state.settings; const k = norm(name);
   sec.confForms = sec.confForms || {}; const kept = sec.confForms[k] || null;
   const draft = conferenceDraft(d);
   const v = { grade: st.gradeLevel || '7', teacher: st.teacherName || '', course: (st.courseNames || {})[sec.prep] || (sec.prep === 'acc' ? 'Grade 7 Accelerated Math' : 'Grade 7 Math'), period: sec.period != null ? String(sec.period) : '',
-    current: d.r && d.r.rounded != null ? String(d.r.rounded) : '', rc: { ...d.rc }, tests: kept && kept.tests != null ? kept.tests : conferenceTests(d),
-    strengths: kept ? kept.strengths : draft.strengths, concerns: kept ? kept.concerns : draft.concerns, work: kept ? kept.work : conferenceWork(d) };
+    current: d.r && d.r.rounded != null ? String(d.r.rounded) : '', rc: { ...d.rc } };
+  const fresh = { tests: conferenceTests(d), strengths: draft.strengths, concerns: draft.concerns, work: conferenceWork(d) };
+  const has = b => !!kept && typeof kept[b] === 'string'; const base = { ...((kept && kept.base) || {}) };
+  ['tests', 'strengths', 'concerns', 'work'].forEach(b => { v[b] = has(b) ? kept[b] : fresh[b]; });
+  const BOXID = { tests: 'cfTests', strengths: 'cfStrengths', concerns: 'cfConcerns', work: 'cfWork' };
+  const boxNote = b => !has(b) ? '' : `<p class="cfEdited" data-for="${b}">${base[b] != null && base[b] !== fresh[b] ? `<b>Tally's numbers changed since you edited this.</b> <button class="linkbtn" data-cfmerge="${b}">Add the new lines</button> · ` : 'Your words. '}<button class="linkbtn" data-cfdraft="${b}">Back to Tally's draft</button></p>`;
   const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private');
   const H = st.hideNames; const shown = H ? mask(name) : niceName(name);
   const rcCell = q => `<label class="cf-rc">${q}<input type="text" id="cf${q}" value="${v.rc[q] == null ? '' : esc(String(v.rc[q]))}" inputmode="numeric" maxlength="4"></label>`;
@@ -3339,10 +3415,10 @@ function openConference(sec, name) {
         <div class="row3 r2"><div class="field"><label for="cfName">Student name</label><input type="text" id="cfName" value="${esc(H ? '' : niceName(name))}" ${H ? 'placeholder="hidden while names are hidden"' : ''}></div><div class="field sm"><label for="cfGrade">Grade</label><input type="text" id="cfGrade" value="${esc(v.grade)}" maxlength="4"></div></div>
         <div class="row3 r3"><div class="field"><label for="cfTeacher">Teacher</label><input type="text" id="cfTeacher" value="${esc(v.teacher)}"></div><div class="field"><label for="cfCourse">Course</label><input type="text" id="cfCourse" value="${esc(v.course)}"></div><div class="field sm"><label for="cfPeriod">Period</label><input type="text" id="cfPeriod" value="${esc(v.period)}" maxlength="4"></div></div>
         <div class="row3 r4"><div class="field sm"><label for="cfCurrent">Current grade %</label><input type="text" id="cfCurrent" value="${esc(v.current)}" maxlength="5"></div><div class="field cf-rcs"><label>Report card grades</label><div>${['Q1', 'Q2', 'S1', 'Q3', 'Q4', 'S2'].map(rcCell).join('')}</div></div></div>
-        <div class="field"><label for="cfTests">FAST / EBA test history</label><textarea id="cfTests" rows="2" placeholder="No test results in Tally yet">${esc(v.tests)}</textarea></div>
-        <div class="field"><label for="cfStrengths">Strengths in class</label><textarea id="cfStrengths" rows="4">${esc(v.strengths)}</textarea>${!kept && !draft.strengths ? '<p class="ghint" style="margin:2px 0 0">Nothing in the numbers stands out yet. Add something you have seen in class, or one of the notes beside the form.</p>' : ''}</div>
-        <div class="field"><label for="cfConcerns">Concerns in class</label><textarea id="cfConcerns" rows="4">${esc(v.concerns)}</textarea></div>
-        <div class="field"><label for="cfWork">Missing assignments &amp; assignments needing to be redone</label><textarea id="cfWork" rows="6">${esc(v.work)}</textarea></div>
+        <div class="field"><label for="cfTests">FAST / EBA test history</label><textarea id="cfTests" rows="2" placeholder="No test results in Tally yet">${esc(v.tests)}</textarea>${boxNote('tests')}</div>
+        <div class="field"><label for="cfStrengths">Strengths in class</label><textarea id="cfStrengths" rows="5">${esc(v.strengths)}</textarea>${boxNote('strengths')}${!has('strengths') && !draft.strengths ? '<p class="ghint" style="margin:2px 0 0">Nothing in the numbers stands out yet. Add something you have seen in class, or one of the notes beside the form.</p>' : ''}</div>
+        <div class="field"><label for="cfConcerns">Concerns in class</label><textarea id="cfConcerns" rows="5">${esc(v.concerns)}</textarea>${boxNote('concerns')}</div>
+        <div class="field"><label for="cfWork">Missing assignments &amp; assignments needing to be redone</label><textarea id="cfWork" rows="7">${esc(v.work)}</textarea>${boxNote('work')}</div>
       </div>
       <aside class="confSide">
         ${(() => { const ck = conferenceChecks(d); return ck.length ? `<h3>Check before printing</h3><ul class="cfChecks">${ck.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''; })()}
@@ -3358,12 +3434,17 @@ function openConference(sec, name) {
   const keep = () => {   // remember the teacher, course and grade for next time; the student's text for this student
     st.teacherName = val('cfTeacher').slice(0, 80); st.gradeLevel = val('cfGrade').slice(0, 4); st.courseNames = { ...(st.courseNames || {}), [sec.prep]: val('cfCourse').slice(0, 80) };
     const now = { tests: val('cfTests').slice(0, 600), strengths: val('cfStrengths').slice(0, 4000), concerns: val('cfConcerns').slice(0, 4000), work: val('cfWork').slice(0, 4000) };
-    const fresh = { tests: conferenceTests(d), strengths: draft.strengths, concerns: draft.concerns, work: conferenceWork(d) };
-    if (Object.keys(now).some(x => now[x] !== fresh[x])) sec.confForms[k] = { ...now, saved: new Date().toISOString() }; else delete sec.confForms[k];
+    const out = {}, b2 = {}; Object.keys(now).forEach(b => { if (now[b] !== fresh[b]) { out[b] = now[b]; b2[b] = base[b] != null ? base[b] : fresh[b]; } });   // each box on its own: an untouched box keeps following the numbers
+    if (Object.keys(out).length) sec.confForms[k] = { ...out, base: b2, saved: Object.keys(out).every(b => has(b) && kept[b] === out[b]) && kept.saved ? kept.saved : new Date().toISOString() }; else delete sec.confForms[k];
     save(); };
   const close = () => { keep(); m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-cfadd]').forEach(b => b.onclick = () => { const n = d.notes.find(x => x.id === b.dataset.nid); if (!n) return; const ta = $(b.dataset.cfadd === 'strengths' ? '#cfStrengths' : '#cfConcerns'); ta.value = (ta.value.trim() ? ta.value.replace(/\s+$/, '') + '\n' : '') + n.text; ta.focus(); });
+  const noteOf = b => m.querySelector(`.cfEdited[data-for="${b}"]`);
+  m.querySelectorAll('[data-cfmerge]').forEach(x => x.onclick = () => { const b = x.dataset.cfmerge; const ta = $('#' + BOXID[b]); const have = new Set(ta.value.split('\n').map(l => l.trim()).filter(Boolean));
+    const add = fresh[b].split('\n').filter(l => l.trim() && !have.has(l.trim()) && !/:$/.test(l.trim())); if (add.length) ta.value = ta.value.replace(/\s+$/, '') + '\n' + add.join('\n'); base[b] = fresh[b];
+    const n = noteOf(b); if (n) n.innerHTML = add.length ? `Added ${add.length === 1 ? '1 line' : add.length + ' lines'} from Tally at the end. Remove any you don't need.` : 'Nothing new to add.'; });
+  m.querySelectorAll('[data-cfdraft]').forEach(x => x.onclick = () => { const b = x.dataset.cfdraft; $('#' + BOXID[b]).value = fresh[b]; base[b] = fresh[b]; const n = noteOf(b); if (n) n.remove(); });
   const rf = $('#cfRefill'); if (rf) rf.onclick = async () => { if (!await ask('Replace your edits with a fresh draft from Tally?')) return; delete sec.confForms[k]; save(); openConference(sec, name); };
   $('#cfPrint').onclick = () => { keep(); printConference({ name: val('cfName') || niceName(name), grade: val('cfGrade'), teacher: val('cfTeacher'), course: val('cfCourse'), period: val('cfPeriod'), current: val('cfCurrent'),
     rc: Object.fromEntries(['Q1', 'Q2', 'S1', 'Q3', 'Q4', 'S2'].map(q => [q, val('cf' + q)])), tests: val('cfTests'), strengths: val('cfStrengths'), concerns: val('cfConcerns'), work: val('cfWork') }); };
@@ -3436,7 +3517,7 @@ function hydrate(s) {
 }
 function migrate() {
   const st = state.settings || {};
-  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : 'acc', labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
+  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : st.labPrep === 'both' ? 'both' : 'acc', labPick: { acc: st.labPick && typeof st.labPick.acc === 'string' ? st.labPick.acc.slice(0, 200) : '', on: st.labPick && typeof st.labPick.on === 'string' ? st.labPick.on.slice(0, 200) : '' }, labRows: st.labRows === 'class' ? 'class' : 'course', labPairs: st.labPairs && typeof st.labPairs === 'object' ? Object.fromEntries(Object.entries(st.labPairs).filter(([k, v]) => SAFE_KEY(k) && typeof v === 'string').slice(0, 200)) : {}, labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
     skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line', 'avg'].includes(st.labKind) ? st.labKind : 'box', labAvg: !!st.labAvg, labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null },
     curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) },
@@ -3815,7 +3896,7 @@ async function importFiles(files) {
       state.active = meta.key; ok.push(state.sections[meta.key]);
     } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); }
   }
-  const placed = new Set();
+  const placed = new Set(); let earlyAnswer = null;
   for (const { f, gb } of deferred) { try {
     // A gradebook whose students are plainly one class goes there without a question; the dialog is for the rest.
     const mt = matchSection(gb, placed);
@@ -3831,6 +3912,13 @@ async function importFiles(files) {
        22 Oct 2026: an old Q1 file dropped after Q2 was in rewrote the closed Q1 finals and threw the Q2 columns away). */
     const curGb = sec.grades && sec.grades.assignments && sec.grades.assignments.length ? sec.grades : null;
     const newQ = gbQuarter(gb), curQ = curGb ? gbQuarter(curGb) : null;
+    /* A file from a quarter that was closed before it ended (Croix, 23 Oct): asked once per drop, since importing it
+       into a closed quarter would hide every missing assignment in it. */
+    if (newQ && qClosed(newQ) && newQ === closedEarly()) {
+      if (earlyAnswer == null) earlyAnswer = await ask(`${f.name}\n\nThis is a ${Q_NAMES[newQ - 1]} gradebook. ${Q_NAMES[newQ - 1]} was closed early, but it runs until ${fmtDate(quarters().ends[newQ - 1])}. Reopen ${Q_NAMES[newQ - 1]} and import it? (Cancel only updates the closed record.)`, `Reopen and import`);
+      if (earlyAnswer && qClosed(newQ)) reopenQuarter(newQ);
+      else if (!earlyAnswer) { mergeArchive(sec, newQ, gb); gbImported.push({ key: sec.key, label: sec.label, text: `${Q_NAMES[newQ - 1]} gradebook: updated the kept ${Q_NAMES[newQ - 1]} record (${Q_NAMES[newQ - 1]} stays closed)` }); continue; }
+    }
     if (curGb && newQ && curQ && newQ < curQ) {
       if (qClosed(newQ)) {
         const before = ((sec.qArchive || {})[newQ] || {}).final || [];
@@ -4163,7 +4251,7 @@ function labDatasets(prep) {
   const list = groups.flatMap(g => g.items);
   return { secs, list, groups };
 }
-function labSeries(prep, id) {
+function labSeries(prep, id, forcePct) {
   const { secs } = labDatasets(prep);
   return secs.map(s => {
     const list = population(s); const aUnits = unitsOf(s).filter(u => u.assigned);
@@ -4177,7 +4265,7 @@ function labSeries(prep, id) {
     else if (id === 'grade:course') { if (Array.isArray(s.boardGrades)) { vals = s.boardGrades.slice(); } else { const o = openSec(s); if (!o || !o.grades || !o.grades.assignments.length) return null; vals = gradeAll(o).map(r => r && r.rounded != null ? r.rounded : null); } missing = vals.filter(v => v == null).length; max = 100; unit = 'course grade'; grade = true; }   // a Board file carries the grades as one shuffled list
     else return null;
     let pct = grade;   // a course grade is a percent already
-    if (!grade && state.settings.labPct && max > 0 && unit !== 'SmartScore') { vals = vals.map(v => v == null ? null : Math.round(v / max * 100)); unit = '% of ' + unit; max = 100; pct = true; }   // percent of the maximum, whole numbers
+    if (!grade && (forcePct || state.settings.labPct) && max > 0 && unit !== 'SmartScore') { vals = vals.map(v => v == null ? null : Math.round(v / max * 100)); unit = '% of ' + unit; max = 100; pct = true; }   // percent of the maximum, whole numbers
     const st = stats(vals) || { n: 0 };
     return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: grade ? 'gb' : id.split(':')[0], values: vals, thr: s.threshold, sec: s, pct, grade };
   }).filter(Boolean);
@@ -4208,7 +4296,7 @@ function boxSVG(st, scale, w, o) {
   if (o.mean) h += `<line x1="${X(st.mean)}" y1="${mid}" x2="${X(st.mean)}" y2="${axisY - 12}" class="labMeanLine"/><g transform="translate(${X(st.mean)},${mid}) rotate(45)"><rect x="-6" y="-6" width="12" height="12" class="labMean"><title>Mean ${st.mean.toFixed(1)}</title></rect></g>`;
   if (o.tukey) st.outliers.forEach(o2 => { h += `<circle cx="${X(o2)}" cy="${mid}" r="6" class="labOut"><title>Outlier ${fmtN(o2)}${U}</title></circle>`; });
   if (o.dots) Object.entries(counts).forEach(([v, c]) => { for (let i = 0; i < c; i++) h += `<circle cx="${X(+v)}" cy="${dotBase - i * rowH}" r="${r}" class="labDot"><title>${fmtN(+v)} · ${c} student${c > 1 ? 's' : ''}</title></circle>`; });
-  if (o.stats) h += `<text x="${X(st.median)}" y="${boxY - 7}" class="labLbl mid">median ${fmtN(st.median)}${U}</text><text x="${X(st.q1) - 4}" y="${boxY + bh + 15}" class="labLbl end">Q1 ${fmtN(st.q1)}${U}</text><text x="${X(st.q3) + 4}" y="${boxY + bh + 15}" class="labLbl">Q3 ${fmtN(st.q3)}${U}</text>`;
+  if (o.stats) h += `<text x="${X(st.median)}" y="${boxY - 7}" class="labLbl mid">median = ${fmtN(st.median)}${U}</text><text x="${X(st.q1) - 4}" y="${boxY + bh + 15}" class="labLbl end">Q1 = ${fmtN(st.q1)}${U}</text><text x="${X(st.q3) + 4}" y="${boxY + bh + 15}" class="labLbl">Q3 = ${fmtN(st.q3)}${U}</text>`;
   return h + `</svg>`;
 }
 const MIN_N = 5;
@@ -4229,8 +4317,8 @@ function valuesMarkup(st, tukey, pct) {
 // One class's plot in the chosen form. Box plots keep their own drawing (whiskers, outliers, dots); the rest use charts.js.
 function labPlot(kind, x, scale, id, o) {
   const vals = x.values.filter(v => v != null); const max = Math.max(scale, 1);
-  if (x.kind === 'gb' && !FOCUS_KINDS.includes(kind)) return `<div class="labNotYet">Focus scores are shown as a box plot, histogram, circle graph, line graph or class averages only.</div>`;
-  const mk = o.avg ? { mean: x.st.mean, meanLabel: 'Average ' + fmtAvg(x), stack: o.stack } : { stack: o.stack };
+  if (x.kind === 'gb' && !o.full && !FOCUS_KINDS.includes(kind)) return `<div class="labNotYet">Focus scores are shown as a box plot, histogram, circle graph, line graph or class averages only.</div>`;
+  const mk = { stack: o.stack, top: o.top, share: o.share, ...(o.avg ? { mean: x.st.mean, meanLabel: 'Average ' + fmtAvg(x) } : {}) };
   if (kind === 'dots') return chartDots(vals, max, mk);
   if (kind === 'hist') return chartHist(vals, max, o.bin || 0, mk);
   if (kind === 'stem') return chartStem(vals, max);
@@ -4258,57 +4346,125 @@ const FOCUS_KINDS = ['box', 'hist', 'circle', 'line', 'avg']; const focusSet = i
 const labAsOf = (secs, focus) => secs.map(s => focus ? (s.grades && s.grades.importedAt ? localDayOf(s.grades.importedAt) : null) : s.date).filter(Boolean).sort().pop();   // a Focus data set is as of its gradebook, not the IXL export
 const fmtAvg = x => x.st.mean.toFixed(1) + (x.pct ? '%' : '');   // a class average, one decimal, everywhere it is shown
 const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
-function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn) {
-  statsLevel = +statsLevel || 0; const kind = state.settings.labKind || 'box';
-  const { list, secs } = labDatasets(prep);
-  if (!secs.length) return `<div class="lbEmpty">No ${prep === 'acc' ? 'accelerated' : 'on-level'} classes imported yet.</div>`;
-  if (!list.some(d => d.id === unitName)) unitName = list[0].id;
-  const ds = list.find(d => d.id === unitName);
-  const seriesAll = labSeries(prep, unitName);
+/* ---------- Comparing the two courses (Croix, 23 Oct 2026: "show the on-level kids directly their comparison to
+   accelerated in terms of specific (let me choose) assignment comparison and still get the full suite of graphs") ----------
+   A data set in one course is matched to the same thing in the other: the course grade, all assigned units, a Focus
+   assignment with the same name (case, spacing, punctuation and course words like "(Acc)" ignored), a single skill by
+   its IXL id, the class's own data by its label — or a pair he chose. Rows are one per course (every student in the
+   course together) or one per class, grouped by course. When the two maximums differ, both show percent of points. */
+const COURSE_NAMES = { acc: 'Accelerated', on: 'On-level' };
+const COURSE_COLORS = { acc: '#1F3A5F', on: '#0F766E' };
+const labNorm = t => norm(String(t || '').replace(/\((acc|accelerated|adv|advanced|on|on-level|on level|reg|regular)\)/ig, ' ').replace(/\b(acc|accelerated|advanced|on-level|on level)\b/ig, ' '));
+function labMatch(from, id) {
+  const to = from === 'acc' ? 'on' : 'acc'; const { list } = labDatasets(to); if (!id || !list.length) return null;
+  const pair = (state.settings.labPairs || {})[from + '|' + id]; if (pair && list.some(d => d.id === pair)) return pair;
+  if (['grade:course', 'unit:__all__'].includes(id) || id.startsWith('skill:')) return list.some(d => d.id === id) ? id : null;
+  if (id.startsWith('gb:')) { const n = labNorm(id.slice(3)); const m = list.find(d => d.id.startsWith('gb:') && labNorm(d.id.slice(3)) === n); return m ? m.id : null; }
+  if (id.startsWith('custom:')) { const c = state.custom.find(x => x.id === id.slice(7)); const m = c && state.custom.find(x => x.prep === to && labNorm(x.label) === labNorm(c.label)); return m ? 'custom:' + m.id : null; }
+  return null;
+}
+// The data set showing for one course: what is selected there, else the match of the other course's, else the first.
+function labPickFor(c) {
+  const st = state.settings; const { list } = labDatasets(c); if (!list.length) return null; const ok = id => id && list.some(d => d.id === id);
+  if (st.labPrep === c && ok(st.labUnit)) return st.labUnit;
+  const pk = (st.labPick || {})[c]; if (ok(pk)) return pk;
+  return list[0].id;
+}
+// Pool a course's classes into one row: every student in the course on one plot.
+function labPool(c, series) {
+  if (!series.length) return null; const values = series.flatMap(x => x.values); const st = stats(values) || { n: 0 };
+  return { ...series[0], name: COURSE_NAMES[c], course: c, values, st, total: values.length, missing: series.reduce((a, x) => a + (x.missing || 0), 0), excused: series.reduce((a, x) => a + (x.excused || 0), 0), max: Math.max(...series.map(x => x.max)), sec: null, color: COURSE_COLORS[c], classes: series.map(x => labShort(x.name)) };
+}
+function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow) {
+  statsLevel = +statsLevel || 0; let kind = kindNow || state.settings.labKind || 'box';
+  const both = prep === 'both'; const rowsBy = state.settings.labRows === 'class' ? 'class' : 'course';
+  let seriesAll, secs, title, ids, units;
+  if (both) {
+    ids = { acc: labPickFor('acc'), on: labPickFor('on') }; const L = c => (labDatasets(c).list.find(d => d.id === ids[c]) || {}).label || '';
+    if (!ids.acc || !ids.on) return `<div class="lbEmpty">Comparing needs classes in both courses.</div>`;
+    secs = [...labDatasets('acc').secs, ...labDatasets('on').secs];
+    const raw = { acc: labSeries('acc', ids.acc), on: labSeries('on', ids.on) };
+    const all = [...raw.acc, ...raw.on]; const pctNeeded = all.some(x => !x.pct && x.unit !== 'SmartScore') && (new Set(all.map(x => x.max)).size > 1 || new Set(all.map(x => x.unit)).size > 1);
+    const ser = pctNeeded ? { acc: labSeries('acc', ids.acc, true), on: labSeries('on', ids.on, true) } : raw;
+    seriesAll = rowsBy === 'course' ? ['acc', 'on'].map(c => labPool(c, ser[c])).filter(Boolean) : [...ser.acc.map(x => ({ ...x, course: 'acc' })), ...ser.on.map(x => ({ ...x, course: 'on' }))];
+    title = labNorm(L('acc')) === labNorm(L('on')) ? L('acc') : `${L('acc')} vs ${L('on')}`;
+    units = { acc: L('acc'), on: L('on') };
+  } else {
+    const ds0 = labDatasets(prep); secs = ds0.secs;
+    if (!secs.length) return `<div class="lbEmpty">No ${prep === 'acc' ? 'accelerated' : 'on-level'} classes imported yet.</div>`;
+    if (!ds0.list.some(d => d.id === unitName)) unitName = ds0.list[0].id;
+    seriesAll = labSeries(prep, unitName); title = ds0.list.find(d => d.id === unitName).label;
+  }
+  const anyId = both ? ids.acc : unitName;
   const series = seriesAll.filter(x => x.st.n >= MIN_N), thin = seriesAll.filter(x => x.st.n < MIN_N);
-  // Focus scores on the projected screen stay aggregate: no per-student values, no outlier marks, bins of at least 5, no excused counts.
-  const gbSet = focusSet(unitName); if (gbSet) { valuesOn = false; tukey = false; }
-  const course = prep === 'acc' ? 'accelerated' : 'on-level'; const avgOn = !!state.settings.labAvg;
+  // Focus scores on the projected screen stay aggregate: no per-student values, no outlier marks, bins of at least 5,
+  // no excused counts. Comparing whole courses (15 or more students a row) is the exception he asked for: every chart.
+  const gbSet = both ? (focusSet(ids.acc) || focusSet(ids.on)) : focusSet(unitName);
+  const fullSuite = labFullSuite(prep, ids, rowsBy, series);
+  if (gbSet && !fullSuite) { valuesOn = false; tukey = false; if (!FOCUS_KINDS.includes(kind)) kind = 'box'; }   // shown as a box plot, his choice kept for the next data set
+  const course = both ? 'accelerated and on-level' : prep === 'acc' ? 'accelerated' : 'on-level'; const avgOn = !!state.settings.labAvg;
+  const color = x => x.color || classColor(x.sec);
+  const lineSecs = both ? secs : secs;
   if (kind === 'line') {   // every class on one chart — the comparison is the point
-    const asOfL = labAsOf(secs, gbSet); let body = '';
-    if (unitName === 'unit:__all__') { const dates = [...new Set(series.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = snapTotals(x.sec, h); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300, w: 900, labelW: 200 }); }
-    else if (unitName.startsWith('gb:')) { const nm = unitName.slice(3); const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nm)).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nm); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
-    else if (unitName === 'grade:course') { const dates = [...new Set(series.flatMap(x => (x.sec.gradeHistory || []).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), series.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).filter(z => z.date === d).pop(); if (!z) return null; const v = z.grade.filter(g => g != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average course grade by import' }); }
+    const lineSeries = both ? [...labSeries('acc', ids.acc), ...labSeries('on', ids.on)].filter(x => x.st.n >= MIN_N) : series;
+    const asOfL = labAsOf(lineSecs, gbSet); let body = '';
+    const lineId = both ? (ids.acc === ids.on || labNorm(ids.acc) === labNorm(ids.on) ? ids.acc : null) : unitName;
+    if (lineId === 'unit:__all__') { const dates = [...new Set(lineSeries.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), lineSeries.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = snapTotals(x.sec, h); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300, w: 900, labelW: 200 }); }
+    else if (both ? (ids.acc.startsWith('gb:') && ids.on.startsWith('gb:')) : unitName.startsWith('gb:')) { const nmOf = x => (both ? ids[x.sec.prep === 'acc' ? 'acc' : 'on'] : unitName).slice(3); const dates = [...new Set(lineSeries.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nmOf(x))).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), lineSeries.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nmOf(x)); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
+    else if (lineId === 'grade:course') { const dates = [...new Set(lineSeries.flatMap(x => (x.sec.gradeHistory || []).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), lineSeries.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).filter(z => z.date === d).pop(); if (!z) return null; const v = z.grade.filter(g => g != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average course grade by import' }); }
     else body = '<div class="labNotYet">A line graph needs data over time. Pick <b>All assigned units</b>, the course grade or a Focus assignment.</div>';
-    return `${boardHead(dsTitle(list.find(d => d.id === unitName).label), [`${course} classes`, 'class average at each import', asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
+    return `${boardHead(dsTitle(title), [`${course} classes`, 'class average at each import', asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
       <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
   if (seriesAll[0] && seriesAll[0].pct) scale = 100;
-  else if (unitName === 'unit:__all__' || series.some(x => x.st.max > x.max)) { const top = Math.max(...series.map(x => Math.max(x.st.max, unitName === 'unit:__all__' ? 0 : x.max)), 1); const step = top > 100 ? 20 : top > 40 ? 10 : 5; scale = Math.ceil((top + 1) / step) * step; }
+  else if (anyId === 'unit:__all__' || series.some(x => x.st.max > x.max)) { const top = Math.max(...series.map(x => Math.max(x.st.max, anyId === 'unit:__all__' ? 0 : x.max)), 1); const step = top > 100 ? 20 : top > 40 ? 10 : 5; scale = Math.ceil((top + 1) / step) * step; }
   const unitLabel = seriesAll.length ? seriesAll[0].unit : 'points';
   const asOf = labAsOf(secs, gbSet);
-  const isGrade = unitName === 'grade:course'; const isPct = !!(seriesAll[0] && seriesAll[0].pct);
-  if (kind === 'avg') {   // one bar per class, in period order (the Race ranks; this compares)
+  const isGrade = anyId === 'grade:course'; const isPct = !!(seriesAll[0] && seriesAll[0].pct);
+  const facts = [both ? `${rowsBy === 'course' ? 'each course together' : 'each class'}` : `${course} classes`];
+  if (both && units && labNorm(units.acc) !== labNorm(units.on)) facts.push(`accelerated: ${units.acc}; on-level: ${units.on}`);
+  if (kind === 'avg') {   // one bar per row, in period order (the Race ranks; this compares)
     const what = isGrade ? 'course grade' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')}` : unitLabel;
-    const bars = series.length ? chartBars(series.map(x => ({ label: labShort(x.name), value: x.st.mean, color: classColor(x.sec), hint: 'n = ' + x.st.n })), { max: scale, pct: isPct, fmt: v => v.toFixed(1) + (isPct ? '%' : ''), w: 760, labelW: 170, rowH: 46, barH: 26, ticks: (() => { const st = scale > 60 ? 25 : scale > 30 ? 10 : scale > 12 ? 5 : scale > 6 ? 2 : 1; const a = []; for (let v = 0; v <= scale + 1e-9; v += st) a.push(v); return a; })(), aria: 'class average, one bar per class' }) : '<div class="labNotYet">No class has enough scores for an average yet.</div>';
-    return `${boardHead(dsTitle(ds.label), [`${course} classes`, `average ${what} per class`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+    const bars = series.length ? chartBars(series.map(x => ({ label: labShort(x.name), value: x.st.mean, color: color(x), hint: 'n = ' + x.st.n })), { max: scale, pct: isPct, fmt: v => v.toFixed(1) + (isPct ? '%' : ''), w: 760, labelW: 170, rowH: 46, barH: 26, ticks: (() => { const st = scale > 60 ? 25 : scale > 30 ? 10 : scale > 12 ? 5 : scale > 6 ? 2 : 1; const a = []; for (let v = 0; v <= scale + 1e-9; v += st) a.push(v); return a; })(), aria: 'average, one bar per ' + (both && rowsBy === 'course' ? 'course' : 'class') }) : '<div class="labNotYet">No class has enough scores for an average yet.</div>';
+    return `${boardHead(dsTitle(title), [...facts, `average ${what} per ${both && rowsBy === 'course' ? 'course' : 'class'}`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
       <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labAvgBars">${bars}${thin.length ? `<div class="labNotYet">${esc(thin.map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}</div></div></div>`;
   }
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
-  const marks = avgOn && ['box', 'dots', 'hist', 'bar'].includes(kind);
+  const marks = avgOn && ['box', 'dots', 'hist', 'bar'].includes(kind);   // the forms that can carry a mark at the average; the others show the number only
   // every row stacks its dots to the same height, so every row is drawn to one scale (audit: a taller stack in one class
   // squeezed that row's axis, and the classes could not be compared by eye)
-  const stackAll = Math.max(1, ...series.map(x => { const c = {}; let m = 0; x.values.forEach(v => { if (v != null) { c[v] = (c[v] || 0) + 1; if (c[v] > m) m = c[v]; } }); return m; }));   // the forms that can carry a mark at the average; the others show the number only
-  const row = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return `<div class="labRow" style="--cc:${classColor(x.sec)}">
-      <div class="labSide"><div class="labName">${esc(labShort(x.name))}<small><b>n = ${x.st.n}</b>${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}</small></div>${avgOn ? `<div class="labAvg"><b>${fmtAvg(x)}</b><span>average</span></div>` : ''}</div>
-      <div class="labPlot">${labPlot(kind, x, scale, unitName, { stack: stackAll, stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 || avgOn, avg: avgOn, bin: gbSet ? Math.max(5, state.settings.labBin || 5) : state.settings.labBin, pct: x.pct })}</div>
+  const stackAll = Math.max(1, ...series.map(x => { const c = {}; let m = 0; x.values.forEach(v => { if (v != null) { c[v] = (c[v] || 0) + 1; if (c[v] > m) m = c[v]; } }); return m; }));
+  // histograms and bar graphs share one height across rows; rows of different sizes (two whole courses) are drawn as a
+  // percent of the row's students, so the bars compare fairly
+  const share = both && rowsBy === 'course' && new Set(series.map(x => x.st.n)).size > 1;
+  const binOf = gbSet && !fullSuite ? Math.max(5, state.settings.labBin || 5) : state.settings.labBin;
+  const topAll = ['hist', 'bar'].includes(kind) ? Math.max(1, ...series.map(x => histTop(kind, x.values, Math.max(scale, 1), binOf, share))) : null;
+  const row = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return `${both && rowsBy === 'class' && x === series.find(y => y.course === x.course) ? `<div class="labGroupHead" style="--cc:${COURSE_COLORS[x.course]}">${COURSE_NAMES[x.course]}</div>` : ''}<div class="labRow${x.course && rowsBy === 'course' && both ? ' course' : ''}" style="--cc:${color(x)}">
+      <div class="labSide"><div class="labName">${esc(labShort(x.name))}<small><b>n = ${x.st.n}</b>${x.classes ? ` · ${esc(x.classes.join(', '))}` : ''}${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}</small></div>${avgOn ? `<div class="labAvg"><b>${fmtAvg(x)}</b><span>average</span></div>` : ''}</div>
+      <div class="labPlot">${labPlot(kind, x, scale, anyId, { stack: stackAll, top: topAll, share, full: fullSuite, stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 || avgOn, avg: avgOn, bin: binOf, pct: x.pct })}</div>
       ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
       ${statsLevel > 0 ? `<div class="labStats">
         ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
         ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)}, too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''}
     </div>`; };
-  const thinRow = x => `<div class="labRow thin" style="--cc:${classColor(x.sec)}"><div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
+  const thinRow = x => `<div class="labRow thin" style="--cc:${color(x)}"><div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
+  // two whole courses side by side: one line on how their centers and spreads compare (MA.7.DP.1.2)
+  const versus = both && rowsBy === 'course' && series.length === 2 && statsLevel > 1 ? (() => { const [a, b] = series; const U = isPct ? ' percentage points' : ' points'; const d = Math.abs(a.st.median - b.st.median); return `<div class="labVersus">Medians ${fmtN(d)}${U} apart · IQR ${fmtN(a.st.iqr)} vs ${fmtN(b.st.iqr)}${isPct ? '' : ''}</div>`; })() : '';
   const meanKey = '<span><i class="lgMean"></i>average (mean)</span>';
-  return `${boardHead(dsTitle(ds.label), [`${course} classes`, isGrade ? 'course grade per student, in percent' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+  return `${boardHead(dsTitle(title), [...facts, isGrade ? 'course grade per student, in percent' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`, share && ['hist', 'bar'].includes(kind) ? 'bars show the percent of each course\'s students' : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
     ${kind !== 'box' ? (marks ? `<div class="labLegend">${meanKey}</div>` : '') : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 || avgOn ? meanKey : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
-    <div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}${kind !== 'box' && !marks ? ';--lhead:9.5' : ''}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class in this prep has data for that yet.</div>' : ''}</div>`;
+    ${versus}<div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}${kind !== 'box' && !marks ? ';--lhead:9.5' : ''}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class has data for that yet.</div>' : ''}</div>`;
+}
+// Every chart for Focus scores only when comparing whole courses, each row 15 students or more.
+function labFullSuite(prep, ids, rowsBy, series) { return prep === 'both' && rowsBy === 'course' && series.length > 0 && series.every(x => x.st.n >= 15); }
+// The tallest bar a histogram or bar graph would draw for these values (a count, or a percent of the row's students).
+function histTop(kind, values, max, bin, share) {
+  const v = values.filter(x => x != null); if (!v.length) return 1; const c = {};
+  if (kind === 'bar' && max <= 26) v.forEach(x => { const k = Math.round(x); c[k] = (c[k] || 0) + 1; });
+  else { const b = kind === 'bar' ? Math.ceil(max / 20) : (bin || autoBin(max)); const nb = Math.max(1, Math.ceil(max / b - 1e-9)); v.forEach(x => { const k = Math.max(0, Math.min(nb - 1, Math.floor(x / b))); c[k] = (c[k] || 0) + 1; }); }
+  const m = Math.max(...Object.values(c)); return share ? m / v.length * 100 : m;
 }
 const LAB_ONLY_CSS = `
 .labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.15);color:var(--navy)}
@@ -4318,6 +4474,10 @@ const LAB_ONLY_CSS = `
 .labRows{display:flex;flex-direction:column;gap:14px}
 .labRow{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:10px 22px 6px;display:grid;grid-template-columns:calc(var(--bu)*13) 1fr;gap:8px 18px;align-items:center}
 .labRow.thin{opacity:.75}
+.labGroupHead{font-weight:var(--w-black);font-size:calc(var(--bu)*1.35);letter-spacing:.06em;text-transform:uppercase;color:var(--cc,var(--navy));margin:6px 0 -4px 4px}
+.labRow.course{border-left:calc(var(--bu)*.5) solid var(--cc)}
+.labVersus{font-weight:var(--w-black);font-size:calc(var(--bu)*1.35);color:var(--navy);margin:2px 0 4px}
+.labWith{display:inline-flex;align-items:center;gap:6px;font-weight:var(--w-bold)}
 .labNotYet{font-weight:var(--w-bold);color:var(--teal);padding:14px 0}
 .labName{font-weight:var(--w-black);font-size:calc(var(--bu)*1.7);line-height:1.1;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .labSide{min-width:0;display:flex;flex-direction:column;gap:calc(var(--bu)*.35)}
@@ -4366,42 +4526,74 @@ function renderLeaderboard() {
   if (!on) { el.innerHTML = ''; return; }
   const st = state.settings; const f = st.lbFocus || 'both'; const data = leaderboardData(); const hasBoth = data.some(r => r.prep === 'acc') && data.some(r => r.prep === 'on');
   const lab = st.lbTab === 'lab';
-  if (lab && !hasBoth && data.length) st.labPrep = data[0].prep;
-  const { list, groups } = labDatasets(st.labPrep);
-  if (lab && list.length && !list.some(d => d.id === st.labUnit)) st.labUnit = list[0].id;
-  if (lab && focusSet(st.labUnit) && !FOCUS_KINDS.includes(st.labKind)) st.labKind = 'box';
-  const one = st.labKind === 'line' || st.labKind === 'avg';   // every class on one chart: the per-class controls don't apply
-  const dotsOn = focusSet(st.labUnit) ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
+  // One course choice for both tabs (audit, 23 Oct 2026: the Race and the Data Lab each kept their own and disagreed).
+  if (!hasBoth && data.length) { st.labPrep = data[0].prep; }
+  if (lab && st.labPrep === 'both' && !hasBoth) st.labPrep = (data[0] || {}).prep || 'acc';
+  const both = lab && st.labPrep === 'both';
+  const cur = both ? null : st.labPrep;
+  const { list, groups } = labDatasets(cur || 'acc');
+  if (lab && cur && list.length && !list.some(d => d.id === st.labUnit)) st.labUnit = labPickFor(cur);
+  if (lab && cur && st.labUnit) st.labPick = { ...(st.labPick || {}), [cur]: st.labUnit };
+  const pickA = both ? labPickFor('acc') : null, pickO = both ? labPickFor('on') : null;
+  const anyFocus = both ? (focusSet(pickA) || focusSet(pickO)) : focusSet(st.labUnit);
+  const fullSuite = both && st.labRows !== 'class' && ['acc', 'on'].every(c => labSeries(c, c === 'acc' ? pickA : pickO).reduce((a, x) => a + x.st.n, 0) >= 15);
+  // the chart he picked comes back with the next data set: a Focus set narrows what is offered without saving over it
+  const kinds = LAB_KINDS.filter(([k]) => !anyFocus || fullSuite || FOCUS_KINDS.includes(k)); const kindNow = kinds.some(([k]) => k === st.labKind) ? st.labKind : 'box';
+  const one = kindNow === 'line' || kindNow === 'avg';   // every class on one chart: the per-class controls don't apply
+  const dotKey = both ? 'both|' + pickA + '|' + pickO : st.labUnit;
+  const dotsOn = anyFocus && !fullSuite ? false : (st.labDots[dotKey] != null ? !!st.labDots[dotKey] : dotsDefault(both ? pickA : st.labUnit));   // Focus scores are never one dot per student on a projected screen, unless two whole courses are compared
   // The data-set list is units, gradebook assignments and the class's own sets; the 200-odd single skills sit behind one choice.
-  const isSkill = (st.labUnit || '').startsWith('skill:'); const mainGroups = groups.filter(g => !/^IXL skills/.test(g.group)), skillGroups = groups.filter(g => /^IXL skills/.test(g.group));
+  const isSkill = !both && (st.labUnit || '').startsWith('skill:'); const mainGroups = groups.filter(g => !/^IXL skills/.test(g.group)), skillGroups = groups.filter(g => /^IXL skills/.test(g.group));
   const tabs = `<div class="seg lbTabs"><button data-tab="race" class="${!lab ? 'on' : ''}">Race</button><button data-tab="lab" class="${lab ? 'on' : ''}">Data Lab</button></div>`;
   const revealLabel = st.labStats === 0 ? 'Show stats' : st.labStats === 1 ? 'Show more' : 'Hide stats';
+  const opt = (d, selId) => `<option value="${esc(d.id)}" ${d.id === selId ? 'selected' : ''}>${esc(d.label)}</option>`;
+  // Both: what is in both courses first, then what is in one course only; a one-course pick gets a "compare with" list.
+  const bothPicker = () => { const A = labDatasets('acc'), O = labDatasets('on'); const main = l => l.filter(d => !d.id.startsWith('skill:'));
+    const matched = main(A.list).filter(d => labMatch('acc', d.id)); const aOnly = main(A.list).filter(d => !labMatch('acc', d.id)); const oOnly = main(O.list).filter(d => !labMatch('on', d.id));
+    const selVal = labMatch('acc', pickA) === pickO ? 'pair:' + pickA : 'acc:' + pickA;
+    const ogrp = (label, items, pre) => items.length ? `<optgroup label="${esc(label)}">${items.map(d => `<option value="${esc(pre + d.id)}" ${pre + d.id === selVal ? 'selected' : ''}>${esc(d.label)}</option>`).join('')}</optgroup>` : '';
+    const paired = labMatch('acc', pickA) === pickO;
+    return `<select id="labPair" class="labSelect" aria-label="Data set in both courses">${ogrp('In both courses', matched, 'pair:')}${ogrp('Accelerated only', aOnly, 'acc:')}${ogrp('On-level only', oOnly, 'on:')}</select>
+      ${paired ? '' : `<label class="labWith">vs <select id="labWith" class="labSelect" aria-label="On-level data set to compare with">${main(O.list).map(d => opt(d, pickO)).join('')}</select></label>`}`; };
+  const courseSeg = hasBoth ? `<div class="seg lbFocus">${[['acc', 'Accelerated'], ['on', 'On-level'], ['both', 'Both']].map(([k, n]) => `<button data-prep="${k}" class="${st.labPrep === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '';
   const controls = lab
-    ? `${hasBoth ? `<div class="seg lbFocus">${[['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-prep="${k}" class="${st.labPrep === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
-       <select id="labUnit" class="labSelect" aria-label="Data set">${mainGroups.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label)}</option>`).join('')}</optgroup>`).join('')}${skillGroups.length ? `<option value="__skill__" ${isSkill ? 'selected' : ''}>A single skill…</option>` : ''}</select>
-       ${isSkill ? `<select id="labSkill" class="labSelect" aria-label="Skill">${skillGroups.map(g => `<optgroup label="${esc(g.group.replace(/^IXL skills \(SmartScore\) — /, ''))}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label.replace(/^Unit \d+ · /, ''))}</option>`).join('')}</optgroup>`).join('')}</select>` : ''}
-       <select id="labKind" class="labSelect" aria-label="Show as">${LAB_KINDS.filter(([k]) => !focusSet(st.labUnit) || FOCUS_KINDS.includes(k)).map(([k, n]) => `<option value="${k}" ${st.labKind === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
-       ${st.labKind === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${(focusSet(st.labUnit) ? [5, 10] : [1, 2, 5, 10]).map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
+    ? `${courseSeg}${both ? `<div class="seg small" id="labRows">${[['course', 'By course'], ['class', 'By class']].map(([k, n]) => `<button data-rows="${k}" class="${(st.labRows || 'course') === k ? 'on' : ''}">${n}</button>`).join('')}</div>${bothPicker()}` : `
+       <select id="labUnit" class="labSelect" aria-label="Data set">${mainGroups.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => opt(d, st.labUnit)).join('')}</optgroup>`).join('')}${skillGroups.length ? `<option value="__skill__" ${isSkill ? 'selected' : ''}>A single skill…</option>` : ''}</select>
+       ${isSkill ? `<select id="labSkill" class="labSelect" aria-label="Skill">${skillGroups.map(g => `<optgroup label="${esc(g.group.replace(/^IXL skills \(SmartScore\),? ?—? ?/, ''))}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label.replace(/^Unit \d+ · /, ''))}</option>`).join('')}</optgroup>`).join('')}</select>` : ''}`}
+       <select id="labKind" class="labSelect" aria-label="Show as">${kinds.map(([k, n]) => `<option value="${k}" ${kindNow === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+       ${kindNow === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${(anyFocus && !fullSuite ? [5, 10] : [1, 2, 5, 10]).map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
        ${one ? '' : `<button class="pill small" id="labStats" aria-pressed="${st.labStats > 0}">${revealLabel}</button>`}
-       ${one ? '' : `<button class="pill small" id="labAvg" aria-pressed="${!!st.labAvg}" title="Each class's average, beside its name and marked on its plot">Average</button>`}
-       ${st.labKind === 'box' && !focusSet(st.labUnit) ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
-       ${st.labUnit === 'grade:course' ? '' : `<div class="seg small" id="labPct" title="Show each student's score as points or as a percent of the maximum"><button data-pct="0" class="${st.labPct ? '' : 'on'}">Points</button><button data-pct="1" class="${st.labPct ? 'on' : ''}">%</button></div>`}
-       ${focusSet(st.labUnit) || one ? '' : `<button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>`}
-       ${st.labKind === 'box' && !focusSet(st.labUnit) ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`
+       ${one ? '' : `<button class="pill small" id="labAvg" aria-pressed="${!!st.labAvg}" title="Each row's average, beside its name and marked on its plot">Average</button>`}
+       ${kindNow === 'box' && (!anyFocus || fullSuite) ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
+       ${(both ? (pickA === 'grade:course' || /^skill:/.test(pickA)) : (st.labUnit === 'grade:course' || /^skill:/.test(st.labUnit || ''))) ? '' : `<div class="seg small" id="labPct" title="Show each student's score as points or as a percent of the maximum"><button data-pct="0" class="${st.labPct ? '' : 'on'}">Points</button><button data-pct="1" class="${st.labPct ? 'on' : ''}">%</button></div>`}
+       ${(anyFocus && !fullSuite) || one ? '' : `<button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>`}
+       ${kindNow === 'box' && (!anyFocus || fullSuite) ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`
     : (hasBoth ? `<div class="seg lbFocus">${[['both', 'Both'], ['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-focus="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '');
-  el.innerHTML = `<div class="lbWrap">${lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, f)}</div>
+  el.innerHTML = `<div class="lbWrap">${lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues, kindNow) : lbMarkup(data, f)}</div>
     <div class="lbTools">${tabs}${controls}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
-  el.querySelectorAll('[data-focus]').forEach(b => b.onclick = () => { st.lbFocus = b.dataset.focus; save(); renderLeaderboard(); });
+  el.querySelectorAll('[data-focus]').forEach(b => b.onclick = () => { st.lbFocus = b.dataset.focus; if (st.lbFocus !== 'both') st.labPrep = st.lbFocus; save(); renderLeaderboard(); });
   el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { st.lbTab = b.dataset.tab; save(); renderLeaderboard(); });
-  el.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { st.labPrep = b.dataset.prep; st.labUnit = ''; save(); renderLeaderboard(); });
-  const sel = $('#labUnit'); if (sel) sel.onchange = () => { if (sel.value === '__skill__') { const cur = (state.settings.currentUnit || {})[st.labPrep]; const g = skillGroups.find(x => cur && x.group.endsWith('— Unit ' + cur)) || skillGroups[0]; st.labUnit = g.items[0].id; } else st.labUnit = sel.value; save(); renderLeaderboard(); };
+  // a course switch keeps what was showing: the same assignment (or skill, grade, data set) in the other course when it
+  // has one, else what that course showed last (Croix: "when I switched between classes, it was resetting")
+  el.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { const from = st.labPrep, to = b.dataset.prep; if (from === to) return;
+    if (from !== 'both' && st.labUnit) st.labPick = { ...(st.labPick || {}), [from]: st.labUnit };
+    if (to === 'both') { if (from !== 'both') { const m = labMatch(from, st.labUnit); if (m) st.labPick[from === 'acc' ? 'on' : 'acc'] = m; } }
+    else { const m = from !== 'both' ? labMatch(from, st.labUnit) : null; st.labUnit = m || (st.labPick || {})[to] || ''; }
+    st.labPrep = to; save(); renderLeaderboard(); });
+  el.querySelectorAll('[data-rows]').forEach(b => b.onclick = () => { st.labRows = b.dataset.rows; save(); renderLeaderboard(); });
+  const pr = $('#labPair'); if (pr) pr.onchange = () => { const [c, ...rest] = pr.value.split(':'); const id = rest.join(':');
+    if (c === 'pair') { st.labPick = { ...st.labPick, acc: id, on: labMatch('acc', id) }; }
+    else { st.labPick = { ...st.labPick, [c]: id }; const m = labMatch(c, id); if (m) st.labPick[c === 'acc' ? 'on' : 'acc'] = m; }
+    save(); renderLeaderboard(); };
+  const pw = $('#labWith'); if (pw) pw.onchange = () => { const a = labPickFor('acc'); st.labPick = { ...st.labPick, on: pw.value }; st.labPairs = { ...(st.labPairs || {}), ['acc|' + a]: pw.value, ['on|' + pw.value]: a }; save(); renderLeaderboard(); };   // remembered: next time they match
+  const sel = $('#labUnit'); if (sel) sel.onchange = () => { if (sel.value === '__skill__') { const cur = (state.settings.currentUnit || {})[st.labPrep]; const g = skillGroups.find(x => cur && new RegExp('[,—] Unit ' + cur + '$').test(x.group)) || skillGroups[0]; st.labUnit = g.items[0].id; } else st.labUnit = sel.value; save(); renderLeaderboard(); };
   const sks = $('#labSkill'); if (sks) sks.onchange = () => { st.labUnit = sks.value; save(); renderLeaderboard(); };
   const lk = $('#labKind'); if (lk) lk.onchange = () => { st.labKind = lk.value; save(); renderLeaderboard(); };
   el.querySelectorAll('[data-pct]').forEach(b => b.onclick = () => { st.labPct = b.dataset.pct === '1'; save(); renderLeaderboard(); });
   const lb = $('#labBin'); if (lb) lb.onchange = () => { st.labBin = Number(lb.value); save(); renderLeaderboard(); };
   const ls = $('#labStats'); if (ls) ls.onclick = () => { st.labStats = (st.labStats + 1) % 3; save(); renderLeaderboard(); };
   const la = $('#labAvg'); if (la) la.onclick = () => { st.labAvg = !st.labAvg; save(); renderLeaderboard(); };
-  const ld = $('#labDots'); if (ld) ld.onclick = () => { st.labDots[st.labUnit] = !dotsOn; save(); renderLeaderboard(); };
+  const ld = $('#labDots'); if (ld) ld.onclick = () => { st.labDots[dotKey] = !dotsOn; save(); renderLeaderboard(); };
   const lv = $('#labValues'); if (lv) lv.onclick = () => { st.labValues = !st.labValues; save(); renderLeaderboard(); };
   const lt = $('#labTukey'); if (lt) lt.onclick = () => { st.labTukey = !st.labTukey; save(); renderLeaderboard(); };
   let hold; const start = e => { e.preventDefault(); $('#lbExit').classList.add('holding'); hold = setTimeout(() => { state.settings.leaderboard = false; view = { mode: 'home', unit: null }; noticesOpen = false; save(); render(); }, 1500); };   // always land on the Overview: it carries no student names
@@ -4425,7 +4617,7 @@ function printFontCss() { const m = ((document.getElementById('tallyFont') || {}
 function downloadLeaderboard(which) {
   const data = leaderboardData(); const st = state.settings; const lab = which === 'lab';
   const dotsOn = focusSet(st.labUnit) ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
-  const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues) : lbMarkup(data, st.lbFocus);
+  const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues, ($('#labKind') || {}).value) : lbMarkup(data, st.lbFocus);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
 <style>${printFontCss()}</style>
 <style>${tokensCss()}
@@ -5477,7 +5669,7 @@ function boardFile() {
     sec.gradeHistory = (s.gradeHistory || []).map(h => { const idx = shuffled(h.students.length); return { date: h.date, at: h.at, q: h.q, file: '', students: idx.map(j => pseudoName(j, 'G')), grade: idx.map(j => h.grade[j]), missing: shuffled(h.students.length).map(j => (h.missing || [])[j]), cats: Object.fromEntries(Object.entries(h.cats || {}).map(([c, arr]) => { const ci = shuffled(h.students.length); return [c, ci.map(j => arr[j])]; })), assignments: h.assignments }; });   // each list shuffled on its own: no row ties a grade to a missing count (audit)
     sections[s.key] = sec;
   });
-  const settings = { hideNames: true, leaderboard: true, lbFocus: st.lbFocus, lbTab: st.lbTab, labUnit: st.labUnit, labStats: st.labStats, labTukey: false, labDots: {}, labPrep: st.labPrep, labValues: false, labPct: st.labPct, labKind: st.labKind, labBin: st.labBin, labAvg: st.labAvg, useBest: true, skipFirst: st.skipFirst, skipFirstV2: true, currentUnit: st.currentUnit, curUnitTouched: st.curUnitTouched, details: false, copyMode: st.copyMode, remindDays: st.remindDays };
+  const settings = { hideNames: true, leaderboard: true, lbFocus: st.lbFocus, lbTab: st.lbTab, labUnit: st.labUnit, labPick: st.labPick, labRows: st.labRows, labPairs: st.labPairs, labStats: st.labStats, labTukey: false, labDots: {}, labPrep: st.labPrep, labValues: false, labPct: st.labPct, labKind: st.labKind, labBin: st.labBin, labAvg: st.labAvg, useBest: true, skipFirst: st.skipFirst, skipFirstV2: true, currentUnit: st.currentUnit, curUnitTouched: st.curUnitTouched, details: false, copyMode: st.copyMode, remindDays: st.remindDays };
   return { tally: 4, board: { saved: new Date().toISOString(), classes: secs.length }, state: { settings, sections, order: secs.map(s => s.key), active: secs.length ? secs[0].key : null, pendingCfg: {}, pools: {}, assigned: state.assigned, skips: state.skips, custom: state.custom, grading: state.grading, quarters: quarters(), board: { saved: new Date().toISOString(), classes: secs.length } } };
 }
 function saveBoardFile() {
@@ -5543,6 +5735,8 @@ function openSettings(key) {
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="exportCourse">Share this setup</button><button class="pill pale small" id="importCourse">Use a shared setup</button><input type="file" id="courseFile" accept=".json" class="hidden"></div>
         <div class="scopeHead second"><b>All of Tally</b><span>every class, both courses</span></div>
         <div class="field"><label class="check" style="margin:0"><input type="checkbox" id="useBest" ${state.settings.useBest ? 'checked' : ''}> Grade on each student's best score across imports</label><p style="margin-top:4px">SmartScores drop when a student keeps practicing and misses; this keeps a point once it's earned.</p></div>
+        ${(() => { const q = quarters(), n = currentQuarter(), all = [1, 2, 3, 4].every(qClosed), QN = Q_NAMES[n - 1];
+          return `<div class="field"><label>Quarters</label><p style="margin:0 0 6px">${all ? 'Every quarter is closed.' : `${esc(QN)} ends ${esc(fmtDate(q.ends[n - 1]))}.${quarterDue() ? ' It has ended and can be closed.' : ' Tally asks you to close it after that.'}`}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="setQuarters">Quarter dates and closed quarters</button>${all || quarterDue() ? '' : `<button class="pill pale small" id="setQEarly">Close ${esc(QN)} early…</button>`}</div></div>`; })()}
         <div class="field"><label>Remind me when an export gets old</label><div class="seg small" id="remind">${REMIND.map(d => `<button data-remind="${d}" class="${state.settings.remindDays === d ? 'on' : ''}">${d ? d + ' days' : 'Off'}</button>`).join('')}</div><p style="margin-top:4px">A note appears on any class whose IXL export or Focus gradebook is older than this.</p></div>
         <div class="field"><label>Copy puts on the clipboard</label><div class="seg" id="copyMode">${[['points', 'Points only'], ['names', 'Name + points'], ['ids', 'ID + points']].map(([k, n]) => `<button data-cm="${k}" class="${state.settings.copyMode === k ? 'on' : ''}">${n}</button>`).join('')}</div><p style="margin-top:4px">Roster students missing from IXL get a blank line so the column stays aligned. Students on a modified list get their own "out of" after the points.</p></div>
         <h3 class="mt">Saving</h3>
@@ -5608,6 +5802,8 @@ function openSettings(key) {
     try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); localStorage.removeItem(SYNC_KEY); } catch (e) {} try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; setTimeout(() => location.reload(), 700);   // lets the Full save finish downloading   // this computer forgets its sync key too; the synced copy stays
   };
   $('#addCustom').onclick = () => { close(); openCustomEditor(null, s.prep); };
+  const toQ = early => async () => { if (unsaved() && !await ask('Discard the changes you haven\'t saved?')) return; m.classList.remove('private'); openQuarters(early ? { early: true } : {}); };
+  const sq = $('#setQuarters'); if (sq) sq.onclick = toQ(false); const se = $('#setQEarly'); if (se) se.onclick = toQ(true);
   m.querySelectorAll('[data-editc]').forEach(b => b.onclick = () => { close(); openCustomEditor(b.dataset.editc); });
   m.querySelectorAll('[data-delc]').forEach(b => b.onclick = async () => { const c = state.custom.find(x => x.id === b.dataset.delc); if (!await ask(`Delete "${c.label}"?`)) return; state.custom = state.custom.filter(x => x.id !== c.id); save(); close(); openSettings(s.key); });
   $('#exportCourse').onclick = () => {
