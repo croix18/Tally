@@ -629,6 +629,14 @@ per-section-file era and many items in them are now done).
     who (Everyone · Owe something · By grade, with A/B/C/D/F/No grade yet chips, C D F on by default; the choice is
     kept for the session in `reportWho`), then Weekly report or FAST report, each button counting its pages. The
     student page still prints one student's weekly or FAST report on its own.
+  - **One Print button (24 Oct, Croix: "a bit awkward with the menus and titles of those things. Can you take a
+    critical look at the way to pull up reports").** Printing was split between two ⋯ entries with "(print)" in their
+    names ("Still owed (print)", "Student reports (print)"), each opening its own dialog, while the student page said
+    "Weekly report". Now a visible **Print** button on the class bar opens one dialog, "Print · 1st Period": "One page
+    per student" (who, then Weekly report / FAST report, each saying its pages and what it holds) and "IXL still owed"
+    (slips, one list with initials, one list with full names). ⋯ keeps "What changed this week" and the unassigned
+    units toggle. `openPrintMenu` (grades.js); `openStillOwed` stays for any other caller. The student page keeps its
+    direct Weekly report and FAST report buttons: one tap there beats a menu.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

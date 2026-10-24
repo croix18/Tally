@@ -83,7 +83,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   await p.click('[data-who="letters"]'); await p.waitForTimeout(150);
   const cdf=await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const o=T.openSec(s); return s.grades.students.filter((_,i)=>{ const r=T.computeGrade(o,i); return r && /^[CDF]$/.test(r.letter); }).length; });
   const on=await p.$$eval('[data-letter]',bs=>bs.filter(b=>b.classList.contains('on')).map(b=>b.dataset.letter).join(''));
-  check(on==='CDF' && (await p.textContent('#rpWeekly small'))===cdf+' pages','By grade starts on C, D and F, and the button counts those students ('+cdf+')');
+  check(on==='CDF' && (await p.textContent('#rpWeekly small')).startsWith(cdf+' pages'),'By grade starts on C, D and F, and the button counts those students ('+cdf+')');
   await p.click('[data-letter="A"]'); await p.waitForTimeout(100); const withA=await p.textContent('#rpWeekly small'); await p.click('[data-letter="A"]'); await p.waitForTimeout(100);
   check(parseInt(withA)>cdf,'adding A adds its students: '+withA);
   const msgs=[]; p.removeAllListeners('dialog'); p.on('dialog',d=>{ msgs.push(d.message()); d.accept(); });

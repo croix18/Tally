@@ -419,39 +419,49 @@ function staleExports(s0, indices) {
   return out;
 }
 function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.students[i]}: report`); }
-// Class-level chooser (Croix, 24 Oct 2026: "batches of reports by class … as well as by class average, so if I only
-// wanted to print reports for my c, d, and f students"): pick who (everyone, only students who owe something, or by
-// letter grade), then which report. The student page prints one student's report on its own.
+/* Everything a class prints, in one place (Croix, 24 Oct 2026: batches "by class … as well as by class average, so if
+   I only wanted to print reports for my c, d, and f students"; then "take a critical look at the way to pull up
+   reports"): the Print button on the class bar opens it. One page per student (pick who, then weekly or FAST), and
+   the IXL still-owed slips and lists. The student page prints one student's report on its own. */
 var reportWho = { mode: 'all', letters: ['C', 'D', 'F'] };
-function openStudentReports(s) {
-  const gb = s.grades; if (!gb) { toast('Import this class\'s Focus gradebook first: the report needs the grade.', true); return; }
-  if (!hasOpenGrades(s)) { toast(`No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet: reports start with the first ${esc(Q_NAMES[currentQuarter() - 1])} gradebook.`, false, 5000); return; }
-  const rows = gbRows(s); const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const og = openSec(s); const ogb = og.grades;
-  const owes = gb.students.map((_, i) => { const miss = ogb.assignments.some(a => a.status && a.status[i] === 'missing'); const r = rows[i]; const ixl = r && r.ixl != null && units.some(u => points(s, u, r.ixl) < totalFor(s, u, r.ixl)); return miss || ixl; });
-  const letterOf = gb.students.map((_, i) => { const r = computeGrade(og, i); return r && r.rounded != null ? r.letter : '—'; });
-  const hasFast = gb.students.map(nm => testHistory(s, nm).some(h => /FAST/i.test(h.test) && h.scale != null));
+function openPrintMenu(s) {
+  const gb = s.grades; const haveGrades = !!gb && hasOpenGrades(s);
+  const rows = haveGrades ? gbRows(s) : []; const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const og = openSec(s); const ogb = og.grades;
+  const owes = haveGrades ? gb.students.map((_, i) => { const miss = ogb.assignments.some(a => a.status && a.status[i] === 'missing'); const r = rows[i]; const ixl = r && r.ixl != null && units.some(u => points(s, u, r.ixl) < totalFor(s, u, r.ixl)); return miss || ixl; }) : [];
+  const letterOf = haveGrades ? gb.students.map((_, i) => { const r = computeGrade(og, i); return r && r.rounded != null ? r.letter : '—'; }) : [];
+  const hasFast = haveGrades ? gb.students.map(nm => testHistory(s, nm).some(h => /FAST/i.test(h.test) && h.scale != null)) : [];
   const LETTERS = ['A', 'B', 'C', 'D', 'F', '—'];
-  const chosen = () => gb.students.map((_, i) => i).filter(i => reportWho.mode === 'all' || (reportWho.mode === 'owes' ? owes[i] : reportWho.letters.includes(letterOf[i])));
-  const m = $('#modal'); m.classList.remove('hidden');
-  m.innerHTML = `<div class="panel narrow"><header><h2>Student reports · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one"><p>One page per student, full names. Pick who, then the report.</p>
-      <div class="field"><div class="seg" id="rpWho"><button data-who="all" aria-pressed="${reportWho.mode === 'all'}">Everyone <small>${gb.students.length}</small></button><button data-who="owes" aria-pressed="${reportWho.mode === 'owes'}">Owe something <small>${owes.filter(Boolean).length}</small></button><button data-who="letters" aria-pressed="${reportWho.mode === 'letters'}">By grade</button></div>
+  const chosen = () => haveGrades ? gb.students.map((_, i) => i).filter(i => reportWho.mode === 'all' || (reportWho.mode === 'owes' ? owes[i] : reportWho.letters.includes(letterOf[i]))) : [];
+  const q = Q_NAMES[currentQuarter() - 1];
+  const perStudent = haveGrades ? `<div class="field"><div class="seg" id="rpWho"><button data-who="all" aria-pressed="${reportWho.mode === 'all'}">Everyone <small>${gb.students.length}</small></button><button data-who="owes" aria-pressed="${reportWho.mode === 'owes'}">Owe work <small>${owes.filter(Boolean).length}</small></button><button data-who="letters" aria-pressed="${reportWho.mode === 'letters'}">By grade</button></div>
       <div class="rpLetters ${reportWho.mode === 'letters' ? '' : 'hidden'}">${LETTERS.map(L => `<button class="chip ${reportWho.letters.includes(L) ? 'on' : ''}" data-letter="${L}" aria-pressed="${reportWho.letters.includes(L)}">${L === '—' ? 'No grade yet' : L} <small>${letterOf.filter(x => x === L).length}</small></button>`).join('')}</div></div>
-      <div class="rp-actions col"><button class="pill" id="rpWeekly">Weekly report <small></small></button><button class="pill pale" id="rpFast">FAST report <small></small></button></div>
-      <p class="ghint">Weekly: grade, what moved since the last report, this week's checklist, missing work, IXL, and a box for the student's plan and signatures. FAST: last year's PM3 and this year's windows on the state scale, the gain and level targets, and a goal box.</p></div></div>`;
+      <div class="rp-actions col"><button class="pill" id="rpWeekly">Weekly report <small></small></button><button class="pill pale" id="rpFast">FAST report <small></small></button></div>`
+    : `<p class="ghint">${gb ? `No ${esc(q)} grades in Tally yet: weekly and FAST reports start with the first ${esc(q)} gradebook.` : 'Import this class\'s Focus gradebook first: the weekly and FAST reports need the grade.'}</p>`;
+  const owed = s.students.length ? `<div class="rp-actions col">
+        <button class="pill pale" data-owed="slips">Slips to hand out <small>one page per student · full names</small></button>
+        <button class="pill pale" data-owed="initials">One list, initials <small>safe to post or project</small></button>
+        <button class="pill pale" data-owed="names">One list, full names <small>for you or a co-teacher</small></button></div>` : '<p class="ghint">No IXL export for this class yet.</p>';
+  const m = $('#modal'); m.classList.remove('hidden');
+  m.innerHTML = `<div class="panel narrow"><header><h2>Print · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one">
+      <h3 class="subh">One page per student</h3>${perStudent}
+      <h3 class="subh">IXL still owed</h3>${owed}</div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  m.querySelectorAll('[data-owed]').forEach(b => b.onclick = () => { const mode = b.dataset.owed; close(); printStillOwed(s, mode); });
+  if (!haveGrades) return;
   const refresh = () => { const idx = chosen(); const f = idx.filter(i => hasFast[i]).length;
     $('#rpWho').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.who === reportWho.mode))); $('.rpLetters').classList.toggle('hidden', reportWho.mode !== 'letters');
     m.querySelectorAll('[data-letter]').forEach(b => { const on = reportWho.letters.includes(b.dataset.letter); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
-    $('#rpWeekly').disabled = !idx.length; $('#rpWeekly small').textContent = plural(idx.length, 'page'); $('#rpFast').disabled = !f; $('#rpFast small').textContent = f ? `${plural(f, 'page')}${f < idx.length ? ', students with FAST results' : ''}` : 'no FAST results among them'; };
+    $('#rpWeekly').disabled = !idx.length; $('#rpWeekly small').textContent = `${plural(idx.length, 'page')} · grade, what moved, this week's list, pledge`; $('#rpFast').disabled = !f; $('#rpFast small').textContent = f ? `${plural(f, 'page')}${f < idx.length ? ', students with FAST results' : ''} · levels, targets, goal box` : 'no FAST results among them'; };
   $('#rpWho').querySelectorAll('button').forEach(b => b.onclick = () => { reportWho.mode = b.dataset.who; refresh(); });
   m.querySelectorAll('[data-letter]').forEach(b => b.onclick = () => { const L = b.dataset.letter; reportWho.letters = reportWho.letters.includes(L) ? reportWho.letters.filter(x => x !== L) : [...reportWho.letters, L]; refresh(); });
-  const whoWord = () => reportWho.mode === 'all' ? '' : reportWho.mode === 'owes' ? ' (owe something)' : ` (${reportWho.letters.filter(L => L !== '—').join(', ')})`;
+  const whoWord = () => reportWho.mode === 'all' ? '' : reportWho.mode === 'owes' ? ' (owe work)' : ` (${reportWho.letters.filter(L => L !== '—').join(', ')})`;
   $('#rpWeekly').onclick = () => { const idx = chosen(); close(); printStudentReports(s, idx, `Student reports: ${s.label}${whoWord()}`); };
   $('#rpFast').onclick = () => { const names = chosen().filter(i => hasFast[i]).map(i => gb.students[i]); close(); printFastReports(s, names, `FAST reports: ${s.label}${whoWord()}`); };
   refresh();
 }
+const openStudentReports = openPrintMenu;
 
 // Asked at import for new assignments the Focus fit couldn't prove. One dropdown per assignment, already on Tally's
 // guess; only a row you change becomes yours (the rest stay guesses, so a later Focus export can still prove them).

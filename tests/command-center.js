@@ -24,8 +24,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(await p.locator('#bar #nToggle.nchip').count()===1 && await p.locator('#notices .notice').count()===0 && /to fix/.test(await p.textContent('#nToggle')) && (await p.evaluate(()=>document.querySelector('#notices').getBoundingClientRect().height))<14,'notices are a count in the class bar, not a band above it');
   await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#notices .nfold .notice').count()>=1 && (await p.getAttribute('#nToggle','aria-expanded'))==='true','tapping the count shows the notices');
   await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#notices .notice').count()===0,'and tapping it again folds them');
-  check(await p.locator('#printOwed').isHidden() && await p.locator('#moreBtn').count()===1,'secondary controls live behind the ⋯ menu');
-  await p.click('#moreBtn'); await p.waitForTimeout(200); check(await p.locator('#moreMenu:not(.hidden) #mStillOwed').count()===1,'menu opens with Still owed');
+  check(await p.locator('#printOwed').isHidden() && await p.locator('#moreBtn').count()===1 && await p.locator('#btnPrint').count()===1,'secondary controls live behind the ⋯ menu; printing has its own button');
+  await p.click('#moreBtn'); await p.waitForTimeout(200); check(await p.locator('#moreMenu:not(.hidden) #mDigest').count()===1,'menu opens with What changed this week');
   await p.mouse.click(600, 700); await p.waitForTimeout(200); check(await p.locator('#moreMenu.hidden').count()===1 && await p.locator('body.details').count()===0 && await p.locator('#menuOverlay').count()===0,'a tap outside only dismisses the menu (nothing underneath fires)');
   await p.click('#moreBtn'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(100); check(await p.locator('#moreMenu.hidden').count()===1 && await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='moreBtn','Escape closes the menu and returns focus to ⋯');
   await more(p,'#btnDetails'); await p.waitForTimeout(400);
