@@ -242,12 +242,12 @@ function fastTargets(sec, name) {
 function fastTargetsHtml(t) {
   if (!t) return '';
   const lvl = bk => bk ? `<span class="flvl l${bk.level}">${esc(bk.label)}</span>` : '';
-  const grade = g => `<small>grade ${g} test</small>`;
+  const grade = g => `<small>${esc(fastTestName(g))}</small>`;
   const cards = `${t.prior ? `<div class="gcard"><small>Last year's PM3</small><b>${t.prior.scale}</b><span>${lvl(t.priorBucket)} ${grade(t.prior.grade)}</span></div>` : `<div class="gcard"><small>Last year's PM3</small><b>—</b><span>not in Tally, so no gain target</span></div>`}
     ${t.latest ? `<div class="gcard"><small>${esc(t.latest.pm)} this year</small><b>${t.latest.scale}</b><span>${lvl(t.latestBucket)} ${grade(t.gradeNow)}${t.gain && t.latest.scale >= t.gain.score ? ' <b class="pos">already a gain</b>' : ''}</span></div>` : `<div class="gcard"><small>This year</small><b>—</b><span>no window scored yet</span></div>`}`;
   const list = t.rows.map(r => `<tr class="${r.met ? 'met' : ''}"><td>${esc(r.what)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ''}</td><td class="num"><b>${r.score}</b>${r.k === 'gain' ? '' : ''}</td><td>${r.met ? `${ico('check')} reached on ${esc(t.latest.pm)}` : r.gap != null ? `<small>${r.gap} more than ${esc(t.latest.pm)}</small>` : ''}${r.why && !r.met ? ` <small class="why">· ${esc(r.why)}</small>` : ''}</td></tr>`).join('');
   return `<div class="fastT"><div class="gcards two">${cards}</div>
-    <h4 class="subh">What PM2 and PM3 need <small>grade ${t.gradeNow} scale</small></h4>
+    <h4 class="subh">What PM2 and PM3 need <small>${esc(fastTestName(t.gradeNow))}</small></h4>
     <table class="ftab targets"><tbody>${list}</tbody></table></div>`;
 }
 /* ---------- the FAST report: one printed page per student for a data talk ----------
@@ -266,39 +266,48 @@ function fastScaleHtml(grade, marks) {
   return `<div class="scale">${row(marks.filter(m => m.cls !== 'tg'), 'marks')}
     <div class="bands">${bands.map(([a, b, lab, cls]) => `<div class="${cls}" style="left:${X(a)}%;width:${X(b) - X(a)}%"><span>${lab}</span><small>${a}</small></div>`).join('')}</div>${row(marks.filter(m => m.cls === 'tg'), 'marks under')}</div>`;
 }
+const fastTestName = g => `Math Grade ${g} FAST`;
+/* The page is the student's: nothing on it that only the teacher needs (Croix, 24 Oct 2026: "get rid of the tests
+   above grade pill, the mention of tally … a gain counts for school grade, basically anything and everything that
+   students don't know or need to worry about"). Tests are named the way the student hears them: Math Grade 8 FAST. */
 function fastReportSection(sec, name) {
-  const t = fastTargets(sec, name); const fi = fastInfo(sec, name); const hist = testHistory(sec, name).filter(h => /FAST/i.test(h.test));
-  const flags = fastFlags(fi); const first = niceName(name).split(' ')[0];
-  if (!t) return `<section class="rep fast"><h1>${esc(niceName(name))}</h1><div class="meta">${esc(sec.label)} · printed ${new Date().toLocaleDateString()}</div><p>No FAST results in Tally for this student yet.</p></section>`;
+  const t = fastTargets(sec, name); const hist = testHistory(sec, name).filter(h => /FAST/i.test(h.test));
+  const first = niceName(name).split(' ')[0]; const today = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+  if (!t) return `<section class="rep fast"><h1>${esc(niceName(name))}</h1><div class="meta">${esc(sec.label)} · ${esc(today)}</div><p>No FAST scores on file yet.</p></section>`;
   const lvl = bk => bk ? `<span class="lv l${bk.level}">${esc(bk.label)}</span>` : '';
-  const gainWords = t.gain && t.priorBucket ? `${first} was <b>${esc(t.priorBucket.label)}</b> on last year's grade-${t.prior.grade} test. This year a learning gain is <b>${esc(t.gain.label)} or higher: ${t.gain.score} or more</b> on the grade-${t.gradeNow} scale.${t.latest ? (t.latest.scale >= t.gain.score ? ` ${esc(t.latest.pm)} already got there${t.latest.pm === 'PM3' ? '' : ', and PM3 is the one that counts, so hold it'}.` : ` ${esc(t.latest.pm)} was ${t.latest.scale}, so ${t.gain.score - t.latest.scale} more.`) : ''} A gain counts for the school grade.` : 'No last-year PM3 in Tally, so there is no gain target yet; the level targets still apply.';
+  const l3 = fastLevelFloor(t.gradeNow, 3); const gainIsL3 = !!t.gain && t.gain.score === l3;
+  const nowName = fastTestName(t.gradeNow), priorGrade = t.prior ? t.prior.grade : t.gradeLevel - 1, priorName = fastTestName(priorGrade);
+  const diff = h => t.prior && t.prior.scale != null ? ` · ${Math.abs(h.scale - t.prior.scale)} ${h.scale - t.prior.scale >= 0 ? 'higher' : 'lower'} than last year` : '';
+  const cards = [
+    t.prior ? `<div><small>Last year · PM3</small><b>${t.prior.scale}</b>${lvl(t.priorBucket)}<span>${esc(priorName)}${t.prior.pct != null ? ' · ' + esc(pctWord(t.prior.pct)) : ''}</span></div>` : `<div><small>Last year · PM3</small><b>—</b><span>no score on file</span></div>`,
+    t.now.length ? t.now.map(h => `<div><small>This year · ${esc(h.pm)}</small><b>${h.scale}</b>${lvl(fastBucket(t.gradeNow, h.scale))}<span>${esc(nowName)}${diff(h)}</span></div>`).join('') : `<div><small>This year</small><b>—</b><span>no window scored yet</span></div>`,
+    gainIsL3 ? `<div class="goal"><small>Your target · a gain</small><b>${l3}+</b><span>Level 3, on grade level</span></div>`
+      : `${t.gain ? `<div class="goal"><small>Your target · a gain</small><b>${t.gain.score}+</b><span>${esc(t.gain.label)}</span></div>` : ''}<div class="goal"><small>On grade level</small><b>${l3}+</b><span>Level 3</span></div>`].join('');
+  const gainWords = t.gain && t.priorBucket
+    ? `${esc(first)} was <b>${esc(t.priorBucket.label)}</b> on last year's ${esc(priorName)}. A learning gain this year means <b>${esc(t.gain.label)} or higher: ${t.gain.score} or more</b> on the ${esc(nowName)}.${t.latest ? (t.latest.scale >= t.gain.score ? ` ${esc(t.latest.pm)} already got there${t.latest.pm === 'PM3' ? '.' : '. PM3 is the one that counts, so hold it.'}` : ` ${esc(t.latest.pm)} was ${t.latest.scale}, so that is ${t.gain.score - t.latest.scale} more points.`) : ''}`
+    : `There is no PM3 score from last year on file, so there is no learning-gain target yet. The level targets below still apply.`;
   const rows = t.rows.map(r => `<tr class="${r.met ? 'met' : ''}"><td><span class="box"></span>${esc(r.what)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ''}</td><td class="r"><b>${r.score}</b></td><td>${r.met ? `✓ reached on ${esc(t.latest.pm)}` : r.gap != null ? `${r.gap} more than ${esc(t.latest.pm)}` : ''}</td></tr>`).join('');
-  const histRows = hist.slice().sort((a, b) => (a.year + a.pm).localeCompare(b.year + b.pm)).map(h => { const g = h.year === t.thisYear ? t.gradeNow : (h.grade || (t.prior && t.prior.grade) || t.gradeLevel - 1); const bk = h.scale != null ? fastBucket(g, h.scale) : null;
-    return `<tr><td>${esc([h.pm, h.year].filter(Boolean).join(' '))}</td><td class="r">${h.scale != null ? h.scale : ''}</td><td>${h.level != null ? 'Level ' + h.level : ''}</td><td>${bk ? esc(bk.label) : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct)) : ''}</td><td>grade ${g} test</td></tr>`; }).join('');
-  const l3 = fastLevelFloor(t.gradeNow, 3);
-  const thisYearMarks = [...t.now.map(h => ({ v: h.scale, label: h.pm, cls: 'now' })), ...(t.gain && t.gain.score !== l3 ? [{ v: t.gain.score, label: 'Gain', cls: 'tg' }] : []), { v: l3, label: t.gain && t.gain.score === l3 ? 'Gain · grade level' : 'Grade level', cls: 'tg' }];
-  return `<section class="rep fast"><div class="head"><div><h1>${esc(niceName(name))}</h1><div class="meta">${esc(sec.label)} · FAST Mathematics · printed ${new Date().toLocaleDateString()}</div></div>${flags.length ? `<div class="flags">${flags.map(x => `<span>${esc(x.t)}</span>`).join('')}</div>` : ''}</div>
-    <div class="cards">${t.prior ? `<div><small>Last year's PM3</small><b>${t.prior.scale}</b>${lvl(t.priorBucket)}<span>grade ${t.prior.grade} test${t.prior.pct != null ? ' · ' + esc(pctWord(t.prior.pct)) : ''}</span></div>` : `<div><small>Last year's PM3</small><b>—</b><span>not in Tally</span></div>`}
-      ${t.now.length ? '' : `<div><small>This year</small><b>—</b><span>no window scored yet</span></div>`}${t.now.map(h => `<div><small>${esc(h.pm)} this year</small><b>${h.scale}</b>${lvl(fastBucket(t.gradeNow, h.scale))}<span>grade ${t.gradeNow} test${t.prior && t.prior.scale != null ? ` · ${h.scale - t.prior.scale >= 0 ? '+' : '−'}${Math.abs(h.scale - t.prior.scale)} since PM3` : ''}</span></div>`).join('')}
-      ${t.gain && t.gain.score === l3 ? `<div class="goal"><small>Gain this year</small><b>${l3}+</b><span>Level 3, on grade level</span></div>` : `${t.gain ? `<div class="goal"><small>Gain this year</small><b>${t.gain.score}+</b><span>${esc(t.gain.label)}</span></div>` : ''}<div class="goal"><small>Level 3 (on grade level)</small><b>${l3}+</b><span>grade ${t.gradeNow} scale</span></div>`}</div>
-    <h2>Last year <span class="hs">grade ${t.prior ? t.prior.grade : t.gradeLevel - 1} scale</span></h2>${fastScaleHtml(t.prior ? t.prior.grade : t.gradeLevel - 1, t.prior ? [{ v: t.prior.scale, label: 'PM3', cls: 'now' }] : [])}
-    <h2>This year <span class="hs">grade ${t.gradeNow} scale</span></h2>${fastScaleHtml(t.gradeNow, thisYearMarks)}
+  const histRows = hist.slice().sort((a, b) => (a.year + a.pm).localeCompare(b.year + b.pm)).map(h => { const g = h.year === t.thisYear ? t.gradeNow : (h.grade || priorGrade); const bk = h.scale != null ? fastBucket(g, h.scale) : null;
+    return `<tr><td>${esc(fastTestName(g))}</td><td>${esc([h.pm, h.year].filter(Boolean).join(' '))}</td><td class="r">${h.scale != null ? h.scale : ''}</td><td>${bk ? esc(bk.label) : h.level != null ? 'Level ' + h.level : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct)) : ''}</td></tr>`; }).join('');
+  const thisYearMarks = [...t.now.map(h => ({ v: h.scale, label: h.pm, cls: 'now' })), ...(t.gain && !gainIsL3 ? [{ v: t.gain.score, label: 'Gain', cls: 'tg' }] : []), { v: l3, label: gainIsL3 ? 'Gain · grade level' : 'Grade level', cls: 'tg' }];
+  return `<section class="rep fast"><div class="head"><div><h1>${esc(niceName(name))}</h1><div class="meta">${esc(sec.label)} · ${esc(nowName)} · ${esc(today)}</div></div></div>
+    <div class="cards">${cards}</div>
+    <h2>Last year <span class="hs">${esc(priorName)}</span></h2>${fastScaleHtml(priorGrade, t.prior ? [{ v: t.prior.scale, label: 'PM3', cls: 'now' }] : [])}
+    <h2>This year <span class="hs">${esc(nowName)}</span></h2>${fastScaleHtml(t.gradeNow, thisYearMarks)}
     <p class="gain">${gainWords}</p>
-    <h2>What PM2 and PM3 need</h2><table class="targets"><tbody>${rows}</tbody></table>
-    <h2>Every window</h2><table class="hist"><thead><tr><th>Window</th><th class="r">Score</th><th>Level</th><th>Bucket</th><th>Percentile</th><th>Test</th></tr></thead><tbody>${histRows}</tbody></table>
-    <div class="pledge"><div><b>My goal for PM2</b><i></i></div><div><b>My goal for PM3</b><i></i></div><div class="wide"><b>How I'll get there</b><i></i><i></i></div><div class="sig"><span>Student</span><span>Teacher</span><span>Date</span></div></div>
-    <div class="foot">Levels and the Level 1 and Level 2 subcategories are the state cut scores (State Board of Education, 10 Jan 2024). Level 3 means working on grade level. A learning gain is the next subcategory up from Level 1 or 2, the next level up from Level 3 or 4, or Level 5 again. Scores come from the Focus FAST report imported into Tally.</div></section>`;
+    <h2>Your targets for PM2 and PM3</h2><table class="targets"><tbody>${rows}</tbody></table>
+    <h2>Every FAST so far</h2><table class="hist"><thead><tr><th>Test</th><th>Window</th><th class="r">Score</th><th>Level</th><th>Percentile</th></tr></thead><tbody>${histRows}</tbody></table>
+    <div class="pledge"><div><b>My goal for PM2</b><i></i></div><div><b>My goal for PM3</b><i></i></div><div class="wide"><b>How I'll get there</b><i></i><i></i><i></i></div><div class="sig"><span>Student</span><span>Teacher</span><span>Date</span></div></div></section>`;
 }
 const FAST_REPORT_CSS = `
-.rep.fast .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:8px 0 2px}.rep.fast .cards>div{border:1px solid #bbb;border-radius:6px;padding:6px 9px}.rep.fast .cards small{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:#333}.rep.fast .cards b{font-size:19pt;font-weight:900;line-height:1.1;display:block}.rep.fast .cards span{display:block;font-size:8pt;color:#444}.rep.fast .cards .goal{border:1.5px solid #000}
+.rep.fast .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:10px 0 4px}.rep.fast .cards>div{border:1px solid #bbb;border-radius:6px;padding:7px 10px}.rep.fast .cards small{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:#333}.rep.fast .cards b{font-size:19pt;font-weight:900;line-height:1.1;display:block}.rep.fast .cards span{display:block;font-size:8pt;color:#444}.rep.fast .cards .goal{border:1.5px solid #000}
 .rep.fast .lv{display:inline-block;border:1px solid #000;border-radius:8px;padding:0 6px;font-size:8pt;font-weight:bold;margin:2px 0}
-.rep.fast .flags{display:flex;gap:6px;flex-wrap:wrap}.rep.fast .flags span{border:1px solid #000;border-radius:8px;padding:1px 8px;font-size:8.5pt;font-weight:bold}
 .scale{margin:4px 0 12px}.bands{position:relative;height:26px;border:1px solid #000;border-radius:4px;overflow:hidden}.bands>div{position:absolute;top:0;bottom:0;border-left:1px solid #000;font-size:7.5pt;padding:2px 0 0 3px;overflow:hidden;white-space:nowrap}.bands>div:first-child{border-left:none}.bands span{display:block;font-weight:bold}.bands small{display:block;font-size:7pt;color:#333}
 .bands .l1{background:#f0f0f0}.bands .l2{background:#dcdcdc}.bands .l3{background:#c4c4c4}.bands .l4{background:#a8a8a8}.bands .l5{background:#8c8c8c}.bands .l4,.bands .l5{color:#fff}.bands .l4 small,.bands .l5 small{color:#eee}
 .marks{position:relative;height:34px}.marks.tiered{height:56px}.mk{position:absolute;bottom:0;transform:translateX(-50%);text-align:center;font-size:7.5pt;line-height:1.05;display:flex;flex-direction:column;align-items:center;white-space:nowrap}.mk b{font-size:8.5pt}.mk i{display:block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #000}.marks .mk.tall i{border:none;border-left:1px solid #000;height:30px}.marks.under{height:30px}.marks.under .mk{bottom:auto;top:0}.marks.under .mk i{border-top:none;border-bottom:8px solid #555}.marks.under .mk b{color:#333;font-size:7.5pt}.marks.under.tiered{height:52px}.marks.under .mk.tall i{border:none;border-left:1px solid #555;height:30px}
-.rep.fast .gain{margin:4px 0 8px;font-size:10pt}
+.rep.fast .gain{margin:4px 0 8px;font-size:10pt;line-height:1.4}
 .rep.fast .targets td{padding:3px 6px;font-size:10pt}.rep.fast .targets tr.met td{color:#0F766E}.rep.fast .hist td,.rep.fast .hist th{font-size:9pt}
-.rep.fast .pledge{grid-template-columns:1fr 1fr}.rep.fast .pledge .wide{grid-column:1/-1}.rep.fast .pledge b{display:block;margin-bottom:2px}.rep.fast .pledge i{display:block;border-bottom:1px solid #000;height:15px}`;
+.rep.fast .pledge{grid-template-columns:1fr 1fr;gap:10px 24px;padding:10px 12px 12px;margin-top:12px}.rep.fast .pledge .wide{grid-column:1/-1}.rep.fast .pledge b{display:block;margin-bottom:4px}.rep.fast .pledge i{display:block;border-bottom:1px solid #000;height:22px}.rep.fast .pledge .sig{margin-top:8px}`;
 function printFastReports(sec, names, title) {
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}${FAST_REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${names.map(n => fastReportSection(sec, n)).join('')}</body></html>`;
   const go = () => openPrint(html, names.length === 1 ? 'FAST-report.html' : `FAST-reports-${sec.label.replace(/[^\w-]+/g, '_')}.html`, names.length === 1);

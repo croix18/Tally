@@ -637,6 +637,16 @@ per-section-file era and many items in them are now done).
     (slips, one list with initials, one list with full names). ⋯ keeps "What changed this week" and the unassigned
     units toggle. `openPrintMenu` (grades.js); `openStillOwed` stays for any other caller. The student page keeps its
     direct Weekly report and FAST report buttons: one tap there beats a menu.
+  - **The FAST report is the student's page (24 Oct, Croix, from a print on his tablet).** "Get rid of the tests above
+    grade pill, the mention of tally (that entire text actually), a gain counts for school grade, basically anything
+    and everything that students don't know or need to worry about … fix the spacing in the my goal box … Math Grade 6
+    FAST and Math Grade 8 FAST … a bit more thought into the overall design and language and layout." So: no flags, no
+    footnote, no "school grade", no Tally; tests are named `fastTestName(g)` ("Math Grade 8 FAST", on-level 7th
+    graders "Math Grade 7 FAST") on the cards, the scale headings, the gain sentence and the history; cards read
+    Last year · PM3 / This year · PM1 / Your target · a gain / On grade level; "Your targets for PM2 and PM3"; "Every
+    FAST so far" with one Level column (the subcategory); the goal box has taller lines, three for "How I'll get
+    there", and room before the signatures. The weekly report's "check the roster in Tally" line is now "IXL is not
+    linked to this report yet".
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
