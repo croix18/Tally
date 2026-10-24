@@ -586,7 +586,7 @@ per-section-file era and many items in them are now done).
   gain. The fours need a five. The fives have to maintain their five." (The state chart also counts a Level 3 or 4
   with a higher score; Croix's rule is the one Tally shows.) The page's FAST section shows the two
   scores in their buckets (each on its own grade's table: last year's uses the report's PM3TestLevel, else the grade
-  below) and a table of targets on this year's scale: the gain, then Level 2, Level 3 (passing), Level 4, Level 5,
+  below) and a table of targets on this year's scale: the gain, then Level 2, Level 3 (on grade level; Croix, 24 Oct: "let's reframe it from passing", a 3 means on grade level), Level 4, Level 5,
   each marked reached when the latest window already got there, else "N more than PM1". The conference form's
   "From the gradebook" aside carries the gain line. The accelerated classes sit the grade-8 test, so their windows this
   year sit on the grade-8 table while last year's PM3 stays on grade 6 (`gradeNow = gradeLevel + 1` for `prep === 'acc'`).
