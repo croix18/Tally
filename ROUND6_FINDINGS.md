@@ -243,3 +243,8 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
    `git rev-parse HEAD`, update this build log, deliver `Tally.html` into the chat.
 4. Don't change anything under "Croix's calls" without asking him. Test with the scrubbed fixtures only; he can't upload
    real student data.
+
+- 24 Oct 2026, 2d4c096 (subject lost to a scratch-file collision; the change is this): FAST report, Level 3 is
+  "on grade level", not "passing". Croix: "Level 3 let's reframe it from passing. That just means that level 3
+  means they are on grade level." The targets row and the goal card on the student page and the FAST report say
+  "on grade level"; the this-year scale marks the Level 3 floor as "Grade level"; the footnote says what a 3 means.
