@@ -124,7 +124,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(/Not started \(\d+\):/.test(rtxt) && /and \d+ more, in order, under Unit \d+ in IXL/.test(rtxt) && /Below goal \(\d+\):/.test(rtxt),'IXL still owed names every below-goal skill and the next few not started, and counts the rest');
   await rep.close();
   await q.click('#back'); await q.waitForTimeout(300); await q.click(`[data-k="${RK}"]`); await q.waitForTimeout(300); await q.click('#moreBtn'); await q.waitForTimeout(200); await q.click('#mReports'); await q.waitForTimeout(300);
-  const [all]=await Promise.all([ctx2.waitForEvent('page'), q.click('[data-rep="all"]')]); await all.waitForLoadState(); await all.waitForTimeout(600);
+  const [all]=await Promise.all([ctx2.waitForEvent('page'), q.click('#rpWeekly')]); await all.waitForLoadState(); await all.waitForTimeout(600);
   const secs=await all.evaluate(()=>document.querySelectorAll('.rep').length); const pp=pages(await all.pdf({format:'Letter'}));
   check(secs>=20 && pp===secs,'the whole class prints one page per student ('+secs+' students, '+pp+' pages)'); await all.close();
   console.log('errors:',errs); check(errs.length===0,'no errors');

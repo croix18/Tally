@@ -91,8 +91,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   check(await p.locator('button.hdigest[data-digest]').count()===2 && await p.locator('.hcard button').count()===0,'What changed is a button beside the card, not a span inside it');
   // 15. student report (2nd period still has its gradebook; step 11 dropped 1st period's): one page per student, grade + what moves it + IXL still owed; class chooser in the ⋯ menu
   const K2='period-2'; await p.click('[data-k="period-2"]'); await p.waitForTimeout(300); await p.click('#moreBtn'); await p.waitForTimeout(200); await p.click('#mReports'); await p.waitForTimeout(300);
-  check(await p.locator('[data-rep="all"]').count()===1 && await p.locator('[data-rep="owes"]').count()===1,'Student reports chooser: everyone / only those who owe');
-  const [rep]=await Promise.all([ctx.waitForEvent('page'), p.click('[data-rep="all"]')]); await rep.waitForLoadState(); await rep.waitForTimeout(400);
+  check(await p.locator('[data-who="all"]').count()===1 && await p.locator('[data-who="owes"]').count()===1 && await p.locator('[data-who="letters"]').count()===1,'Student reports chooser: everyone / owe something / by grade');
+  const [rep]=await Promise.all([ctx.waitForEvent('page'), p.click('#rpWeekly')]); await rep.waitForLoadState(); await rep.waitForTimeout(400);
   const rn=await rep.locator('section.rep').count(); const rtxt=await rep.evaluate(()=>document.body.innerText);
   const gbN=await p.evaluate(K=>window.__tally.state.sections[K].grades.students.length, K2); check(rtxt.indexOf('Below goal')>=0 || rtxt.indexOf('Not started')>=0,'IXL owed lists skills');
   check(rn===gbN && /What would move the grade/i.test(rtxt) && /IXL still owed/i.test(rtxt) && /weighted Assessments 70%/.test(rtxt),'one report section per gradebook student with grade, levers, IXL owed and the formula: '+rn);

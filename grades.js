@@ -309,7 +309,7 @@ table{border-collapse:collapse;width:100%}td,th{padding:1.5px 6px;text-align:lef
 .lead{margin:4px 0}.keep{margin:4px 0;font-weight:bold}.todo{list-style:none;margin:2px 0 4px;padding:0;counter-reset:st}.todo li{display:flex;align-items:baseline;gap:8px;padding:3px 0;border-bottom:1px solid #ddd;font-size:10pt}.todo .st{flex:1}.todo .aft{font-weight:900;white-space:nowrap}.todo li::before{counter-increment:st;content:counter(st) ".";width:14px;color:#333}
 .box{display:inline-block;width:12px;height:12px;border:1.5px solid #000;border-radius:2px;vertical-align:-2px;margin-right:4px;flex:none}
 .tests{margin:3px 0 6px}.rt{margin:4px 0 2px}
-.pledge{margin-top:10px;border:1.5px solid #000;border-radius:6px;padding:8px 10px;display:grid;grid-template-columns:1.4fr 1fr;gap:6px 16px;font-size:9.5pt}.pl b{display:block;margin-bottom:2px}.pl i{display:block;border-bottom:1px solid #000;height:15px}.sig{grid-column:1/-1;display:flex;justify-content:space-between;gap:12px;margin-top:4px;font-size:9pt}
+.pledge{margin-top:10px;border:1.5px solid #000;border-radius:6px;padding:8px 10px;display:grid;grid-template-columns:1.4fr 1fr;gap:6px 16px;font-size:9.5pt}.pl b{display:block;margin-bottom:2px}.pl i{display:block;border-bottom:1px solid #000;height:15px}.sig{grid-column:1/-1;display:flex;gap:18px;margin-top:6px;font-size:9pt}.sig span{display:flex;align-items:flex-end;gap:6px;flex:1;white-space:nowrap}.sig span::after{content:'';flex:1;border-bottom:1px solid #000;min-width:40px}.sig span:last-child{flex:.6}
 .foot{font-size:7.5pt;color:#444;margin-top:8px;border-top:1px solid #999;padding-top:5px}.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}.bar button{font:inherit;padding:6px 14px}@media print{.bar{display:none}}`;
 // What one next assessment of `mx` points can do for student i — only what is computed: for each letter above the
 // current grade (a D counts), the score that reaches it or the fact that none does; and the score that keeps the
@@ -389,7 +389,7 @@ function studentReportSection(s0, i, ixlRow) {
     <div class="two"><div>${ixl}</div><div>
     <h2>Tests &amp; quizzes</h2><p class="tests">${testsLine}</p>
     <h2>What would move the grade</h2>${moves ? `<table><tbody>${moves}</tbody></table>` : '<p>Nothing missing and every assessment at full marks: keep going.</p>'}</div></div>
-    <div class="pledge"><div class="pl"><b>This week I will</b><i></i><i></i></div><div class="pl"><b>Last week's plan</b> <span class="box"></span> done <span class="box"></span> partly <span class="box"></span> not yet</div><div class="sig"><span>Student ________________</span><span>Parent ________________</span><span>Date ________</span></div></div>
+    <div class="pledge"><div class="pl"><b>This week I will</b><i></i><i></i></div><div class="pl"><b>Last week's plan</b> <span class="box"></span> done <span class="box"></span> partly <span class="box"></span> not yet</div><div class="sig"><span>Student</span><span>Parent</span><span>Date</span></div></div>
     <div class="foot">Course grade = each category's points earned ÷ points possible, weighted ${g.cats.map(c => `${esc(c.name)} ${c.w}%`).join(' · ')}. Work not handed in counts as zero; excused work is left out. IXL: one point per skill at or above the goal SmartScore. Figures come from the exports named above; Focus is the record of grade.</div></section>`;
 }
 // A report that prints is remembered, so the next one can say what moved (grade, missing work, IXL skills).
@@ -403,28 +403,57 @@ function printStudentReports(s, indices, title) {
   const rows = gbRows(s);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}</body></html>`;
   const go = () => { indices.forEach(i => logReport(s, i, rows[i])); save(); openPrint(html, (indices.length === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', indices.length === 1); };   // one student's report: a file name without the name; the log is written only for a report that opens
-  if (state.settings.hideNames) { ask(`Names are hidden, but the ${indices.length === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen. Open ${indices.length === 1 ? 'it' : 'them'}?`, 'Open').then(ok => { if (ok) go(); }); return; }   // projected: say so first (audit)
+  const why = [...staleExports(s, indices), ...(state.settings.hideNames ? [`names are hidden, but the ${indices.length === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen`] : [])];   // projected: say so first (audit)
+  if (why.length) { ask(`Before printing: ${why.join('; ')}. Print anyway?`, 'Print anyway').then(ok => { if (ok) go(); }); return; }
   go();
 }
+/* Croix (24 Oct 2026): "remind me to update if it's been too long before generating the weekly report". The reasons a
+   weekly report would carry stale numbers: an export older than REPORT_FRESH_DAYS, or one no newer than the last
+   report printed for any of these students (every "same" on the strip would be the export, not the student). */
+const REPORT_FRESH_DAYS = 5;
+function staleExports(s0, indices) {
+  const s = openSec(s0); const gb = s.grades; const out = []; const names = indices.map(i => gb.students[i]); const today = localDay(new Date().toISOString());
+  const lastOf = key => names.map(n => ((s0.reportLog || {})[norm(n)] || []).filter(e => e.date < today).pop()).filter(Boolean).map(e => e[key]).filter(Boolean);
+  const gbDay = localDayOf(gb.importedAt) || '', ixDay = dataDate(s) || '';
+  const gbAge = ageDays(gbDay), ixAge = ageDays(ixDay);
+  if (gbAge != null && gbAge > REPORT_FRESH_DAYS) out.push(`the Focus gradebook in Tally is ${plural(gbAge, 'day')} old`);
+  else if (gbDay && lastOf('gb').some(d => d === gbDay)) out.push('the Focus gradebook has not been re-imported since the last report');
+  if (s.students.length) { if (ixAge != null && ixAge > REPORT_FRESH_DAYS) out.push(`the IXL export is ${plural(ixAge, 'day')} old`); else if (ixDay && lastOf('ix').some(d => d === ixDay)) out.push('the IXL export has not been re-imported since the last report'); }
+  return out;
+}
 function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.students[i]}: report`); }
-// Class-level chooser: everyone, or only students with something owed (missing work or IXL below goal).
+// Class-level chooser (Croix, 24 Oct 2026: "batches of reports by class … as well as by class average, so if I only
+// wanted to print reports for my c, d, and f students"): pick who (everyone, only students who owe something, or by
+// letter grade), then which report. The student page prints one student's report on its own.
+var reportWho = { mode: 'all', letters: ['C', 'D', 'F'] };
 function openStudentReports(s) {
   const gb = s.grades; if (!gb) { toast('Import this class\'s Focus gradebook first: the report needs the grade.', true); return; }
   if (!hasOpenGrades(s)) { toast(`No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet: reports start with the first ${esc(Q_NAMES[currentQuarter() - 1])} gradebook.`, false, 5000); return; }
-  const rows = gbRows(s); const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const og = openSec(s).grades;
-  const owes = gb.students.map((_, i) => { const miss = og.assignments.some(a => a.status && a.status[i] === 'missing'); const r = rows[i]; const ixl = r && r.ixl != null && units.some(u => points(s, u, r.ixl) < totalFor(s, u, r.ixl)); return miss || ixl; });
-  const n = owes.filter(Boolean).length; const fastNames = gb.students.filter(nm => testHistory(s, nm).some(h => /FAST/i.test(h.test) && h.scale != null)); const fastN = fastNames.length;
+  const rows = gbRows(s); const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const og = openSec(s); const ogb = og.grades;
+  const owes = gb.students.map((_, i) => { const miss = ogb.assignments.some(a => a.status && a.status[i] === 'missing'); const r = rows[i]; const ixl = r && r.ixl != null && units.some(u => points(s, u, r.ixl) < totalFor(s, u, r.ixl)); return miss || ixl; });
+  const letterOf = gb.students.map((_, i) => { const r = computeGrade(og, i); return r && r.rounded != null ? r.letter : '—'; });
+  const hasFast = gb.students.map(nm => testHistory(s, nm).some(h => /FAST/i.test(h.test) && h.scale != null));
+  const LETTERS = ['A', 'B', 'C', 'D', 'F', '—'];
+  const chosen = () => gb.students.map((_, i) => i).filter(i => reportWho.mode === 'all' || (reportWho.mode === 'owes' ? owes[i] : reportWho.letters.includes(letterOf[i])));
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel narrow"><header><h2>Student reports · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one"><p>One page per student, full names.</p>
-      <h3 class="subh">Weekly report</h3><p class="ghint">Grade, what moved since the last report, this week's checklist, missing work, IXL, and a box for the student's plan and signatures.</p>
-      <div class="rp-actions col"><button class="pill" data-rep="all">Everyone <small>${plural(gb.students.length, 'page')}</small></button><button class="pill pale" data-rep="owes" ${n ? '' : 'disabled'}>Only students who owe something <small>${plural(n, 'page')}</small></button></div>
-      <h3 class="subh">FAST report</h3><p class="ghint">Last year's PM3 and this year's windows on the state scale, the gain and level targets, and a goal box.</p>
-      <div class="rp-actions col"><button class="pill pale" data-fast="all" ${fastN ? '' : 'disabled'}>Everyone with FAST results <small>${plural(fastN, 'page')}</small></button></div></div></div>`;
+    <div class="body one"><p>One page per student, full names. Pick who, then the report.</p>
+      <div class="field"><div class="seg" id="rpWho"><button data-who="all" aria-pressed="${reportWho.mode === 'all'}">Everyone <small>${gb.students.length}</small></button><button data-who="owes" aria-pressed="${reportWho.mode === 'owes'}">Owe something <small>${owes.filter(Boolean).length}</small></button><button data-who="letters" aria-pressed="${reportWho.mode === 'letters'}">By grade</button></div>
+      <div class="rpLetters ${reportWho.mode === 'letters' ? '' : 'hidden'}">${LETTERS.map(L => `<button class="chip ${reportWho.letters.includes(L) ? 'on' : ''}" data-letter="${L}" aria-pressed="${reportWho.letters.includes(L)}">${L === '—' ? 'No grade yet' : L} <small>${letterOf.filter(x => x === L).length}</small></button>`).join('')}</div></div>
+      <div class="rp-actions col"><button class="pill" id="rpWeekly">Weekly report <small></small></button><button class="pill pale" id="rpFast">FAST report <small></small></button></div>
+      <p class="ghint">Weekly: grade, what moved since the last report, this week's checklist, missing work, IXL, and a box for the student's plan and signatures. FAST: last year's PM3 and this year's windows on the state scale, the gain and level targets, and a goal box.</p></div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  m.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => { const idx = gb.students.map((_, i) => i).filter(i => b.dataset.rep === 'all' || owes[i]); close(); printStudentReports(s, idx, `Student reports: ${s.label}`); });
-  m.querySelectorAll('[data-fast]').forEach(b => b.onclick = () => { close(); printFastReports(s, fastNames, `FAST reports: ${s.label}`); });
+  const refresh = () => { const idx = chosen(); const f = idx.filter(i => hasFast[i]).length;
+    $('#rpWho').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.who === reportWho.mode))); $('.rpLetters').classList.toggle('hidden', reportWho.mode !== 'letters');
+    m.querySelectorAll('[data-letter]').forEach(b => { const on = reportWho.letters.includes(b.dataset.letter); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+    $('#rpWeekly').disabled = !idx.length; $('#rpWeekly small').textContent = plural(idx.length, 'page'); $('#rpFast').disabled = !f; $('#rpFast small').textContent = f ? `${plural(f, 'page')}${f < idx.length ? ', students with FAST results' : ''}` : 'no FAST results among them'; };
+  $('#rpWho').querySelectorAll('button').forEach(b => b.onclick = () => { reportWho.mode = b.dataset.who; refresh(); });
+  m.querySelectorAll('[data-letter]').forEach(b => b.onclick = () => { const L = b.dataset.letter; reportWho.letters = reportWho.letters.includes(L) ? reportWho.letters.filter(x => x !== L) : [...reportWho.letters, L]; refresh(); });
+  const whoWord = () => reportWho.mode === 'all' ? '' : reportWho.mode === 'owes' ? ' (owe something)' : ` (${reportWho.letters.filter(L => L !== '—').join(', ')})`;
+  $('#rpWeekly').onclick = () => { const idx = chosen(); close(); printStudentReports(s, idx, `Student reports: ${s.label}${whoWord()}`); };
+  $('#rpFast').onclick = () => { const names = chosen().filter(i => hasFast[i]).map(i => gb.students[i]); close(); printFastReports(s, names, `FAST reports: ${s.label}${whoWord()}`); };
+  refresh();
 }
 
 // Asked at import for new assignments the Focus fit couldn't prove. One dropdown per assignment, already on Tally's

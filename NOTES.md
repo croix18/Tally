@@ -619,6 +619,16 @@ per-section-file era and many items in them are now done).
     every "same" is the export, not the student); the "goes into Focus" step is a note under the list, not a box the
     student can't tick; the log is written only for a report that opens; with names hidden every print (one, a class,
     FAST) asks first.
+  - **Batches and the reminder (24 Oct, Croix).** "Make those dashed lines solid for the signatures and date": the
+    signature lines in both reports are ruled lines. "One at a time is fine for the path towards a better grade": the
+    checklist keeps aiming at the next letter. "Remind me to update if it's been too long before generating the weekly
+    report": `staleExports` asks before a weekly print when the Focus gradebook or the IXL export is more than
+    `REPORT_FRESH_DAYS` (5) days old, or no newer than the last report printed for any of those students; with names
+    hidden that is folded into the same one question. "Batches of reports by class … as well as by class average, so if
+    I only wanted to print reports for my c, d, and f students": the Student reports dialog (⋯ on the class) is pick
+    who (Everyone · Owe something · By grade, with A/B/C/D/F/No grade yet chips, C D F on by default; the choice is
+    kept for the session in `reportWho`), then Weekly report or FAST report, each button counting its pages. The
+    student page still prints one student's weekly or FAST report on its own.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

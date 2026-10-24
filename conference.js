@@ -286,7 +286,7 @@ function fastReportSection(sec, name) {
     <p class="gain">${gainWords}</p>
     <h2>What PM2 and PM3 need</h2><table class="targets"><tbody>${rows}</tbody></table>
     <h2>Every window</h2><table class="hist"><thead><tr><th>Window</th><th class="r">Score</th><th>Level</th><th>Bucket</th><th>Percentile</th><th>Test</th></tr></thead><tbody>${histRows}</tbody></table>
-    <div class="pledge"><div><b>My goal for PM2</b><i></i></div><div><b>My goal for PM3</b><i></i></div><div class="wide"><b>How I'll get there</b><i></i><i></i></div><div class="sig"><span>Student ________________</span><span>Teacher ________________</span><span>Date ________</span></div></div>
+    <div class="pledge"><div><b>My goal for PM2</b><i></i></div><div><b>My goal for PM3</b><i></i></div><div class="wide"><b>How I'll get there</b><i></i><i></i></div><div class="sig"><span>Student</span><span>Teacher</span><span>Date</span></div></div>
     <div class="foot">Levels and the Level 1 and Level 2 subcategories are the state cut scores (State Board of Education, 10 Jan 2024). Level 3 means working on grade level. A learning gain is the next subcategory up from Level 1 or 2, the next level up from Level 3 or 4, or Level 5 again. Scores come from the Focus FAST report imported into Tally.</div></section>`;
 }
 const FAST_REPORT_CSS = `
