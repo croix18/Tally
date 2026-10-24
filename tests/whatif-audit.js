@@ -71,6 +71,8 @@ const round = p => Math.round(p + 1e-9);
     T.unitsOf(s).filter(u=>u.num!==1).forEach(u=>u.active.forEach(k=>{ [A,B,C].forEach(x=>{ s.scores[k][x.ixl]=Math.max(t,s.scores[k][x.ixl]||0); if (s.best) { const b=s.best[T.skillKey(s.skills[k])]; if (b) delete b[T.ixlKeyAt(s,x.ixl)]; } }); }));
     // C: exactly two skills short
     const shortC=u1.active.slice(0,2); u1.active.forEach(k=>{ s.scores[k][C.ixl]=shortC.includes(k)?t-10:t; });
+    // Focus grades Unit 1 IXL and C's cell isn't at full credit (a unit Focus hasn't graded, or already gives full credit for, isn't required before a retake: 24 Oct)
+    const colU1=gb.assignments.find(a=>/\bixl\b/i.test(a.name) && (T.gbUnitFor(s,a)||{}).name===u1.name); if (colU1) { colU1.status[C.i]='score'; colU1.values[C.i]=Math.max(0,(colU1.max||1)-2); }
     gb.assignments.forEach(a=>{ a.missing=a.status.filter(x=>x==='missing').length; }); s._keys=null; T.save(); return { A:A.nm, B:B.nm, C:C.nm, mB, unit:u1.short, nUnit:u1.active.length }; },K);
   await p.reload(); await p.waitForTimeout(700);
   const rt=await p.evaluate(({K,shaped})=>{ const T=window.__tally; const s=T.state.sections[K]; return ['A','B','C'].map(k=>{ const r=T.retakeStatus(s,shaped[k]); return { ok:r.ok, missing:r.missing, short:r.short.map(x=>x.name), unit:r.unit&&r.unit.short }; }); },{K,shaped});

@@ -564,7 +564,9 @@ per-section-file era and many items in them are now done).
   different speeds. I need to be able to adjust each side."
   - **Data Lab, Both:** one picker per course (`#labA` vs `#labO`), each remembered on its own (`labPick`), no pairing;
     the subtitle says "percent of the maximum" when the two sides are out of different totals.
-  - **Retakes:** "caught up on everything" now means every unit with an IXL column in the open gradebook
+  - **Retakes:** "caught up on everything" means everything Focus grades: every unit with an IXL column in the open
+    gradebook whose cell isn't at full credit (Croix, later that day: "if I haven't graded unit 4 IXLs yet, it shouldn't
+    be required to be finished before a retake"), the unit being worked in included only on those terms. Every unit with an IXL column
     (`retakeStatus().behind`), not only the unit being worked in. Students, student page, conference form and the
     quickest plan all say the same.
   - **Control vocabulary** (app.html, "the control vocabulary"): `.pill` primary (one per screen; the header's Import

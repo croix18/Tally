@@ -102,18 +102,21 @@ function wireNotes(sec, name) {
    handed in (NHI) in the open quarter, and every counted IXL skill in the unit the course is working in at goal.
    One function decides; every screen shows its answer. */
 function retakeStatus(sec, name) {
-  const f = findStudent(sec, name); const o = openSec(sec);
-  const missing = o && o.grades && f.gi >= 0 ? o.grades.assignments.filter(a => a.status && a.status[f.gi] === 'missing' && !/\bixl\b/i.test(a.name)).map(a => a.name) : [];   // an IXL column is judged by the skills below, not by its Focus cell (one meaning of "missing" everywhere)
+  const f = findStudent(sec, name); const o = openSec(sec); const gb = o && o.grades && f.gi >= 0 ? o.grades : null;
+  const missing = gb ? gb.assignments.filter(a => a.status && a.status[f.gi] === 'missing' && !/\bixl\b/i.test(a.name)).map(a => a.name) : [];   // an IXL column is judged by the skills below, not by its Focus cell (one meaning of "missing" everywhere)
   const cur = (state.settings.currentUnit || {})[sec.prep]; const units = unitsOf(sec); const unit = (cur && units.find(u => u.num === cur)) || units.filter(u => u.assigned).pop() || null;
   let short = [], noIxl = f.ixl == null, nUnit = 0; const behind = [];
   const shortIn = u => { const t = sec.threshold; return activeFor(sec, u, f.ixl).filter(k => { const v = eff(sec, k, f.ixl); return v == null || v < t; }).map(k => ({ name: sec.skills[k].name, v: eff(sec, k, f.ixl) })); };
-  if (unit && !noIxl) { nUnit = activeFor(sec, unit, f.ixl).length; short = shortIn(unit); }
-  // "caught up on everything" (Croix): an earlier unit whose IXL is in the open Focus gradebook still counts, so a Unit 1
-  // IXL column marked NHI with Unit 1 skills unfinished blocks a retake even while the class works in Unit 3 (audit, 24 Oct)
-  if (!noIxl && o && o.grades && f.gi >= 0) { const seen = new Set(unit ? [unit.name] : []);
-    o.grades.assignments.forEach(a => { if (!/\bixl\b/i.test(a.name) || aClosed(a, o.grades)) return; const u = gbUnitFor(sec, a); if (!u || seen.has(u.name) || unitClosed(sec, u)) return; seen.add(u.name); const sh = shortIn(u); if (sh.length) behind.push({ unit: u, short: sh, col: a.name }); }); }
+  // "Caught up on everything" means everything Focus grades (Croix, 24 Oct 2026: "if I haven't graded unit 4 IXLs yet,
+  // it shouldn't be required to be finished before a retake"): a unit's IXL counts only while the open gradebook has an
+  // IXL column for it and that cell isn't already at full credit. The unit being worked in is listed first.
+  if (!noIxl && gb) { const seen = new Set();
+    gb.assignments.forEach(a => { if (!/\bixl\b/i.test(a.name) || aClosed(a, gb)) return; const u = gbUnitFor(sec, a); if (!u || seen.has(u.name) || unitClosed(sec, u)) return; seen.add(u.name);
+      const full = a.max > 0 && a.status && a.status[f.gi] === 'score' && Number(a.values[f.gi]) >= a.max; if (full) return;
+      const sh = shortIn(u); if (!sh.length) return; if (unit && u.name === unit.name) short = sh; else behind.push({ unit: u, short: sh, col: a.name }); }); }
+  if (unit && !noIxl) nUnit = activeFor(sec, unit, f.ixl).length;
   const ok = !missing.length && !noIxl && !short.length && !behind.length;
-  return { ok, missing, short, unit, nUnit, noIxl, behind, hasGrades: !!(o && o.grades && f.gi >= 0 && o.grades.assignments.length) };
+  return { ok, missing, short, unit, nUnit, noIxl, behind, hasGrades: !!(gb && gb.assignments.length) };
 }
 // "2 missing · 3 IXL skills in Unit 3", or "" when eligible — the same words on every screen.
 function retakeWhy(r, forStudent) {
