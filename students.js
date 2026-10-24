@@ -324,7 +324,7 @@ function quickestPath(sec, s, i, ixlIdx) {
       units.forEach(x => { const col = gb.assignments.find(a => ixlCol(a) && (gbUnitFor(sec, a) || {}).name === x.unit.name);
         const need = col ? Math.min(x.short.length, capOf(col) - nowOf(col)) : 0;
         if (col && need > 0) { if (need > (ixlPlus[col.name] || 0)) { ixlPlus[col.name] = need; over[col.name] = nowOf(col) + need; } }
-        else needUnits.push({ unit: x.unit, n: x.short.length }); });   // the unit's IXL isn't in Focus yet, or Focus already gives full credit: required, but no grade change
+        else needUnits.push({ unit: x.unit, n: x.short.length, full: !!col }); });   // the unit's IXL isn't in Focus yet, or Focus already gives full credit: required, but no grade change
     }
     cur = g();
   }
@@ -350,7 +350,7 @@ function quickestPath(sec, s, i, ixlIdx) {
   while (pend.length) { let bi = 0, bv = -Infinity; pend.forEach((c, k) => { acc[c.a.name] = c.to; const v = (computeGrade(s, i, acc).pct - at) / c.n; delete acc[c.a.name]; if (v > bv + 1e-9) { bv = v; bi = k; } });
     const c = pend.splice(bi, 1)[0]; acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ ...c, after: r.rounded }); }
   retakes.forEach(a => { acc[a.name] = over[a.name]; plan.push({ kind: 'retake', a, n: 1, to: over[a.name], after: computeGrade(s, i, acc).rounded }); });
-  if (needUnits.length && retakes.length) { needUnits.forEach(nu => { const ri = plan.findIndex(x => x.kind === 'retake'); plan.splice(ri, 0, { kind: 'ixlreq', a: { name: nu.unit.short + ' IXL', max: nu.n }, n: nu.n, unit: nu.unit, after: ri > 0 ? plan[ri - 1].after : base.rounded, skills: [] }); }); }
+  if (needUnits.length && retakes.length) { needUnits.forEach(nu => { const ri = plan.findIndex(x => x.kind === 'retake'); plan.splice(ri, 0, { kind: 'ixlreq', full: nu.full, a: { name: nu.unit.short + ' IXL', max: nu.n }, n: nu.n, unit: nu.unit, after: ri > 0 ? plan[ri - 1].after : base.rounded, skills: [] }); }); }
   return { base, target, letter, reached: result.rounded >= target, result, over, plan, retakeBlocked, nhi: plan.filter(x => x.kind === 'nhi').map(x => x.a), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length + (needUnits.length && retakes.length ? needUnits.reduce((x, y) => x + y.n, 0) : 0) };
 }
 const anLetter = l => (/^[AF]/.test(l) ? 'an ' : 'a ') + l;
@@ -367,7 +367,7 @@ function quickestList(q, forStudent) {
   const items = q.plan.map(x => x.kind === 'nhi' ? `<li>${after(x)}<b>Turn in ${esc(x.a.name)}</b> <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small></li>`
     : x.kind === 'ixl' ? `<li>${after(x)}<b>Pass ${plural(x.n, 'more IXL skill')}${x.unit ? ' in ' + esc(x.unit.short) : ''}</b> <small>${esc(x.a.name)}</small>${x.skills.length ? `<div class="qsk">${x.skills.map(k => `${esc(k.name)} <small>${k.v == null ? 'not started' : 'at ' + k.v}</small>`).join(' · ')}</div>` : ''}</li>`
     : x.kind === 'copy' ? `<li>${after(x)}<b>${forStudent ? `Your ${esc(x.unit ? x.unit.short : x.a.name)} IXL goes into Focus` : `Copy ${esc(x.unit ? x.unit.short : x.a.name)} IXL into Focus`}</b> <small>${forStudent ? 'already earned' : `IXL has ${fmtN(x.to)}, Focus shows ${fmtN(x.from)}`}</small></li>`
-    : x.kind === 'ixlreq' ? `<li>${after(x)}<b>Finish ${plural(x.n, 'IXL skill')} in ${esc(x.unit.short)}</b> <small>needed before a retake</small></li>`
+    : x.kind === 'ixlreq' ? `<li><span class="qafter none" title="This step opens the retake; it adds no points until Focus has a column for it">no change</span><b>Finish ${plural(x.n, 'IXL skill')} in ${esc(x.unit.short)}</b> <small>${x.full ? `Focus already gives full credit for ${esc(x.unit.short)} IXL` : `${esc(x.unit.short)} IXL isn't in Focus yet`} · needed before a retake</small></li>`
     : `<li>${after(x)}<b>Retake ${esc(x.a.name)}</b> <small>score at least ${fmtN(x.to)} / ${x.a.max} · ${forStudent ? 'once everything above is done' : 'allowed once everything above is done'}</small></li>`);
   return `<ol class="qpath">${items.join('')}</ol>`;
 }
@@ -496,7 +496,7 @@ document.addEventListener('keydown', e => { const el = $('#show'); if (!el) retu
 
 const STU_CSS = `
 .qcard{display:flex;flex-direction:column;gap:6px}.qcard .qhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}.qcard>b,.qcard .qhead>b{font-size:var(--t-l);color:var(--navy)}.qcard>span{color:var(--ink-soft);font-size:var(--t-s)}.qres{font-size:var(--t-l)}.qres b{color:var(--teal)}
-.qpath{margin:4px 0 2px;padding-left:22px;display:flex;flex-direction:column;gap:6px}.qpath li small{color:var(--ink-soft)}.qafter{float:right;margin-left:14px;font-weight:var(--w-heavy);color:var(--navy);white-space:nowrap}.qsk{font-size:var(--t-s);margin-top:2px}.qsk small{color:var(--bad);font-weight:var(--w-bold)}
+.qpath{margin:4px 0 2px;padding-left:22px;display:flex;flex-direction:column;gap:6px}.qpath li small{color:var(--ink-soft)}.qafter{float:right;margin-left:14px;font-weight:var(--w-heavy);color:var(--navy);white-space:nowrap}.qafter.none{color:var(--ink-soft);font-weight:var(--w-med);font-size:var(--t-s)}.qsk{font-size:var(--t-s);margin-top:2px}.qsk small{color:var(--bad);font-weight:var(--w-bold)}
 #pQuick{border-left:5px solid var(--teal)}.qcol{font-size:var(--t-s);white-space:nowrap}.qcol b{color:var(--teal)}
 .shQuick .qcard{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-1);padding:16px 22px;border-left:6px solid var(--teal)}.shQuick .qcard>b,.shQuick .qhead>b{font-size:clamp(20px,2.4vw,28px)}.shQuick .qpath{font-size:17px}.shQuick #shPlan{align-self:flex-start;margin-top:6px}
 .qdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cc);margin-right:6px;vertical-align:baseline}
