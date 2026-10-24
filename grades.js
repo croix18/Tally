@@ -300,7 +300,7 @@ const REPORT_CSS = `@page{margin:.45in}body{font-family:'DM Sans',Arial,Helvetic
 .rep{padding:18px 24px 24px;break-after:page;page-break-after:always}.rep:last-child{break-after:auto;page-break-after:auto}@media print{.rep{padding:0}}
 h1{font-size:17pt;margin:0;font-weight:900}h2{font-size:9.5pt;font-weight:900;margin:10px 0 3px;border-bottom:1.5px solid #000;padding-bottom:2px;text-transform:uppercase;letter-spacing:.06em}h2 .hs{text-transform:none;letter-spacing:0;font-weight:normal;color:#333}
 .head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.meta{font-size:9pt;color:#333;margin:2px 0 8px}
-.since{border:1.5px solid #000;border-radius:6px;padding:6px 10px;font-size:9pt;display:grid;gap:1px 14px;grid-template-columns:auto auto;align-items:baseline;white-space:nowrap}.since>b{grid-column:1/-1}.since small{color:#555;font-weight:normal}.since .up{color:#0F766E;font-weight:bold}.since .down{color:#B8321F;font-weight:bold}.since .same{color:#555}
+.since{border:1.5px solid #000;border-radius:6px;padding:6px 10px;font-size:9pt;display:grid;gap:1px 14px;grid-template-columns:auto auto;align-items:baseline;white-space:nowrap}.since>b{grid-column:1/-1}.since small{color:#555;font-weight:normal}.since .stale{grid-column:1/-1;color:#B8321F}.since .up{color:#0F766E;font-weight:bold}.since .down{color:#B8321F;font-weight:bold}.since .same{color:#555}
 .top{display:flex;gap:18px;align-items:flex-start}.gradeBox{flex:none;min-width:200px}.big{font-size:30pt;font-weight:900;line-height:1;margin:2px 0 4px;white-space:nowrap}.big small{font-size:14pt;margin-left:6px}
 .board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1}.board>div{border:1px solid #bbb;border-radius:6px;padding:5px 8px}.board small{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:#333}.board b{font-size:15pt;font-weight:900;line-height:1.15}.board span{display:block;font-size:8pt;color:#444}.board .ok b{color:#0F766E}.board .no b{color:#B8321F}
 table{border-collapse:collapse;width:100%}td,th{padding:1.5px 6px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd;font-size:9pt}td small{color:#444}th{font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;color:#333}
@@ -334,13 +334,14 @@ function studentReportSection(s0, i, ixlRow) {
   const arrow = x => x && x.rounded != null ? `→ ${x.rounded}% ${x.letter}` : '';
   const rt = r ? retakeStatus(s0, name) : null;
   // ---- since the last report: what moved (the log is written when a report prints) ----
-  const today = localDay(new Date().toISOString()); const log = ((s0.reportLog || {})[norm(name)] || []).filter(e => e.date < today); const last = log[log.length - 1] || null;
+  const today = localDay(new Date().toISOString()); const q = liveQuarter(s0); const log = ((s0.reportLog || {})[norm(name)] || []).filter(e => e.date < today && (e.q == null || e.q === q)); const last = log[log.length - 1] || null;   // a report from an earlier quarter is not the one to move from
+  const stale = last ? [last.gb && last.gb === (localDayOf(gb.importedAt) || '') ? 'Focus' : '', last.ix && last.ix === (dataDate(s) || '') ? 'IXL' : ''].filter(Boolean) : [];
   const ixlNow = ixlRow && ixlRow.ixl != null ? unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)).reduce((n, u) => n + points(s, u, ixlRow.ixl), 0) : null;
   const delta = (a, b, up) => a == null || b == null ? '' : b === a ? '<span class="same">same</span>' : `<span class="${(b > a) === up ? 'up' : 'down'}">${b > a ? '+' : '−'}${Math.abs(b - a)}</span>`;
   const since = last ? `<div class="since"><b>Since the last report</b> <small>${esc(fmtDate(last.date))}</small>
       <span>Grade <b>${last.grade != null ? last.grade + '%' : '—'}</b> → <b>${r ? r.rounded + '%' : '—'}</b> ${delta(last.grade, r ? r.rounded : null, true)}</span>
       <span>Missing <b>${last.missing}</b> → <b>${missing.length}</b> ${delta(last.missing, missing.length, false)}</span>
-      ${ixlNow != null && last.ixl != null ? `<span>IXL skills <b>${last.ixl}</b> → <b>${ixlNow}</b> ${delta(last.ixl, ixlNow, true)}</span>` : ''}</div>` : `<div class="since"><b>First report</b> <small>the next one shows what moved</small></div>`;
+      ${ixlNow != null && last.ixl != null ? `<span>IXL skills <b>${last.ixl}</b> → <b>${ixlNow}</b> ${delta(last.ixl, ixlNow, true)}</span>` : ''}${stale.length ? `<small class="stale">${stale.join(' and ')} export${stale.length > 1 ? 's' : ''} unchanged since then</small>` : ''}</div>` : `<div class="since"><b>First report</b> <small>the next one shows what moved</small></div>`;
   // ---- this week's checklist: the quickest path's steps, each a box to tick ----
   const qp = r ? quickestPath(s0, s, i, ixlRow ? ixlRow.ixl : null) : null;
   const stepText = x => x.kind === 'nhi' ? `Turn in <b>${esc(x.a.name)}</b> <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small>`
@@ -348,9 +349,11 @@ function studentReportSection(s0, i, ixlRow) {
     : x.kind === 'copy' ? `Your <b>${esc(x.unit ? x.unit.short : x.a.name)} IXL</b> goes into Focus <small>already earned: ${fmtN(x.to)}</small>`
     : x.kind === 'ixlreq' ? `Finish <b>${plural(x.n, 'IXL skill')} in ${esc(x.unit.short)}</b> <small>needed before a retake</small>`
     : `Retake <b>${esc(x.a.name)}</b> <small>score at least ${fmtN(x.to)} / ${x.a.max}, once everything above is done</small>`;
-  const steps = qp && !qp.top ? qp.plan.map(x => `<li><span class="box"></span><span class="st">${stepText(x)}</span><span class="aft">${x.kind === 'ixlreq' ? '' : `→ ${x.after}%`}</span></li>`) : [];
+  const steps = qp && !qp.top ? qp.plan.filter(x => x.kind !== 'copy').map(x => `<li><span class="box"></span><span class="st">${stepText(x)}</span><span class="aft">${x.kind === 'ixlreq' ? '' : `→ ${x.after}%`}</span></li>`) : [];
+  const copies = qp && !qp.top ? qp.plan.filter(x => x.kind === 'copy') : [];   // the teacher's step, not a box for the student (audit, 24 Oct)
+  const copyNote = copies.length ? `<p class="lead"><small>${copies.map(x => `Your ${esc(x.unit ? x.unit.short : x.a.name)} IXL points (${fmtN(x.to)}) go into Focus at the next grade update.`).join(' ')}</small></p>` : '';
   const doThis = qp && qp.top ? `<p class="keep">An A already. This week: keep every assignment in on time and the current unit's IXL at goal.</p>`
-    : steps.length ? `<p class="lead">${qp.reached ? `These steps take the grade from ${qp.base.rounded}% to <b>${qp.result.rounded}% ${qp.result.letter}</b>.` : `Missing work, IXL and retakes reach ${qp.result.rounded}%: the next assessments are needed too.`}</p><ol class="todo">${steps.join('')}</ol>` : r ? '<p class="keep">Nothing missing and every assessment at full marks: keep going.</p>' : '';
+    : steps.length ? `<p class="lead">${qp.reached ? `These steps take the grade from ${qp.base.rounded}% to <b>${qp.result.rounded}% ${qp.result.letter}</b>.` : `Missing work, IXL and retakes reach ${qp.result.rounded}%: the next assessments are needed too.`}</p><ol class="todo">${steps.join('')}</ol>${copyNote}` : r ? '<p class="keep">Nothing missing and every assessment at full marks: keep going.</p>' : '';
   // ---- IXL by unit (the names a student can act on; the rest are counted) ----
   const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const t = s.threshold; let ixl = '';
   if (ixlRow && ixlRow.ixl != null) {
@@ -393,15 +396,15 @@ function studentReportSection(s0, i, ixlRow) {
 function logReport(s0, i, ixlRow) {
   const s = openSec(s0); const gb = s.grades; if (!gb) return; const name = gb.students[i]; const r = computeGrade(s, i);
   const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const ixl = ixlRow && ixlRow.ixl != null ? units.reduce((n, u) => n + points(s, u, ixlRow.ixl), 0) : null;
-  const entry = { date: localDay(new Date().toISOString()), grade: r && r.rounded != null ? r.rounded : null, missing: gb.assignments.filter(a => a.status && a.status[i] === 'missing').length, ixl };
+  const entry = { date: localDay(new Date().toISOString()), q: liveQuarter(s0), gb: localDayOf(gb.importedAt) || '', ix: dataDate(s) || '', grade: r && r.rounded != null ? r.rounded : null, missing: gb.assignments.filter(a => a.status && a.status[i] === 'missing').length, ixl };
   s0.reportLog = s0.reportLog || {}; const k = norm(name); const list = (s0.reportLog[k] || []).filter(e => e.date !== entry.date); list.push(entry); s0.reportLog[k] = list.slice(-12);
 }
 function printStudentReports(s, indices, title) {
   const rows = gbRows(s);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}</body></html>`;
-  indices.forEach(i => logReport(s, i, rows[i])); save();
-  if (state.settings.hideNames && indices.length === 1) { ask('Names are hidden, but the report opens with the student\'s full name and grades on screen. Open it?', 'Open the report').then(ok => { if (ok) openPrint(html, 'Student-report.html', true); }); return; }   // projected: say so first (audit)
-  openPrint(html, (indices.length === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', indices.length === 1);   // one student's report: a file name without the name
+  const go = () => { indices.forEach(i => logReport(s, i, rows[i])); save(); openPrint(html, (indices.length === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', indices.length === 1); };   // one student's report: a file name without the name; the log is written only for a report that opens
+  if (state.settings.hideNames) { ask(`Names are hidden, but the ${indices.length === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen. Open ${indices.length === 1 ? 'it' : 'them'}?`, 'Open').then(ok => { if (ok) go(); }); return; }   // projected: say so first (audit)
+  go();
 }
 function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.students[i]}: report`); }
 // Class-level chooser: everyone, or only students with something owed (missing work or IXL below goal).

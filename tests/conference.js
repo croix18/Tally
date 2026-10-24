@@ -29,9 +29,9 @@ function fastCsv(rows) {
   const noMiddle=n=>n.replace(/^([^,]+,\s*\S+).*$/,'$1');   // "LAST, FIRST MIDDLE" → "LAST, FIRST"
   const rows=[ { id:ids[0], name:S[0], pct:81, above:true, pm3:1, l3:4, l1:2, s3:247, s1:231, race:'W', l30:'', ese:'' },
     { id:ids[1], name:noMiddle(S[1]), pct:0, pm3:1, l3:1, l1:1, s3:168, s1:196, race:'B', ese:'Y', l30:'Y' },   // name without the middle name
-    { id:ids[2], name:S[2], pct:30, pm3:1, l3:2, l1:3, s3:221, s1:236, race:'H', ell:'LY', s504:'Y', l30:'Y' },
+    { id:ids[2], name:S[2], pct:30, pm3:1, l3:2, l1:2, s3:221, s1:236, race:'H', ell:'LY', s504:'Y', l30:'Y' },   // 236 is High Level 2 on the grade-8 table, as Focus says
     { id:'', name:S[3], pct:57, pm3:1, l3:3, l1:2, s3:234, s1:229 },          // no ID: matched by name
-    { id:ids[4], name:'', pct:'', l1:4, s1:253 },                             // no name: matched by ID; new this year (no PM3)
+    { id:ids[4], name:'', pct:'', l1:3, s1:253 },                             // no name: matched by ID; new this year (no PM3)
     { id:'999000111', name:'STRANGER, NEW', pct:50, pm3:1, l3:3, l1:3, s3:233, s1:240 },   // not in any class
     { id:'', name:'', pct:60, pm3:1, l3:3, l1:2, s3:235, s1:233 } ];          // name and ID deleted: cannot be placed
   const f1=path.join(tmp,'fast_report.csv'); fs.writeFileSync(f1, fastCsv(rows), 'utf8');
@@ -51,7 +51,7 @@ function fastCsv(rows) {
   check(st1['id:'+ids[0]] && st1['id:'+ids[0]].length===2 && st1['id:999000111'] && Object.keys(st1).some(k=>k.startsWith('n:')),'scores are kept under the student\'s roster name and ID; the stranger is kept in case they join');
   check(ti['id:'+ids[2]] && ti['id:'+ids[2]].FAST.fields.L30==='Y' && ti['id:'+ids[2]].FAST.fields.Race==='H' && /fast_report\.csv$/.test(ti['id:'+ids[2]].FAST.file),'the report\'s other columns are kept per student too, with the file they came from');
   // a later report replaces a window instead of adding a second copy
-  const rows2=rows.slice(0,1).map(r=>({ ...r, s1:240, l1:3 })); const f2=path.join(tmp,'fast_report_again.csv'); fs.writeFileSync(f2, fastCsv(rows2), 'utf8');
+  const rows2=rows.slice(0,1).map(r=>({ ...r, s1:240, l1:2 })); /* 240 is High Level 2 on the grade-8 table */ const f2=path.join(tmp,'fast_report_again.csv'); fs.writeFileSync(f2, fastCsv(rows2), 'utf8');
   await p.setInputFiles('#file',[f2]); await p.waitForTimeout(600);
   const again=await p.evaluate(id=>window.__tally.state.tests['id:'+id], ids[0]);
   check(again.length===2 && again.find(t=>t.pm==='PM1').scale===240,'importing the report again replaces PM1 2026-27 rather than adding a second one');
@@ -65,7 +65,7 @@ function fastCsv(rows) {
   const open=async i=>{ await p.evaluate(({K,nm})=>window.__tally.openProfile(K,nm),{K,nm:S[i]}); await p.waitForTimeout(300); };
   await open(0);
   const ft=await p.evaluate(()=>[...document.querySelectorAll('#pTests .ftab:not(.targets) tr')].map(tr=>[...tr.children].map(c=>c.textContent.trim()).join(' ').replace(/\s+/g,' ').trim()));
-  check(ft.length===2 && /^PM1 2026-27 Level 3 240 −7 above grade$/.test(ft[0]) && /^PM3 2025-26 Level 4 247 81st pct$/.test(ft[1]),'the student page lists FAST newest first with the change in scale score: '+ft.join(' / '));
+  check(ft.length===2 && /^PM1 2026-27 Level 2 240 −7 above grade$/.test(ft[0]) && /^PM3 2025-26 Level 4 247 81st pct$/.test(ft[1]),'the student page lists FAST newest first with the change in scale score: '+ft.join(' / '));
   await open(3); const byName=await p.evaluate(()=>document.querySelectorAll('#pTests .ftab:not(.targets) tr').length); check(byName===2,'the student without an ID in the report is found by name');
   await open(2); const fl=await p.evaluate(()=>({ flags:[...document.querySelectorAll('#pTests .fflag')].map(x=>x.textContent), all:[...document.querySelectorAll('#pTests .fall dt')].map(x=>x.textContent) }));
   check(fl.flags.join(' | ')==='Lowest 30% | 504 | ELL (LY)' && ['Race','L30','ELL','504','Percentile','Scale growth PM1','Teacher'].every(k=>fl.all.includes(k)),'the student page shows the flags (L30 first) and, folded, everything the report said: '+fl.flags.join(' | '));
@@ -81,11 +81,22 @@ function fastCsv(rows) {
   check(tg[0].pb==='Level 4' && tg[0].gain===263 && tg[0].lb==='High Level 2','a Level 4 last year (247) needs a Level 5 for a gain: 263 on the grade-8 scale; the 240 PM1 is High Level 2 there');
   check(tg[2].pb==='High Level 2' && tg[2].gain===244 && tg[2].rows.includes('Learning gain=244') && !/Level 3=244/.test(tg[2].rows.join()),'a High Level 2 gains at Level 3 (244 on the grade-8 scale), and the Level 3 row is not listed twice');
   check(tg[3] && tg[3].prior==null && tg[3].gain==null && /Level 3=244\*/.test(tg[3].rows.join()) && /Level 4=254$/.test(tg[3].rows.join().replace(/,Level 5.*$/,'')),'a student new this year has no gain target but the level targets, met where PM1 already reached them');
+  // 1c2 (audit, 24 Oct 2026): a student who missed PM1 has only last year's PM3, and it stays last year's; Focus's own
+  // level decides the scale when the class flag would put a score on the wrong table
+  const edge=await p.evaluate(({K,S,ids})=>{ const T=window.__tally; const s=T.state.sections[K];
+    T.importFast({ students:[ { id:ids[6], name:S[6], grade:7, tests:[{ test:'FAST', pm:'PM3', year:'2025-26', level:1, scale:180, grade:6 }], info:{} },
+      { id:ids[7], name:S[7], grade:7, tests:[{ test:'FAST', pm:'PM3', year:'2025-26', level:3, scale:230, grade:6 }, { test:'FAST', pm:'PM1', year:'2026-27', level:4, scale:250 }], info:{} } ], blank:0, windows:[{ pm:'PM3', year:'2025-26' },{ pm:'PM1', year:'2026-27' }] }, 'edge.csv');
+    const a=T.fastTargets(s,S[6]), b=T.fastTargets(s,S[7]); const html=T.fastReportSection ? T.fastReportSection(s,S[6]) : '';
+    return { a:{ prior:a.prior&&a.prior.scale, pg:a.prior&&a.prior.grade, latest:a.latest, gain:a.gain&&a.gain.score, gradeNow:a.gradeNow }, b:{ gradeNow:b.gradeNow, lb:b.latestBucket&&b.latestBucket.label, gain:b.gain&&b.gain.score }, html }; },{K,S,ids});
+  check(edge.a.prior===180 && edge.a.pg===6 && edge.a.latest===null && edge.a.gain===198 && edge.a.gradeNow===8,'only last year\'s PM3 in Tally: it is last year\'s (grade 6), there is no window this year yet, and the gain target is still set: '+JSON.stringify(edge.a));
+  check(edge.b.gradeNow===7 && edge.b.lb==='Level 4' && edge.b.gain===247,'Focus says the 250 PM1 is Level 4, which only the grade-7 table gives, so that student\'s targets sit on the grade-7 scale: '+JSON.stringify(edge.b));
   // 1d. the FAST report: one page, scales for both years, the targets, a goal box
   await open(1); check(await p.locator('#pFast').count()===1,'a student with FAST results gets a FAST report button');
   const [fr]=await Promise.all([ctx.waitForEvent('page'), p.click('#pFast')]); await fr.waitForLoadState(); await fr.waitForTimeout(500);
   const frTxt=(await fr.evaluate(()=>document.body.innerText)).replace(/\s+/g,' '); const frPages=(await fr.pdf({format:'Letter'})).toString('latin1').match(/\/Type\s*\/Page[^s]/g).length;
-  check(frPages===1 && await fr.locator('.scale').count()===2 && await fr.locator('.mk.now').count()>=2 && /WHAT PM2 AND PM3 NEED/i.test(frTxt) && /Learning gain Mid Level 1 198/.test(frTxt) && /My goal for PM3/.test(frTxt) && /grade 6 scale/.test(frTxt) && /grade 8 scale/.test(frTxt),'the FAST report prints on one page: two scales with the scores marked, the targets, a goal box ('+frPages+' page)');
+  const frMarks=await fr.evaluate(()=>({ above:[...document.querySelectorAll('.marks:not(.under) .mk')].map(m=>m.textContent), under:[...document.querySelectorAll('.marks.under .mk')].map(m=>m.textContent) }));
+  check(frMarks.above.length===2 && frMarks.under.length===2 && frMarks.under.every(t=>/Gain|Grade level/.test(t)),'scores are marked above the bands and the targets below them: '+JSON.stringify(frMarks));
+  check(frPages===1 && await fr.locator('.scale').count()===2 && await fr.locator('.mk').count()>=2 && /WHAT PM2 AND PM3 NEED/i.test(frTxt) && /Learning gain Mid Level 1 198/.test(frTxt) && /My goal for PM3/.test(frTxt) && /grade 6 scale/.test(frTxt) && /grade 8 scale/.test(frTxt),'the FAST report prints on one page: two scales with the scores marked, the targets, a goal box ('+frPages+' page)');
   await fr.close();
   await open(1); const tgt=(await p.textContent('#pTests')).replace(/\s+/g,' ');
   check(/Last year's PM3 ?168/.test(tgt) && /grade 6 test/.test(tgt) && /grade 8 test/.test(tgt) && /What PM2 and PM3 need ?grade 8 scale/.test(tgt) && /Learning gain ?Mid Level 1 ?198/.test(tgt) && /2 more than PM1/.test(tgt) && /Level 3 ?on grade level ?244/.test(tgt),'the student page shows the buckets and the targets in plain words: '+tgt.slice(0,160));
@@ -155,7 +166,7 @@ function fastCsv(rows) {
   const nAside=await p.evaluate(()=>document.querySelectorAll('.cfNotes li').length); check(nAside===2,'the student\'s notes sit beside the form');
   await p.click('.cfNotes li:last-child [data-cfadd="concerns"]'); await p.fill('#cfTeacher','Mr. Shaffer'); await p.fill('#cfCourse','M/J Grade 7 Math');
   const conc=await p.inputValue('#cfConcerns'); check(conc.endsWith(note1),'"+ Concerns" adds the note to the end of Concerns');
-  check((await p.inputValue('#cfTests'))==='FAST PM1 2026-27: Level 3, 240 (above grade); FAST PM3 2025-26: Level 4, 247, 81st percentile (grade 6 test)','the test-history line: "'+(await p.inputValue('#cfTests'))+'"');
+  check((await p.inputValue('#cfTests'))==='FAST PM1 2026-27: Level 2, 240 (above grade); FAST PM3 2025-26: Level 4, 247, 81st percentile (grade 6 test)','the test-history line: "'+(await p.inputValue('#cfTests'))+'"');
   await p.fill('#cfStrengths','Kind to classmates. Explains steps out loud.'); await p.click('#mCancel'); await p.waitForTimeout(300);
   await p.reload(); await p.waitForTimeout(600); await open(0); await p.click('#pConf'); await p.waitForTimeout(400);
   const kept=await p.evaluate(()=>({ s:document.querySelector('#cfStrengths').value, c:document.querySelector('#cfConcerns').value, t:document.querySelector('#cfTeacher').value, co:document.querySelector('#cfCourse').value, f:document.querySelector('.confPanel footer').textContent }));

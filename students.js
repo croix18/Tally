@@ -268,7 +268,7 @@ function renderProfile() {
   const go = d => { const n = list[at + d]; if (n) { view.stu = { key: sec.key, name: n }; render(); } };
   $('#pPrev').onclick = () => go(-1); $('#pNext').onclick = () => go(1);
   const pp = $('#pPrint'); if (pp) pp.onclick = () => printStudentReports(sec, [f.gi], `${name}: report`);
-  const pf = $('#pFast'); if (pf) pf.onclick = async () => { if (state.settings.hideNames && !await ask('Names are hidden, but the report opens with the student\'s full name and scores on screen. Open it?', 'Open the report')) return; printFastReports(sec, [name], 'FAST report'); };
+  const pf = $('#pFast'); if (pf) pf.onclick = () => printFastReports(sec, [name], 'FAST report');
   const ps = $('#pShow'); if (ps) ps.onclick = () => openShow(sec, name);
   wireNotes(sec, name);
   const pc = $('#pConf'); if (pc) pc.onclick = () => openConference(sec, name);

@@ -604,6 +604,21 @@ per-section-file era and many items in them are now done).
     on the student page): cards (last year's PM3, each window this year, the gain target, Level 3), last year's scale
     and this year's scale drawn from the cut scores with the scores and targets marked, a sentence on what a gain means
     for this student, the targets table, every window, and a goal box (PM2, PM3, how I'll get there, signatures).
+  - **Audit of the two reports (24 Oct, Croix: "Can you run an audit on them").** Found and fixed: a student with only
+    last year's PM3 (missed PM1) had it shown as "PM3 this year" on this year's scale with no gain target; "this year"
+    is now the newest school year in any FAST result in Tally (`fastYearNow`), last year the one before it. The scale a
+    student is on this year comes from the class (accelerated sits the grade above), the report's tested-above-grade
+    flag, and Focus's own achievement level for the window: the table whose cut scores reproduce that level wins. A
+    score below a table's first cut is Low Level 1, not off the table. On the this-year scale, scores sit above the
+    bands and targets below, equal values share one label and near ones take turns standing taller (the PM1, gain
+    and Level 3 labels used to print on top of each other). When the gain is the Level 3 floor there is one card, one
+    row and one mark ("Gain · grade level"). "PM1 already got there" adds "and PM3 is the one that counts, so hold it".
+    Last year's scale with no prior is the grade below the student's grade, not below the test they sit now. Weekly:
+    the log entry carries the quarter and the Focus and IXL export dates, the strip only moves from a report in the
+    same quarter, and it says "Focus and IXL exports unchanged since then" when nothing was re-imported (otherwise
+    every "same" is the export, not the student); the "goes into Focus" step is a note under the list, not a box the
+    student can't tick; the log is written only for a report that opens; with names hidden every print (one, a class,
+    FAST) asks first.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

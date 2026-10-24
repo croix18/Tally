@@ -248,3 +248,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   "on grade level", not "passing". Croix: "Level 3 let's reframe it from passing. That just means that level 3
   means they are on grade level." The targets row and the goal card on the student page and the FAST report say
   "on grade level"; the this-year scale marks the Level 3 floor as "Grade level"; the footnote says what a 3 means.
+
+- 24 Oct 2026: audit of the two reports (see NOTES.md, "Audit of the two reports"). Edge cases rendered with a synthetic
+  FAST file (no PM1, High 2 prior whose gain is the Level 3 floor, Level 5 prior that slipped, Level 3 prior already a
+  gain on PM1, no prior) and the whole class's weekly reports (23 pages, one each, nothing wider than the page). Checks
+  added to tests/conference.js (only-PM3 student; Focus's level picks the table; marks above and targets below) and
+  tests/grades.js (unchanged-exports note; another quarter's report ignored; no log when the hidden-names question is
+  declined).
