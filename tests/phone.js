@@ -51,9 +51,11 @@ const { chromium, fs, path, exe, check, done, APP, pick, more } = require('./lib
   const tools=await p.evaluate(()=>{ const t=document.querySelector('.lbTools'); const r=t.getBoundingClientRect(); const ex=document.querySelector('#lbExit').getBoundingClientRect(); return { h:Math.round(r.height), bottom:Math.round(r.bottom), exit:ex.right<=390 && ex.bottom<=844 && ex.width>0 }; });
   check(tools.bottom<=844 && tools.h<=70 && tools.exit,'the Board\'s controls are one short row at the bottom with Hold to exit on screen: '+JSON.stringify(tools));
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.lbTab='lab'; T.save(); T.render(); }); await p.waitForTimeout(400);
+  const picker=await p.evaluate(()=>{ const u=document.querySelector('#labUnit'); const r=u&&u.getBoundingClientRect(); return !!r && r.width>200 && r.right<=390; });
+  check(picker,'the data-set menu is on the bar, full width');
   await p.click('#lbOpts'); await p.waitForTimeout(200);
-  const opened=await p.evaluate(()=>{ const u=document.querySelector('#labUnit'); const r=u&&u.getBoundingClientRect(); return !!r && r.width>200 && r.right<=390; });
-  check(opened,'Options opens the Data Lab controls, each fitting the screen (the data-set menu full width)');
+  const opened=await p.evaluate(()=>{ const b=document.querySelector('#labStats'); const r=b&&b.getBoundingClientRect(); return !!r && r.width>0 && r.right<=390 && r.bottom<=844; });
+  check(opened,'Options opens the toggles, each on the screen');
   await p.click('#lbOpts'); await p.waitForTimeout(200);
   const lab=await p.evaluate(()=>{ const t=document.querySelector('.lbTools').getBoundingClientRect(); const c=document.querySelector('.lbWrap svg'); return { tb:t.bottom, cw:c?c.getBoundingClientRect().width:0 }; });
   check(lab.tb<=844 && lab.cw>=320,'Data Lab: the chart is the width of the screen and the controls are on it: '+JSON.stringify(lab));

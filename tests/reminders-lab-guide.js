@@ -14,15 +14,15 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   check(await p.evaluate(()=>window.__tally.ageText(new Date().toISOString().slice(0,10)))==='today','ageText: today');
   let notices=await p.textContent('#notices');
   check(/IXL export is \d+ days old/.test(notices) && /reminded after 7 days/.test(notices),'old export raises the reminder notice');
-  check(await p.locator('.tab .age').count()===1,'class chip shows the age instead of the date when overdue');
+  check(await p.locator('.tab .age').count()===0,'the class tab stays a plain name (the age is on the bar and in the notice)');
   check(/\(\d+ (days|weeks) ago\)/.test(await p.textContent('#bar')),'bar shows how old the export is');
   await p.screenshot({path:path.join(tmp,'shot25.png')});
   // turn the reminder off → notice gone; 30 days → still fine for a 25-day-old file
-  await more(p,'#btnSettings'); await p.click('[data-remind="0"]'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await seeTab(p,'[data-remind="0"]'); await p.click('[data-remind="0"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   check(!/days old/.test(await p.textContent('#notices')) && await p.locator('.tab .age').count()===0,'reminder Off silences the notice');
-  await more(p,'#btnSettings'); await p.click('[data-remind="30"]'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await seeTab(p,'[data-remind="30"]'); await p.click('[data-remind="30"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   check(!/days old/.test(await p.textContent('#notices')),'30-day reminder does not fire for a 25-day-old export');
-  await more(p,'#btnSettings'); await p.click('[data-remind="7"]'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await seeTab(p,'[data-remind="7"]'); await p.click('[data-remind="7"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   // a fresh export replaces it → notice gone
   const main=fs.readdirSync('fixtures').filter(f=>/^f1473588.*7T1A/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
@@ -49,7 +49,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   // --- Data Lab values
   await p.click('#btnLb'); await p.waitForTimeout(600); await p.click('[data-tab="lab"]'); await p.waitForTimeout(500);
   check(await p.locator('.labValues').count()===0,'values are hidden by default');
-  await p.click('#labValues'); await p.waitForTimeout(500);
+  await lbOpt(p,'#labValues'); await p.click('#labValues'); await p.waitForTimeout(500);
   const nv=await p.locator('.labValues').count(); check(nv>=1,'Values shows the sorted list under each plot');
   const vs=await p.evaluate(()=>{const row=document.querySelector('.labRow'); const chips=[...row.querySelectorAll('.labChips span:not(.gap)')].map(x=>+x.textContent); const st=window.__tally.labSeries(window.__tally.state.settings.labPrep, window.__tally.state.settings.labUnit)[0].st; return {chips, values:st.values, q1:st.q1, q3:st.q3, med:st.median, qChips:[...row.querySelectorAll('.labChips span.q')].map(x=>+x.textContent), mChips:[...row.querySelectorAll('.labChips span.m')].map(x=>+x.textContent)};});
   check(JSON.stringify(vs.chips)===JSON.stringify(vs.values),'chips are exactly the sorted values');
@@ -63,7 +63,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   const [pop]=await Promise.all([ctx.waitForEvent('page'), more(p,'#btnGuide')]); await pop.waitForLoadState(); await pop.waitForTimeout(300);
   const g=await pop.textContent('body'); check(/Every week or two/.test(g) && /Words on the screen/.test(g) && /co-teacher/i.test(g) && /accelerated 67/.test(g),'guide opens with the weekly flow, glossary, co-teacher section and the live goals');
   const gpdf=await pop.pdf({format:'Letter'}); const gpages=(gpdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g)||[]).length;
-  check(gpages===2,'the Guide prints on two pages — the routine, then the words: '+gpages);
+  check(gpages===2,'the Guide prints on two pages: the routine, then the words: '+gpages);
   check(!/Skip N skills to match Focus/.test(g) && /Tally asks which skills don't count/.test(g) && /goes to its class by its students/.test(g),'the Guide describes the import and the Focus check as they are now');
   await pop.emulateMedia({media:'print'}); await pop.screenshot({path:path.join(tmp,'shot28.png'),fullPage:true}); await pop.close();
   // --- header: Import is the one filled button; the places, the names switch and the menu are quiet

@@ -1,4 +1,4 @@
-// Grades: the Focus formula, category fitting, what-ifs, history, the screens, and privacy — against the scrubbed real export.
+// Grades: the Focus formula, category fitting, what-ifs, history, the screens, and privacy: against the scrubbed real export.
 const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); const p=await ctx.newPage();

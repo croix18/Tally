@@ -1,6 +1,6 @@
 /* ---------- sync.js — one Tally on every computer (spliced into app.js) ----------
    Croix, 22 Oct 2026: working on the laptop, the Promethean should have the same Tally without carrying a file.
-   Only where Tally is opened from mrshaffer.org (its Worker answers /api/sync — worker.js in croix18/mrshaffer-site);
+   Only where Tally is opened from mrshaffer.org (its Worker answers /api/sync: worker.js in croix18/mrshaffer-site);
    on GitHub Pages, a Google Site or the file itself none of this shows.
 
    The lock is made on this computer, from a passphrase that never leaves it:
@@ -9,13 +9,13 @@
      under a fresh 12-byte IV. The edit number travels inside the seal and must match what the server says, so the
      server can't hand back an older copy as a newer one. The server can read none of it.
    This computer keeps the two derived secrets (localStorage "tally.sync"), not the passphrase, so it is typed once per
-   computer (Croix: the panel is his alone; no asking again). Tally suggests the passphrase — five words from a list of
-   2,048 — because a made-up one is the weak point of all this.
+   computer (Croix: the panel is his alone; no asking again). Tally suggests the passphrase: five words from a list of
+   2,048: because a made-up one is the weak point of all this.
 
    Rhythm: a change is sent a few seconds after it is saved, at most once a minute, and when the page is hidden. The
    other computers look for a newer copy every minute while Tally is showing and whenever it comes back to the front.
    They take it unless something here hasn't been sent; then they ask which to keep, and the one not kept downloads as
-   a Full save first — this computer's, or the other computer's — so neither is ever only gone. A new copy waits while a
+   a Full save first: this computer's, or the other computer's: so neither is ever only gone. A new copy waits while a
    dialog is open or a field is being typed in. One thing happens at a time (SY.busy). Only a server answer that says so
    ({error:"passphrase"}, {empty:true}) turns sync off here; a filter page, an outage or a timeout never does. */
 var SY = null;   // var: save() runs (and calls syncSoon) before this file's lines do
@@ -30,12 +30,15 @@ const b64url = u => b64(u).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/
 const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 // "Lantern-Cobalt  rhubarb" and "lantern cobalt rhubarb" are the same passphrase: case, dashes and spacing don't count.
 const syncNorm = p => String(p || '').normalize('NFKC').toLowerCase().split(/[\s\-_.,]+/).filter(Boolean).join(' ');
-// At least four different words of three letters or more, 20 characters in all — or a long, varied phrase.
-function syncPassOk(p) { const n = syncNorm(p), w = n.split(' ').filter(x => x.length >= 3); return (new Set(w).size >= 4 && n.length >= 20) || (n.length >= 32 && new Set(n.replace(/ /g, '')).size >= 10); }
+// At least five different words of three letters or more, 24 characters in all (the school's name is four words), or a long, varied phrase.
+function syncPassOk(p) { const n = syncNorm(p), w = n.split(' ').filter(x => x.length >= 3); return (new Set(w).size >= 5 && n.length >= 24) || (n.length >= 32 && new Set(n.replace(/ /g, '')).size >= 12); }
 function syncSuggest() { const r = crypto.getRandomValues(new Uint16Array(5)); return [...r].map(x => SYNC_WORDS[x % 2048]).join(' '); }
 function syncLoadCfg() { try { const o = JSON.parse(localStorage.getItem(SYNC_KEY) || 'null'); return o && typeof o.k === 'string' && typeof o.a === 'string' ? o : null; } catch (e) { return null; } }
 function syncStoreCfg(o) { try { if (o) localStorage.setItem(SYNC_KEY, JSON.stringify(o)); else localStorage.removeItem(SYNC_KEY); } catch (e) {} }
 const syncOn = () => !!(SY && SY.ready && SY.cfg && SY.key);
+// True when every change made here has gone out to Sync: nothing is lost by replacing or clearing this computer, so no
+// Full save (names and grades) needs to land in its Downloads (a shared panel, say).
+const syncHolds = () => syncOn() && !state.board && workPrint() === SY.cfg.print;
 
 async function syncDerive(pass) {
   const base = await crypto.subtle.importKey('raw', syncTE.encode(syncNorm(pass)), 'PBKDF2', false, ['deriveBits']);
@@ -69,6 +72,7 @@ function syncStatus(s) { if (!SY) return; SY.status = s; syncUI(); }
 function syncBusyHere() {
   const m = $('#modal'), a = $('#ask'); if ((m && !m.classList.contains('hidden')) || (a && !a.classList.contains('hidden'))) return true;
   const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.id !== 'search') return true;
+  if (document.body.classList.contains('lbMode') || document.body.classList.contains('showMode')) return true;   // projected: never a question, never a download, while students can see the screen (audit, 24 Oct)
   return document.body.classList.contains('dragging');
 }
 // One thing at a time: a send, a look for something newer, a question. Anything that arrives meanwhile is dropped (the
@@ -121,7 +125,7 @@ async function pullInner() {
     const pick = await syncChoose(`Tally changed here and on another computer (sent ${whenText(got.saved)}). Which one should every computer keep? The other one downloads as a Full save first.`, 'This computer\'s', 'The other one');
     if (pick === null) { SY.snooze = Date.now() + 5 * 60000; SY.waiting = true; return null; }   // not now: asked again in five minutes
     if (pick === 'a') { syncKeepFile(cfg, got); Object.assign(SY.cfg, { rev: got.rev, mark: syncMark(got) }); syncStoreCfg(SY.cfg); return 'force'; }
-    saveFull();   // this computer's version, kept as a file before it is replaced
+    if (!syncHolds()) saveFull();   // this computer's version, kept as a file before it is replaced (not when the synced copy already holds it)
   }
   syncApply(cfg, got);
   return null;
@@ -133,7 +137,7 @@ function syncKeepFile(cfg, got) { downloadJson({ tally: 4, full: { saved: got.sa
 function syncApply(cfg, got) {
   const s = JSON.parse(JSON.stringify(cfg && cfg.state || {})); if (!s.sections || typeof s.sections !== 'object') throw new Error('not tally');
   const was = state.settings || {}, active = state.active, joining = !!state.board || !state.order.length; delete s.board;
-  state = hydrate(s) || s; migrate();
+  adopt(hydrate(s) || s);
   state.settings.hideNames = joining ? true : !!was.hideNames; state.settings.details = !!was.details;
   if (active && state.order.includes(active)) state.active = active; else if (!state.order.includes(state.active)) state.active = state.order[0] || null;
   if (joining) view = { mode: 'home', unit: null };
@@ -212,7 +216,7 @@ function openSync() {
   $('#syReset').onclick = () => syncResetSheet();
   go.onclick = async () => {
     say('');
-    if (!syncPassOk(pass.value)) { say('Use at least four different words (Suggest one gives five). Short or simple passphrases can be guessed.'); return; }
+    if (!syncPassOk(pass.value)) { say('Use at least five different words (Suggest one gives five). A school or team name can be guessed.'); return; }
     if (fresh) {
       if (syncNorm(again.value) !== syncNorm(pass.value)) { say('The two don\'t match.'); return; }
       if (!$('#sySetup').value.trim()) { say('Type the setup code you saved in Cloudflare.'); return; }
@@ -274,7 +278,7 @@ function syncChangeSheet() {
   const say = t => { const msg = $('#syMsg'); msg.textContent = t; msg.classList.toggle('hidden', !t); };
   $('#syGo').onclick = async () => {
     const p = $('#syPass').value; say('');
-    if (!syncPassOk(p)) { say('Use at least four different words (Suggest one gives five).'); return; }
+    if (!syncPassOk(p)) { say('Use at least five different words (Suggest one gives five).'); return; }
     if (syncNorm($('#syAgain').value) !== syncNorm(p)) { say('The two don\'t match.'); return; }
     const go = $('#syGo'); go.disabled = true; go.textContent = 'Changing…';
     try {

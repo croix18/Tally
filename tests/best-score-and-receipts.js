@@ -11,10 +11,10 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   await p.setInputFiles('#file', old); await p.waitForTimeout(500);   // dialog auto-accepted: replace with older
   const ptsOldBest=await p.evaluate(()=>{const T=window.__tally; const s=T.state.sections['1205050-7T1A']; const u=T.unitsOf(s)[0]; return [...Array(s.students.length).keys()].map(i=>{let p=0; for(const k of u.active){const v=T.eff(s,k,i); if(v!=null&&v>=s.threshold)p++;} return p;}).reduce((a,b)=>a+b,0);});
   check(ptsOldBest===ptsNew,'best-score grading keeps points after an older/lower import: '+ptsNew+' vs '+ptsOldBest);
-  await more(p,'#btnSettings'); await p.click('#useBest'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await seeTab(p,'#useBest'); await p.click('#useBest'); await p.click('#mSave'); await p.waitForTimeout(300);
   const ptsRaw=await p.evaluate(()=>{const T=window.__tally; const s=T.state.sections['1205050-7T1A']; const u=T.unitsOf(s)[0]; return [...Array(s.students.length).keys()].map(i=>{let p=0; for(const k of u.active){const v=T.eff(s,k,i); if(v!=null&&v>=s.threshold)p++;} return p;}).reduce((a,b)=>a+b,0);});
   check(ptsRaw<ptsNew,'with best-score off, points follow the current (lower) export: '+ptsRaw);
-  await more(p,'#btnSettings'); await p.click('#useBest'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await seeTab(p,'#useBest'); await p.click('#useBest'); await p.click('#mSave'); await p.waitForTimeout(300);
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await p.click('#rpSkip'); await p.waitForTimeout(150);
   await p.click('th.unit .ulink'); await p.waitForTimeout(300);
   check(await p.locator('td.sc.best').count()>0,'cells graded from a better earlier score are marked');
@@ -25,7 +25,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   const rc=await p.evaluate(()=>{const s=window.__tally.state.sections['1205050-7T1A']; const r=Object.values(s.receipts)[0]; return r && {outOf:r.outOf, goal:r.goal, rows:r.rows.length};});
   check(rc && rc.rows===23 && rc.goal===67,'copy stores a receipt: '+JSON.stringify(rc));
   check(/copied/.test(await p.textContent('th.unit')),'unit header shows copied date');
-  check(/FOCUS title/.test(await p.textContent('#toast')),'toast hands over the FOCUS title');
+  check(/Focus title/.test(await p.textContent('#toast')),'toast hands over the Focus title');
   // shape from geometry + mode
   const sh=await p.evaluate(()=>{const S=window.__tally.stats; return [S([81,81,81,81,81,81,81,81,81,81,100,100,100,100,100,72]).shape, S([1,2,3,4,5,6,7,8,9]).shape, S([2,3,4,4,4,5,20]).shape, S([15,15,15,15,15,15,15,15,15,14,14,13,17,17,20,2,3,7,8,11,15,15,15]).shape, S([1,2,2,3]).mode];});
   console.log(JSON.stringify(sh));
@@ -41,7 +41,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   // language spot checks
   await more(p,'#btnSettings'); const stxt=await p.textContent('#modal'); await p.click('#mCancel');
   check(/Goal SmartScore/.test(stxt) && /Class name/.test(stxt) && !/Threshold|Team name|period/i.test(stxt.replace(/Period/g,'')),'settings uses goal / class name vocabulary');
-  check(/Goal 67/.test(await p.textContent('[data-k="1205050-7T1A"]')),'tab badge says Goal');
+  check(await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].threshold)===67 && !/Goal/.test(await p.textContent('[data-k="1205050-7T1A"]')),'the class tab is the class name only; the goal lives on the class bar and in Settings');
   check((await p.textContent('#btnLb')).trim()==='Board' && (await p.textContent('#btnImport')).trim()==='Import','header buttons: Board, Import');
   await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300);
   check((await p.getAttribute('#labDots','aria-pressed'))==='true' && /^Dots$/.test((await p.textContent('#labDots')).trim()),'toggle shows state by fill, label fixed');

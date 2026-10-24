@@ -1,7 +1,7 @@
 /* ---------- conference.js — the Windy Hill "Parent Conference Input Form", filled from Tally (spliced into app.js) ----------
    Croix, 21 Oct 2026: "Can you make it so Tally can generate this for me for whichever student I select?"
-   One student at a time, from their page. Tally fills what it knows — current grade, report-card grades, test history,
-   missing work, assessments under 70 % and whether a retake is allowed — and drafts Strengths and Concerns from the
+   One student at a time, from their page. Tally fills what it knows: current grade, report-card grades, test history,
+   missing work, assessments under 70 % and whether a retake is allowed: and drafts Strengths and Concerns from the
    numbers; everything is editable before printing. The two text boxes and the lists are kept per student
    (sec.confForms[norm(name)]) so a second print starts from his edits; the numbers are always read fresh.
    The printed page is a replica of the school's form: its banner and footer are the form's own artwork. */
@@ -89,10 +89,11 @@ function conferenceWork(d) {
   const out = []; const due = a => a.due ? ` (due ${a.due})` : ''; const group = (head, items) => { if (!items.length) return; if (out.length) out.push(''); out.push(head); items.forEach(x => out.push('• ' + x)); };
   group('Turn in (zeros until turned in):', d.missing.map(a => a.name + due(a)));
   group('Not taken yet:', d.missedTests.map(a => a.name + due(a)));
-  const ixlLeft = d.redo.length && !d.rt.noIxl && d.rt.unit && d.rt.short.length ? d.rt.short.length : 0;   // listed only when it stands between the student and a retake
-  group('Finish on IXL:', ixlLeft ? [`${d.rt.unit.short}: ${plural(ixlLeft, 'skill')} left`] : []);
+  const ixlUnits = d.redo.length && !d.rt.noIxl ? [...(d.rt.unit && d.rt.short.length ? [{ unit: d.rt.unit, short: d.rt.short }] : []), ...(d.rt.behind || [])] : [];   // listed only when it stands between the student and a retake
+  const ixlLeft = ixlUnits.reduce((n, x) => n + x.short.length, 0);
+  group('Finish on IXL:', ixlUnits.map(x => `${x.unit.short}: ${plural(x.short.length, 'skill')} left`));
   group('Can be retaken (below 70%):', d.redo.map(t => `${t.name}: ${confRound(t.pct)}%`));
-  if (d.redo.length) { const need = [d.rt.missing.length ? 'missing work' : '', ixlLeft ? `${d.rt.unit.short} IXL` : ''].filter(Boolean);
+  if (d.redo.length) { const need = [d.rt.missing.length ? 'missing work' : '', ...ixlUnits.map(x => `${x.unit.short} IXL`)].filter(Boolean);
     out.push(d.rt.ok ? 'Retake: allowed now' : `Retake allowed after: ${need.length ? need.join(' + ') : `all work is caught up${d.rt.unit ? `, including ${d.rt.unit.short} IXL` : ''}`}`); }
   return out.join('\n');
 }
@@ -262,7 +263,7 @@ function openConference(sec, name) {
 function conferenceHtml(x) {
   const line = (label, value, cls) => `<span class="f ${cls || ''}"><b>${label}</b><span class="u">${esc(value || '')}</span></span>`;
   const block = (label, text) => `<section><b>${label}</b><div class="t">${esc(text || '')}</div></section>`;
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Parent Conference Input Form — ${esc(x.name)}</title><style>
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Parent Conference Input Form: ${esc(x.name)}</title><style>
 @page{size:letter;margin:0}*{box-sizing:border-box}html,body{margin:0;background:#fff}
 body{font-family:Arial,Helvetica,sans-serif;color:#000;--fs:10.5pt}
 .page{width:8.5in;height:11in;position:relative;overflow:hidden;margin:0 auto}
@@ -298,4 +299,4 @@ ${block('Student Strengths in Class:', x.strengths)}${block('Student Concerns in
 document.querySelectorAll('.t').forEach(function(t){ var s=10.5; while (t.scrollHeight > t.clientHeight + 1 && s > 7) { s -= 0.25; t.style.fontSize = s + 'pt'; } });
 <\/script></body></html>`;   // <\/script>: a literal close tag would end Tally's own script
 }
-async function printConference(x) { if (state.settings.hideNames && !await ask(`Names are hidden, but the form opens with ${x.name ? 'the student\'s full name' : 'the student\'s details'}, grades and notes on screen. Open it?`, 'Open the form')) return; openPrint(conferenceHtml(x), 'Conference form - ' + x.name.replace(/[^\w -]+/g, '') + '.html', true); }
+async function printConference(x) { if (state.settings.hideNames && !await ask(`Names are hidden, but the form opens with ${x.name ? 'the student\'s full name' : 'the student\'s details'}, grades and notes on screen. Open it?`, 'Open the form')) return; openPrint(conferenceHtml(x), 'Conference-form.html', true); }   // no student name in the file name

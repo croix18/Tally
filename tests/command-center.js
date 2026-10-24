@@ -29,7 +29,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.mouse.click(600, 700); await p.waitForTimeout(200); check(await p.locator('#moreMenu.hidden').count()===1 && await p.locator('body.details').count()===0 && await p.locator('#menuOverlay').count()===0,'a tap outside only dismisses the menu (nothing underneath fires)');
   await p.click('#moreBtn'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(100); check(await p.locator('#moreMenu.hidden').count()===1 && await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='moreBtn','Escape closes the menu and returns focus to ⋯');
   await more(p,'#btnDetails'); await p.waitForTimeout(400);
-  check(await p.locator('#printOwed').isVisible() && await p.locator('#nToggle').count()===0 && await p.locator('.notice').count()>=1,'Details view restores the full notices and controls');
+  check(await p.locator('#nToggle').count()===0 && await p.locator('.notice').count()>=1,'Details view shows the full notices');
   await more(p,'#btnDetails'); await p.waitForTimeout(300); check(await p.locator('#nToggle').count()===1,'and Calm folds them again');
   await p.click('#btnHome'); await p.waitForTimeout(300); check(await p.locator('#gridwrap .home').count()===1,'Overview button returns home');
   // --- What changed digest (fabricate last week for the first class)
@@ -49,23 +49,23 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.click('#btnLb'); await p.waitForTimeout(500); await p.click('[data-tab="lab"]'); await p.waitForTimeout(400);
   const kinds={dots:'.chart .dot',hist:'.chart .bar',stem:'table.stem',bar:'.chart .bar',circle:'.chart.circle path',box:'.labSvg'};
   for (const k of Object.keys(kinds)) { await p.selectOption('#labKind',k); await p.waitForTimeout(350); const n=await p.locator(kinds[k]).count(); check(n>0,`${k}: draws (${n} marks)`); }
-  await p.selectOption('#labKind','hist'); await p.waitForTimeout(200); await p.selectOption('#labBin','5'); await p.waitForTimeout(300); check((await p.locator('.chart .bar').count())<=10,'histogram bin size applies');
+  await p.selectOption('#labKind','hist'); await p.waitForTimeout(200); await lbOpt(p,'#labBin'); await p.selectOption('#labBin','5'); await p.waitForTimeout(300); check((await p.locator('.chart .bar').count())<=10,'histogram bin size applies');
   check(await p.locator('#labDots').count()===0 && await p.locator('#labTukey').count()===0,'box-only controls hidden for other graph types');
   await p.selectOption('#labKind','line'); await p.waitForTimeout(300); check(/Needs at least two imports|Pick /.test(await p.textContent('#lb')),'line graph explains it needs history');
   await p.selectOption('#labUnit','unit:__all__'); await p.waitForTimeout(300); check(await p.locator('.labRow.one .chart .ln').count()>=1,'…and draws once a class has two imports (the digest step gave 1st period a second one)');
   // --- Points / % toggle: values, stats and axis become percent of the maximum
   await p.selectOption('#labUnit', await p.evaluate(()=>document.querySelector('#labUnit option').value)); await p.selectOption('#labKind','box'); await p.waitForTimeout(300);
   const before=await p.evaluate(()=>{ const T=window.__tally; const s=T.labSeries(T.state.settings.labPrep, T.state.settings.labUnit)[0]; return {max:s.max, med:s.st.median, pct:s.pct}; });
-  await p.click('[data-pct="1"]'); await p.waitForTimeout(400);
+  await lbOpt(p,'[data-pct="1"]'); await p.click('[data-pct="1"]'); await p.waitForTimeout(400);
   const after=await p.evaluate(()=>{ const T=window.__tally; const s=T.labSeries(T.state.settings.labPrep, T.state.settings.labUnit)[0]; return {max:s.max, med:s.st.median, pct:s.pct, unit:s.unit, ints:s.values.every(v=>v==null||Number.isInteger(v))}; });
   check(!before.pct && after.pct && after.max===100 && after.ints && Math.abs(after.med - Math.round(before.med/before.max*100))<=1 && /^% of/.test(after.unit),'% mode rescales to whole percents of the maximum: '+JSON.stringify([before,after]));
-  await p.click('#labStats'); await p.waitForTimeout(300); check(/median\s*\d+%/.test((await p.textContent('.labStats')).replace(/\s+/g,' ')),'stats read as percents');
-  await p.click('#labValues'); await p.waitForTimeout(300); check(/\d+%/.test(await p.textContent('.labValues, .labHalf').catch(()=>'')) || /%/.test(await p.textContent('#lb')),'values chips carry %');
+  await lbOpt(p,'#labStats'); await p.click('#labStats'); await p.waitForTimeout(300); check(/median\s*\d+%/.test((await p.textContent('.labStats')).replace(/\s+/g,' ')),'stats read as percents');
+  await lbOpt(p,'#labValues'); await p.click('#labValues'); await p.waitForTimeout(300); check(/\d+%/.test(await p.textContent('.labValues, .labHalf').catch(()=>'')) || /%/.test(await p.textContent('#lb')),'values chips carry %');
   check(/rounded to whole percents/.test(await p.textContent('.lbSub')),'subtitle says so');
-  await p.click('[data-pct="0"]'); await p.waitForTimeout(300); await p.click('#labValues'); await p.click('#labStats'); await p.click('#labStats'); await p.waitForTimeout(200);
+  await lbOpt(p,'[data-pct="0"]'); await p.click('[data-pct="0"]'); await p.waitForTimeout(300); await lbOpt(p,'#labValues'); await p.click('#labValues'); await lbOpt(p,'#labStats'); await p.click('#labStats'); await lbOpt(p,'#labStats'); await p.click('#labStats'); await p.waitForTimeout(200);
   // give it history and check a single combined chart with one line per class
   await p.evaluate(()=>{ const T=window.__tally; T.state.order.forEach(k=>{ const s=T.state.sections[k]; if(s.prep!=='acc') return; const cur=s.history[s.history.length-1]; const per={}; Object.keys(cur.per).forEach(x=>per[x]=Math.max(0,cur.per[x]-2)); s.history=[{...cur,date:'2026-09-19',per}, cur]; }); T.save(); });
-  await p.click('[data-prep="acc"]').catch(()=>{}); await p.waitForTimeout(200); await p.selectOption('#labUnit','unit:__all__'); await p.selectOption('#labKind','line'); await p.waitForTimeout(400);
+  await seeTab(p,'[data-prep="acc"]'); await p.click('[data-prep="acc"]').catch(()=>{}); await p.waitForTimeout(200); await p.selectOption('#labUnit','unit:__all__'); await p.selectOption('#labKind','line'); await p.waitForTimeout(400);
   check(await p.locator('.labRow.one .chart .ln').count()>=1 && await p.locator('.labRow').count()===1,'line graph: one chart, one line per class');
   check(!/[A-Z]{3,}, [A-Z]/.test(await p.textContent('#lb')),'no student names on the Data Lab');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);

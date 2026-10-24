@@ -29,7 +29,7 @@ for (const f of suites) {
   else if (skipped) console.log('     ' + out.match(/^SKIP .*/m)[0]);
 }
 const tp = rows.reduce((a, r) => a + r.pass, 0), tf = rows.reduce((a, r) => a + r.fail, 0);
-const crashedN = rows.filter(r => r.status === 'FAIL' && !r.fail).length;   // a suite that died (timeout, exception) fails no check — say so, or the summary reads "0 failed"
+const crashedN = rows.filter(r => r.status === 'FAIL' && !r.fail).length;   // a suite that died (timeout, exception) fails no check: say so, or the summary reads "0 failed"
 console.log(`\n${rows.length} suites · ${tp} passed · ${tf} failed${crashedN ? ` · ${crashedN} suite${crashedN === 1 ? '' : 's'} crashed` : ''} · ${rows.filter(r => r.status === 'skip').length} skipped`);
 
 process.exit(failed ? 1 : 0);

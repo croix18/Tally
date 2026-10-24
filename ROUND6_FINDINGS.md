@@ -222,6 +222,8 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   grade colours; light dialog headers. New suite `tests/design-oct23.js`.
 - 23 Oct: phones, redone properly: bottom tab bar, tables as cards, charts at phone width, 16px inputs, safe areas,
   Board controls behind Options; reviewed by an independent agent at four sizes. `tests/phone.js` (22 checks).
+- 24 Oct: round 8: second audit (security, correctness, UI) with every Critical/High fixed; the Data Lab compares any
+  two data sets; one control vocabulary; Settings in tabs; Board toggles behind Options. New suite `tests/audit-oct24.js`. 41 suites, 1317 checks.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.

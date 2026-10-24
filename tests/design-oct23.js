@@ -21,7 +21,7 @@ const { chromium, fs, path, exe, check, done, APP, pick, more } = require('./lib
   // 2. Closing early: Settings → Close Quarter 1 early… → a tick → the button
   await more(p,'#btnSettings'); await p.waitForTimeout(300);
   check(/Quarter 1 ends Dec 1/.test(await p.textContent('#modal')) && await p.locator('#setQEarly').count()===1,'Settings says when the quarter ends and offers closing early');
-  await p.click('#setQEarly'); await p.waitForTimeout(300);
+  await seeTab(p,'#setQEarly'); await p.click('#setQEarly'); await p.waitForTimeout(300);
   check(/Close Quarter 1 early/.test(await p.textContent('#modal h2')) && await p.locator('#qClose[disabled]').count()===1 && /I know Quarter 1 runs until Dec 1/.test(await p.textContent('#modal')),'the early close waits for "I know Quarter 1 runs until Dec 1"');
   await p.check('#qSure'); await p.click('#qClose'); await p.waitForTimeout(400);
   check(await p.evaluate(()=>window.__tally.state.quarters.closed[1]!=null) && await p.locator('#qUndo').count()===1,'it closes, and the message has Undo');

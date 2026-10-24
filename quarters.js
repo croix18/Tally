@@ -2,7 +2,7 @@
    Spliced into app.js's closure. See GRADES_SPEC.md §7.
    Focus starts a fresh gradebook each quarter, so a class's Q2 export no longer carries Q1. Closing a quarter:
      · freezes each class's gradebook for that quarter as sec.qArchive[n] (every score, the final grades, the
-       category of each assignment) — Tally keeps it after Focus drops it;
+       category of each assignment): Tally keeps it after Focus drops it;
      · marks the course's IXL units that belonged to the quarter (state.quarters.units[prep][unit] = n);
      · from then on those assignments and units raise nothing: no missing counts, no sliding, no Focus check,
        no "still owed", no what-ifs. They stay visible (Grades → the quarter's tab, each student's page).
@@ -30,10 +30,10 @@ function cleanGB(gb) {
   for (const y of gb.assignments) {
     if (!y || typeof y.name !== 'string' || !Array.isArray(y.values) || y.values.length !== n || (y.status && (!Array.isArray(y.status) || y.status.length !== n))) return null;
     assignments.push({ name: y.name.slice(0, 200), max: numOrNull(y.max), values: y.values.map(numOrNull), status: y.status ? y.status.map(t => GB_STATUS.includes(t) ? t : 'unread') : undefined,
-      missing: Number(y.missing) || 0, excused: Number(y.excused) || 0, due: str(y.due, 20), assignedOn: str(y.assignedOn, 20), category: str(y.category, 60), categoryFromFile: !!y.categoryFromFile });
+      missing: y.status ? y.status.filter(t => t === 'missing').length : Number(y.missing) || 0, excused: Number(y.excused) || 0, due: str(y.due, 20), assignedOn: str(y.assignedOn, 20), category: str(y.category, 60), categoryFromFile: !!y.categoryFromFile });
   }
   return { students, ids: Array.isArray(gb.ids) ? gb.ids.map(x => str(String(x ?? ''), 40)) : [], overall: Array.isArray(gb.overall) && gb.overall.length === n ? gb.overall.map(numOrNull) : null,
-    importedAt: /^\d{4}-\d{2}-\d{2}/.test(str(gb.importedAt, 40)) ? str(gb.importedAt, 40) : new Date(0).toISOString(), file: str(gb.file, 200), assignments };
+    importedAt: /^\d{4}-\d{2}-\d{2}/.test(str(gb.importedAt, 40)) ? str(gb.importedAt, 40) : new Date(0).toISOString(), exportedAt: /^\d{4}-\d{2}-\d{2}/.test(str(gb.exportedAt, 40)) ? str(gb.exportedAt, 40) : null, file: str(gb.file, 200), assignments };
 }
 const cleanCats = c => Array.isArray(c) ? c.filter(x => x && typeof x.name === 'string' && Number.isFinite(+x.w)).map(x => ({ name: x.name.slice(0, 60), w: +x.w })) : null;
 // A class's archive, cleaned on load like the live gradebook (restore and migrate both pass through here).
@@ -189,7 +189,7 @@ function openQuarters(keep) {
   const dates = `<div class="qdates">${q.ends.map((d, i) => `<label class="${qClosed(i + 1) ? 'closed' : i + 1 === n ? 'now' : ''}"><span>${Q_NAMES[i]} ends</span><input type="date" data-qend="${i}" value="${esc(d)}" ${qClosed(i + 1) ? 'disabled' : ''}><small>${qClosed(i + 1) ? 'closed ' + esc(fmtDate((q.closed[i + 1].at || '').slice(0, 10))) : i + 1 === n ? 'now' : ''}</small></label>`).join('')}</div>
       <p class="ghint">Lake County Schools 2026–27 dates.</p>`;
   const early = !ended && !!keep.early;   // closing before the end date is only offered from Settings, behind a tick
-  const form = `<p class="qlead">Tally keeps every ${esc(QN)} score and final grade, then stops bringing it up — no missing work, sliding, Focus checks or still-owed lines. It stays one tap away (Grades → <b>Q${n}</b>, and each student's page), and you can reopen it.</p>
+  const form = `<p class="qlead">Tally keeps every ${esc(QN)} score and final grade, then stops bringing it up: no missing work, sliding, Focus checks or still-owed lines. It stays one tap away (Grades → <b>Q${n}</b>, and each student's page), and you can reopen it.</p>
       ${!ended ? `<p class="warnline">${esc(QN)} doesn't end until ${esc(fmtDate(q.ends[n - 1]))}. Closed early, its work stops showing as missing, on student pages and on conference forms, until you reopen it.</p>` : staleN ? `<p class="warnline">${allStale ? (staleN === 1 ? 'The gradebook here was' : 'Every gradebook here was') : `${plural(staleN, 'gradebook')} here ${staleN === 1 ? 'was' : 'were'}`} exported before ${esc(QN)} ended (${esc(fmtDate(q.ends[n - 1]))}). If grades changed in Focus since, export ${esc(QN)} from Focus and import it first.</p>` : ''}
       <table class="checkTable qkeep"><tbody>${rows}</tbody></table>
       ${unitPick('acc') || unitPick('on') ? `<details class="qmore" id="qUnits" ${keep.units ? 'open' : ''}><summary><span>IXL units in ${esc(QN)}: <b id="qUnitSum"></b></span> <u>Change</u></summary>${unitPick('acc')}${unitPick('on')}</details>` : ''}
@@ -224,7 +224,7 @@ function openQuarters(keep) {
     const picks = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => { const [p, u] = cb.dataset.qu.split(/\|(.*)/s); picks[p].push(u); });
     const before = JSON.stringify({ units: q.units, closed: q.closed });
     const per = closeQuarter(n, picks); save(); m.classList.add('hidden'); m.innerHTML = ''; render();
-    toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'}. Its missing work stops coming up. <button class="tundo" id="qUndo">Undo</button>`, false, 9000);
+    toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'}. Its missing work stops coming up. <button class="tundo" id="qUndo">Undo</button>`, false, 6000);
     const un = $('#qUndo'); if (un) un.onclick = () => { const b = JSON.parse(before); q.units = b.units; q.closed = b.closed; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); render(); toast(`${esc(QN)} is open again.`, false, 2500); };
   };
   const ro = $('#qReopen'); if (ro) ro.onclick = () => { const N = Q_NAMES[lastClosed - 1]; reopenQuarter(lastClosed); save(); openQuarters({}); toast(`<b>${esc(N)} is open again.</b> Its missing work and Focus checks are back. Close it again whenever you're ready.`, false, 6000); };

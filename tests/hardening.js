@@ -57,11 +57,11 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const lbt=await p.textContent('#lb'); check(!/nearly all/i.test(lbt) && /0% moved up|first week|fresh start/.test(lbt),'two measured students, none moved → not "nearly all"');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(200);
   // 9. empty roster on a pool class → no students, notice; not all 91
-  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await more(p,'#btnSettings'); await p.fill('#roster',''); await p.click('#mSave'); await p.waitForTimeout(400);
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster',''); await p.click('#mSave'); await p.waitForTimeout(400);
   const empt=await p.evaluate(K=>{ const s=window.__tally.state.sections[K]; return s.students.length; }, K);
   check(empt===0 && /No roster, so no students/.test(await p.textContent('#notices')),'emptying a pool class roster leaves it empty with a notice (not the whole course): '+empt);
   const gbNames=await p.evaluate(K=>window.__tally.state.sections[K].grades.students.join('\n'), K);
-  await more(p,'#btnSettings'); await p.fill('#roster', gbNames); await p.click('#mSave'); await p.waitForTimeout(400);
+  await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster', gbNames); await p.click('#mSave'); await p.waitForTimeout(400);
   check(await p.evaluate(K=>window.__tally.state.sections[K].students.length, K)>=20,'pasting the roster back re-carves the class');
   // 10. old backup without skipFirstV2 must not drag skipFirst back to on:2
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.skipFirst={acc:0,on:1}; T.save(); });

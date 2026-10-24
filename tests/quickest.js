@@ -1,7 +1,7 @@
 // "Quickest way to the next letter" reads in the order to do it, and adds up on the page.
 // Croix, 7 Oct 2026, with a student's page: "How does the math here make sense? Quickest path should be the two [big
-// ones], not 2.02 and 1.4" — the list was in gradebook order, so a +3 worksheet sat above a +7 one; and "NHI isn't in
-// the retake category because it hasn't even happened yet" — a never-handed-in assessment was a row in the retake table.
+// ones], not 2.02 and 1.4": the list was in gradebook order, so a +3 worksheet sat above a +7 one; and "NHI isn't in
+// the retake category because it hasn't even happened yet": a never-handed-in assessment was a row in the retake table.
 // Runs on the scrubbed real class, with one student reshaped to match the page he sent.
 const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
 (async()=>{
@@ -12,7 +12,7 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   await p.fill('#rpText', fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8')); await p.click('#rpSave'); await p.waitForTimeout(300);
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await pick(p); await p.waitForTimeout(600);
   const K='1205050-7T1A', WHO='RHODES, SUTTON ELLIS';
-  // his student: four things never handed in — two 10-point worksheets, a 20-point worksheet, and a 10-point assessment
+  // his student: four things never handed in: two 10-point worksheets, a 20-point worksheet, and a 10-point assessment
   await p.evaluate(({K,WHO})=>{ const T=window.__tally; const s=T.state.sections[K]; const i=s.grades.students.indexOf(WHO); const A=n=>s.grades.assignments.find(a=>a.name===n);
     A('2.01 Worksheet').max=20; A('2.01 Worksheet').values=A('2.01 Worksheet').values.map(v=>v==null?null:v*2);
     ['2.03 Worksheet'].forEach(n=>{ A(n).status[i]='score'; A(n).values[i]=6; });
@@ -27,7 +27,7 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
     return { base:base.rounded, target:q.target, letter:q.letter, reached:q.reached, result:q.result.rounded, steps:q.steps, lines, overKeys:Object.keys(q.over).sort().join('|'), planKeys:[...new Set(q.plan.filter(x=>x.kind!=='ixlreq').map(x=>x.a.name))].sort().join('|'), nhiOrder:q.nhi.map(a=>a.name).join(' > ') }; },{K,WHO});
   console.log('plan: '+q.base+'% → '+q.lines.map(l=>(l.kind==='ixl'?l.n+' IXL skills in ':'')+l.name+' → '+l.after).join(', '));
   check(q.reached && q.letter==='D' && q.lines.filter(l=>l.kind==='nhi').length>=3 && q.lines.some(l=>l.kind==='ixl'||l.kind==='copy'),'the reshaped student reaches a D with the IXL already earned copied in and three of the four missing pieces ('+q.base+'% → '+q.result+'%, '+q.steps+' steps)');
-  check(q.planKeys===q.overKeys,'the list is exactly the work the result is computed from — nothing counted that is not listed');
+  check(q.planKeys===q.overKeys,'the list is exactly the work the result is computed from: nothing counted that is not listed');
   check(q.lines.every(l=>l.after===l.recount),'the grade shown after each line is the grade with that line and every line above it done: '+q.lines.map(l=>l.after).join(' → '));
   check(q.lines[q.lines.length-1].after===q.result && q.lines.every((l,k)=>k===0||l.after>=q.lines[k-1].after),'the last line lands on the headline result, and the grade never steps down ('+q.result+'%)');
   const copyFirst=q.lines.findIndex(l=>l.kind!=='copy'); check(q.lines.slice(0,Math.max(0,copyFirst)).every(l=>l.kind==='copy') && q.lines.slice(Math.max(0,copyFirst)).every(l=>l.kind!=='copy'),'IXL already earned but not yet in Focus is a copy step, listed first (audit, 22 Oct 2026)');
@@ -57,7 +57,7 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   // ---- every student in the class ------------------------------------------------------------------------------------
   const all=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; let n=0, bad=[]; s.grades.students.forEach((name,i)=>{ const f=T.findStudent(s,name); const q=T.quickestPath(s,s,i,f?f.ixl:null); if (!q||q.top) return; n++; const acc={}; let prev=-1, ok=true; q.plan.forEach(x=>{ acc[x.a.name]=x.to; if (T.computeGrade(s,i,acc).rounded!==x.after || x.after<prev) ok=false; prev=x.after; });
       if (q.plan.length && q.plan[q.plan.length-1].after!==q.result.rounded) ok=false; if (Object.keys(q.over).sort().join('|')!==q.plan.filter(x=>x.kind!=='ixlreq').map(x=>x.a.name).sort().join('|')) ok=false; if (q.plan.findIndex(x=>x.kind==='retake')>-1 && q.plan.slice(q.plan.findIndex(x=>x.kind==='retake')).some(x=>x.kind!=='retake')) ok=false; if (!ok) bad.push(name); }); return { n, bad }; },K);
-  check(all.n>=5 && all.bad.length===0,'for all '+all.n+' students with a plan: the lines add up to the result, in order, retakes last'+(all.bad.length?' — not for '+all.bad.length:''));
+  check(all.n>=5 && all.bad.length===0,'for all '+all.n+' students with a plan: the lines add up to the result, in order, retakes last'+(all.bad.length?': not for '+all.bad.length:''));
   // Croix, 21 Oct 2026: "It should not suggest a retake if it is the quickest route. A student cannot take a retake unless
   // they are all caught up on everything." Every plan with a retake does all missing work and the current unit's IXL
   // first; a plan never lists a retake that the catch-up alone makes unnecessary; no IXL link, no retake.
@@ -76,7 +76,7 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
     run(); const vals=JSON.parse(save); s.grades.assignments.forEach((a,k)=>a.values=vals[k]);
     out.noIxlRetake=s.grades.students.some((nm,i)=>{ const f=T.findStudent(sec,nm); if (f.ixl!=null) return false; const q=T.quickestPath(sec,s,i,null); if (q&&q.retakeBlocked) out.blocked++; return q&&q.plan&&q.plan.some(x=>x.kind==='retake'); });
     return out; },K);
-  check(rk.withRetake>=3 && rk.bad.length===0,'every plan that needs a retake ('+rk.withRetake+' students) first turns in all missing work and finishes the unit\'s IXL, and lists no retake the catch-up makes unnecessary'+(rk.bad.length?' — '+rk.bad.slice(0,3).join('; '):''));
+  check(rk.withRetake>=3 && rk.bad.length===0,'every plan that needs a retake ('+rk.withRetake+' students) first turns in all missing work and finishes the unit\'s IXL, and lists no retake the catch-up makes unnecessary'+(rk.bad.length?': '+rk.bad.slice(0,3).join('; '):''));
   check(!rk.noIxlRetake,'a student with no IXL link in Tally is never planned a retake');
   check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();

@@ -1,4 +1,4 @@
-// The class grid is the units up to "Working in", then one column — Ahead — for work in later units. "Working in" is
+// The class grid is the units up to "Working in", then one column: Ahead: for work in later units. "Working in" is
 // always set once a course has data, so nothing is assigned by guess. Synthetic fixtures only.
 const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib');
 (async()=>{
@@ -16,7 +16,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   await p.selectOption('#curUnit','3'); await p.waitForTimeout(400);
   const s0=await st();
   check(s0.cur.acc===3 && /^1a 2a 3a 4u 5u/.test(s0.flags),'Working in Unit 3: Units 1–3 count, the rest are later units: '+s0.flags);
-  check(await cols()==='idx | stu | Unit 1 | Unit 2 | Unit 3 | Ahead','the grid is #, Student, Units 1–3 and Ahead — not '+s0.n+' unit columns: '+await cols());
+  check(await cols()==='idx | stu | Unit 1 | Unit 2 | Unit 3 | Ahead','the grid is #, Student, Units 1–3 and Ahead: not '+s0.n+' unit columns: '+await cols());
   check(await p.locator('th.unit.upcoming').count()===0 && await p.locator('.utag:not(.now)').count()===0 && await p.locator('#onlyCur').count()===0,'no "upcoming" columns or tags, no "Just Unit N"');
   check(/Units 4–17/.test(await p.textContent('th.ahead')) && /skills at goal/.test(await p.textContent('th.ahead')),'the Ahead header says which units it covers and what it counts');
   check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1 && document.querySelector('#gridwrap').scrollWidth<=document.querySelector('#gridwrap').clientWidth+1),'the whole grid fits the Chromebox without sideways scrolling');
@@ -25,7 +25,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
     return [...document.querySelectorAll('#gridwrap tbody tr')].map((tr,i)=>{ const r=rows[i]; const td=tr.querySelector('td.aheadc'); const sum=r.ixl==null?0:later.reduce((a,u)=>a+T.points(s,u,r.ixl),0); const where=r.ixl==null?[]:later.filter(u=>T.points(s,u,r.ixl)>0).map(u=>u.short); return { text:td.textContent.replace(/\s+/g,' ').trim(), sum, where, open:td.dataset.u?T.unitsOf(s)[+td.dataset.u].short:null }; }); },K);
   const withWork=truth.filter(x=>x.sum>0), without=truth.filter(x=>x.sum===0);
   check(withWork.length>0 && withWork.every(x=>new RegExp('^'+x.sum+' skills? · ').test(x.text)),'cells with work read "N skills · where" and N is the points in later units ('+withWork.length+' students): '+withWork.slice(0,3).map(x=>x.text).join(' | '));
-  check(without.length>0 && without.every(x=>x.text===''),'students with nothing past Unit 3 have an empty cell — no column of zeros ('+without.length+')');
+  check(without.length>0 && without.every(x=>x.text===''),'students with nothing past Unit 3 have an empty cell: no column of zeros ('+without.length+')');
   check(withWork.every(x=>x.where.length===1 ? x.text.endsWith(x.where[0]) : x.where.length===2 ? /Units \d+ and \d+$/.test(x.text) : new RegExp('in '+x.where.length+' units$').test(x.text)),'"where" names the unit, two units, or how many');
   check(withWork.every(x=>x.open===x.where[0]),'a cell opens the first later unit that student has work in');
   check(new RegExp('^'+withWork.length+' students? ahead$').test((await p.textContent('tfoot td.aheadc')).trim()),'the footer counts the students who are ahead: '+(await p.textContent('tfoot td.aheadc')).trim());
@@ -71,7 +71,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   // 7c. Details view pushes the grid down: the list still opens inside the window with room to read it
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.details=true; T.save(); T.render(); }); await p.waitForTimeout(300);
   for (const [w,h] of [[1366,768],[1024,768],[911,512]]) { await p.setViewportSize({width:w,height:h}); await p.waitForTimeout(250); await p.evaluate(()=>document.querySelector('#aheadBtn').scrollIntoView({block:'nearest',inline:'nearest'})); await p.click('#aheadBtn'); await p.waitForTimeout(200);
-    const r=await p.evaluate(()=>{ const m=document.querySelector('#aheadMenu').getBoundingClientRect(); return { t:Math.round(m.top), b:Math.round(m.bottom), ok:m.top>=0 && m.bottom<=innerHeight && m.left>=0 && m.right<=innerWidth && m.height>=Math.min(280, innerHeight-40) }; });
+    const r=await p.evaluate(()=>{ const el=document.querySelector('#aheadMenu'); const m=el.getBoundingClientRect(); const b=document.querySelector('#aheadBtn').getBoundingClientRect(); return { t:Math.round(m.top), b:Math.round(m.bottom), cls:el.className, btn:[Math.round(b.top),Math.round(b.bottom)], ok:m.top>=0 && m.bottom<=innerHeight && m.left>=0 && m.right<=innerWidth && m.height>=Math.min(280, innerHeight-40) }; });
     check(r.ok,'Details view at '+w+'×'+h+': the list is inside the window and tall enough to use ('+r.t+'…'+r.b+')'); await p.keyboard.press('Escape'); await p.waitForTimeout(100); }
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.details=false; T.save(); T.render(); }); await p.setViewportSize({width:1366,height:768}); await p.waitForTimeout(200);
   // 7d. when the grid is only a little too wide, landing on the current unit must not cut a column in half under the names
@@ -79,14 +79,14 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
     const cut=await p.evaluate(()=>{ const g=document.querySelector('#gridwrap'); const edge=document.querySelector('thead th.stu').getBoundingClientRect().right; const ths=[...document.querySelectorAll('thead th.unit, thead th.ahead')].map(th=>th.getBoundingClientRect()); const a=document.querySelector('th.ahead').getBoundingClientRect(); return { scrolled:Math.round(g.scrollLeft), half:ths.some(r=>r.left<edge-1.5 && r.right>edge+1.5), ahead:a.right<=g.getBoundingClientRect().right+1.5 }; });
     check(!cut.half && cut.ahead,w+' px: no unit column is cut in half beside the names and Ahead is fully in view (scrolled '+cut.scrolled+' px)'); }
   await p.setViewportSize({width:1366,height:768}); await p.waitForTimeout(200);
-  // 8. an older save that ran on the guess rule gets a unit when it opens — and says so
+  // 8. an older save that ran on the guess rule gets a unit when it opens: and says so
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.currentUnit={ acc:null, on:null }; T.state.settings.curUnitTouched={ acc:true, on:false }; T.save(); });
   await p.reload(); await p.waitForTimeout(900);
   const after=await p.evaluate(()=>({ cur:window.__tally.state.settings.currentUnit, toast:document.querySelector('#toast').textContent }));
-  check(after.cur.acc===3 && after.cur.on===3 && /Accelerated: Working in set to Unit 3 — a quarter of the course has started every unit up to it/.test(after.toast) && /On-level: Working in set to Unit 3/.test(after.toast),'a save with no Working in gets one at start-up, with the reason: '+JSON.stringify(after.cur));
+  check(after.cur.acc===3 && after.cur.on===3 && /Accelerated: Working in set to Unit 3: a quarter of the course has started every unit up to it/.test(after.toast) && /On-level: Working in set to Unit 3/.test(after.toast),'a save with no Working in gets one at start-up, with the reason: '+JSON.stringify(after.cur));
   await p.click('#btnHome'); await p.waitForTimeout(300);
   const card=await p.evaluate(()=>{ const d=document.querySelector('.himport'); if (d && d.tagName==='DETAILS') d.open=true; return d ? d.textContent.replace(/\s+/g,' ') : ''; });
-  check(/Accelerated — Working in set to Unit 3/.test(card) && /On-level — Working in set to Unit 3/.test(card),'…and the note stays on the Overview after the toast has gone');
+  check(/Accelerated: Working in set to Unit 3/.test(card) && /On-level: Working in set to Unit 3/.test(card),'…and the note stays on the Overview after the toast has gone');
   await p.click(`[data-k="${K}"]`); await p.waitForTimeout(300);
   await p.reload(); await p.waitForTimeout(700); check(!/Working in/.test(await p.textContent('#toast')),'…once: the next start says nothing');
   // 9. the rule itself (pure): numbered units count up to Working in; a plan without "Unit N" sections falls back to "a quarter has started it"
@@ -98,7 +98,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
     const c=T.unitsOf(mk(['Chapter A','Chapter B','Chapter C'],[[90,null,null,null],[null,null,null,null],[null,null,null,10]])).map(u=>u.assigned?'a':'u').join('');
     T.state.settings.currentUnit=JSON.parse(keep); return { a, n, c }; });
   check(pure.a==='aau','numbered units: 1–2 count because Working in is 2, and Unit 3 does not count even though every student has finished it: '+pure.a);
-  check(pure.n==='uu','with no Working in, no numbered unit counts — nothing is guessed from who has touched what: '+pure.n);
+  check(pure.n==='uu','with no Working in, no numbered unit counts: nothing is guessed from who has touched what: '+pure.n);
   check(pure.c==='aua','sections that are not "Unit N" still count once a quarter of the class has started them: '+pure.c);
   // 10. Working in defaults: Focus column, else the unbroken run a quarter have started, else the first counted unit
   const dw=await p.evaluate(()=>{ const T=window.__tally; const keepS=T.state.sections, keepO=T.state.order, keepC=JSON.stringify(T.state.settings.currentUnit);
@@ -106,7 +106,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
     const run=scores=>{ T.state.sections={ x:mk('x',scores) }; T.state.order=['x']; T.state.settings.currentUnit={ acc:null, on:null }; const r=T.defaultWorkingIn(); return r.map(x=>x.unit+':'+x.why).join(); };
     const out={ started:run([[90,90,null,null],[50,null,null,null],[null,null,null,null],[90,90,90,null]]), gap:run([[90,null,null,null],[null,null,null,null],[90,90,90,90],[null,null,null,null]]), none:run([[null,null,null,null],[null,null,null,null],[null,null,null,null],[null,null,null,null]]) };
     T.state.sections=keepS; T.state.order=keepO; T.state.settings.currentUnit=JSON.parse(keepC); return out; });
-  check(dw.started==='2:started','Units 1 and 2 started, 3 untouched, 4 finished by most: Working in is Unit 2 — the run stops at the first unit the course has not started: '+dw.started);
+  check(dw.started==='2:started','Units 1 and 2 started, 3 untouched, 4 finished by most: Working in is Unit 2: the run stops at the first unit the course has not started: '+dw.started);
   check(dw.gap==='1:started','a few students far ahead do not pull Working in past a unit nobody has started: '+dw.gap);
   check(dw.none==='1:first','a new class with no scores works in the first unit that counts: '+dw.none);
   // 11. tablet (touch): the column is reachable and the list opens inside the screen with finger-sized rows

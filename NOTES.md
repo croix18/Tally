@@ -557,6 +557,25 @@ per-section-file era and many items in them are now done).
   - the Board folds its controls behind Options, with Race/Data Lab and Hold to exit always on screen.
   An independent review agent drove every screen at 375/390/430 and landscape and its ten findings were fixed. Not done:
   a sticky mini-header on the long student page (Prev/Next are at the top only). Checked by `tests/phone.js`.
+- **24 Oct 2026 — Round 8: the high-level audit and the UI cleanup** (`AUDIT_PLAN.md`, second section;
+  `tests/audit-oct24.js`). Croix: "take a high level approach to the audit this time … bugs, weak spots, vulnerabilities
+  … Also look for ways to improve the UI. It's still very messy. Don't reduce the functions." And: "on the comparison
+  between the classes, it doesn't make sense to compare the same unit because they are on different content at
+  different speeds. I need to be able to adjust each side."
+  - **Data Lab, Both:** one picker per course (`#labA` vs `#labO`), each remembered on its own (`labPick`), no pairing;
+    the subtitle says "percent of the maximum" when the two sides are out of different totals.
+  - **Retakes:** "caught up on everything" now means every unit with an IXL column in the open gradebook
+    (`retakeStatus().behind`), not only the unit being worked in. Students, student page, conference form and the
+    quickest plan all say the same.
+  - **Control vocabulary** (app.html, "the control vocabulary"): `.pill` primary (one per screen; the header's Import
+    is pale once classes exist), `.pill.pale` secondary, `.pill.toggle` quiet (white, thin border, navy when pressed),
+    `.seg` segment (white track, navy for the chosen one). `.chip`, `.ft`, selects and the old `.seg.small` map onto
+    these. The class screen's notices open under the bar as one group (the #notices element now lives inside #board);
+    Still owed and the unassigned-units toggle live in ⋯ only; tabs are the class name only; the Overview card no
+    longer repeats "N things to look at"; Settings is four tabs (Class · Course · Tally · Files) with the class picker
+    beside them (tests call `seeTab(p, sel)` from tests/lib.js before touching a control); the Board's toggles sit
+    behind Options at every width (`lbOpt(p, sel)` in tests); em dashes in on-screen text became colons or full stops;
+    "FOCUS" is "Focus".
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

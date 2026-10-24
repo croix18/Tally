@@ -12,12 +12,12 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   // 0. Working in, when nobody picked it, comes from Focus's IXL columns (never a review unit) and the import says so
   const wi=await p.evaluate(()=>{ const T=window.__tally; return { cur:T.state.settings.currentUnit, skip:T.state.settings.skipFirst, li:JSON.stringify(T.state.lastImport) }; });
   check(wi.cur.acc===3 && wi.cur.on===3 && wi.skip.on===1,'Working in is the later of Focus\'s latest IXL column (Unit 1 here) and the unbroken run the course has started (Units 1–3): '+JSON.stringify(wi.cur));
-  check(/Accelerated[^}]*Working in set to Unit 3 — a quarter of the course has started every unit up to it/.test(wi.li) && /On-level[^}]*Working in set to Unit 3 — a quarter of the course has started every unit up to it/.test(wi.li),'the import result says Working in was set, and on what evidence');
+  check(/Accelerated[^}]*Working in set to Unit 3: a quarter of the course has started every unit up to it/.test(wi.li) && /On-level[^}]*Working in set to Unit 3: a quarter of the course has started every unit up to it/.test(wi.li),'the import result says Working in was set, and on what evidence');
   await p.click('#btnHome'); await p.waitForTimeout(300);
   const l0=await p.evaluate(()=>[...document.querySelectorAll('.hatt li:not(.more)')].map(l=>l.textContent.replace(/\s+/g,' ').trim()));
   check(!l0.some(t=>/assigned by guess/.test(t)) && !l0.some(t=>/pick the unit you're working in/.test(t)),'nothing is assigned by guess and nobody is asked to pick a unit: every course has one ('+l0.length+' lines)');
   // 0b. backup: asked for once after an import, one tap, then quiet
-  check(await p.locator('#hBackup').count()===1 && /Full save — nothing has been saved/.test(await p.textContent('#hBackup')) && await p.locator('#hAtt:not([open])').count()===1 && Number(await p.textContent('#hAtt .hcount'))>=1,'the Overview offers a Full save after an import (inside the Needs attention line, which is closed with a count)');
+  check(await p.locator('#hBackup').count()===1 && /Full save: nothing has been saved/.test(await p.textContent('#hBackup')) && await p.locator('#hAtt:not([open])').count()===1 && Number(await p.textContent('#hAtt .hcount'))>=1,'the Overview offers a Full save after an import (inside the Needs attention line, which is closed with a count)');
   await p.click('#hAtt > summary'); await p.waitForTimeout(200);
   const [bk]=await Promise.all([p.waitForEvent('download'), p.click('#hBackup')]); await p.waitForTimeout(400);
   const cfg=JSON.parse(fs.readFileSync(await bk.path(),'utf8'));
@@ -61,12 +61,12 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
       const w=line.match(/won't reach (an? [a-d])/); if (w) { wont++; if (na.can.length) bad.push(name+': says won\'t reach, but can'); if (w[1]!==na.cant[na.cant.length-1].toLowerCase()) bad.push(name+': wrong letter'); }
       if (/won't change the letter/.test(line)) bad.push(name+': "won\'t change the letter"'); if (na.keep && !/keeps the [a-d]/.test(line)) bad.push(name+': keep clause dropped'); }); });
     return { bad, dReach, wont, n }; });
-  check(truthP.bad.length===0 && truthP.dReach>0,'the report\'s next-assessment line is true for all '+truthP.n+' synthetic students: '+truthP.dReach+' F students are told the score that makes a D; '+truthP.wont+' are told one assessment won\'t reach the next letter'+(truthP.bad.length?' — '+truthP.bad.slice(0,3).join(' | '):''));
+  check(truthP.bad.length===0 && truthP.dReach>0,'the report\'s next-assessment line is true for all '+truthP.n+' synthetic students: '+truthP.dReach+' F students are told the score that makes a D; '+truthP.wont+' are told one assessment won\'t reach the next letter'+(truthP.bad.length?': '+truthP.bad.slice(0,3).join(' | '):''));
   // 3. one line per cause: a cause shared by the course or the file is said once
   await p.evaluate(()=>{ const T=window.__tally; const d=new Date(Date.now()-30*86400000).toISOString().slice(0,10); ['acc','on'].forEach(k=>{ T.state.pools[k].date=d; }); T.state.order.forEach(k=>{ T.state.sections[k].date=d; }); T.state.settings.remindDays=7; T.save(); T.render(); });
   await p.click('#btnHome'); await p.waitForTimeout(400);
   const lines=await p.evaluate(()=>[...document.querySelectorAll('.hatt li:not(.more)')].map(l=>l.textContent.replace(/\s+/g,' ').trim()));
-  check(lines.filter(l=>/^Every class — IXL export is \d+ days old/.test(l)).length===1,'two classes with the same stale export get one line: '+lines.length+' rows');
+  check(lines.filter(l=>/^Every class: IXL export is \d+ days old/.test(l)).length===1,'two classes with the same stale export get one line: '+lines.length+' rows');
   if (await p.locator('#hAtt[open]').count()) { await p.click('#hAtt > summary'); await p.waitForTimeout(200); }
   const fold=await p.evaluate(()=>{ const d=document.querySelector('#hAtt'); const cards=[...document.querySelectorAll('.hcard')].map(c=>c.getBoundingClientRect()); const bottom=document.querySelector('#gridwrap').getBoundingClientRect().bottom; return { notes:!!d, open:d&&d.open, top:Math.round(cards[0].top), whole:cards.filter(c=>c.bottom<=Math.min(bottom,innerHeight)).length, n:cards.length }; });
   check((!fold.notes || !fold.open) && fold.whole===fold.n && fold.top<520,'everything to fix or know is one folded line, so every class card is whole on the first screen (cards start at '+fold.top+' px)');
@@ -75,7 +75,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check((await p.evaluate(()=>{ const ls=[...document.querySelectorAll('#hAtt>.hatt>li')].map(l=>l.classList.contains('warn')); return ls.every((w,i)=>i===0 || !w || ls[i-1]); })),'warnings come before notes');
   // 3b. storage: a pool class no longer saves its own copy of the course's skills; Settings shows how full the browser is
   const st0=await p.evaluate(()=>{ const T=window.__tally; const raw=JSON.parse(localStorage.getItem('tally.v1')); const s=raw.sections['period-1']; return { flag:s.poolSkills===true, skills:s.skills, live:T.state.sections['period-1'].skills===T.state.pools.acc.skills, n:T.state.sections['period-1'].skills.length, chars:localStorage.getItem('tally.v1').length }; });
-  check(st0.flag && Array.isArray(st0.skills) && st0.skills.length===0 && st0.live && st0.n>100,'the saved class points at the pool for its skills ('+st0.n+' skills, not stored twice) and still saves a list — an older Tally.html drops a class whose skills aren\'t one');
+  check(st0.flag && Array.isArray(st0.skills) && st0.skills.length===0 && st0.live && st0.n>100,'the saved class points at the pool for its skills ('+st0.n+' skills, not stored twice) and still saves a list: an older Tally.html drops a class whose skills aren\'t one');
   // a save from before the change (its own identical copy) loads, behaves the same, and is slimmed on the next save
   const fat=await p.evaluate(()=>{ const raw=JSON.parse(localStorage.getItem('tally.v1')); for (const k in raw.sections) { const x=raw.sections[k]; if (x.poolSkills) { x.skills=JSON.parse(JSON.stringify(raw.pools[x.prep].skills)); delete x.poolSkills; } } const str=JSON.stringify(raw); localStorage.setItem('tally.v1', str); return str.length; });
   await p.reload(); await p.waitForTimeout(700);

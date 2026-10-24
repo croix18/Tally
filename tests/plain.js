@@ -3,13 +3,13 @@
 // the keys needed to read a mark; how things work is in the Guide (⋯ → Guide), nowhere else. This suite walks the
 // screens and fails if one of the removed captions, or a new one of the same kind, is on screen.
 const { chromium, fs, path, exe, check, done, pick, more, APP } = require('./lib');
-const BANNED = [/IXL → FOCUS/, /How it works/i, /\bTap a (class|unit|student|skill)\b/, /\beach (slice|bar|leaf) (is|counts)\b/, /\bone (dot|line) per (student|class)\b/,
+const BANNED = [/IXL → Focus/, /How it works/i, /\bTap a (class|unit|student|skill)\b/, /\beach (slice|bar|leaf) (is|counts)\b/, /\bone (dot|line) per (student|class)\b/,
   /Read the plots first/, /Stats are hidden/i, /Classes ranked by/, /Slide to the score/, /starts at your usual score/, /Each line below changes/, /Each cell: the grade/, /Bars show each part/,
   /Course grade = /, /isn't circular/, /belongs to the quarter/, /Generate seating, or seat by hand/, /see why they.re there/, /Drag a desk to move it/, /Per-period exports make/, /A note from Tally/, /down 3\+ or more missing/,
   /in black and white/, /places a gradebook by itself/, /comes from the course-wide/];
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1536,height:864}}); const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
-  const seen=[]; const look=async name=>{ const t=await p.evaluate(()=>{ const st=document.createElement('style'); st.textContent='.vh{display:none!important}'; document.head.appendChild(st); const x=document.body.innerText; st.remove(); return x; });   /* .vh is the screen-reader-only legend */ const hits=BANNED.filter(r=>r.test(t)).map(String); seen.push(name); check(hits.length===0,name+': nothing on screen describes the tool'+(hits.length?' — found '+hits.join(' '):'')); return t; };
+  const seen=[]; const look=async name=>{ const t=await p.evaluate(()=>{ const st=document.createElement('style'); st.textContent='.vh{display:none!important}'; document.head.appendChild(st); const x=document.body.innerText; st.remove(); return x; });   /* .vh is the screen-reader-only legend */ const hits=BANNED.filter(r=>r.test(t)).map(String); seen.push(name); check(hits.length===0,name+': nothing on screen describes the tool'+(hits.length?': found '+hits.join(' '):'')); return t; };
   await p.goto('file://'+path.resolve(APP)); await p.waitForTimeout(500);
   // landing: a headline, a button, one line about where the data stays
   const land=await look('landing');
@@ -26,7 +26,7 @@ const BANNED = [/IXL → FOCUS/, /How it works/i, /\bTap a (class|unit|student|s
   // Croix, 5 Oct, with a screenshot of a class card: "Remove the busyness of this. The whole 19 students line. The faded lines under missing work
   // and sliding. That small stuff should not be displayed on the overall screen."
   const card=await p.evaluate(()=>{ const c=document.querySelector('.hcard'); return { meta:c.querySelectorAll('.hhead small').length, subs:[...c.querySelectorAll('.hnums span')].filter(s=>s.parentElement.querySelector('b').textContent.trim()!=='—').length, reasons:[...c.querySelectorAll('.hnums span')].map(s=>s.textContent).join('; '), nums:[...c.querySelectorAll('.hnums > div')].map(d=>d.querySelector('small').textContent+' '+d.querySelector('b').textContent).join(' | '), text:c.innerText }; });
-  check(card.meta===0 && card.subs===0 && !/\d+ students?\b|goal \d+|since \w+ \d+/.test(card.text),'a class card on the Overview is the class, four numbers and its chips — no "23 students · goal 60 · IXL Sep 26", no faded line under a number'+(card.reasons?' (a dash keeps its reason: '+card.reasons+')':''));
+  check(card.meta===0 && card.subs===0 && !/\d+ students?\b|goal \d+|since \w+ \d+/.test(card.text),'a class card on the Overview is the class, four numbers and its chips: no "23 students · goal 60 · IXL Sep 26", no faded line under a number'+(card.reasons?' (a dash keeps its reason: '+card.reasons+')':''));
   check(card.nums.split(' | ').length===4 && /IXL work at goal \d+%/i.test(card.nums) && /Missing work \d+/i.test(card.nums) && /Sliding (\d+|—)/i.test(card.nums),'…and the four numbers are all still there: '+card.nums);
   await more(p,'#btnDetails'); await p.waitForTimeout(300);
   const cardD=await p.evaluate(()=>{ const c=document.querySelector('.hcard'); return { meta:(c.querySelector('.hhead small')||{textContent:''}).textContent, subs:c.querySelectorAll('.hnums span').length }; });
@@ -67,7 +67,7 @@ const BANNED = [/IXL → FOCUS/, /How it works/i, /\bTap a (class|unit|student|s
   await p.selectOption('#labKind','box'); await p.waitForTimeout(300); check(/median/.test(await p.textContent('#lb .labLegend')),'the box plot keeps its key');
   // the explanations that left the screens are in the Guide
   const src=fs.readFileSync('app.js','utf8'); const g=src.slice(src.indexOf('function openGuide'), src.indexOf('/* ---------- Receipt'));
-  check(/tap the skill in the unit view/.test(g) && /Sliding<\/b> — grade down 3 points or more/.test(g) && /belongs to the quarter its Focus due date falls in/.test(g) && /missing work as zero/.test(g) && /ranked by how many students gained a skill/.test(g),'the Guide carries what the screens no longer say: skipping a skill, Sliding, quarter dates, the grade rule, the Race rule');
+  check(/tap the skill in the unit view/.test(g) && /Sliding<\/b>: grade down 3 points or more/.test(g) && /belongs to the quarter its Focus due date falls in/.test(g) && /missing work as zero/.test(g) && /ranked by how many students gained a skill/.test(g),'the Guide carries what the screens no longer say: skipping a skill, Sliding, quarter dates, the grade rule, the Race rule');
   check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   console.log('screens checked: '+seen.length);
   await b.close(); done();

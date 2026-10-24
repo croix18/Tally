@@ -114,7 +114,7 @@ function fastCsv(rows) {
   // the draft rules, over the whole class (21 Oct 2026, after three reviews: a teacher's, a data auditor's, a parent's)
   const all=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; return s.grades.students.map(n=>{ const d=T.conferenceData(s,n); const dr=T.conferenceDraft(d); return { n, S:dr.strengths, C:dr.concerns, W:T.conferenceWork(d), poss:d.ix?d.ix.poss:null, graded:d.graded, redo:d.redo.length, missing:d.missing.length+d.missedTests.length, grade:d.r?d.r.rounded:null, noIxl:d.rt.noIxl, checks:T.conferenceChecks(d) }; }); },K);
   const lines=x=>x?x.split('\n').filter(Boolean):[];
-  const bad=(rule,f)=>{ const b=all.filter(f); check(b.length===0, rule+(b.length?' — not for '+b.length+': '+b.slice(0,2).map(x=>JSON.stringify(x.S+' | '+x.C+' | '+x.W).slice(0,220)).join(' ; '):'')); };
+  const bad=(rule,f)=>{ const b=all.filter(f); check(b.length===0, rule+(b.length?': not for '+b.length+': '+b.slice(0,2).map(x=>JSON.stringify(x.S+' | '+x.C+' | '+x.W).slice(0,220)).join(' ; '):'')); };
   bad('no strength rests on a notebook check or a vocabulary quiz',x=>/notebook|vocab/i.test(x.S));
   bad('no dashboard fragments or jargon: "Strong on assessments", "assessment average", "at goal", "pts", "(listed below)" only after a count',x=>/Strong on|assessment average|at goal|\bpts\b|Best assessment/i.test(x.S+x.C+x.W));
   bad('no IXL account wording ever reaches the form (it is a teacher check instead)',x=>/IXL account|no IXL|First no/i.test(x.S+x.C+x.W) || (x.noIxl && !x.checks.some(c=>/IXL isn't linked/.test(c))));

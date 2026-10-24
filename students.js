@@ -1,10 +1,10 @@
 /* ---------- students.js — Students: every student in one place, for the teacher ----------
    Spliced into app.js's closure. Teacher-only: never reachable from the projected Race/Data Lab, and the Names toggle
    masks names here as everywhere. Three surfaces:
-     · Students (view.mode 'students') — every student of every class, searchable, with grade, change, missing, IXL.
-     · A student's page (view.mode 'student', view.stu = { key, name }) — the grade now and at the end of each closed
+     · Students (view.mode 'students'): every student of every class, searchable, with grade, change, missing, IXL.
+     · A student's page (view.mode 'student', view.stu = { key, name }): the grade now and at the end of each closed
        quarter, trends across the year, every assignment and assessment, IXL by unit, and what would move the grade.
-     · Show student (#show) — the what-ifs turned toward the student: only their numbers, sliders they can drag,
+     · Show student (#show): the what-ifs turned toward the student: only their numbers, sliders they can drag,
        nothing else on screen until the teacher holds to exit. */
 
 const tcase = s => String(s || '').toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (m, p, c) => p + c.toUpperCase()).replace(/\bMc([a-z])/g, (m, c) => 'Mc' + c.toUpperCase()).replace(/\bO'([a-z])/g, (m, c) => "O'" + c.toUpperCase());
@@ -98,24 +98,30 @@ function wireNotes(sec, name) {
 }
 
 /* ---------- Retake eligibility ----------
-   Croix's rule (19 Oct 2026): a student may retake an assessment only when they are completely caught up — nothing not
+   Croix's rule (19 Oct 2026): a student may retake an assessment only when they are completely caught up: nothing not
    handed in (NHI) in the open quarter, and every counted IXL skill in the unit the course is working in at goal.
    One function decides; every screen shows its answer. */
 function retakeStatus(sec, name) {
   const f = findStudent(sec, name); const o = openSec(sec);
   const missing = o && o.grades && f.gi >= 0 ? o.grades.assignments.filter(a => a.status && a.status[f.gi] === 'missing' && !/\bixl\b/i.test(a.name)).map(a => a.name) : [];   // an IXL column is judged by the skills below, not by its Focus cell (one meaning of "missing" everywhere)
   const cur = (state.settings.currentUnit || {})[sec.prep]; const units = unitsOf(sec); const unit = (cur && units.find(u => u.num === cur)) || units.filter(u => u.assigned).pop() || null;
-  let short = [], noIxl = f.ixl == null, nUnit = 0;
-  if (unit && !noIxl) { const t = sec.threshold; const own = activeFor(sec, unit, f.ixl); nUnit = own.length; short = own.filter(k => { const v = eff(sec, k, f.ixl); return v == null || v < t; }).map(k => ({ name: sec.skills[k].name, v: eff(sec, k, f.ixl) })); }
-  const ok = !missing.length && !noIxl && !short.length;
-  return { ok, missing, short, unit, nUnit, noIxl, hasGrades: !!(o && o.grades && f.gi >= 0 && o.grades.assignments.length) };
+  let short = [], noIxl = f.ixl == null, nUnit = 0; const behind = [];
+  const shortIn = u => { const t = sec.threshold; return activeFor(sec, u, f.ixl).filter(k => { const v = eff(sec, k, f.ixl); return v == null || v < t; }).map(k => ({ name: sec.skills[k].name, v: eff(sec, k, f.ixl) })); };
+  if (unit && !noIxl) { nUnit = activeFor(sec, unit, f.ixl).length; short = shortIn(unit); }
+  // "caught up on everything" (Croix): an earlier unit whose IXL is in the open Focus gradebook still counts, so a Unit 1
+  // IXL column marked NHI with Unit 1 skills unfinished blocks a retake even while the class works in Unit 3 (audit, 24 Oct)
+  if (!noIxl && o && o.grades && f.gi >= 0) { const seen = new Set(unit ? [unit.name] : []);
+    o.grades.assignments.forEach(a => { if (!/\bixl\b/i.test(a.name) || aClosed(a, o.grades)) return; const u = gbUnitFor(sec, a); if (!u || seen.has(u.name) || unitClosed(sec, u)) return; seen.add(u.name); const sh = shortIn(u); if (sh.length) behind.push({ unit: u, short: sh, col: a.name }); }); }
+  const ok = !missing.length && !noIxl && !short.length && !behind.length;
+  return { ok, missing, short, unit, nUnit, noIxl, behind, hasGrades: !!(o && o.grades && f.gi >= 0 && o.grades.assignments.length) };
 }
 // "2 missing · 3 IXL skills in Unit 3", or "" when eligible — the same words on every screen.
 function retakeWhy(r, forStudent) {
   const parts = [];
   if (r.missing.length) parts.push(forStudent ? `turn in ${plural(r.missing.length, 'missing assignment')}` : `${r.missing.length} missing`);
   if (r.noIxl) parts.push(forStudent ? 'check your IXL account with your teacher' : 'IXL not linked');
-  else if (r.short.length) parts.push(forStudent ? `finish ${plural(r.short.length, 'IXL skill')} in ${r.unit.short}` : `${plural(r.short.length, 'IXL skill')} in ${r.unit.short}`);
+  else { const units = [...(r.short.length ? [{ unit: r.unit, short: r.short }] : []), ...(r.behind || [])];
+    units.forEach(x => parts.push(forStudent ? `finish ${plural(x.short.length, 'IXL skill')} in ${x.unit.short}` : `${plural(x.short.length, 'IXL skill')} in ${x.unit.short}`)); }
   return parts.join(forStudent ? ' and ' : ' · ');
 }
 const retakeChip = r => r.ok ? `<span class="rtag ok" title="Nothing missing, and every IXL skill in the unit is at goal">${ico('check', 'eligible')} retake</span>` : `<span class="rtag" title="To retake: ${esc(retakeWhy(r, true))}">${esc(retakeWhy(r))}</span>`;
@@ -134,7 +140,7 @@ function renderStudentsView() {
   else if (stuSort === 'sliding') rows.sort((a, b) => (b.sliding ? 1 : 0) - (a.sliding ? 1 : 0) || (a.d ?? 0) - (b.d ?? 0) || g(a) - g(b));
   else if (stuSort === 'name') rows.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
   else if (stuSort === 'retake') rows.sort((a, b) => (b.retake.ok ? 1 : 0) - (a.retake.ok ? 1 : 0) || (a.retake.missing.length + a.retake.short.length) - (b.retake.missing.length + b.retake.short.length) || g(a) - g(b));
-  const cq = liveQ(); const closedQs = [1, 2, 3, 4].filter(n => qClosed(n));
+  const cq = liveQ(); const closedQs = [1, 2, 3, 4].filter(n => qClosed(n)); const mixedQ = secs.some(x => x.grades && liveQuarter(x) !== cq);   // one class already on Q2 while another is on Q1: the grade column says which per row
   $('#bar').innerHTML = `<h2>Students</h2><span class="meta">${plural(rows.length, 'student')}${stuL30 && anyL30 && !H ? ' in the lowest 30%' : ''}${q ? ` matching “${esc(search)}”` : ''} · grades are ${esc(Q_NAMES[cq - 1])}${closedQs.length ? ` · ${closedQs.map(n => 'Q' + n).join(', ')} closed` : ''}</span><div class="spacer"></div>
     <label class="curUnit">Class <select id="stuClass"><option value="">Every class</option>${state.order.map(k => `<option value="${esc(k)}" ${k === stuClass ? 'selected' : ''}>${esc(state.sections[k].label)}</option>`).join('')}</select></label>
     ${anyL30 && !H ? `<button class="pill toggle small ${stuL30 ? 'on' : ''}" id="stuL30" aria-pressed="${stuL30}" title="Only students the FAST report marks as the lowest 30%">L30</button>` : ''}<div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding'], ['retake', 'Retake']].map(([k, l]) => `<button data-sort="${k}" class="${stuSort === k ? 'on' : ''}" aria-pressed="${stuSort === k}">${l}</button>`).join('')}</div>`;
@@ -143,13 +149,13 @@ function renderStudentsView() {
   rows.forEach(r => {
     if (stuSort === 'class' && r.sec !== lastSec) { lastSec = r.sec; body += `<tr class="sgroup"><th colspan="9" style="--cc:${classColor(r.sec)}">${esc(r.sec.label)}</th></tr>`; }
     const o = openSec(r.sec); const qs = r.grade && r.f.gi >= 0 ? quickestPath(r.sec, o, r.f.gi, r.f.ixl) : null;
-    const ix = r.ixl; const fin = r.finals.map(x => `<span class="qfin">Q${x.q} ${x.g}<small>${letterOf(x.g)}</small></span>`).join('');
+    const ix = r.ixl; const fin = r.finals.map(x => `<span class="qfin">Q${x.q} ${x.g}<small>${letterOf(x.g)}</small>${x.closed ? '' : ' <small>kept</small>'}</span>`).join('');
     body += `<tr data-open="${esc(r.sec.key)}" data-name="${esc(r.name)}" class="${r.sliding ? 'sliding' : ''}"><td><button class="nm nmbtn">${nm(r.name)}</button>${r.l30 && !H ? ' <span class="fflag l30 small">L30</span>' : ''}${r.sliding ? ' <span class="gtag">sliding</span>' : ''}</td>
-      <td class="sCls"><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td><td class="sGr">${r.grade ? gradeChip(r.grade) : '<small>no grade yet</small>'}</td>
+      <td class="sCls"><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td><td class="sGr">${r.grade ? gradeChip(r.grade) + (mixedQ ? ` <small>Q${liveQuarter(r.sec)}</small>` : '') : '<small>no grade yet</small>'}</td>
       <td class="${r.d < 0 ? 'down' : r.d > 0 ? 'up' : ''}" data-l="Since last import">${r.d == null ? '' : signedPts(r.d)}</td><td data-l="Missing">${r.missing || ''}</td>
       <td data-l="IXL">${ix && ix.pct != null ? `${Math.round(ix.pct)}% <small>${ix.done}/${ix.poss}</small>` : '<small>—</small>'}</td><td class="qcol">${quickestShort(qs)}</td><td>${r.retake.hasGrades ? retakeChip(r.retake) : ''}</td><td>${fin}</td></tr>`;
   });
-  $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th><th>Class</th><th>${esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Retake</th><th>Closed quarters</th></tr></thead><tbody>${body || `<tr><td colspan="9" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet — import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
+  $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th><th>Class</th><th>${mixedQ ? 'This quarter' : esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Retake</th><th>Earlier quarters</th></tr></thead><tbody>${body || `<tr><td colspan="9" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet: import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
   $('#gridwrap').querySelectorAll('tr[data-open]').forEach(tr => tr.onclick = () => openProfile(tr.dataset.open, tr.dataset.name));
   $('#bar').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { stuSort = b.dataset.sort; render(); });
   const sc = $('#stuClass'); if (sc) sc.onchange = () => { stuClass = sc.value; render(); };
@@ -236,7 +242,7 @@ function renderProfile() {
       <table class="checkTable sasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th class="n">Score</th><th class="n">%</th><th class="n">Class avg</th></tr></thead><tbody>${rows.map(x => `<tr class="${x.c.st === 'missing' ? 'miss' : ''}"><td>${esc(x.a.name)}</td><td>${esc(x.cat)}</td><td>${esc(x.a.due || '')}</td><td class="n">${scoreTxt(x.c, x.a)}</td><td class="n">${x.c.st === 'score' && x.a.max ? Math.round(x.c.v / x.a.max * 100) + '%' : x.c.st === 'missing' ? '0%' : ''}</td><td class="n">${pct1(x.avg)}</td></tr>`).join('')}</tbody></table>`; };
   const asgSecs = books.slice().reverse().map(b => { const g = computeGrade(b.s, b.i); const miss = b.s.grades.assignments.filter(a => cellOf(a, b.i).st === 'missing').length;
     const head = `${esc(Q_NAMES[b.q - 1])}${b.closed ? (b.final ? ' · final' : ' · kept') : ''} · ${g && g.rounded != null ? `${g.rounded}% ${g.letter}` : '—'} · ${plural(b.s.grades.assignments.length, 'assignment')}${miss ? ` · ${miss} missing` : ''}`;
-    return b.closed ? `<details class="gsec qbook"><summary><h3>${head}</h3><small>${b.final ? `closed ${esc(fmtDate((quarters().closed[b.q].at || '').slice(0, 10)))} — nothing here raises alerts` : 'kept when the next quarter\'s export arrived — close the quarter under Quarters'}</small></summary>${table(b)}</details>` : `<section class="gsec qbook"><h3>${head}</h3>${table(b)}</section>`; }).join('');
+    return b.closed ? `<details class="gsec qbook"><summary><h3>${head}</h3><small>${b.final ? `closed ${esc(fmtDate((quarters().closed[b.q].at || '').slice(0, 10)))}: nothing here raises alerts` : 'kept when the next quarter\'s export arrived: close the quarter under Quarters'}</small></summary>${table(b)}</details>` : `<section class="gsec qbook"><h3>${head}</h3>${table(b)}</section>`; }).join('');
 
   // IXL by unit
   let ixlSec = '';
@@ -245,20 +251,20 @@ function renderProfile() {
       ${x.below.length ? `<div class="iul"><span>Below goal (${sec.threshold}):</span> ${x.below.map(b => `${esc(b.name)} <small>${b.v}</small>`).join(' · ')}</div>` : ''}${x.notStarted.length ? (x.notStarted.length <= 4 ? `<div class="iul"><span>Not started:</span> ${esc(x.notStarted.join(' · '))}</div>` : `<details class="iul iumore"><summary><span>Not started:</span> ${plural(x.notStarted.length, 'skill')}</summary>${esc(x.notStarted.join(' · '))}</details>`) : ''}${!x.below.length && !x.notStarted.length ? `<div class="iul done">All ${x.n} skills at goal</div>` : ''}</div>`;
     const cl = ix.units.filter(x => x.closed);
     ixlSec = `<section class="gsec"><h3>IXL by unit <small>goal SmartScore ${sec.threshold} · export of ${esc(fmtDate(dataDate(sec)))}</small></h3>${ix.open.map(unitRow).join('') || '<p class="ghint">Every assigned unit is in a closed quarter.</p>'}
-      ${cl.length ? `<details class="qunitsold"><summary>${plural(cl.length, 'unit')} from closed quarters — still tracked, no alerts</summary>${cl.map(unitRow).join('')}</details>` : ''}</section>`;
+      ${cl.length ? `<details class="qunitsold"><summary>${plural(cl.length, 'unit')} from closed quarters: still tracked, no alerts</summary>${cl.map(unitRow).join('')}</details>` : ''}</section>`;
   } else if (f.ixl == null) ixlSec = `<section class="gsec"><h3>IXL</h3><p class="ghint">${f.noAccount ? 'No IXL account.' : 'Not matched to an IXL account in this class.'}</p></section>`;
 
   // what would move it (open quarter only)
   const qp = openB ? quickestPath(sec, openB.s, openB.i, f.ixl) : null;
   const wi = openB ? `${qp ? `<section class="gsec" id="pQuick">${quickestCard(qp)}</section>` : ''}<section class="gsec" id="pWhat"><h3>What would move the grade <small>${esc(Q_NAMES[openB.q - 1])}</small></h3>${whatIfMarkup(openB.s, openB.i, retakeStatus(sec, name))}</section>`
-    : `<section class="gsec"><h3>What would move the grade</h3><p class="ghint">${anyClosed() ? `${esc(Q_NAMES[cq - 1])} has no gradebook yet — closed quarters don't change, so there's nothing to move until the first ${esc(Q_NAMES[cq - 1])} import.` : 'Import this class\'s Focus gradebook for grades and what-ifs.'}</p></section>`;
+    : `<section class="gsec"><h3>What would move the grade</h3><p class="ghint">${anyClosed() ? `${esc(Q_NAMES[cq - 1])} has no gradebook yet: closed quarters don't change, so there's nothing to move until the first ${esc(Q_NAMES[cq - 1])} import.` : 'Import this class\'s Focus gradebook for grades and what-ifs.'}</p></section>`;
 
   $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}${testsSection(sec, name)}${notesSection(sec, name)}</div></div></div>`;
   if (openB) wireWhatIf($('#pWhat'), openB.s, openB.i);
   $('#back').onclick = profileLeave;
   const go = d => { const n = list[at + d]; if (n) { view.stu = { key: sec.key, name: n }; render(); } };
   $('#pPrev').onclick = () => go(-1); $('#pNext').onclick = () => go(1);
-  const pp = $('#pPrint'); if (pp) pp.onclick = () => printStudentReports(sec, [f.gi], `${name} — report`);
+  const pp = $('#pPrint'); if (pp) pp.onclick = () => printStudentReports(sec, [f.gi], `${name}: report`);
   const ps = $('#pShow'); if (ps) ps.onclick = () => openShow(sec, name);
   wireNotes(sec, name);
   const pc = $('#pConf'); if (pc) pc.onclick = () => openConference(sec, name);
@@ -266,7 +272,7 @@ function renderProfile() {
 
 /* ---------- Quickest way to the next letter ----------
    The fewest pieces of work that lift the grade one letter (F→D, D→C, C→B, B→A), chosen one at a time by what each adds.
-   Missing work (NHI) and IXL come first — that is where struggling students' points are; only if those can't get there are
+   Missing work (NHI) and IXL come first: that is where struggling students' points are; only if those can't get there are
    retakes added (the last one at the lowest score that still works). An IXL step is one skill: one more point in that
    unit's Focus IXL column, and the page names which skills are closest to goal. */
 const NEXT_UP = [[60, 'D'], [70, 'C'], [80, 'B'], [90, 'A']];
@@ -286,7 +292,7 @@ function quickestPath(sec, s, i, ixlIdx) {
   const nowOf = a => { const c = copyTo(a.name); return c != null ? c : focusOf(a); };
   const capOf = a => ixlInfo[a.name] ? ixlInfo[a.name].cap : a.max;
   const nhi = gb.assignments.filter(a => a.max > 0 && a.status && a.status[i] === 'missing' && !ixlCol(a));
-  const ixl = gb.assignments.filter(a => ixlCol(a) && nowOf(a) < capOf(a));
+  const ixl = ixlIdx == null ? [] : gb.assignments.filter(a => ixlCol(a) && nowOf(a) < capOf(a));   // no IXL link: Tally can't name the skills, so it doesn't plan them (the retake line says "IXL not linked")
   const over = {}; copies.forEach(c => over[c.a.name] = c.to); const done = new Set(); const ixlPlus = {}; const g = () => computeGrade(s, i, over).rounded;
   let cur = g(); let guard = 0;
   // phase 1: missing work and IXL skills, best gain first (ties go to missing work: one assignment, done)
@@ -309,15 +315,16 @@ function quickestPath(sec, s, i, ixlIdx) {
   // 21 Oct 2026: "A student cannot take a retake unless they are all caught up on everything"), so before any retake
   // the plan includes every missing assignment and every IXL skill the current unit still needs; if that alone
   // reaches the letter, no retake is listed at all.
-  const retakes = []; let retakeBlocked = null, needUnit = null;
+  const retakes = []; let retakeBlocked = null; const needUnits = [];
   if (cur < target) {
     const rt = retakeStatus(sec, gb.students[i]);
     nhi.forEach(a => { over[a.name] = a.max; done.add(a.name); });
     if (rt.noIxl) retakeBlocked = 'IXL is not linked to this student in Tally, so retake readiness is unknown';
-    else if (rt.short.length && rt.unit) {
-      const col = gb.assignments.find(a => ixlCol(a) && (gbUnitFor(sec, a) || {}).name === rt.unit.name);
-      if (col) { const need = Math.min(rt.short.length, capOf(col) - nowOf(col)); if (need > (ixlPlus[col.name] || 0)) { ixlPlus[col.name] = need; over[col.name] = nowOf(col) + need; } }
-      else needUnit = { unit: rt.unit, n: rt.short.length };   // the unit's IXL isn't in Focus yet: required, but no grade change
+    else { const units = [...(rt.short.length && rt.unit ? [{ unit: rt.unit, short: rt.short }] : []), ...(rt.behind || [])];
+      units.forEach(x => { const col = gb.assignments.find(a => ixlCol(a) && (gbUnitFor(sec, a) || {}).name === x.unit.name);
+        const need = col ? Math.min(x.short.length, capOf(col) - nowOf(col)) : 0;
+        if (col && need > 0) { if (need > (ixlPlus[col.name] || 0)) { ixlPlus[col.name] = need; over[col.name] = nowOf(col) + need; } }
+        else needUnits.push({ unit: x.unit, n: x.short.length }); });   // the unit's IXL isn't in Focus yet, or Focus already gives full credit: required, but no grade change
     }
     cur = g();
   }
@@ -343,8 +350,8 @@ function quickestPath(sec, s, i, ixlIdx) {
   while (pend.length) { let bi = 0, bv = -Infinity; pend.forEach((c, k) => { acc[c.a.name] = c.to; const v = (computeGrade(s, i, acc).pct - at) / c.n; delete acc[c.a.name]; if (v > bv + 1e-9) { bv = v; bi = k; } });
     const c = pend.splice(bi, 1)[0]; acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ ...c, after: r.rounded }); }
   retakes.forEach(a => { acc[a.name] = over[a.name]; plan.push({ kind: 'retake', a, n: 1, to: over[a.name], after: computeGrade(s, i, acc).rounded }); });
-  if (needUnit && retakes.length) { const ri = plan.findIndex(x => x.kind === 'retake'); plan.splice(ri, 0, { kind: 'ixlreq', a: { name: needUnit.unit.short + ' IXL', max: needUnit.n }, n: needUnit.n, unit: needUnit.unit, after: ri > 0 ? plan[ri - 1].after : base.rounded, skills: [] }); }
-  return { base, target, letter, reached: result.rounded >= target, result, over, plan, retakeBlocked, nhi: plan.filter(x => x.kind === 'nhi').map(x => x.a), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length + (needUnit && retakes.length ? needUnit.n : 0) };
+  if (needUnits.length && retakes.length) { needUnits.forEach(nu => { const ri = plan.findIndex(x => x.kind === 'retake'); plan.splice(ri, 0, { kind: 'ixlreq', a: { name: nu.unit.short + ' IXL', max: nu.n }, n: nu.n, unit: nu.unit, after: ri > 0 ? plan[ri - 1].after : base.rounded, skills: [] }); }); }
+  return { base, target, letter, reached: result.rounded >= target, result, over, plan, retakeBlocked, nhi: plan.filter(x => x.kind === 'nhi').map(x => x.a), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length + (needUnits.length && retakes.length ? needUnits.reduce((x, y) => x + y.n, 0) : 0) };
 }
 const anLetter = l => (/^[AF]/.test(l) ? 'an ' : 'a ') + l;
 // One line for the Students list: "2 missing + 3 IXL skills → C".
@@ -365,7 +372,7 @@ function quickestList(q, forStudent) {
   return `<ol class="qpath">${items.join('')}</ol>`;
 }
 function quickestCard(q, forStudent) {
-  if (!q) return ''; if (q.top) return `<div class="qcard top"><b>${forStudent ? 'You have an A' : 'Already an A'}</b><span>${forStudent ? 'Keep turning everything in.' : 'Nothing to climb — the what-ifs below show what keeps it.'}</span></div>`;
+  if (!q) return ''; if (q.top) return `<div class="qcard top"><b>${forStudent ? 'You have an A' : 'Already an A'}</b><span>${forStudent ? 'Keep turning everything in.' : 'Nothing to climb: the what-ifs below show what keeps it.'}</span></div>`;
   const head = forStudent ? `Your quickest way to ${anLetter(q.letter)}` : `Quickest way to ${anLetter(q.letter)}`;
   if (!q.reached) return `<div class="qcard"><b>${head}</b><span>Even with every missing assignment turned in, IXL finished${q.retakeBlocked ? '' : ' and every retake at full marks'}, the grade only reaches ${q.result.rounded}%. It will take the next assessments too.${!forStudent && q.retakeBlocked ? ` Retakes aren't planned: ${esc(q.retakeBlocked)}.` : ''}</span>${quickestList(q, forStudent)}</div>`;
   return `<div class="qcard"><div class="qhead"><b>${head}</b><span class="qres">${q.base.rounded}% → <b>${q.result.rounded}% ${q.result.letter}</b></span></div><span>${plural(q.steps, 'step')}${q.ixl.length ? ' · IXL counts once it\'s copied into Focus' : ''}</span>${quickestList(q, forStudent)}${forStudent ? '<button class="pill" id="shPlan">Show me on the sliders</button>' : ''}</div>`;
@@ -419,7 +426,7 @@ function gradeWith(s, i, over, next) {
 }
 function openShow(sec, name) {
   const s = openSec(sec); const i = s.grades ? s.grades.students.findIndex(n => norm(n) === norm(name)) : -1; if (i < 0 || !s.grades.assignments.length) return;
-  const gb = s.grades; const cats = gradingFor(sec.prep).cats; const base = computeGrade(s, i); if (!base || base.rounded == null) { toast('Nothing is graded for this student yet this quarter — there is nothing to show.', false); return; }
+  const gb = s.grades; const cats = gradingFor(sec.prep).cats; const base = computeGrade(s, i); if (!base || base.rounded == null) { toast('Nothing is graded for this student yet this quarter: there is nothing to show.', false); return; }
   const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing');
   const retake = gb.assignments.filter(a => isAssess(s, a) && a.status && a.status[i] === 'score' && a.values[i] < a.max);
   const ixlCols = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && (a.values[i] == null || a.values[i] < a.max));
@@ -458,11 +465,11 @@ function openShow(sec, name) {
     const r = gradeWith(s, i, over, st.next.on ? { max: st.next.max, pts: st.next.pts } : null);
     $('#shIfV').innerHTML = `${r.rounded}<span>%</span>`; const L = $('#shIfL'); L.textContent = r.letter; L.className = 'lt ' + r.letter;
     const d = r.rounded - base.rounded; const picked = Object.keys(over).length + (st.next.on ? 1 : 0);
-    $('#shDelta').innerHTML = !picked ? 'Pick something below' : d > 0 ? `<b>+${d}</b> points${r.letter !== base.letter ? ` — that's ${/^[AF]/.test(r.letter) ? 'an' : 'a'} <b>${r.letter}</b>` : ''}` : d < 0 ? `<b>${d}</b> points` : 'no change yet';
+    $('#shDelta').innerHTML = !picked ? 'Pick something below' : d > 0 ? `<b>+${d}</b> points${r.letter !== base.letter ? `: that's ${/^[AF]/.test(r.letter) ? 'an' : 'a'} <b>${r.letter}</b>` : ''}` : d < 0 ? `<b>${d}</b> points` : 'no change yet';
     $('#shDelta').className = 'shDelta ' + (d > 0 ? 'up' : d < 0 ? 'down' : '');
     $('#shCats').innerHTML = catBars(base, r);
     const mx = st.next.max; const na = nextAssessment(s, i, mx);   // the same computed facts as the report: every letter above, a D included
-    $('#shNeed').innerHTML = na.can.length ? 'On its own: ' + na.can.map(x => `<b>${fmtN(x.n)} of ${mx}</b> gets you ${x.w}`).join(' · ') + '.' : !na.cant.length ? 'You have an A — keep it up.' : `One test alone can't get you to ${na.cant[na.cant.length - 1]} from here${missing.length ? ' — turning in the missing work is the biggest help' : ''}.`;
+    $('#shNeed').innerHTML = na.can.length ? 'On its own: ' + na.can.map(x => `<b>${fmtN(x.n)} of ${mx}</b> gets you ${x.w}`).join(' · ') + '.' : !na.cant.length ? 'You have an A: keep it up.' : `One test alone can't get you to ${na.cant[na.cant.length - 1]} from here${missing.length ? ': turning in the missing work is the biggest help' : ''}.`;
   };
   el.querySelectorAll('.shRow').forEach(rw => { const k = rw.dataset.k, nm = rw.dataset.n; const rg = rw.querySelector('.shPts'), on = rw.querySelector('.shOn'), out = rw.querySelector('output'), box = rw.querySelector('.shS');
     const mxOf = () => k === 'next' ? st.next.max : Number(rg.max);
@@ -503,7 +510,7 @@ const STU_CSS = `
 .profile .gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}@media (max-width:900px){.profile .gcards{grid-template-columns:1fr 1fr}}.profile .gcard b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.profile .gcard b em.lt{margin-left:0}
 .tspark{margin-left:auto;flex:none}.tspark path{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.tspark path.ref{stroke:#8a93a6;stroke-width:1.5;stroke-dasharray:3 3}
 .pnav{display:inline-flex;gap:6px;white-space:nowrap}
-.iumore summary{cursor:pointer;list-style:none}.iumore summary::-webkit-details-marker{display:none}.iumore summary::after{content:" — show";color:var(--teal);font-weight:var(--w-bold)}.iumore[open] summary::after{content:" — hide"}.iumore[open] summary{margin-bottom:2px}
+.iumore summary{cursor:pointer;list-style:none}.iumore summary::-webkit-details-marker{display:none}.iumore summary::after{content:": show";color:var(--teal);font-weight:var(--w-bold)}.iumore[open] summary::after{content:": hide"}.iumore[open] summary{margin-bottom:2px}
 .checkTable.whatif td:first-child small{display:block;font-weight:var(--w-reg);color:var(--ink-soft)}.checkTable.whatif td:nth-child(2){white-space:nowrap}.checkTable.whatif td:last-child{white-space:nowrap;text-align:right}.checkTable.whatif thead+tbody td:last-child,.checkTable.whatif thead+tbody td{text-align:left;white-space:normal}
 .subh{margin:14px 0 4px;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}.subh small{color:var(--teal)}
 .gsec h3 small{font-weight:var(--w-reg);letter-spacing:0;text-transform:none;color:var(--ink-soft);margin-left:6px}

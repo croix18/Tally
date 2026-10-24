@@ -32,13 +32,13 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   // copy notes modified list, raw points (no scaling)
   await p.click('#copyUnit'); await p.waitForTimeout(300); check(/1 student on a modified list/.test(await p.textContent('#toast')),'copy toast flags the modified list');
   // names mode shows own out-of
-  await more(p,'#btnSettings'); await p.click('[data-cm="names"]'); await p.click('#mSave'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); await seeTab(p,'[data-cm="names"]'); await p.click('[data-cm="names"]'); await p.click('#mSave'); await p.waitForTimeout(200);
   await p.click('#copyUnit'); await p.waitForTimeout(300); const clip=await p.evaluate(()=>navigator.clipboard.readText());
   check(/\t\/22$/m.test(clip) && clip.split('\n').filter(l=>/\t\//.test(l)).length===1,'name mode appends /22 only for the modified student');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   // 3. ID copy + CSV
   const roster=fs.readFileSync('fixtures/roster.txt','utf8').split('\n').map((l,i)=>`${100000+i}\t${l}`).join('\n');
-  await more(p,'#btnSettings'); await p.fill('#roster', roster); await p.click('[data-cm="ids"]'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster', roster); await seeTab(p,'[data-cm="ids"]'); await p.click('[data-cm="ids"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   await p.click('th.unit .copy'); await p.waitForTimeout(300); const clip2=await p.evaluate(()=>navigator.clipboard.readText());
   check(/^100000\t\d+/.test(clip2),'ID ⇥ points copy: '+clip2.split('\n')[0]);
   await p.click('th.unit .ulink'); await p.waitForTimeout(250);
@@ -46,17 +46,17 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   check(/"Student ID","Student","IXL Unit 1","Out of","Goal","Export date"/.test(csv) && /"100000","Nguyen, Ava","\d+","2[23]","67","2026-09-25"/.test(csv),'CSV keyed by ID with out-of and goal');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   // 4. still owed page (popup) with initials
-  await p.click('#printOwed'); await p.waitForTimeout(200); check(await p.locator('[data-owed]').count()===3,'Still owed offers slips / initials list / names list (no confirm())');
+  await p.click('#moreBtn'); await p.click('#mStillOwed'); await p.waitForTimeout(200); check(await p.locator('[data-owed]').count()===3,'Still owed offers slips / initials list / names list (no confirm())');
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('[data-owed="initials"]')]); await pop.waitForLoadState(); await pop.waitForTimeout(300);
   const txt=await pop.textContent('body');
   check(/Still owed/.test(txt) && /Below goal \(67\)/.test(txt) && /A\. N\./.test(txt) && !/Nguyen/.test(txt),'still-owed page: initials, below-goal lists');
   check(/Not matched to an IXL account/.test(txt) || !/not matched/.test(txt),'unmatched roster students are listed, not dropped');
   const bw=await pop.evaluate(()=>{const cs=getComputedStyle(document.body); return cs.color+'|'+cs.backgroundColor;}); check(bw==='rgb(0, 0, 0)|rgb(255, 255, 255)','black on white');
   await pop.screenshot({path:path.join(tmp,'shot20.png'), fullPage:false}); await pop.close();
-  await p.click('#printOwed'); await p.waitForTimeout(200); const [pop2]=await Promise.all([ctx.waitForEvent('page'), p.click('[data-owed="slips"]')]); await pop2.waitForLoadState(); await pop2.waitForTimeout(300);
+  await p.click('#moreBtn'); await p.click('#mStillOwed'); await p.waitForTimeout(200); const [pop2]=await Promise.all([ctx.waitForEvent('page'), p.click('[data-owed="slips"]')]); await pop2.waitForLoadState(); await pop2.waitForTimeout(300);
   check(/Nguyen, Ava/.test(await pop2.textContent('body')) && await pop2.evaluate(()=>getComputedStyle(document.querySelectorAll('.stu')[1]).breakBefore==='page'),'slips: full names, one page per student'); await pop2.close();
   // 5. custom data set
-  await more(p,'#btnSettings'); await p.click('#addCustom'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); await seeTab(p,'#addCustom'); await p.click('#addCustom'); await p.waitForTimeout(200);
   await p.fill('#cLabel','Minutes to school'); await p.fill('#cUnit','minutes');
   const tas=p.locator('.cVals'); const n=await tas.count(); check(n===1,'editor lists the one accelerated class: '+n);
   await tas.first().fill('5, 10 12 8 30 15 7 22 9 11'); await p.click('#cSave'); await p.waitForTimeout(300);
@@ -65,12 +65,12 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   check(opt.includes('Our own data'),'custom group in dropdown');
   const cid=await p.evaluate(()=>window.__tally.state.custom[0].id); await p.selectOption('#labUnit','custom:'+cid); await p.waitForTimeout(400);
   check(await p.locator('.labRow').count()===1 && /minutes per student/.test(await p.textContent('.lbSub')),'custom data plots with its unit');
-  await p.click('#labStats'); await p.waitForTimeout(200); check(/median/.test(await p.textContent('.labStats')),'stats on custom data');
+  await lbOpt(p,'#labStats'); await p.click('#labStats'); await p.waitForTimeout(200); check(/median/.test(await p.textContent('.labStats')),'stats on custom data');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide');
   // 6. course settings export/import
   await p.click('[data-k="1205050-7T3A"]'); await p.waitForTimeout(150); await p.click('th.unit .ulink'); await p.waitForTimeout(200); await p.click('th.skill button'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  await more(p,'#btnSettings'); await p.fill('#thr','55'); await p.click('#mSave'); await p.waitForTimeout(200);
-  await more(p,'#btnSettings'); const [dl2]=await Promise.all([p.waitForEvent('download'), p.click('#exportCourse')]); const course=JSON.parse(fs.readFileSync(await dl2.path(),'utf8')); await p.click('#mCancel');
+  await more(p,'#btnSettings'); await seeTab(p,'#thr'); await p.fill('#thr','55'); await p.click('#mSave'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); await seeTab(p,'#exportCourse'); const [dl2]=await Promise.all([p.waitForEvent('download'), p.click('#exportCourse')]); const course=JSON.parse(fs.readFileSync(await dl2.path(),'utf8')); await p.click('#mCancel');
   check(course.tally==='course' && course.prep==='on' && course.goal===55 && course.skipped.length===1 && !JSON.stringify(course).includes('Nguyen'),'course file: goal, skipped skill, no names');
   fs.writeFileSync('/tmp/course.json', JSON.stringify(course));
   await p.click('[data-k="1205050-7T4A"]'); await p.waitForTimeout(150); await more(p,'#btnSettings'); await p.setInputFiles('#courseFile','/tmp/course.json'); await p.waitForTimeout(400);

@@ -12,9 +12,9 @@ const { chromium, fs, path, exe, check, done, tmp, pick, more, APP } = require('
   for (const [f,names] of [['app.js',['LB_CSS','LAB_ONLY_CSS']],['charts.js',['CHART_CSS']],['students.js',['STU_CSS']]]) { const t=fs.readFileSync(f,'utf8'); for (const n of names) { const a=t.indexOf('const '+n+' = `'); const b=t.indexOf('`;',a); check(a>0 && b>a,f+' has '+n); blocks.push([f+':'+n,t.slice(a,b)]); } }
   const css=blocks.map(b=>b[1].replace(/@font-face\s*\{[^}]*\}/g,'')).join('\n');
   const lit=(re)=>[...css.matchAll(re)].map(m=>m[0]);
-  const radii=lit(/border-radius:\s*\d+(?:\.\d+)?px/g); check(radii.length===0,'no corner radius is a bare number — all come from --r-* ('+(radii.slice(0,5).join(', ')||'none')+')');
-  const weights=lit(/font-weight:\s*(?:\d{3}|bold)\b/g); check(weights.length===0,'no font weight is a bare number — all come from --w-* ('+(weights.slice(0,5).join(', ')||'none')+')');
-  const heights=lit(/min-height:\s*(?:3\d|4\d|5[0-2])px/g); check(heights.length===0,'no control height (30–52 px) is a bare number — all come from --h-* ('+(heights.slice(0,5).join(', ')||'none')+')');
+  const radii=lit(/border-radius:\s*\d+(?:\.\d+)?px/g); check(radii.length===0,'no corner radius is a bare number: all come from --r-* ('+(radii.slice(0,5).join(', ')||'none')+')');
+  const weights=lit(/font-weight:\s*(?:\d{3}|bold)\b/g); check(weights.length===0,'no font weight is a bare number: all come from --w-* ('+(weights.slice(0,5).join(', ')||'none')+')');
+  const heights=lit(/min-height:\s*(?:3\d|4\d|5[0-2])px/g); check(heights.length===0,'no control height (30–52 px) is a bare number: all come from --h-* ('+(heights.slice(0,5).join(', ')||'none')+')');
   // fixed-size round buttons use the same scale (width and height are not caught by the min-height rule above)
   const round=[...css.matchAll(/(#top \.ibtn|#modal header button)\{([^}]*)\}/g)].map(m=>m[2]); check(round.length>=2 && round.every(d=>!/(?:^|;)(?:width|height):\s*\d+px/.test(d)),'the round header buttons and the dialog × take their size from --h-touch');
   // not covered, on purpose: inline style="…" in templates, and printed pages
@@ -32,7 +32,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, more, APP } = require('
   check(live.pill==='999px' && live.touch==='44px' && live.black==='900' && live.btnR==='999px' && live.btnW==='700','in the running app the tokens resolve and reach a real button: '+JSON.stringify(live));
   await more(p,'#btnSettings'); await p.waitForTimeout(300);
   for (const [btn,label,sel] of [['#saveRace','Race','.lbCard'],['#saveLab','Data Lab','.labRow']]) {
-    const [dl]=await Promise.all([p.waitForEvent('download'), p.click(btn)]); const f=path.join(tmp,label.replace(' ','-')+'.html'); await dl.saveAs(f); const saved=fs.readFileSync(f,'utf8');
+    await seeTab(p,btn); const [dl]=await Promise.all([p.waitForEvent('download'), p.click(btn)]); const f=path.join(tmp,label.replace(' ','-')+'.html'); await dl.saveAs(f); const saved=fs.readFileSync(f,'utf8');
     const q=await ctx.newPage(); q.on('pageerror',e=>errs.push(label+': '+e.message)); await q.goto('file://'+f); await q.waitForTimeout(500);
     const r=await q.evaluate(sel=>{ const cs=getComputedStyle(document.documentElement); const el=document.querySelector(sel); const e=el?getComputedStyle(el):null; return { pill:cs.getPropertyValue('--r-pill').trim(), navy:cs.getPropertyValue('--navy').trim(), radius:e?e.borderTopLeftRadius:null, n:document.querySelectorAll(sel).length }; }, sel);
     check(/--r-pill:\s*999px/.test(saved) && r.pill==='999px' && r.navy!=='' && r.n>0 && r.radius && r.radius!=='0px','the saved '+label+' page carries the tokens and its cards are rounded: '+JSON.stringify(r));

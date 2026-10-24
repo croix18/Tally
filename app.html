@@ -9,8 +9,8 @@
 <style id="tallyFont">/*__FONT__*/
 /* ---- Grades ---- */
 div.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:16px}   /* div: <body> also wears .grades / .home as a mode flag, and this once padded the whole page */
-.gcards{display:flex;flex-wrap:wrap;gap:12px}
-.gcard{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);box-shadow:var(--shadow-1);padding:12px 16px;min-width:150px;display:flex;flex-direction:column;gap:2px}
+.gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.gcard{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);box-shadow:var(--shadow-1);padding:12px 16px;min-width:0;display:flex;flex-direction:column;gap:2px}
 .gcard small{font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:var(--w-black)}
 .gcard b{font-size:26px;font-weight:var(--w-black);line-height:1.1}
 .gcard span{font-size:var(--t-s);color:var(--ink-soft)}
@@ -23,7 +23,7 @@ div.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:16px}   /* 
 .gsec .chart{max-width:1100px;margin:0 auto}
 .gsec h3{margin:0 0 6px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
 .ghint{font-size:var(--t-s);color:var(--ink-soft);margin:6px 0 4px}
-.gasg select{border:2px solid var(--grid);border-radius:var(--r-s);padding:3px 6px;background:var(--white);font:inherit;font-size:var(--t-s)}
+.gasg select{font-size:var(--t-s);min-height:var(--h-s);padding:2px 10px}
 .gasg tr.differ td:nth-child(2){background:var(--coral)}
 .gstu tr{cursor:pointer}.gstu tr:hover td{background:var(--paleturq)}
 .gstu tr.sliding td:first-child{background:var(--coral)}
@@ -66,11 +66,13 @@ div.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:16px}   /* 
 /* ---- calm by default: .det shows only in Details view ---- */
 body:not(.details) .det{display:none!important}
 .notice>span:first-child{color:var(--bad);display:inline-flex}.notice.info>span:first-child,.notice.soft>span:first-child{color:var(--teal)}.ico{flex:none}.ib .ico{width:18px;height:18px;vertical-align:-4px}
+/* calm view: the class's notices open from the bar's "N to fix" chip as one card under the bar, not a band above it */
 .nfold{display:flex;flex-direction:column;gap:8px}
+#notices{padding:0 16px;display:flex;flex-direction:column;gap:8px;flex-shrink:0;background:var(--white)}#notices:not(:empty){padding:10px 16px 12px;border-bottom:1px solid var(--grid)}
 .nchip{border:1px solid rgba(15,118,110,.3);background:var(--paleturq);color:var(--navy);border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:var(--w-heavy);font-size:var(--t-s);min-height:var(--h-s);white-space:nowrap}.nchip.warn{background:var(--coral);border-color:rgba(217,68,47,.3);color:var(--bad)}.nchip small{font-weight:var(--w-med);color:var(--navy);font-size:inherit}.nchip[aria-expanded="true"]{box-shadow:inset 0 0 0 2px currentColor}
 .more{position:relative}.more .menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--white);border-radius:var(--r-m);box-shadow:var(--shadow-2);border:2px solid var(--grid);min-width:220px;z-index:30;display:flex;flex-direction:column;padding:6px}
 .more .menu button{background:none;border:none;text-align:left;padding:10px 14px;font:inherit;font-weight:var(--w-bold);color:var(--navy);border-radius:var(--r-s);cursor:pointer}.more .menu button:hover{background:var(--paleturq)}
-body:not(.details) .tab .m{display:none}body:not(.details) .tab{padding:8px 16px}
+.tab{padding:8px 16px}
 /* ---- Overview ---- */
 body.home #board,body.grades #board{background:transparent;border:none;box-shadow:none}body.home #bar,body.grades #bar{background:transparent;border-bottom:none;padding-left:4px}body.home #gridwrap,body.grades #gridwrap{padding:0 2px}
 div.home{display:flex;flex-direction:column;gap:16px;padding:4px 0 40px}
@@ -98,7 +100,7 @@ div.home{display:flex;flex-direction:column;gap:16px;padding:4px 0 40px}
 
 /* ---- digest ---- */
 .hchip.act{background:var(--navy);color:var(--white);cursor:pointer}.digest .dsec{margin-bottom:14px}.digest h3{margin:8px 0 6px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
-.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:6px 0 10px}.dstat{background:var(--paleturq);border-radius:var(--r-m);padding:10px 12px}.dstat b{font-size:24px;font-weight:var(--w-black);display:block;line-height:1.1}.dstat small{font-size:var(--t-xs);color:var(--ink-soft)}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:6px 0 10px}.dstat{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:10px 12px}.dstat b{font-size:24px;font-weight:var(--w-black);display:block;line-height:1.1}.dstat small{font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:var(--w-black)}
 .digest p{margin:4px 0;font-size:var(--t-s)}.dup{color:var(--teal);font-weight:var(--w-black)}.ddown{color:var(--bad);font-weight:var(--w-black)}
 </style>
 <style id="tallyTokens">
@@ -192,6 +194,7 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 .tundo{margin-left:10px;background:var(--white);color:var(--navy);border:none;border-radius:var(--r-pill);padding:4px 12px;font-weight:var(--w-heavy);font:inherit;cursor:pointer;pointer-events:auto}
 .pill svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
 .pill.small{font-size:var(--t-s);padding:5px 14px;min-height:var(--h-s)}
+.pill.toggle{background:var(--white);color:var(--navy);border:1px solid var(--grid);font-size:var(--t-s);padding:4px 14px;min-height:var(--h-s)}.pill.toggle:hover{background:var(--sand)}
 
 /* ---- section chips ---- */
 #ask{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(22,33,58,.45)}#ask .askBox{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:22px 24px 18px;max-width:520px;width:100%}#ask p{margin:0 0 18px;font-size:var(--t-m);line-height:1.45;color:var(--navy)}#ask .askRow{display:flex;gap:10px;justify-content:flex-end}
@@ -212,10 +215,9 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 .tab.active .badge.acc{color:var(--turq)}
 .tab .age{background:var(--sand);color:var(--navy);border-radius:var(--r-pill);padding:2px 8px;font-weight:var(--w-black)}
 .tab.active .age{background:var(--white)}
-.tab.warn::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--bad);border:2px solid var(--white);position:absolute;top:-4px;right:-2px}
+.tab.warn::after{display:none;content:'';width:10px;height:10px;border-radius:50%;background:var(--bad);border:2px solid var(--white);position:absolute;top:-4px;right:-2px}
 
 /* ---- notices ---- */
-#notices{padding:12px 28px 0;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
 #notices:empty{padding:0}
 .notice{padding:9px 16px;border-radius:var(--r-m);background:var(--coral);color:var(--navy);border:1px solid rgba(217,68,47,.25);font-weight:var(--w-reg);font-size:var(--t-m);display:flex;gap:10px;align-items:center;}
 .notice b{font-weight:var(--w-black)}
@@ -248,7 +250,8 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 #bar .pill.onbar,#bar.detail .pill.onbar{background:var(--turq);color:var(--navy);font-weight:var(--w-heavy)}   /* Copy is why the unit view exists: the one filled control on its bar */
 #bar .pill.onbar:hover{background:#25bfae}
 #bar .pill.toggle.soft[aria-pressed="true"]{background:var(--paleturq);color:var(--teal);border-color:transparent}
-#bar .pill.toggle{background:var(--white);color:var(--navy);border:2px solid var(--navy);padding:3px 14px;min-height:var(--h-s);font-size:var(--t-s)}
+#bar .pill.toggle{background:var(--white);color:var(--navy);border:1px solid var(--grid);padding:4px 14px;min-height:var(--h-s);font-size:var(--t-s)}
+#bar .pill.toggle:hover{background:var(--sand)}
 #bar .pill.toggle[aria-pressed="true"]{background:var(--navy);color:var(--white)}
 
 #gridwrap{flex:1;min-height:0;overflow:auto}
@@ -298,7 +301,7 @@ th.ahead .ustat{display:block}th.ahead .utag{color:var(--ink-soft)}
 #aheadMenu button{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;font-weight:var(--w-med);font-size:var(--t-s)}#aheadMenu button b{font-weight:var(--w-heavy);white-space:nowrap}#aheadMenu button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-soft)}#aheadMenu button small{color:var(--teal);font-weight:var(--w-bold);white-space:nowrap}
 table.grid td.aheadc{text-align:left;padding:0 16px;border-left:2px solid var(--grid);white-space:nowrap;font-size:var(--t-s);color:var(--navy);cursor:pointer}table.grid td.aheadc.none{cursor:default}td.aheadc b{font-weight:var(--w-heavy)}td.aheadc small{color:var(--ink-soft);font-weight:var(--w-med);font-size:var(--t-xs)}
 table.grid tfoot td.aheadc{color:var(--teal);font-weight:var(--w-bold);font-size:var(--t-xs);cursor:default}
-.curUnit{display:inline-flex;align-items:center;gap:6px;font-weight:var(--w-bold);font-size:var(--t-s);color:var(--ink-soft)}.curUnit select{border:1px solid var(--grid);border-radius:var(--r-pill);padding:4px 10px;background:var(--white);color:var(--navy);font:inherit;font-weight:var(--w-bold)}
+.curUnit{display:inline-flex;align-items:center;gap:6px;font-weight:var(--w-bold);font-size:var(--t-s);color:var(--ink-soft)}.curUnit select{font-size:var(--t-s);min-height:var(--h-s);padding:2px 10px}
 td.pts{text-align:center;padding:0 8px;cursor:pointer}
 td.pts .v{font-weight:var(--w-black);line-height:1}
 td.pts .v small{font-weight:var(--w-bold);color:var(--teal);font-size:var(--t-xs)}
@@ -322,7 +325,7 @@ details.fold{border-top:1px solid var(--grid);margin-top:12px}details.fold>summa
 details.fold>summary::before{content:"";flex:none;width:7px;height:7px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(-45deg);transition:transform .15s;margin:0 4px 0 2px}details.fold[open]>summary::before{transform:rotate(45deg)}details.fold>summary small{font-weight:var(--w-med);color:var(--ink-soft)}
 #modal .body.fc .fclead{font-size:var(--t-l);line-height:1.4;margin:0 0 6px}#modal .body.fc .checkSummary.lead{font-size:var(--t-xl);font-weight:var(--w-heavy);margin:0 0 4px;line-height:1.6}#modal .body.fc .fcpair{margin:0 0 12px;color:var(--ink-soft);font-size:var(--t-s)}.fc.setup .rp-actions{margin:12px 0 4px}#modal .body.fc .skipPick .ghint{margin:0 0 6px}
 .checkSummary{font-weight:var(--w-bold)} .checkSummary .ok{color:var(--teal)} .checkSummary .bad{background:var(--coral);padding:1px 8px;border-radius:var(--r-pill)} .checkSummary .stale{background:var(--sand);padding:1px 8px;border-radius:var(--r-pill)}
-#modal .body.one select{border:2px solid var(--grid);border-radius:var(--r-m);padding:8px 10px;background:var(--white);font:inherit;max-width:100%}
+#modal .body.one select{font-weight:var(--w-reg)}
 td.pts.own .v small{color:var(--navy);font-weight:var(--w-black);text-decoration:underline dotted}
 
 /* skill detail view */
@@ -380,19 +383,26 @@ body.dragging::after{content:'Drop IXL exports anywhere';position:fixed;inset:0;
 #modal section h3.mt{margin-top:16px}
 /* Settings: each scope under its own heading — who the options below it reach */
 #modal .scopeHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding-bottom:10px;min-height:56px;box-sizing:border-box;border-bottom:2px solid var(--grid)}#modal .scopeHead.second{margin-top:26px}
+#modal .body.tabs{display:block;max-width:760px;margin:0 auto;width:100%}.stabRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px}.stabRow .stabs{margin:0}.stabRow select,.stabRow span{margin-left:auto;font-weight:var(--w-bold)}.stab:not(.on){display:none}.scope .ghint{margin:0 0 10px}
+.scope h3{font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin:14px 0 6px}
 #modal .scopeHead b{font-weight:var(--w-black);font-size:var(--t-xl);color:var(--navy)}#modal .scopeHead span{color:var(--ink-soft);font-weight:var(--w-bold);font-size:var(--t-s)}
-#modal .scopeHead select{font:inherit;font-weight:var(--w-bold);color:var(--navy);border:2px solid var(--grid);border-radius:var(--r-pill);padding:4px 12px;background:var(--white);min-height:var(--h-m);max-width:100%}
+select{font:inherit;font-weight:var(--w-bold);color:var(--navy);border:1px solid var(--grid);border-radius:var(--r-pill);padding:4px 12px;background:var(--white);min-height:var(--h-m);max-width:100%}
+#modal .scopeHead select{max-width:100%}
 #modal section p{margin:0 0 10px;color:var(--teal);font-size:var(--t-s);font-weight:var(--w-reg)}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.field>.seg{align-self:flex-start}
 .field label{font-size:var(--t-s);font-weight:var(--w-bold);color:var(--teal);letter-spacing:.04em}
 .field input[type=text],.field input[type=number],.field textarea{border:2px solid var(--grid);border-radius:var(--r-m);padding:8px 10px;background:var(--white);outline:none}
 .field input:focus-visible,.field textarea:focus-visible{outline:3px solid var(--turq);outline-offset:1px}
 .field textarea{min-height:160px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:var(--t-s);line-height:1.55;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.seg{display:inline-flex;gap:8px;flex-wrap:wrap}
-.seg button{background:var(--paleturq);color:var(--navy);border:2px solid var(--turq);border-radius:var(--r-pill);font-weight:var(--w-bold);font-size:var(--t-m);padding:7px 18px;min-height:var(--h-m)}
-.seg button.on{background:var(--turq);font-weight:var(--w-black)}
-.seg.small button{padding:4px 12px;min-height:var(--h-s);font-size:var(--t-s)}
+/* ---- the control vocabulary (round 8): four looks, every screen ----
+   Primary .pill (turquoise, one per screen) · Secondary .pill.pale · Quiet .pill.toggle (white, thin border; navy when
+   pressed) · Segment .seg (white track, navy for the chosen one). Older class names map onto these four. */
+.seg{display:inline-flex;gap:3px;flex-wrap:wrap;background:var(--white);border:1px solid var(--grid);border-radius:var(--r-pill);padding:3px}
+.seg button{background:transparent;color:var(--navy);border:none;border-radius:var(--r-pill);font-weight:var(--w-bold);font-size:var(--t-s);padding:6px 14px;min-height:calc(var(--h-m) - 8px)}
+.seg button:hover{background:var(--sand)}
+.seg button.on,.seg button[aria-pressed="true"]{background:var(--navy);color:var(--white)}
+.seg.small button,.seg.tiny button{padding:4px 12px;min-height:calc(var(--h-s) - 6px);font-size:var(--t-s)}
 .check{display:flex;align-items:center;gap:8px;font-size:var(--t-s);font-weight:var(--w-bold);margin:8px 0}
 .check input{width:18px;height:18px;accent-color:var(--teal)}
 .report{background:var(--paleturq);border-radius:var(--r-m);padding:10px 14px;font-size:var(--t-s);line-height:1.55;font-weight:var(--w-reg)}
@@ -446,8 +456,8 @@ th.skill .rot{white-space:normal;width:auto;max-width:calc(var(--skw,56px) - 4px
 #modal .body.one{display:block}
 #modal .body.one p{color:var(--navy);font-size:var(--t-m);font-weight:var(--w-reg);margin:0 0 12px}
 .picks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
-.chip{background:var(--paleturq);color:var(--navy);border:2px solid var(--turq);border-radius:var(--r-pill);font-weight:var(--w-bold);font-size:var(--t-m);padding:8px 16px;min-height:var(--h-m)}
-.chip.on{background:var(--turq);font-weight:var(--w-black)}
+.chip{background:var(--white);color:var(--navy);border:1px solid var(--grid);border-radius:var(--r-pill);font-weight:var(--w-bold);font-size:var(--t-s);padding:7px 14px;min-height:var(--h-m)}
+.chip.on{background:var(--navy);color:var(--white);border-color:var(--navy)}
 .choice{border:2px solid var(--grid);border-radius:var(--r-m);padding:12px 14px;margin:10px 0}.choice p{margin:4px 0 10px}
 .chip small{color:var(--teal);font-weight:var(--w-black)}
 @media (max-width:800px){.rpanel{grid-template-columns:1fr}}
@@ -462,8 +472,8 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 .lbTools .seg button{border:none;padding:8px 14px;min-height:var(--h-m);font-size:clamp(13px,.8vw,17px);background:transparent}
 .lbTools .seg button.on{background:var(--navy);color:var(--white)}
 .lbTools .pill.small{min-height:var(--h-m);font-size:clamp(13px,.8vw,17px)}
-.lbTools .labSelect{border:2px solid var(--grid);border-radius:var(--r-pill);padding:8px 12px;background:var(--white);font-weight:var(--w-bold);font-size:clamp(13px,.8vw,17px);max-width:320px;min-height:var(--h-m);box-shadow:var(--shadow-2)}
-.lbTools{flex-wrap:wrap;justify-content:flex-end;max-width:92vw;align-items:center}
+.lbTools .labSelect{border:1px solid var(--grid);border-radius:var(--r-pill);padding:8px 12px;background:var(--white);font-weight:var(--w-bold);font-size:clamp(13px,.8vw,17px);max-width:320px;min-height:var(--h-m);box-shadow:var(--shadow-2)}
+.lbTools{flex-wrap:wrap;justify-content:flex-end;max-width:96vw;align-items:center}
 .lbTools .pill[aria-pressed="false"]{background:var(--paleturq);color:var(--navy)}
 #lbExit{position:relative;overflow:hidden;opacity:1;background:var(--white);color:var(--navy);border:2px solid var(--navy);-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
 #lbExit *{pointer-events:none}
@@ -473,7 +483,7 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 
 /* ---- toast ---- */
 #toast{position:fixed;right:24px;bottom:22px;transform:translateY(12px);background:var(--navy);color:var(--white);border:2px solid var(--turq);padding:12px 24px;border-radius:var(--r-pill);box-shadow:var(--shadow-2);opacity:0;transition:all .18s;z-index:80;font-weight:var(--w-bold);font-size:15px;max-width:min(720px,80vw);pointer-events:none}#toast.show{pointer-events:auto;cursor:pointer}
-body:has(#modal:not(.hidden)) #toast{bottom:auto;top:18px}   /* while a dialog is open the message goes to the top, clear of the dialog's Save / Cancel row */
+body:has(#modal:not(.hidden)) #toast{right:auto;left:24px}   /* while a dialog is open the message sits bottom-left, clear of the dialog's title and its Save / Cancel row */
 #toast.show{opacity:1;transform:translateY(0)}
 body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at the bottom: the message goes to the top */
 #toast.err{background:var(--coral);color:var(--navy);border-color:var(--coral)}
@@ -486,7 +496,7 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
 @media (max-height:680px) and (min-width:760px){:root{--board-min:min(400px,calc(100vh - 16px))}#top{margin-top:8px;padding-top:8px;padding-bottom:8px}#tabs{padding-top:8px}#board{margin-top:8px;margin-bottom:10px}#bar{min-height:var(--h-l);padding-top:6px;padding-bottom:6px}}
 @media (min-width:760px){#top{flex-wrap:nowrap}}   /* one row from the smallest tablet up: the search field gives way first; below that it wraps */
 @media (max-width:840px){#search{padding:6px 12px}#top .nav button{padding:6px 11px}}
-@media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px;gap:8px}#tabs,#notices{padding-left:14px;padding-right:14px}#board{margin:14px 14px 24px}#top .nav{margin-left:4px}#top .nav button{padding:6px 13px}}
+@media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px;gap:8px}#tabs{padding-left:14px;padding-right:14px}#board{margin:14px 14px 24px}#top .nav{margin-left:4px}#top .nav button{padding:6px 13px}}
 /* ---- seating ---- */
 .seat{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:14px 16px 24px;align-items:start}
 @media (max-width:1000px){.seat{grid-template-columns:1fr}}
@@ -494,6 +504,8 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
 .seatHint{margin:0 0 6px;min-height:1.5em}.chart-stage{background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:8px;box-shadow:var(--shadow-1)}
 .chart-stage .chartSvg{max-height:max(300px,calc(100vh - 360px));margin:0 auto}.cdesk{cursor:pointer}
 .pill.big{min-height:var(--h-l);font-size:var(--t-l);justify-content:center}
+/* one primary per screen: once a chart is ready to save, Save is the filled button and Generate steps back */
+body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--teal)}body:has(#app:not(.hidden)) #btnImport:hover{background:var(--turq);color:var(--navy)}
 .prog{height:6px;border-radius:var(--r-pill);background:var(--sand);overflow:hidden}.prog i{display:block;height:100%;width:0;background:var(--teal);transition:width .2s}
 .cand{display:flex;gap:6px;flex-wrap:wrap}.cand button{flex:1;min-width:110px;border:2px solid var(--grid);background:var(--white);border-radius:var(--r-m);padding:8px 10px;font:inherit;font-weight:var(--w-heavy);color:var(--navy);cursor:pointer;text-align:left;min-height:var(--h-touch)}.cand button small{display:block;font-weight:var(--w-med);color:var(--ink-soft);font-size:var(--t-xs)}.cand button.on{border-color:var(--teal);background:var(--paleturq)}
 .fit{display:flex;gap:12px;align-items:center;background:var(--white);border:1px solid var(--grid);border-radius:var(--r);padding:8px 12px}.fit .n{font-size:34px;font-weight:var(--w-black);line-height:1;min-width:64px}.fit .n.good{color:var(--teal)}.fit .n.mid{color:#B26A00}.fit .n.bad{color:var(--bad)}
@@ -506,7 +518,7 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
 .seatList{display:flex;flex-direction:column;gap:4px;max-height:44vh;overflow:auto;padding-right:2px}
 .seatStu{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--grid);border-radius:var(--r-m);padding:4px 6px 4px 4px;min-height:var(--h-l)}.seatStu[hidden]{display:none}.seatOpen{display:flex;align-items:center;gap:10px;flex:1;min-width:0;background:none;border:none;font:inherit;color:var(--navy);cursor:pointer;text-align:left;padding:4px 6px;border-radius:var(--r-s);min-height:var(--h-m)}.seatOpen:hover{background:var(--paleturq)}
 .seatSearch{margin:4px 0 6px;min-height:var(--h-m)}.quick{display:inline-flex;gap:4px;align-items:center;flex:none}.seg.tiny{display:inline-flex;gap:2px;background:var(--sand);border-radius:var(--r-pill);padding:2px}.seg.tiny button{border:none;background:transparent;border-radius:var(--r-pill);min-width:30px;min-height:var(--h-s);font:inherit;font-weight:var(--w-heavy);font-size:12px;color:var(--ink-soft);cursor:pointer}.seg.tiny button.on{background:var(--navy);color:var(--white)}.seg.tiny button.on.hot{background:var(--bad)}
-.ft{min-width:32px;min-height:var(--h-s);border-radius:var(--r-pill);border:2px solid var(--grid);background:var(--white);font:inherit;font-weight:var(--w-black);font-size:12px;color:var(--ink-soft);cursor:pointer}.ft.on{background:var(--teal);border-color:var(--teal);color:var(--white)}
+.ft{min-width:32px;min-height:var(--h-s);border-radius:var(--r-pill);border:1px solid var(--grid);background:var(--white);font:inherit;font-weight:var(--w-black);font-size:12px;color:var(--ink-soft);cursor:pointer}.ft.on{background:var(--teal);border-color:var(--teal);color:var(--white)}
 .mini.wide{width:150px}
 .seatStu .ph{width:28px;height:35px;border-radius:var(--r-s);background:#E9EEF5;display:inline-flex;align-items:center;justify-content:center;font-weight:var(--w-heavy);font-size:11px;overflow:hidden}.seatStu .ph img{width:100%;height:100%;object-fit:cover}
 .seatStu .col{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.seatStu .nm{font-weight:var(--w-bold);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.seatStu .ph{flex:none}.seatStu .tags:empty{display:none}.seatStu .tags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
@@ -547,7 +559,11 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
   .more .menu button,.menu.floating button{min-height:var(--h-l)}
   .nchip{min-height:var(--h-touch);padding:8px 16px}.ib{min-width:44px;min-height:var(--h-touch)}.mini{min-height:var(--h-touch)}.seg.tiny button{min-width:38px;min-height:var(--h-m)}.ft{min-width:40px;min-height:var(--h-m)}.seatOpen{min-height:var(--h-touch)}.notice button{min-height:var(--h-touch)}.seatSide summary{min-height:var(--h-touch);display:flex;align-items:center}.chip.rel{min-height:var(--h-touch)}
 }
-#lbOpts{display:none}
+/* the Board's toolbar: Race/Data Lab, course, data set, chart kind and Hold to exit always showing; the eight toggles
+   (stats, average, dots, values, outliers, points/%, bins, by course) open behind Options as one card above the bar */
+.lbTools .lbOptsBox{display:none}
+.lbTools.open .lbOptsBox{display:flex;flex-wrap:wrap;gap:8px;position:absolute;right:0;bottom:calc(100% + 8px);background:var(--white);border:1px solid var(--grid);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:10px;max-width:min(92vw,900px)}
+.lbTools{position:fixed}
 /* ---- phone (Croix, 23 Oct 2026: "it's terrible for mobile") ----
    Designed for a phone, not squeezed: the page scrolls; a tab bar sits at the bottom under the thumb (Classes,
    Students, Board, Import); the header is one slim row that scrolls away; the class tabs stay at the top; tables that
@@ -580,7 +596,7 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
   #tabs{flex-wrap:nowrap;overflow-x:auto;padding:8px 8px 6px;gap:8px;scrollbar-width:none}
   #tabs:empty{display:none}
   #tabs::-webkit-scrollbar{display:none}#tabs>*{flex:none}
-  #notices{padding-left:8px;padding-right:8px}
+  #notices{padding-left:10px;padding-right:10px}
   #app{display:block}
   #board{margin:6px 8px 16px;min-height:0;overflow:visible;flex:none}
   #bar{padding:10px 12px;gap:8px 10px;min-height:0}
@@ -661,16 +677,15 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
   .qdates{grid-template-columns:1fr 1fr!important}
   /* messages: a slim bar above the tab bar (above a dialog's buttons when one is open) */
   #toast{pointer-events:none!important;left:8px;right:8px;width:auto;max-width:none;bottom:calc(74px + env(safe-area-inset-bottom));padding:10px 14px;font-size:14px;border-radius:var(--r-m);text-align:left}
-  body:has(#modal:not(.hidden)) #toast{top:auto;bottom:calc(72px + env(safe-area-inset-bottom))}
+  body:has(#modal:not(.hidden)) #toast{top:auto;left:8px;right:8px;bottom:calc(72px + env(safe-area-inset-bottom))}
   #toast button{pointer-events:auto}
   body.lbMode #toast{top:auto;bottom:calc(72px + env(safe-area-inset-bottom))}
   /* the Board: the chart gets the screen, the controls are one row along the bottom */
   #lb .lbTools{position:sticky;bottom:0;right:auto;max-width:none;flex-wrap:wrap;justify-content:flex-start;margin:0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-radius:0;gap:8px}
   #lb .lbTools>*{flex:none;max-width:100%}
-  #lb .lbTools:not(.open)>*:not(.lbTabs):not(#lbOpts):not(#lbExit){display:none}
+  #lb .lbTools.open .lbOptsBox{position:static;max-width:100%;box-shadow:none;border:none;padding:0;flex:1 1 100%}
   #lb .lbTools .seg{flex-wrap:wrap}
   #lb .lbTools .labSelect{flex:1 1 100%}
-  #lbOpts{display:inline-flex}
   #lbExit{margin-left:auto}
   #lb .lbTitle{font-size:24px}#lb .lbSub{font-size:14px}
   #lb .labPlot .chart,#lb .labPlot .labSvg,#lb .labRow.one .labPlot .chart{max-height:none}#lb .labRow{grid-template-columns:1fr}
@@ -734,9 +749,9 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
 
 <div id="app" class="hidden">
   <div id="tabs" role="tablist"></div>
-  <div id="notices"></div>
   <div id="board">
     <div id="bar"></div>
+    <div id="notices"></div>
     <div id="gridwrap"></div>
   </div>
 </div>

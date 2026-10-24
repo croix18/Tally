@@ -1,9 +1,9 @@
 // Chart colours mean what anyone would guess, and the Board's heading reads like a heading.
-//   · letter grades: A green, B blue, C yellow, D orange, F red — one set, the same in charts, chips and tokens
+//   · letter grades: A green, B blue, C yellow, D orange, F red: one set, the same in charts, chips and tokens
 //   · the five stay apart for colour-blind readers (same maths as the palette validator used to choose them), and no
 //     mark relies on colour alone: slices and segments carry the letter or the number
 //   · a class's own plot wears that class's colour; class against class uses the class colours
-//   · the Board heading is a title and one ordinary line of facts — no "Data Lab · … · … · …" chain
+//   · the Board heading is a title and one ordinary line of facts: no "Data Lab · … · … · …" chain
 const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
 const hex = h => [0, 2, 4].map(i => parseInt(h.replace('#', '').slice(i, i + 2), 16) / 255);
 const lin = h => hex(h).map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -50,7 +50,7 @@ const rgb = h => 'rgb(' + hex(h).map(c => Math.round(c * 255)).join(', ') + ')';
   check(ov.segs.length>0 && ov.segs.every(s=>{ const k=(s.title.match(/, ([A-F]):/)||[])[1]; return k && s.fill===rgb(L[k]) && s.stroke; }),'…and every segment wears its letter\'s colour, with a hairline so yellow shows on white ('+ov.segs.length+' segments)');
   const washes=new Set(ov.chips.map(c=>c.bg)); check(ov.chips.length===5 && washes.size===5 && ov.chips.every(c=>/^[A-F]\s*\d+$/.test(c.t)),'the class card\'s five letter chips are five different tints, each with its letter and count: '+ov.chips.map(c=>c.t).join(' '));
   const chipHue=await p.evaluate(()=>[...document.querySelectorAll('.hcard .letters i')].slice(0,5).map(i=>{ const [r,g,b]=getComputedStyle(i).backgroundColor.match(/\d+/g).map(Number).map(v=>v/255); const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn; const x=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4; return Math.round((x*60+360)%360); }));
-  check(chipHue[0]>90&&chipHue[0]<170 && (chipHue[4]<25||chipHue[4]>340) && chipHue[1]>190&&chipHue[1]<250,'chip tints follow the same rule — A greenish, B bluish, F reddish ('+chipHue.join('°, ')+'°)');
+  check(chipHue[0]>90&&chipHue[0]<170 && (chipHue[4]<25||chipHue[4]>340) && chipHue[1]>190&&chipHue[1]<250,'chip tints follow the same rule: A greenish, B bluish, F reddish ('+chipHue.join('°, ')+'°)');
   // Board → Data Lab, a Focus assessment as a circle graph
   await p.click('#btnLb'); await p.waitForTimeout(600); await p.click('[data-tab="lab"]'); await p.waitForTimeout(500);
   const gbId=await p.evaluate(()=>{ const o=[...document.querySelectorAll('#labUnit option')].find(o=>o.value.startsWith('gb:')); return o?o.value:null; });
@@ -59,7 +59,7 @@ const rgb = h => 'rgb(' + hex(h).map(c => Math.round(c * 255)).join(', ') + ')';
   const head=await p.evaluate(()=>{ const h=document.querySelector('#lb .lbHead'); const t=h&&h.querySelector('h1.lbTitle'), s=h&&h.querySelector('.lbSub'); const note=document.querySelector('#lb .lgNote');
     return { title:t?t.textContent:'', sub:s?s.textContent:'', note:note?note.textContent:'', h1s:document.querySelectorAll('#lb h1').length, tSize:t?parseFloat(getComputedStyle(t).fontSize):0, sSize:s?parseFloat(getComputedStyle(s).fontSize):0, tSpace:t?getComputedStyle(t).letterSpacing:'', tCase:t?getComputedStyle(t).textTransform:'' }; });
   check(head.h1s===1 && head.title===gbId.slice(3),'the Board heading is one <h1> that names what is shown: "'+head.title+'"');
-  check(/^[A-Z][^·—]*, [^·—]*$/.test(head.sub) && /classes, /.test(head.sub) && /as of /.test(head.sub),'under it, one ordinary line — who, what is measured, as of when: "'+head.sub+'"');
+  check(/^[A-Z][^·—]*, [^·—]*$/.test(head.sub) && /classes, /.test(head.sub) && /as of /.test(head.sub),'under it, one ordinary line: who, what is measured, as of when: "'+head.sub+'"');
   check(!/Data Lab|·|—| - /.test(head.title+head.sub) ,'no "Data Lab · … · …" chain and no dashes in the heading');
   check(head.tSize>=head.sSize*1.6 && head.tSpace==='normal' && head.tCase==='none','the title is clearly the bigger of the two, in plain sentence case with normal spacing ('+head.tSize+' vs '+head.sSize+' px)');
   check(head.note==='' && await p.locator('#lb .labLegend').count()===0,'no line above the plots saying what a circle graph is');

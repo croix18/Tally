@@ -1,4 +1,4 @@
-// Class averages in the Data Lab (Croix, 5 Oct 2026: "Can I get a class average option in the data lab" — he chose all three):
+// Class averages in the Data Lab (Croix, 5 Oct 2026: "Can I get a class average option in the data lab": he chose all three):
 //   1. an Average toggle: each class's average beside its name, and a mark at it on the plots that can carry one
 //   2. a graph type, "Class averages": one bar per class
 //   3. a data set, "Course grade": each class's Focus course grade, kept as aggregate as every other Focus set
@@ -23,7 +23,7 @@ const { chromium, fs, path, exe, check, done, pick, more, APP } = require('./lib
   // ---- 1. the Average toggle -----------------------------------------------------------------------------------
   await p.selectOption('#labUnit',unitId); await p.waitForTimeout(300); await p.selectOption('#labKind','box'); await p.waitForTimeout(300);
   check(await p.locator('#labAvg').count()===1 && await p.getAttribute('#labAvg','aria-pressed')==='false' && await p.locator('#lb .labAvg').count()===0,'the Data Lab has an Average button, off until he asks');
-  await p.click('#labAvg'); await p.waitForTimeout(300);
+  await lbOpt(p,'#labAvg'); await p.click('#labAvg'); await p.waitForTimeout(300);
   const shown=await p.evaluate(()=>[...document.querySelectorAll('#lb .labRow')].map(r=>({ name:r.querySelector('.labName').firstChild.textContent.trim(), avg:(r.querySelector('.labAvg b')||{textContent:''}).textContent, word:(r.querySelector('.labAvg span')||{textContent:''}).textContent, n:Number((r.querySelector('.labName small b').textContent.match(/\d+/)||[])[0]) })));
   // recount: a unit's points per student, from the unit view's own points column
   const recount=await p.evaluate(id=>{ const T=window.__tally; const out={}; T.state.order.forEach(k=>{ const s=T.state.sections[k]; if (s.prep!=='acc') return; const u=T.unitsOf(s).find(u=>u.name===id.slice(5)); const pop=T.population(s); const vals=pop.map(x=>T.points(s,u,x.i)); out[s.label.replace(/ · .*/,'')]={ sum:vals.reduce((a,b)=>a+b,0), n:vals.length }; }); return out; }, unitId).catch(e=>({err:String(e)}));
@@ -42,11 +42,11 @@ const { chromium, fs, path, exe, check, done, pick, more, APP } = require('./lib
   for (const kind of ['stem','circle']) { await p.selectOption('#labKind',kind); await p.waitForTimeout(350);
     check(await p.locator('#lb .labAvg').count()===2 && await p.locator('#lb g.mean').count()===0 && await p.locator('#lb .labLegend').count()===0,kind+': the number is beside the name; there is no axis to mark, so no mark and no key'); }
   // percent mode
-  await p.selectOption('#labKind','dots'); await p.click('#labPct [data-pct="1"]'); await p.waitForTimeout(350);
+  await p.selectOption('#labKind','dots'); await lbOpt(p,'#labPct [data-pct="1"]'); await p.click('#labPct [data-pct="1"]'); await p.waitForTimeout(350);
   const pc=await p.evaluate(()=>[...document.querySelectorAll('#lb .labAvg b')].map(b=>b.textContent)); check(pc.length===2 && pc.every(t=>/^\d+\.\d%$/.test(t)),'in % the average is a percent: '+pc.join(', '));
-  await p.click('#labPct [data-pct="0"]'); await p.waitForTimeout(300);
+  await lbOpt(p,'#labPct [data-pct="0"]'); await p.click('#labPct [data-pct="0"]'); await p.waitForTimeout(300);
   await p.reload(); await p.waitForTimeout(700); check(await p.getAttribute('#labAvg','aria-pressed')==='true' && await p.locator('#lb .labAvg').count()===2,'the choice is remembered');
-  await p.click('#labAvg'); await p.waitForTimeout(300); check(await p.locator('#lb .labAvg').count()===0 && await p.locator('#lb g.mean').count()===0,'off again: no number, no mark');
+  await lbOpt(p,'#labAvg'); await p.click('#labAvg'); await p.waitForTimeout(300); check(await p.locator('#lb .labAvg').count()===0 && await p.locator('#lb g.mean').count()===0,'off again: no number, no mark');
   // ---- 2. Class averages, one bar per class ---------------------------------------------------------------------
   await p.selectOption('#labKind','avg'); await p.waitForTimeout(400);
   const bars=await p.evaluate(()=>{ const svg=document.querySelector('#lb .labAvgBars svg'); if (!svg) return null; const rects=[...svg.querySelectorAll('rect.bar')]; const labels=[...svg.querySelectorAll('text.lbl')].map(t=>t.textContent); const vals=[...svg.querySelectorAll('text.val')].map(t=>t.textContent);
@@ -58,14 +58,14 @@ const { chromium, fs, path, exe, check, done, pick, more, APP } = require('./lib
   check(new Set(bars.fills).size===2 && bars.h>=24,'each bar wears its class\'s colour and is thick enough for the room ('+bars.h+' px)');
   check(/^Accelerated classes, average points per class, as of /.test(bars.sub),'the facts line says what the bars are: "'+bars.sub+'"');
   check(await p.locator('#labAvg, #labStats, #labValues, #labDots, #labTukey').count()===0 && await p.locator('#labPct').count()===1,'the per-class buttons step aside on a one-chart view; Points / % stays');
-  await p.click('#labPct [data-pct="1"]'); await p.waitForTimeout(300); const pb=await p.evaluate(()=>({ vals:[...document.querySelectorAll('#lb .labAvgBars text.val')].map(t=>t.textContent), ticks:[...document.querySelectorAll('#lb .labAvgBars text.tl')].map(t=>t.textContent).join(' ') }));
-  check(pb.vals.every(v=>/^\d+\.\d%$/.test(v)) && /0% 25% 50% 75% 100%/.test(pb.ticks),'in % the bars run on a 0–100% axis: '+pb.vals.join(', ')); await p.click('#labPct [data-pct="0"]'); await p.waitForTimeout(300);
+  await lbOpt(p,'#labPct [data-pct="1"]'); await p.click('#labPct [data-pct="1"]'); await p.waitForTimeout(300); const pb=await p.evaluate(()=>({ vals:[...document.querySelectorAll('#lb .labAvgBars text.val')].map(t=>t.textContent), ticks:[...document.querySelectorAll('#lb .labAvgBars text.tl')].map(t=>t.textContent).join(' ') }));
+  check(pb.vals.every(v=>/^\d+\.\d%$/.test(v)) && /0% 25% 50% 75% 100%/.test(pb.ticks),'in % the bars run on a 0–100% axis: '+pb.vals.join(', ')); await lbOpt(p,'#labPct [data-pct="0"]'); await p.click('#labPct [data-pct="0"]'); await p.waitForTimeout(300);
   // ---- 3. the course grade ---------------------------------------------------------------------------------------
   check(opts.includes('grade:course') && /^Course grade · Quarter \d$/.test(await p.$eval('#labUnit option[value="grade:course"]',o=>o.textContent)),'the data list offers the course grade, named with its quarter');
   await p.selectOption('#labUnit','grade:course'); await p.waitForTimeout(400);
   const kinds=await p.$$eval('#labKind option',os=>os.map(o=>o.value).join(',')); check(kinds==='box,hist,circle,line,avg','a Focus data set is offered only in aggregate forms: '+kinds);
   const cg=await p.evaluate(()=>({ vals:[...document.querySelectorAll('#lb .labAvgBars text.val')].map(t=>t.textContent), labels:[...document.querySelectorAll('#lb .labAvgBars text.lbl')].map(t=>t.textContent), title:document.querySelector('#lb .lbTitle').textContent, sub:document.querySelector('#lb .lbSub').textContent }));
-  // recount from the grade engine, rounded per student as Focus shows it — the same number as the Overview card
+  // recount from the grade engine, rounded per student as Focus shows it: the same number as the Overview card
   const want=await p.evaluate(()=>{ const T=window.__tally; const out={}; T.state.order.forEach(k=>{ const s=T.state.sections[k]; if (s.prep!=='acc') return; const g=T.gradeAll(s).map(r=>r&&r.rounded).filter(v=>v!=null); out[s.label.replace(/ · .*/,'')]={ avg:g.reduce((a,b)=>a+b,0)/g.length, n:g.length, letters:g.reduce((m,v)=>{ const l=v>=90?'A':v>=80?'B':v>=70?'C':v>=60?'D':'F'; m[l]=(m[l]||0)+1; return m; },{}) }; }); return out; });
   check(/^Course grade: Quarter \d$/.test(cg.title) && /average course grade per class, as of /.test(cg.sub),'heading: "'+cg.title+'" / "'+cg.sub+'"');
   check(cg.vals.length===2 && cg.vals.every((v,i)=>v===want[cg.labels[i]].avg.toFixed(1)+'%'),'each class\'s bar is the mean of its students\' Focus grades: '+cg.vals.join(', '));
@@ -81,7 +81,7 @@ const { chromium, fs, path, exe, check, done, pick, more, APP } = require('./lib
   // aggregate only: no dots, no values, no outliers, bins of 5 or more, and never fewer than five students
   await p.selectOption('#labKind','box'); await p.waitForTimeout(300);
   check(await p.locator('#labDots, #labValues, #labTukey, #labPct').count()===0 && await p.locator('#lb .labDot').count()===0 && await p.locator('#lb .labValues').count()===0,'box plot of the course grade: no dot per student, no list of values, no outlier marks, and no Points / % (it is a percent)');
-  await p.click('#labAvg'); await p.waitForTimeout(300); const gAvg=await p.evaluate(()=>[...document.querySelectorAll('#lb .labRow')].map(r=>r.querySelector('.labName').firstChild.textContent.trim()+' '+r.querySelector('.labAvg b').textContent)); check(gAvg.every(t=>{ const [a,b2,v]=t.match(/^(.+) ([\d.]+%)$/)||[]; return want[b2] && v===want[b2].avg.toFixed(1)+'%'; }),'Average works on it too: '+gAvg.join(', ')); await p.click('#labAvg'); await p.waitForTimeout(200);
+  await lbOpt(p,'#labAvg'); await p.click('#labAvg'); await p.waitForTimeout(300); const gAvg=await p.evaluate(()=>[...document.querySelectorAll('#lb .labRow')].map(r=>r.querySelector('.labName').firstChild.textContent.trim()+' '+r.querySelector('.labAvg b').textContent)); check(gAvg.every(t=>{ const [a,b2,v]=t.match(/^(.+) ([\d.]+%)$/)||[]; return want[b2] && v===want[b2].avg.toFixed(1)+'%'; }),'Average works on it too: '+gAvg.join(', ')); await lbOpt(p,'#labAvg'); await p.click('#labAvg'); await p.waitForTimeout(200);
   await p.selectOption('#labKind','hist'); await p.waitForTimeout(300); check((await p.$$eval('#labBin option',os=>os.map(o=>o.value).join(',')))==='0,5,10','histogram bins are 5 or wider');
   await p.selectOption('#labKind','circle'); await p.waitForTimeout(300);
   const pies=await p.evaluate(()=>[...document.querySelectorAll('#lb .labRow')].map(r=>({ name:r.querySelector('.labName').firstChild.textContent.trim(), leg:[...r.querySelectorAll('svg.circle text.lbl')].map(t=>t.textContent.trim().replace(/\s+/g,' ')) })));
@@ -94,7 +94,7 @@ const { chromium, fs, path, exe, check, done, pick, more, APP } = require('./lib
   check(small.labels==='1st Period' && /3rd Period: not enough students yet \(needs 5\)/.test(small.note),'a class with four graded students gets no bar, and the chart says why: "'+small.note+'"');
   // a saved page carries it
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await more(p,'#btnSettings'); await p.waitForTimeout(300);
-  const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#saveLab')]); const saved=fs.readFileSync(await dl.path(),'utf8');
+  await seeTab(p,'#saveLab'); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#saveLab')]); const saved=fs.readFileSync(await dl.path(),'utf8');
   check(/class="labPlot labAvgBars"/.test(saved) && /Course grade: Quarter/.test(saved) && !/window\.__tally/.test(saved.replace(/<script[\s\S]*?<\/script>/g,'')),'the saved Data Lab page is the same chart');
   check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();

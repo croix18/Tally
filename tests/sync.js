@@ -1,5 +1,5 @@
-// Sync (Croix, 22 Oct 2026: "working on my laptop, how will the data get to the Promethean?"). Two computers — two browser
-// contexts — share one store that behaves like the Worker at mrshaffer.org/api/sync (worker.js in croix18/mrshaffer-site):
+// Sync (Croix, 22 Oct 2026: "working on my laptop, how will the data get to the Promethean?"). Two computers: two browser
+// contexts: share one store that behaves like the Worker at mrshaffer.org/api/sync (worker.js in croix18/mrshaffer-site):
 // a hash of the second secret, an edit count checked on every send (409 when stale), 403 {error:"passphrase"} for the
 // wrong one, the setup code to claim an empty store or reset it, and X-New-Key to change the passphrase in one step.
 //   · the laptop turns sync on (a weak passphrase is refused; Suggest one gives five words; a fresh store asks for it twice
@@ -59,8 +59,8 @@ const PASS = 'Lantern cobalt rhubarb orbit mosaic';
   check(lapInfo.n === 2 && lapInfo.names.length >= 5, `the laptop has two classes (${lapInfo.labels.join(', ')})`);
   await lap.click('#btnMore'); check(await lap.isVisible('#btnSync'), 'on mrshaffer.org the ⋯ menu has Sync'); check((await lap.textContent('#topSync')) === 'Off', 'and says Off'); await lap.keyboard.press('Escape');
   await openSync(lap);
-  for (const weak of ['cobalt orbit', 'aaaa aaaa aaaa aaaa aaaa', 'ab cd ef gh ij kl mn']) { await lap.fill('#syPass', weak); await lap.click('#syGo'); await lap.waitForTimeout(150);
-    check(/four different words/i.test(await lap.textContent('#syMsg')), `a weak passphrase ("${weak}") is refused before anything is sent`); }
+  for (const weak of ['cobalt orbit', 'aaaa aaaa aaaa aaaa aaaa', 'ab cd ef gh ij kl mn', 'windy hill middle school']) { await lap.fill('#syPass', weak); await lap.click('#syGo'); await lap.waitForTimeout(150);
+    check(/five different words/i.test(await lap.textContent('#syMsg')), `a weak passphrase ("${weak}") is refused before anything is sent`); }
   await lap.click('#sySuggest'); const sug = await lap.inputValue('#syPass');
   check(sug.split(' ').length === 5 && await T(lap, s => window.__tally.syncPassOk(s), sug), `Suggest one gives five words (${sug})`);
   check(store.puts === 0, 'nothing was sent');
@@ -76,7 +76,7 @@ const PASS = 'Lantern cobalt rhubarb orbit mosaic';
   const blob = store.blob.toString('latin1');
   check(blob.startsWith('TSY1'), 'the stored copy is a locked Tally file');
   const leaks = [...lapInfo.names, ...lapInfo.labels, ...lapInfo.ids].filter(s => s && blob.includes(s));
-  check(!leaks.length, `no name, ID or class label is readable in what the server holds${leaks.length ? ' — found ' + leaks.slice(0, 3).join(', ') : ''}`);
+  check(!leaks.length, `no name, ID or class label is readable in what the server holds${leaks.length ? ': found ' + leaks.slice(0, 3).join(', ') : ''}`);
   check(!/students|sections|"tally"/.test(blob), 'nor any of Tally\'s field names (it is compressed and sealed)');
   const stored = await T(lap, () => JSON.parse(localStorage.getItem('tally.sync')));
   check(stored && stored.k && stored.a && !JSON.stringify(stored).toLowerCase().includes('lantern'), 'the laptop keeps the two derived secrets, not the passphrase');
@@ -169,7 +169,7 @@ const PASS = 'Lantern cobalt rhubarb orbit mosaic';
   // ---- clearing Tally on a computer forgets its key -------------------------------------------------------------------
   await T(pan, () => { localStorage.setItem('tally.sync', '{"k":"x","a":"y"}'); });
   if (await pan.isVisible('#modal')) await pan.click('#mClose');
-  await pan.click('#btnMore'); await pan.click('#btnSettings'); await pan.waitForTimeout(200); await pan.click('#wipe'); await pan.waitForTimeout(1200);
+  await pan.click('#btnMore'); await pan.click('#btnSettings'); await pan.waitForTimeout(200); await seeTab(pan,'#wipe'); await pan.click('#wipe'); await pan.waitForTimeout(1200);
   check(await T(pan, () => localStorage.getItem('tally.sync')) === null, 'Clear all Tally data forgets this computer\'s sync key');
   // ---- no Sync where there is no mrshaffer.org ------------------------------------------------------------------------
   const f = await (await b.newContext()).newPage(); await f.goto('file://' + path.resolve(APP)); await f.waitForTimeout(400);

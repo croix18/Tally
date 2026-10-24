@@ -5,12 +5,12 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   const p=await ctx.newPage(); const errs=[]; p.on('framenavigated',f=>console.log('NAV',f.url().slice(-30))); p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{ if(m.type()==='error' && !/ERR_TUNNEL|fonts|net::/.test(m.text())) errs.push(m.text()); });
   let dialogs=[], dialogAnswer=true; p.on('dialog', async d=>{ dialogs.push(d.message()); await (dialogAnswer? d.accept(): d.dismiss()); });
   await p.goto('file://'+path.resolve(APP)); await unskip(p);
-  check(await p.locator('#topMore.hidden').count()===1 && await p.locator('#nav.hidden').count()===1 && await p.locator('#btnGuide0:not(.hidden)').count()===1,'on landing the header is the Guide and Import — no places, no More menu yet');
+  check(await p.locator('#topMore.hidden').count()===1 && await p.locator('#nav.hidden').count()===1 && await p.locator('#btnGuide0:not(.hidden)').count()===1,'on landing the header is the Guide and Import: no places, no More menu yet');
   const main=fs.readdirSync('fixtures').filter(f=>f.endsWith('.xlsx') && /^f1473588/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
   check((await p.evaluate(()=>window.__tally.state.order.length))===2,'two sections imported');
   check(await p.locator('.rpanel').count()===1,'roster panel is the first screen');
-  check(/Goal 60/.test(await p.textContent('[data-k="1205050-7T3A"]')) && /Goal 67/.test(await p.textContent('[data-k="1205050-7T1A"]')),'per-period thresholds on tabs');
+  check(await p.evaluate(()=>{ const S=window.__tally.state.sections; return S['1205050-7T3A'].threshold===60 && S['1205050-7T1A'].threshold===67; }),'per-period thresholds');
   // roster paste in panel
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150);
   const rosterLines=fs.readFileSync('fixtures/roster.txt','utf8').split('\n');
@@ -66,7 +66,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   // (nothing hidden any more)
   // copy unit 1 toast + clipboard
   await p.click('th.unit .copy'); await p.waitForTimeout(250); const t=await p.textContent('#toast');
-  check(/Unit 1 copied — 24 rows in FOCUS order/.test(t) && /\/23/.test(t) && /1 blank row/.test(t),'toast: '+t);
+  check(/Unit 1 copied: 24 rows in Focus order/.test(t) && /\/23/.test(t) && /1 blank row/.test(t),'toast: '+t);
   clip=await p.evaluate(()=>navigator.clipboard.readText()); check(clip.split('\n').length===24 && clip.split('\n').filter(x=>x==='').length===1 && !clip.includes('\t'),'clipboard 24 bare lines, 1 blank');
   // detail view
   await p.click('th.unit .ulink'); await p.waitForTimeout(250);
@@ -82,16 +82,16 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   // Esc + dirty modal
   await more(p,'#btnSettings'); await p.keyboard.press('Escape'); await p.waitForTimeout(150);
   check(await p.locator('#modal.hidden').count()===1 && await p.locator('#bar.detail').count()===1,'Esc closes modal, keeps detail view');
-  await more(p,'#btnSettings'); await p.fill('#roster','Zzz, Q'); dialogs=[]; dialogAnswer=false; await p.mouse.click(5,5); await p.waitForTimeout(150);
+  await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster','Zzz, Q'); dialogs=[]; dialogAnswer=false; await p.mouse.click(5,5); await p.waitForTimeout(150);
   check(dialogs.length===1 && await p.locator('#modal.hidden').count()===0,'dirty roster: backdrop asks');
   dialogAnswer=true; await p.keyboard.press('Escape'); await p.waitForTimeout(150); await p.keyboard.press('Escape'); await p.waitForTimeout(150);
   check(await p.locator('#bar.detail').count()===0,'second Esc pops view');
   // threshold per period
-  await more(p,'#btnSettings'); await p.fill('#thr',''); await p.click('#mSave'); await p.waitForTimeout(150);
+  await more(p,'#btnSettings'); await seeTab(p,'#thr'); await p.fill('#thr',''); await p.click('#mSave'); await p.waitForTimeout(150);
   check((await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].threshold))===67,'blank threshold keeps 67');
-  await more(p,'#btnSettings'); await p.fill('#thr','0'); await p.click('#mSave'); await p.waitForTimeout(150);
+  await more(p,'#btnSettings'); await seeTab(p,'#thr'); await p.fill('#thr','0'); await p.click('#mSave'); await p.waitForTimeout(150);
   check((await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].threshold))===1,'threshold 0 clamps to 1');
-  await more(p,'#btnSettings'); await p.fill('#thr','67'); await p.click('#mSave'); await p.waitForTimeout(150);
+  await more(p,'#btnSettings'); await seeTab(p,'#thr'); await p.fill('#thr','67'); await p.click('#mSave'); await p.waitForTimeout(150);
   // older export guard
   dialogs=[]; dialogAnswer=false; await p.setInputFiles('#file', fs.readdirSync('fixtures').filter(f=>f.startsWith('old_')).map(f=>path.resolve('fixtures',f))); await p.waitForTimeout(500);
   check(dialogs.length===1 && /older/.test(dialogs[0]) && (await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].date))==='2026-09-25','older export asks; declined keeps newer');

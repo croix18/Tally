@@ -26,7 +26,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   // resolve the ambiguous one with the fixer: pool leftovers are offered
   await p.click('button.flag[data-fix="QUILL, DAKOTA"]'); await p.waitForTimeout(300);
   const chips=await p.locator('.picks .chip').allTextContents();
-  const dq=chips.filter(c=>/DAKOTA\d* QUILL/.test(c));   // the scrubber left two names that normalise alike — same case as two real students sharing a name
+  const dq=chips.filter(c=>/DAKOTA\d* QUILL/.test(c));   // the scrubber left two names that normalise alike: same case as two real students sharing a name
   check(chips.length>=2 && dq.length===2 && /#1/.test(dq[0]) && /#2/.test(dq[1]),'fixer offers both same-named pool students, numbered: '+chips.slice(0,3).join(' | '));
   await p.locator('.picks .chip').filter({hasText:/DAKOTA\d* QUILL/}).nth(1).click(); await p.waitForTimeout(500);
   const al2=await p.evaluate(()=>window.__tally.state.sections['period-1'].aliases['QUILL, DAKOTA']);
@@ -54,7 +54,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   const dflt=await p.evaluate(()=>{const T=window.__tally; const u=k=>T.unitsOf(T.state.sections[k]).filter(u=>!u.assigned).map(u=>u.short); return {acc:u('period-1'), on:u('period-2'), race:T.leaderboardData().map(r=>r.key+':'+r.assignedUnits[0]), rc:T.reconcile(T.state.sections['period-1']).map(c=>c.unit.short)};});
   check(!dflt.acc.includes('Unit 1') && dflt.on.includes('Unit 1') && !dflt.on.includes('Unit 2'),'by default only Unit 1 (on-level) is not assigned; accelerated Unit 1 counts: '+JSON.stringify([dflt.acc,dflt.on]));
   check(dflt.race.some(x=>/^period-2:/.test(x) && !/:Unit 1$/.test(x)),'unassigned units are out of the Race');
-  await p.click('[data-k="period-2"]'); await p.waitForTimeout(200); await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('[data-skip="3"]'); await p.click('#mSave'); await p.waitForTimeout(400);
+  await p.click('[data-k="period-2"]'); await p.waitForTimeout(200); await more(p,'#btnSettings'); await p.waitForTimeout(200); await seeTab(p,'[data-skip="3"]'); await p.click('[data-skip="3"]'); await p.click('#mSave'); await p.waitForTimeout(400);
   check((await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['period-2']).filter(u=>!u.assigned).map(u=>u.short))).includes('Unit 3'),'Settings: "First 3" unassigns Unit 3 for the on-level course');
   await p.evaluate(()=>{ const T=window.__tally; T.state.assigned.on['Unit 2 Probability']=true; T.save(); T.render(); });
   check((await p.evaluate(()=>window.__tally.unitsOf(window.__tally.state.sections['period-2']).find(u=>u.short==='Unit 2').assigned))===true,'a unit marked Assigned by hand overrides the default');

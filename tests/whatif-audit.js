@@ -1,6 +1,6 @@
-// The what-if page, audited (Croix, 19 Oct 2026: a prediction came out 1 % high — a student "landed at 59 % despite
+// The what-if page, audited (Croix, 19 Oct 2026: a prediction came out 1 % high: a student "landed at 59 % despite
 // them supposed to be at 60 according to Tally"). Every number on the page is recomputed here from the raw gradebook
-// with the test's own copy of the formula — never read back from the code under test — and compared to what the page
+// with the test's own copy of the formula: never read back from the code under test: and compared to what the page
 // shows. Also: the retake-eligibility rule (no NHI, the current unit's IXL all at goal) on every screen that states it.
 const { chromium, fs, path, exe, check, done, APP, pick, more } = require('./lib');
 // Focus's grade: each category's points earned ÷ points possible, weighted; NHI = 0 over full possible; excused/blank
@@ -25,7 +25,7 @@ const round = p => Math.round(p + 1e-9);
   const n=raw.gb.students.length; const exact=raw.gb.students.map((_,i)=>G(i));
   check(n===23 && exact.every((v,i)=>round(v)===raw.focus[i]),'the test\'s own formula, rounded half up, gives Focus\'s Grade column for all '+n+' students');
   const half=exact.map((v,i)=>({v,i})).filter(x=>Math.abs(x.v-Math.floor(x.v)-0.5)<1e-9);
-  check(half.length>=1 && half.every(x=>raw.focus[x.i]===Math.floor(x.v)+1),'a grade exactly on a half (here '+half.map(x=>x.v).join(', ')+') is rounded UP by Focus — so Tally rounds half up too');
+  check(half.length>=1 && half.every(x=>raw.focus[x.i]===Math.floor(x.v)+1),'a grade exactly on a half (here '+half.map(x=>x.v).join(', ')+') is rounded UP by Focus: so Tally rounds half up too');
   const engine=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; return s.grades.students.map((_,i)=>T.computeGrade(s,i).rounded); },K);
   check(engine.every((v,i)=>v===raw.focus[i]),'…and so does Tally\'s engine, for every student');
   // ---- 2. every what-if cell, for every student with something to move ---------------------------------------------------
@@ -48,16 +48,16 @@ const round = p => Math.round(p + 1e-9);
     pg.ixRows.forEach(r=>{ cells++; const want=round(G(i,{[r.name]:raw.gb.assignments.find(a=>a.name===r.name).max})); if (r.to!==want) bad.push(i+': IXL '+r.name+' shows '+r.to+' wants '+want); });
     cells++; const wantNext=round(G(i,null,{cat:'Assessments',max:pg.nx,pts:pg.pts})); if (pg.out!==wantNext) bad.push(i+': next '+pg.pts+'/'+pg.nx+' shows '+pg.out+' wants '+wantNext);
     // "Next assessment: 13.5/21 for a D": the least half point that reaches the letter, and half a point less does not
-    [...pg.need.matchAll(/([\d.]+)\/(\d+) for (an? ([A-D]))/g)].forEach(m=>{ cells++; const pts=Number(m[1]), mx=Number(m[2]), L=m[4]; const tgt={D:60,C:70,B:80,A:90}[L]; const at=round(G(i,null,{cat:'Assessments',max:mx,pts})); const below=pts>0?round(G(i,null,{cat:'Assessments',max:mx,pts:pts-0.5})):-1; if (!(at>=tgt && below<tgt)) bad.push(i+': need '+pts+'/'+mx+' for '+L+' — at '+at+', half less '+below); });
+    [...pg.need.matchAll(/([\d.]+)\/(\d+) for (an? ([A-D]))/g)].forEach(m=>{ cells++; const pts=Number(m[1]), mx=Number(m[2]), L=m[4]; const tgt={D:60,C:70,B:80,A:90}[L]; const at=round(G(i,null,{cat:'Assessments',max:mx,pts})); const below=pts>0?round(G(i,null,{cat:'Assessments',max:mx,pts:pts-0.5})):-1; if (!(at>=tgt && below<tgt)) bad.push(i+': need '+pts+'/'+mx+' for '+L+': at '+at+', half less '+below); });
   }
-  check(cells>150 && bad.length===0,'every number on the what-if page is the formula\'s answer ('+cells+' cells over '+n+' students)'+(bad.length?' — wrong: '+bad.slice(0,6).join(' | '):''));
+  check(cells>150 && bad.length===0,'every number on the what-if page is the formula\'s answer ('+cells+' cells over '+n+' students)'+(bad.length?': wrong: '+bad.slice(0,6).join(' | '):''));
   check(seenHalfPoint.length>=1,'the retake table\'s grade is computed from the half-point score it shows, where that differs from the exact percent (this was the 1 % slip): '+seenHalfPoint.slice(0,3).join(', '));
   // ---- 3. Show student: the live grade follows the switches and sliders ---------------------------------------------------
   const who=exact.findIndex((v,i)=>raw.gb.assignments.some(a=>a.status[i]==='missing') && raw.gb.assignments.some(a=>catOf(a.name)==='Assessments' && !/ixl/i.test(a.name) && a.status[i]==='score' && a.values[i]<a.max));
   await p.evaluate(({K,i})=>{ const T=window.__tally; T.openProfile(K, T.state.sections[K].grades.students[i]); },{K,i:who}); await p.waitForTimeout(300); await p.click('#pShow'); await p.waitForTimeout(500);
   const sh=await p.evaluate(()=>{ const miss=document.querySelector('#show .shRow[data-k="miss"]'); const re=document.querySelector('#show .shRow[data-k="re"]'); miss.querySelector('.shOn').click(); const sl=re.querySelector('.shPts'); sl.value=Math.min(Number(sl.max), Number(sl.value)+2); sl.dispatchEvent(new Event('input',{bubbles:true})); return { miss:miss.dataset.n, missPts:Number(miss.querySelector('.shPts').value), re:re.dataset.n, rePts:Number(sl.value), v:Number(document.querySelector('#shIfV').textContent.replace('%','')), L:document.querySelector('#shIfL').textContent }; });
   const wantSh=round(G(who,{[sh.miss]:sh.missPts,[sh.re]:sh.rePts}));
-  check(sh.v===wantSh && sh.L===letter(wantSh),'Show student: turning in '+sh.miss+' and sliding '+sh.re+' to '+sh.rePts+' gives '+sh.v+'% '+sh.L+' — the formula agrees');
+  check(sh.v===wantSh && sh.L===letter(wantSh),'Show student: turning in '+sh.miss+' and sliding '+sh.re+' to '+sh.rePts+' gives '+sh.v+'% '+sh.L+': the formula agrees');
   await p.reload(); await p.waitForTimeout(600);
   // ---- 4. retake eligibility: no NHI, and the current unit's IXL all at goal ---------------------------------------------
   // set the course to Unit 1 and shape three students: eligible; missing work only; IXL short only
@@ -67,6 +67,8 @@ const round = p => Math.round(p + 1e-9);
     const clearMissing=i=>gb.assignments.forEach(a=>{ if (a.status&&a.status[i]==='missing'){ a.status[i]='score'; a.values[i]=a.max; } });
     const addMissing=i=>{ const a=gb.assignments.find(a=>/Worksheet/.test(a.name)); a.status[i]='missing'; a.values[i]=null; return a.name; };
     const A=pick[0], B=pick[1], C=pick[2]; setAll(A.ixl,true); clearMissing(A.i); setAll(B.ixl,true); clearMissing(B.i); const mB=addMissing(B.i); setAll(C.ixl,false); clearMissing(C.i);
+    // every other unit with a Focus IXL column counts too (round 8): finish those for all three, so Unit 1 alone decides
+    T.unitsOf(s).filter(u=>u.num!==1).forEach(u=>u.active.forEach(k=>{ [A,B,C].forEach(x=>{ s.scores[k][x.ixl]=Math.max(t,s.scores[k][x.ixl]||0); if (s.best) { const b=s.best[T.skillKey(s.skills[k])]; if (b) delete b[T.ixlKeyAt(s,x.ixl)]; } }); }));
     // C: exactly two skills short
     const shortC=u1.active.slice(0,2); u1.active.forEach(k=>{ s.scores[k][C.ixl]=shortC.includes(k)?t-10:t; });
     gb.assignments.forEach(a=>{ a.missing=a.status.filter(x=>x==='missing').length; }); s._keys=null; T.save(); return { A:A.nm, B:B.nm, C:C.nm, mB, unit:u1.short, nUnit:u1.active.length }; },K);

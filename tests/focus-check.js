@@ -27,7 +27,7 @@ const { chromium, fs, path, exe, check, done, tmp, unskip, APP, pick, more } = r
   // keyboard: every control can be reached, forwards and backwards, and nothing inside a closed fold is a stop
   const walk=async(key,n)=>{ const seen=[]; for (let i=0;i<n;i++) { await p.keyboard.press(key); seen.push(await p.evaluate(()=>{ const a=document.activeElement; return a.id || (a.tagName==='SUMMARY'?'summary:'+a.textContent.trim().slice(0,14):a.dataset.keep?'keep':a.className||a.tagName); })); } return seen; };
   const fw=await walk('Tab',14); const bw=await walk('Shift+Tab',14);
-  check(['mClose','copyCol','mCancel'].every(id=>fw.includes(id)) && fw.some(x=>/^summary:Wrong column/.test(x)) && !fw.includes('gbMap'),'Tab reaches Close, the copy buttons and "Wrong column?" — and skips the select folded inside it: '+[...new Set(fw)].join(' → '));
+  check(['mClose','copyCol','mCancel'].every(id=>fw.includes(id)) && fw.some(x=>/^summary:Wrong column/.test(x)) && !fw.includes('gbMap'),'Tab reaches Close, the copy buttons and "Wrong column?": and skips the select folded inside it: '+[...new Set(fw)].join(' → '));
   check(['mClose','copyCol','mCancel'].every(id=>bw.includes(id)) && bw.some(x=>/^summary:Wrong column/.test(x)),'Shift+Tab walks the same stops backwards');
   check(!wk.map && /Wrong column\?/.test(wk.fold) && !wk.pick,'"which Focus column is this" is folded behind "Wrong column?" and there is no skill tick-list');
   check(rows ? new RegExp('^Copy \\d+ corrections?$').test(wk.primary) : wk.primary==='','one filled button, and it says how many: '+wk.primary);
@@ -39,7 +39,7 @@ const { chromium, fs, path, exe, check, done, tmp, unskip, APP, pick, more } = r
   check(await p.evaluate(()=>{ const a=document.activeElement; return !!a && a.classList.contains('fcheck') && /Unit 2/.test(a.dataset.fc); }),'closing the check gives focus back to the badge that opened it (the grid was redrawn underneath)');
   await p.click('.fcheck[data-fc="Unit 1 Equations and Inequalities"]'); await p.waitForTimeout(300);
   const su=await p.evaluate(()=>{ const m=document.querySelector('#modal'); const vis=el=>!!(el && el.checkVisibility()); return { title:m.querySelector('header h2').textContent, table:vis(m.querySelector('.checkTable')), map:vis(m.querySelector('#gbMap')), keep:[...m.querySelectorAll('[data-keep]')].filter(vis).length, primary:[...m.querySelectorAll('.pill')].filter(b=>vis(b) && !b.classList.contains('pale')).map(b=>b.textContent.trim()).join('|'), folds:[...m.querySelectorAll('details.fold > summary')].map(s=>s.textContent.replace(/\s+/g,' ').trim()).join(' | ') }; });
-  check(su.title==='Set up Unit 1 for Focus' && !su.table && su.keep===0 && !su.map && su.primary==='Skip the ticked skills','when the points don\'t agree the dialog is only the setup question — no student table, no "Keep Focus" buttons, one filled button: '+su.title);
+  check(su.title==='Set up Unit 1 for Focus' && !su.table && su.keep===0 && !su.map && su.primary==='Skip the ticked skills','when the points don\'t agree the dialog is only the setup question: no student table, no "Keep Focus" buttons, one filled button: '+su.title);
   check(/Student by student/.test(su.folds) && /Wrong column\?/.test(su.folds),'the student rows and the column mapping are one tap away, folded: '+su.folds);
   const sugg=await p.textContent('#modal'); check(/Focus's "Unit 1 IXL" is out of 15\./.test(sugg) && /Tally counts 23 skills in Unit 1/.test(sugg) && /Which 8 don't count\?/.test(sugg) && await p.locator('[data-sk]:checked').count()===8 && await p.locator('[data-sk]').count()===23 && /matches Focus/.test(await p.textContent('#skipCount')),'panel lists all 23 skills with the 8 least-touched pre-ticked and a live count');
   await p.locator('[data-sk]:checked').first().uncheck(); await p.waitForTimeout(100); check(/out of 16/.test(await p.textContent('#skipCount')) && /Focus: 15/.test(await p.textContent('#skipCount')),'unticking one updates the count');
@@ -58,7 +58,7 @@ const { chromium, fs, path, exe, check, done, tmp, unskip, APP, pick, more } = r
   await p.click('.fcmap > summary'); await p.waitForTimeout(150); dialogs.length=0; dialogAnswer=false; await p.selectOption('#gbMap',''); await p.waitForTimeout(300);
   check(dialogs.length===1 && /Stop checking Focus's "Unit 1 IXL"/.test(dialogs[0]) && /undo this in Settings/.test(dialogs[0]) && await p.locator('.fcheck').count()===2 && await p.inputValue('#gbMap')!=='','unmapping asks first; declining changes nothing');
   dialogAnswer=true; await p.selectOption('#gbMap',''); await p.waitForTimeout(400);
-  check(await p.locator('.fcheck').count()===1 && /no longer checked — undo in Settings/.test(await p.textContent('#toast')),'a column can be unmapped, and the toast says where to undo it');
+  check(await p.locator('.fcheck').count()===1 && /no longer checked: undo in Settings/.test(await p.textContent('#toast')),'a column can be unmapped, and the toast says where to undo it');
   await more(p,'#btnSettings'); await p.waitForTimeout(300);
   check(/Unit 1 IXL/.test(await p.textContent('#gbMaps')) && /not checked against any unit/.test(await p.textContent('#gbMaps')),'Settings → This class lists the column that was switched off');
   await p.click('[data-unmap="Unit 1 IXL"]'); await p.waitForTimeout(300); await p.keyboard.press('Escape'); await p.waitForTimeout(300);

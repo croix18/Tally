@@ -12,14 +12,14 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   const K='period-1';
   // 1. projected Data Lab: Values on an IXL set, then a gb set → no per-student chips, bins ≥ 5, no outliers, no excused
   await p.click('#btnLb'); await p.waitForTimeout(400); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300);
-  await p.click('#labValues'); await p.waitForTimeout(300); check(await p.locator('.labValues').count()>=1,'Values shows per-student chips on an IXL data set');
+  await lbOpt(p,'#labValues'); await p.click('#labValues'); await p.waitForTimeout(300); check(await p.locator('.labValues').count()>=1,'Values shows per-student chips on an IXL data set');
   const gbOpt=await p.evaluate(()=>{ const o=[...document.querySelectorAll('#labUnit option')].find(o=>o.value.startsWith('gb:')); return o && o.value; });
   check(!!gbOpt,'a Focus assignment is in the data set list');
   await p.selectOption('#labUnit', gbOpt); await p.waitForTimeout(400);
   check(await p.locator('.labValues').count()===0 && await p.locator('#labValues').count()===0,'switching to a Focus set drops the Values chips even though Values was on');
   await p.selectOption('#labKind','hist'); await p.waitForTimeout(300);
   const bins=await p.evaluate(()=>[...document.querySelectorAll('#labBin option')].map(o=>+o.value)); check(!bins.includes(1) && !bins.includes(2),'bins of 1 or 2 are not offered for Focus scores: '+bins.join(','));
-  await p.click('#labTukey').catch(()=>{}); await p.waitForTimeout(200); check(await p.locator('.labOut').count()===0 && !/excused/.test(await p.textContent('#lb')),'no outlier marks or excused counts on a Focus set');
+  await lbOpt(p,'#labTukey'); await p.click('#labTukey').catch(()=>{}); await p.waitForTimeout(200); check(await p.locator('.labOut').count()===0 && !/excused/.test(await p.textContent('#lb')),'no outlier marks or excused counts on a Focus set');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(200);
   // 2. prototype pollution and XSS through a Tally backup
   const evil={tally:4,sections:{'__proto__':{label:'x',polluted:1},'period-1':{label:'ok'}},assigned:{acc:{'__proto__':{z:1}}},grading:{acc:{cats:[{name:'A',w:100}],map:{'__proto__':{q:1}},how:{}}},custom:[{id:'c1',label:'evil',unit:'',prep:'acc',values:{'period-1':['</textarea><img src=x onerror=window.__x5=1>',5]}}]};
@@ -27,7 +27,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.setInputFiles('#cfgFile', ep); await p.waitForTimeout(800);
   const pol=await p.evaluate(()=>({ proto:!!({}).polluted, order:window.__tally.state.order.includes('__proto__'), x:!!window.__x5, vals:JSON.stringify((window.__tally.state.custom.find(c=>c.id==='c1')||{}).values) }));
   check(!pol.proto && !pol.order && !pol.x,'a backup with __proto__ keys pollutes nothing and lists no ghost class');
-  await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('[data-editc="c1"], #editCustom, [data-edit="c1"]').catch(()=>{}); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await p.waitForTimeout(200); await seeTab(p,'[data-editc="c1"]'); await p.click('[data-editc="c1"], #editCustom, [data-edit="c1"]').catch(()=>{}); await p.waitForTimeout(300);
   check(!(await p.evaluate(()=>!!window.__x5)) && /\[5\]/.test(pol.vals),'custom values are numbers only; the editor can\'t be scripted: '+pol.vals);
   await p.keyboard.press('Escape'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   await p.reload(); await p.waitForTimeout(700); check(await p.locator('#tabs .tab').count()===2 && errs.length===0,'app boots clean afterwards');
@@ -35,7 +35,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('th.unit .ulink'); await p.waitForTimeout(300);
   await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('#prepSeg [data-prep="on"], [data-prep="on"]'); await p.click('#mSave'); await p.waitForTimeout(500);
   check(errs.length===0 && await p.locator('#bar h2').count()===1,'changing the course with a unit open falls back to the grid, no throw');
-  await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('[data-prep="acc"]'); await p.click('#mSave'); await p.waitForTimeout(500);
+  await more(p,'#btnSettings'); await p.waitForTimeout(200); await seeTab(p,'[data-prep="acc"]'); await p.click('[data-prep="acc"]'); await p.click('#mSave'); await p.waitForTimeout(500);
   check((await p.evaluate(()=>window.__tally.state.settings.skipFirst.on))===1,'switching a class\'s course does not drag the review-unit count across courses');
   // 4. a failed save is not hidden by the success toast
   await p.evaluate(()=>{ const o=localStorage.setItem.bind(localStorage); window.__origSet=o; localStorage.setItem=()=>{ const e=new Error('QuotaExceededError'); e.name='QuotaExceededError'; throw e; }; });
@@ -64,7 +64,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.selectOption('#curUnit','2'); await p.waitForTimeout(300); check(/Unit 2 counts/.test(await p.textContent('#toast')),'a single counting unit reads "Unit 2 counts", not "Units 2–2"');
   // 9. percent axis tops at 100
   await p.click('#btnLb'); await p.waitForTimeout(400); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300); await p.selectOption('#labKind','box'); await p.selectOption('#labUnit','unit:__all__'); await p.waitForTimeout(200);
-  if (await p.locator('#labPct').count()) { await p.click('#labPct'); await p.waitForTimeout(300); }
+  if (await p.locator('#labPct').count()) { await lbOpt(p,'#labPct'); await p.click('#labPct'); await p.waitForTimeout(300); }
   const ticks=await p.evaluate(()=>[...document.querySelectorAll('.labTickTxt')].map(e=>parseInt(e.textContent)).filter(n=>!isNaN(n)));
   check(ticks.length && Math.max(...ticks)<=100,'percent mode axis ends at 100: max tick '+Math.max(...ticks));
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700); await p.click('#btnHide'); await p.waitForTimeout(200);

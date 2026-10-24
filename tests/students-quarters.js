@@ -1,5 +1,5 @@
 // Students and quarters: the Students directory, a student's page (trends, what-ifs, Q1 final), the Show-student screen,
-// and closing a quarter — its record is kept, its alerts stop, the next quarter's exports start fresh.
+// and closing a quarter: its record is kept, its alerts stop, the next quarter's exports start fresh.
 // Runs against the scrubbed real class; focus_gradebook_scrubbed_q2.csv is the same class with Quarter 2 dates.
 const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, legacyOf } = require('./lib');
 (async()=>{
@@ -75,7 +75,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   check(sh.top==='none' && sh.app==='none','Show student hides the rest of Tally');
   const roster=fs.readFileSync('fixtures/focus_roster_scrubbed.txt','utf8').split('\n').map(l=>l.split('\t').pop().trim()).filter(Boolean);
   const others=roster.filter(n=>n!==MICAH).map(n=>n.split(',')[0].trim()).filter(l=>l.length>3 && sh.txt.toUpperCase().includes(l.toUpperCase()));
-  check(/Micah/.test(sh.txt) && !others.length && sh.miss===5,'only the student\'s own name and work on screen'+(others.length?' — also: '+others.join(', '):''));
+  check(/Micah/.test(sh.txt) && !others.length && sh.miss===5,'only the student\'s own name and work on screen'+(others.length?': also: '+others.join(', '):''));
   check(/Your quickest way to a D/.test(await p.textContent('#show .shQuick')),'Show student shows the quickest way');
   await p.click('#shPlan'); await p.waitForTimeout(200); const ifv=parseInt(await p.textContent('#shIfV'));
   check(ifv===qk.res,'“Show me on the sliders” sets the plan and the grade lands on it ('+ifv+')');

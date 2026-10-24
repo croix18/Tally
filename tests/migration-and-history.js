@@ -24,13 +24,13 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150); await p.click('#rpSkip'); await p.waitForTimeout(150);
   let d=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A'));
   check(d.gain!=null && !d.thrChanged,'gain computed when threshold unchanged: '+d.gain.toFixed(2));
-  await more(p,'#btnSettings'); await p.fill('#thr','50'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await seeTab(p,'#thr'); await p.fill('#thr','50'); await p.click('#mSave'); await p.waitForTimeout(300);
   d=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A'));
   check(d.gain==null && d.thrChanged,'threshold change → no phantom gain, flagged');
   // 4. population uses roster-matched rows; exclusions respected in masteredAll
-  await more(p,'#btnSettings'); await p.fill('#thr','67'); await p.click('#mSave'); await p.waitForTimeout(200);
+  await more(p,'#btnSettings'); await seeTab(p,'#thr'); await p.fill('#thr','67'); await p.click('#mSave'); await p.waitForTimeout(200);
   const before=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A').students);
-  await more(p,'#btnSettings'); await p.fill('#roster','Nguyen, Ava\nSmith, Liam\nGarcia, Noah\nJohnson, Emma\nBrown, Mason'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster','Nguyen, Ava\nSmith, Liam\nGarcia, Noah\nJohnson, Emma\nBrown, Mason'); await p.click('#mSave'); await p.waitForTimeout(300);
   const after=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A').students);
   check(before===23 && after===5,'race population follows the roster: '+before+' → '+after);
   const mA=await p.evaluate(()=>window.__tally.leaderboardData().find(r=>r.key==='1205050-7T1A').masteredAll);
@@ -47,7 +47,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   check(lastTick===23 || lastTick>0,'last tick equals scale max: '+lastTick);
   // n floor: 7T1A now has 5 roster students → exactly MIN_N; drop one to 4
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
-  await p.click('#btnHide'); await more(p,'#btnSettings'); await p.fill('#roster','Nguyen, Ava\nSmith, Liam\nGarcia, Noah\nJohnson, Emma'); await p.click('#mSave'); await p.waitForTimeout(300);
+  await p.click('#btnHide'); await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster','Nguyen, Ava\nSmith, Liam\nGarcia, Noah\nJohnson, Emma'); await p.click('#mSave'); await p.waitForTimeout(300);
   await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300);
   check(await p.locator('.labNotYet').count()===1 && /needs 5/.test(await p.textContent('.labNotYet')),'n<5 shows not-enough-data instead of a plot');
   // 6. toast suppressed in projected mode

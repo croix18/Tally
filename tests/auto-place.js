@@ -1,5 +1,5 @@
 // A Focus gradebook is placed on its class by its students' names and IDs, without a question, when it is plainly that
-// class; "Which class is this gradebook?" opens only when it isn't — and says why. Synthetic fixtures only.
+// class; "Which class is this gradebook?" opens only when it isn't: and says why. Synthetic fixtures only.
 const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000}}); const p=await ctx.newPage();
@@ -15,11 +15,11 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const write=(name,head,rows)=>{ const f=path.join(tmp,name); fs.writeFileSync(f, head+rows.join('\n')+'\n'); return f; };
   const g1=parts(P1), g2=parts(P2);
 
-  // 1. First run: no class exists, so there is nothing to choose between — straight to "New class"
+  // 1. First run: no class exists, so there is nothing to choose between: straight to "New class"
   await drop([path.resolve('fixtures',acc), path.resolve('fixtures',on)]);
   await drop([P1]);
   check(await modal()==='New class from this gradebook' && await p.locator('#ncExisting').count()===0,'with no class yet the gradebook goes straight to "New class" (no "Which class?" first)');
-  check(await p.locator('#ncMake[disabled]').count()===1,'period and course are Croix\'s to pick — Focus puts neither in the file');
+  check(await p.locator('#ncMake[disabled]').count()===1,'period and course are Croix\'s to pick: Focus puts neither in the file');
   await p.click('#ncPeriod [data-p="1"]'); await p.click('#ncPrep [data-prep="acc"]'); await p.click('#ncMake'); await p.waitForTimeout(800); await closeAsk();
   check(await p.evaluate(()=>{ const s=window.__tally.state.sections['period-1']; return !!s && s.prep==='acc' && s.grades.students.length===23; }),'period 1 made as accelerated with its 23 students');
 
@@ -34,7 +34,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   await p.evaluate(()=>{ const T=window.__tally; Object.values(T.state.sections).forEach(s=>{ s.grades.file='old'; }); T.state.lastImport=null; T.save(); });
   await drop([P2, P1]);
   check(await modal()==='','the weekly drop of both gradebooks asks nothing');
-  const wk=await p.evaluate(()=>{ const T=window.__tally; return { f1:T.state.sections['period-1'].grades.file, f2:T.state.sections['period-2'].grades.file, lines:T.state.lastImport.lines.map(l=>l.label+' — '+l.text) }; });
+  const wk=await p.evaluate(()=>{ const T=window.__tally; return { f1:T.state.sections['period-1'].grades.file, f2:T.state.sections['period-2'].grades.file, lines:T.state.lastImport.lines.map(l=>l.label+': '+l.text) }; });
   check(/pool_p1/.test(wk.f1) && /pool_p2/.test(wk.f2),'each file landed on its own class: '+wk.f1+' / '+wk.f2);
   check(wk.lines.filter(l=>/placed by its students \(2[34] of 2[34]\)/.test(l)).length===2,'the import result says where each went and on what evidence: '+wk.lines.filter(l=>/placed/.test(l)).join(' | '));
   await p.click('#btnHome').catch(()=>{}); await p.waitForTimeout(300);
@@ -60,7 +60,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   const split=write('split.csv', g1.head, [...g1.rows.slice(0,12), ...g2.rows.slice(0,12).map(r=>r.split('","').slice(0,3).join('","')+'","'+cells)]);
   await drop([split]);
   check(await p.locator('[data-sec="__new__"].on').count()===0 && !/no class has these students/.test(await p.textContent('.picks')),'a split file does not offer "+ New class · no class has these students" under a sentence that names two classes');
-  check(await modal()==='Which class is this gradebook?' && /split between 1st Period · Accelerated \(1[23]\) and 2nd Period · On-level \(12\)/.test(await p.textContent('#pickWhy')),'half one class, half another: asks — '+(await p.textContent('#pickWhy').catch(()=>'')).slice(0,90));
+  check(await modal()==='Which class is this gradebook?' && /split between 1st Period · Accelerated \(1[23]\) and 2nd Period · On-level \(12\)/.test(await p.textContent('#pickWhy')),'half one class, half another: asks: '+(await p.textContent('#pickWhy').catch(()=>'')).slice(0,90));
   await p.click('#mCancel'); await p.waitForTimeout(300);
   const few=write('few.csv', g1.head, g1.rows.slice(0,5));
   await drop([few]);
@@ -69,7 +69,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP } = require('./lib');
   await p.click('#mCancel'); await p.waitForTimeout(300);
   const two=write('two.csv', g1.head, g1.rows.slice(0,2));
   await drop([two]);
-  check(await modal()==='Which class is this gradebook?' && /It has only 2 students — too few to place by itself/.test(await p.textContent('#pickWhy')) && await p.locator('[data-sec="period-1"].on').count()===1,'a two-student file whose students are both in one class: asks, says why truthfully, offers that class');
+  check(await modal()==='Which class is this gradebook?' && /It has only 2 students: too few to place by itself/.test(await p.textContent('#pickWhy')) && await p.locator('[data-sec="period-1"].on').count()===1,'a two-student file whose students are both in one class: asks, says why truthfully, offers that class');
   await p.click('#mCancel'); await p.waitForTimeout(300);
   const mixed=write('mostly.csv', g1.head, [...g1.rows.slice(0,14), ...Array.from({length:9},(_,i)=>`"11112000${10+i}","","STRANGER${i}, PAT","70% C","15.0 - 71 % - C"`)]);
   await drop([mixed]);

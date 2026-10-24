@@ -49,9 +49,14 @@ const GB_KEY = LS_KEY + '.gradebooks';
 function load() { let raw = null; try { raw = localStorage.getItem(LS_KEY); } catch (e) { return null; } /* storage refused: start empty, not "could not be read" */ return hydrate(JSON.parse(raw)); }
 // A saved state, made whole: pool classes pointed back at their pool, old gradebook shapes dropped. From this browser's
 // storage or from a Full save (which must load even where this browser can't store anything).
+// Objects keyed by names from files keep only safe keys (an own "__proto__" key in a save would otherwise be carried
+// along for good).
+function safeObj(o) { if (!o || typeof o !== 'object' || Array.isArray(o)) return {}; const out = {}; for (const k of Object.keys(o)) if (SAFE_KEY(k)) out[k] = o[k]; return out; }
 function hydrate(s) {
   try {
     if (!s || !s.sections) return null;
+    s.sections = safeObj(s.sections); s.pools = safeObj(s.pools); s.grading = safeObj(s.grading); s.pendingCfg = safeObj(s.pendingCfg);
+    for (const k in s.sections) { const x = s.sections[k]; if (x && typeof x === 'object') { x.receipts = safeObj(x.receipts); x.gbUnitMap = safeObj(x.gbUnitMap); } }
     for (const k in s.sections) { const x = s.sections[k]; if (!x) continue; const pool = s.pools && s.pools[x.prep] && Array.isArray(s.pools[x.prep].skills) ? s.pools[x.prep] : null;
       if (x.poolSkills) { x.skills = pool ? pool.skills : []; delete x.poolSkills; }
       // a save from before this change holds its own identical copy: point it at the pool so the next save drops it
@@ -62,6 +67,9 @@ function hydrate(s) {
   } catch (e) {}
   return null;
 }
+// Takes a candidate state in: migrated on its own first, so a state that can't be migrated never replaces the one in use
+// half-done (audit, 24 Oct). Returns the state now in use.
+function adopt(s) { const keep = state; state = s; try { migrate(); } catch (e) { state = keep; throw e; } return state; }
 function migrate() {
   const st = state.settings || {};
   state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : st.labPrep === 'both' ? 'both' : 'acc', labPick: { acc: st.labPick && typeof st.labPick.acc === 'string' ? st.labPick.acc.slice(0, 200) : '', on: st.labPick && typeof st.labPick.on === 'string' ? st.labPick.on.slice(0, 200) : '' }, labRows: st.labRows === 'class' ? 'class' : 'course', labPairs: st.labPairs && typeof st.labPairs === 'object' ? Object.fromEntries(Object.entries(st.labPairs).filter(([k, v]) => SAFE_KEY(k) && typeof v === 'string').slice(0, 200)) : {}, labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
@@ -69,7 +77,7 @@ function migrate() {
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null },
     curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) },
     autosave: [0, 5, 10, 15, 30].includes(st.autosave) ? st.autosave : 10,   // minutes, where the page keeps nothing (Google Sites)
-    teacherName: typeof st.teacherName === 'string' ? st.teacherName.slice(0, 80) : '', gradeLevel: typeof st.gradeLevel === 'string' ? st.gradeLevel.slice(0, 4) : '', courseNames: { acc: st.courseNames && typeof st.courseNames.acc === 'string' ? st.courseNames.acc.slice(0, 80) : '', on: st.courseNames && typeof st.courseNames.on === 'string' ? st.courseNames.on.slice(0, 80) : '' } };   // the conference form's header   // the unit each course is working in: everything up to it is assigned, later units are gathered under Ahead   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills — use the Focus check's skip offer)
+    teacherName: typeof st.teacherName === 'string' ? st.teacherName.slice(0, 80) : '', gradeLevel: typeof st.gradeLevel === 'string' ? st.gradeLevel.slice(0, 4) : '', courseNames: { acc: st.courseNames && typeof st.courseNames.acc === 'string' ? st.courseNames.acc.slice(0, 80) : '', on: st.courseNames && typeof st.courseNames.on === 'string' ? st.courseNames.on.slice(0, 80) : '' } };   // the conference form's header   // the unit each course is working in: everything up to it is assigned, later units are gathered under Ahead   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills: use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
   state.tests = cleanTests(state.tests);   // FAST results, by student ID and by name
   state.testInfo = cleanTestInfo(state.testInfo);   // every other column of the FAST report
@@ -92,7 +100,7 @@ function migrate() {
     if (!s || typeof s !== 'object' || !Array.isArray(s.students) || !Array.isArray(s.skills) || !Array.isArray(s.scores)) { delete state.sections[k]; continue; }
     if (typeof s.label !== 'string') s.label = s.autoLabel || k;
     // A gradebook is only usable whole: assignments with values/status arrays of the students' length.
-    if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) delete s.grades; else gb.assignments.forEach(a => { a.missing = Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); }
+    if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) delete s.grades; else gb.assignments.forEach(a => { a.missing = a.status ? a.status.filter(t => t === 'missing').length : Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); }
     s.stuNotes = cleanNotes(s.stuNotes); s.confForms = cleanConfForms(s.confForms);
     s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s.overrides = cleanOverrides(s.overrides); s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
@@ -117,7 +125,7 @@ function migrate() {
   foldPeriodTwins();
 }
 /* A second class for a period, made by a class IXL export before Tally knew to put it on the class already there
-   (22 Oct 2026). It holds nothing of its own — no gradebook, roster, notes, seating, kept quarter — so it folds into
+   (22 Oct 2026). It holds nothing of its own: no gradebook, roster, notes, seating, kept quarter: so it folds into
    the real class: its IXL data moves over if it is newer, then it goes. */
 var foldedTwins = [];
 function foldPeriodTwins() {
@@ -143,7 +151,7 @@ function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (f
 let saveCount = 0;
 const noCache = s => { if (!s || typeof s !== 'object') return s; const o = {}; for (const k of Object.keys(s)) if (k[0] !== '_') o[k] = s[k]; return o; };   // _keys and the like are caches, rebuilt on the next paint: saving them made the same work look changed
 function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = noCache(state.sections[k]); const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
-function save() { saveCount++; try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); syncSoon(); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save — this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
+function save() { saveCount++; try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); syncSoon(); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save: this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
 function norm(s) {
@@ -234,7 +242,7 @@ function renderKeep() {
 window.addEventListener('storage', e => {
   if (e.key !== LS_KEY || e.newValue == null || wiping || bootError) return;
   try { const s2 = hydrate(JSON.parse(e.newValue)); if (!s2) return; const m = $('#modal'); if (m && !m.classList.contains('hidden')) { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; }
-    state = s2; migrate(); printCache = { n: -1, v: '' }; saveCount++; render(); toast('Updated with the changes made in another Tally tab.', false, 3500); } catch (err) { console.error(err); }
+    adopt(s2); printCache = { n: -1, v: '' }; saveCount++; render(); toast('Updated with the changes made in another Tally tab.', false, 3500); } catch (err) { console.error(err); }
 });
 window.addEventListener('beforeunload', e => { if (storageFragile && !wiping && !state.board && unsavedWork()) { e.preventDefault(); e.returnValue = ''; } });
 // Autosave, where the page keeps nothing: a Full save downloads once work has been only on this page for the chosen
@@ -355,7 +363,7 @@ async function importFiles(files) {
   let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [], poolImported = [], sameData = [], courseFixed = [];
   for (const f of files) {
     try {
-      if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts) — a Tally backup goes through Settings
+      if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts): a Tally backup goes through Settings
         let obj = null; try { obj = JSON.parse(await f.text()); } catch (e) {}
         if (obj && obj.tally) { let done = false; try { done = await loadTallyFile(f, obj); } catch (e) { fails.push(f.name + ': not a Tally file'); } if (done && (obj.board || obj.full)) return; continue; }   // a full save or Board file replaces everything: nothing else in the drop applies
         if (!looksLikeSeatingBackup(obj)) { fails.push(f.name + ': not a Seating Chart backup'); continue; }
@@ -457,6 +465,7 @@ async function importFiles(files) {
     const sec = state.sections[target];
     /* An earlier quarter's file, or an older copy of this quarter's, must never replace the gradebook in use (audit,
        22 Oct 2026: an old Q1 file dropped after Q2 was in rewrote the closed Q1 finals and threw the Q2 columns away). */
+    const newAt0 = f.lastModified ? new Date(f.lastModified).toISOString() : null;
     const curGb = sec.grades && sec.grades.assignments && sec.grades.assignments.length ? sec.grades : null;
     const newQ = gbQuarter(gb), curQ = curGb ? gbQuarter(curGb) : null;
     /* A file from a quarter that was closed before it ended (Croix, 23 Oct): asked once per drop, since importing it
@@ -464,15 +473,15 @@ async function importFiles(files) {
     if (newQ && qClosed(newQ) && newQ === closedEarly()) {
       if (earlyAnswer == null) earlyAnswer = await ask(`${f.name}\n\nThis is a ${Q_NAMES[newQ - 1]} gradebook. ${Q_NAMES[newQ - 1]} was closed early, but it runs until ${fmtDate(quarters().ends[newQ - 1])}. Reopen ${Q_NAMES[newQ - 1]} and import it? (Cancel only updates the closed record.)`, `Reopen and import`);
       if (earlyAnswer && qClosed(newQ)) reopenQuarter(newQ);
-      else if (!earlyAnswer) { mergeArchive(sec, newQ, gb); gbImported.push({ key: sec.key, label: sec.label, text: `${Q_NAMES[newQ - 1]} gradebook: updated the kept ${Q_NAMES[newQ - 1]} record (${Q_NAMES[newQ - 1]} stays closed)` }); continue; }
+      else if (!earlyAnswer) { mergeArchive(sec, newQ, stampGb(gb, f, newAt0)); gbImported.push({ key: sec.key, label: sec.label, text: `${Q_NAMES[newQ - 1]} gradebook: updated the kept ${Q_NAMES[newQ - 1]} record (${Q_NAMES[newQ - 1]} stays closed)` }); continue; }
     }
     if (curGb && newQ && curQ && newQ < curQ) {
       if (qClosed(newQ)) {
         const before = ((sec.qArchive || {})[newQ] || {}).final || [];
         if (!await ask(`${f.name}\n\nThis is a ${Q_NAMES[newQ - 1]} gradebook, and ${sec.label} is already on ${Q_NAMES[curQ - 1]}. ${Q_NAMES[newQ - 1]} is closed. Use this file to update the kept ${Q_NAMES[newQ - 1]} record? Final grades may change. The ${Q_NAMES[curQ - 1]} gradebook stays as it is.`, 'Update the record')) { skipped++; continue; }
-        mergeArchive(sec, newQ, gb); const a = sec.qArchive[newQ]; const changed = a.gb.students.filter((n, i) => before[i] != null && a.final[i] != null && before[i] !== a.final[i]);
+        mergeArchive(sec, newQ, stampGb(gb, f, newAt0)); const a = sec.qArchive[newQ]; const changed = a.gb.students.filter((n, i) => before[i] != null && a.final[i] != null && before[i] !== a.final[i]);
         gbImported.push({ key: sec.key, label: sec.label, text: `${Q_NAMES[newQ - 1]} gradebook: updated the kept ${Q_NAMES[newQ - 1]} record${changed.length ? ` (final grade changed for ${changed.length}: ${changed.slice(0, 3).map(n => shown(n)).join('; ')}${changed.length > 3 ? '…' : ''})` : ''}; ${Q_NAMES[curQ - 1]} unchanged` });
-      } else { mergeArchive(sec, newQ, gb); gbImported.push({ key: sec.key, label: sec.label, text: `${Q_NAMES[newQ - 1]} gradebook: kept as the ${Q_NAMES[newQ - 1]} record; the ${Q_NAMES[curQ - 1]} gradebook is unchanged` }); }
+      } else { mergeArchive(sec, newQ, stampGb(gb, f, newAt0)); gbImported.push({ key: sec.key, label: sec.label, text: `${Q_NAMES[newQ - 1]} gradebook: kept as the ${Q_NAMES[newQ - 1]} record; the ${Q_NAMES[curQ - 1]} gradebook is unchanged` }); }
       continue;
     }
     const lastDue = g => { let m = ''; g.assignments.forEach(a => { if ((a.values || []).some(v => v != null)) { const d = mdToISO(a.due) || ''; if (d > m) m = d; } }); return m; };
@@ -501,12 +510,12 @@ async function importFiles(files) {
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
   const workingIn = defaultWorkingIn();
   // The result stays on the Overview until the next import (one line per file, failures in red); the toast is one line.
-  const poolLine = p => { const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === p.prep && !x.awaitingPool).length; return { label: p.prep === 'acc' ? 'Accelerated IXL' : 'On-level IXL', pool: p.prep, text: `${plural(p.students, 'student')}, ${plural(p.skills, 'skill')}${fed ? ` → ${plural(fed, 'class')} updated` : ' — no class uses it yet: import a Focus gradebook for each period'}` }; };
+  const poolLine = p => { const fed = state.order.map(k => state.sections[k]).filter(x => x.pool && x.prep === p.prep && !x.awaitingPool).length; return { label: p.prep === 'acc' ? 'Accelerated IXL' : 'On-level IXL', pool: p.prep, text: `${plural(p.students, 'student')}, ${plural(p.skills, 'skill')}${fed ? ` → ${plural(fed, 'class')} updated` : ': no class uses it yet: import a Focus gradebook for each period'}` }; };
   const pools = poolImported.map(poolLine);
-  const classes = ok.filter(s => !s.pool || s.fromSection).map(s => ({ label: s.label, text: `IXL export — goal ${s.threshold}, ${plural(s.students.length, 'student')}` }));
-  const same = sameData.map(l => ({ label: l, text: 'IXL export — no change: this class already has the course export from the same day or later' }));
+  const classes = ok.filter(s => !s.pool || s.fromSection).map(s => ({ label: s.label, text: `IXL export: goal ${s.threshold}, ${plural(s.students.length, 'student')}` }));
+  const same = sameData.map(l => ({ label: l, text: 'IXL export: no change: this class already has the course export from the same day or later' }));
   courseFixed.forEach(t => same.push({ label: 'IXL course export', text: t }));
-  const lines = [...pools, ...classes, ...same, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook — ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: wiText(x) }))];
+  const lines = [...pools, ...classes, ...same, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook: ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: wiText(x) }))];
   if (lines.length || fails.length || skipped) {   // files dropped within a quarter of an hour read as one import; a newer line for the same class replaces the older
     const prev = state.lastImport && Date.now() - new Date(state.lastImport.at) < 15 * 60000 ? state.lastImport : { lines: [], fails: [], skipped: 0 };
     const fresh = lines.map(l => ({ label: String(l.label).slice(0, 80), text: String(l.text).replace(/<[^>]+>/g, '').slice(0, 300), pool: l.pool || null, wi: l.wi || null }));
@@ -519,8 +528,8 @@ async function importFiles(files) {
   search = ''; $('#search').value = ''; view = (touched > 1 || pools.length) && !needRoster ? { mode: 'home', unit: null } : { mode: 'units', unit: null };
   save(); render();
   const n = lines.length - workingIn.length;   // files, not notes
-  if (fails.length) toast(`${n ? `${plural(n, 'file')} imported, ` : ''}${plural(fails.length, 'file')} couldn't be read — ${esc(fails[0])}${fails.length > 1 ? ' …' : ''}`, true);
-  else if (n) toast(`Imported ${plural(n, 'file')}${skipped ? ` · ${skipped} skipped` : ''}${view.mode === 'home' ? '.' : ' — details on the Overview.'}`, false, 3500);
+  if (fails.length) toast(`${n ? `${plural(n, 'file')} imported, ` : ''}${plural(fails.length, 'file')} couldn't be read: ${esc(fails[0])}${fails.length > 1 ? ' …' : ''}`, true);
+  else if (n) toast(`Imported ${plural(n, 'file')}${skipped ? ` · ${skipped} skipped` : ''}${view.mode === 'home' ? '.' : ': details on the Overview.'}`, false, 3500);
   else if (skipped) toast('Nothing imported.', false);
 }
 
@@ -554,7 +563,7 @@ function defaultWorkingIn() {
 }
 const WI_WHY = { focus: 'the latest unit Focus has an IXL column for', started: 'a quarter of the course has started every unit up to it', first: 'the first unit that counts' };
 // One sentence per course for the import card, the start-up note and the backup toast.
-const wiText = x => `Working in ${x.from ? `moved from Unit ${x.from} to` : 'set to'} Unit ${x.unit} — ${WI_WHY[x.why]}${x.kept && x.kept.length ? `; Unit${x.kept.length > 1 ? 's' : ''} ${x.kept.join(', ')} ${x.kept.length > 1 ? 'were' : 'was'} already copied to Focus and still count${x.kept.length > 1 ? '' : 's'}` : ''}. Change it on the class bar.`;
+const wiText = x => `Working in ${x.from ? `moved from Unit ${x.from} to` : 'set to'} Unit ${x.unit}: ${WI_WHY[x.why]}${x.kept && x.kept.length ? `; Unit${x.kept.length > 1 ? 's' : ''} ${x.kept.join(', ')} ${x.kept.length > 1 ? 'were' : 'was'} already copied to Focus and still count${x.kept.length > 1 ? '' : 's'}` : ''}. Change it on the class bar.`;
 // A note that stays: the same card on the Overview that reports an import (a toast is gone in seconds and never shows on the Board).
 function noteWorkingIn(wi) { if (!wi.length) return; const prev = state.lastImport || { lines: [], fails: [], skipped: 0 }; const fresh = wi.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: wiText(x), pool: null })); state.lastImport = { at: new Date().toISOString(), lines: [...prev.lines.filter(l => !fresh.some(f => f.label === l.label && l.wi)), ...fresh].slice(-20), fails: prev.fails || [], skipped: prev.skipped || 0 }; }
 
@@ -897,7 +906,7 @@ const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
    accelerated in terms of specific (let me choose) assignment comparison and still get the full suite of graphs") ----------
    A data set in one course is matched to the same thing in the other: the course grade, all assigned units, a Focus
    assignment with the same name (case, spacing, punctuation and course words like "(Acc)" ignored), a single skill by
-   its IXL id, the class's own data by its label — or a pair he chose. Rows are one per course (every student in the
+   its IXL id, the class's own data by its label: or a pair he chose. Rows are one per course (every student in the
    course together) or one per class, grouped by course. When the two maximums differ, both show percent of points. */
 const COURSE_NAMES = { acc: 'Accelerated', on: 'On-level' };
 const COURSE_COLORS = { acc: '#1F3A5F', on: '#0F766E' };
@@ -952,7 +961,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
   const course = both ? 'accelerated and on-level' : prep === 'acc' ? 'accelerated' : 'on-level'; const avgOn = !!state.settings.labAvg;
   const color = x => x.color || classColor(x.sec);
   const lineSecs = both ? secs : secs;
-  if (kind === 'line') {   // every class on one chart — the comparison is the point
+  if (kind === 'line') {   // every class on one chart: the comparison is the point
     const lineSeries = both ? [...labSeries('acc', ids.acc), ...labSeries('on', ids.on)].filter(x => x.st.n >= MIN_N) : series;
     const asOfL = labAsOf(lineSecs, gbSet); let body = '';
     const lineId = both ? (ids.acc === ids.on || labNorm(ids.acc) === labNorm(ids.on) ? ids.acc : null) : unitName;
@@ -966,7 +975,8 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
   let scale = Math.max(...series.map(x => x.max), 1);
   if (seriesAll[0] && seriesAll[0].pct) scale = 100;
   else if (anyId === 'unit:__all__' || series.some(x => x.st.max > x.max)) { const top = Math.max(...series.map(x => Math.max(x.st.max, anyId === 'unit:__all__' ? 0 : x.max)), 1); const step = top > 100 ? 20 : top > 40 ? 10 : 5; scale = Math.ceil((top + 1) / step) * step; }
-  const unitLabel = seriesAll.length ? seriesAll[0].unit : 'points';
+  const mixedMax = both && new Set(seriesAll.map(x => x.unit)).size > 1;   // two assignments out of different totals: say so, not one side's total
+  const unitLabel = mixedMax ? 'the maximum' : seriesAll.length ? seriesAll[0].unit : 'points';
   const asOf = labAsOf(secs, gbSet);
   const isGrade = anyId === 'grade:course'; const isPct = !!(seriesAll[0] && seriesAll[0].pct);
   const facts = [both ? `${rowsBy === 'course' ? 'each course together' : 'each class'}` : `${course} classes`];
@@ -1024,7 +1034,7 @@ const LAB_ONLY_CSS = `
 .labGroupHead{font-weight:var(--w-black);font-size:calc(var(--bu)*1.35);letter-spacing:.06em;text-transform:uppercase;color:var(--cc,var(--navy));margin:6px 0 -4px 4px}
 .labRow.course{border-left:calc(var(--bu)*.5) solid var(--cc)}
 .labVersus{font-weight:var(--w-black);font-size:calc(var(--bu)*1.35);color:var(--navy);margin:2px 0 4px}
-.labWith{display:inline-flex;align-items:center;gap:6px;font-weight:var(--w-bold)}
+.labVs{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}.labVs b{font-weight:var(--w-bold);color:var(--ink-soft)}.labSelect.side{max-width:230px}
 .labNotYet{font-weight:var(--w-bold);color:var(--teal);padding:14px 0}
 .labName{font-weight:var(--w-black);font-size:calc(var(--bu)*1.7);line-height:1.1;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .labSide{min-width:0;display:flex;flex-direction:column;gap:calc(var(--bu)*.35)}
@@ -1094,46 +1104,41 @@ function renderLeaderboard() {
   const tabs = `<div class="seg lbTabs"><button data-tab="race" class="${!lab ? 'on' : ''}">Race</button><button data-tab="lab" class="${lab ? 'on' : ''}">Data Lab</button></div>`;
   const revealLabel = st.labStats === 0 ? 'Show stats' : st.labStats === 1 ? 'Show more' : 'Hide stats';
   const opt = (d, selId) => `<option value="${esc(d.id)}" ${d.id === selId ? 'selected' : ''}>${esc(d.label)}</option>`;
-  // Both: what is in both courses first, then what is in one course only; a one-course pick gets a "compare with" list.
-  const bothPicker = () => { const A = labDatasets('acc'), O = labDatasets('on'); const main = l => l.filter(d => !d.id.startsWith('skill:'));
-    const matched = main(A.list).filter(d => labMatch('acc', d.id)); const aOnly = main(A.list).filter(d => !labMatch('acc', d.id)); const oOnly = main(O.list).filter(d => !labMatch('on', d.id));
-    const selVal = labMatch('acc', pickA) === pickO ? 'pair:' + pickA : 'acc:' + pickA;
-    const ogrp = (label, items, pre) => items.length ? `<optgroup label="${esc(label)}">${items.map(d => `<option value="${esc(pre + d.id)}" ${pre + d.id === selVal ? 'selected' : ''}>${esc(d.label)}</option>`).join('')}</optgroup>` : '';
-    const paired = labMatch('acc', pickA) === pickO;
-    return `<select id="labPair" class="labSelect" aria-label="Data set in both courses">${ogrp('In both courses', matched, 'pair:')}${ogrp('Accelerated only', aOnly, 'acc:')}${ogrp('On-level only', oOnly, 'on:')}</select>
-      ${paired ? '' : `<label class="labWith">vs <select id="labWith" class="labSelect" aria-label="On-level data set to compare with">${main(O.list).map(d => opt(d, pickO)).join('')}</select></label>`}`; };
+  // Both: one picker per course. The courses move at different speeds, so each side is chosen on its own and remembered
+  // on its own (Croix, 24 Oct: "it doesn't make sense to compare the same unit"). Skills sit in their own groups at the end.
+  const sidePicker = (c, id, label) => { const G = labDatasets(c).groups; return `<select id="lab${c === 'acc' ? 'A' : 'O'}" class="labSelect side" aria-label="${label} data set">${G.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => opt(d, id)).join('')}</optgroup>`).join('')}</select>`; };
+  const bothPicker = () => `<span class="labVs">${sidePicker('acc', pickA, 'Accelerated')}<b>vs</b>${sidePicker('on', pickO, 'On-level')}</span>`;
   const courseSeg = hasBoth ? `<div class="seg lbFocus">${[['acc', 'Accelerated'], ['on', 'On-level'], ['both', 'Both']].map(([k, n]) => `<button data-prep="${k}" class="${st.labPrep === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '';
-  const controls = lab
-    ? `${courseSeg}${both ? `<div class="seg small" id="labRows">${[['course', 'By course'], ['class', 'By class']].map(([k, n]) => `<button data-rows="${k}" class="${(st.labRows || 'course') === k ? 'on' : ''}">${n}</button>`).join('')}</div>${bothPicker()}` : `
+  const pickers = both ? bothPicker() : `
        <select id="labUnit" class="labSelect" aria-label="Data set">${mainGroups.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => opt(d, st.labUnit)).join('')}</optgroup>`).join('')}${skillGroups.length ? `<option value="__skill__" ${isSkill ? 'selected' : ''}>A single skill…</option>` : ''}</select>
-       ${isSkill ? `<select id="labSkill" class="labSelect" aria-label="Skill">${skillGroups.map(g => `<optgroup label="${esc(g.group.replace(/^IXL skills \(SmartScore\),? ?—? ?/, ''))}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label.replace(/^Unit \d+ · /, ''))}</option>`).join('')}</optgroup>`).join('')}</select>` : ''}`}
-       <select id="labKind" class="labSelect" aria-label="Show as">${kinds.map(([k, n]) => `<option value="${k}" ${kindNow === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+       ${isSkill ? `<select id="labSkill" class="labSelect" aria-label="Skill">${skillGroups.map(g => `<optgroup label="${esc(g.group.replace(/^IXL skills \(SmartScore\),? ?—? ?/, ''))}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label.replace(/^Unit \d+ · /, ''))}</option>`).join('')}</optgroup>`).join('')}</select>` : ''}`;
+  const toggles = `${both ? `<div class="seg small" id="labRows">${[['course', 'By course'], ['class', 'By class']].map(([k, n]) => `<button data-rows="${k}" class="${(st.labRows || 'course') === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
        ${kindNow === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${(anyFocus && !fullSuite ? [5, 10] : [1, 2, 5, 10]).map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
        ${one ? '' : `<button class="pill small" id="labStats" aria-pressed="${st.labStats > 0}">${revealLabel}</button>`}
        ${one ? '' : `<button class="pill small" id="labAvg" aria-pressed="${!!st.labAvg}" title="Each row's average, beside its name and marked on its plot">Average</button>`}
        ${kindNow === 'box' && (!anyFocus || fullSuite) ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
        ${(both ? (pickA === 'grade:course' || /^skill:/.test(pickA)) : (st.labUnit === 'grade:course' || /^skill:/.test(st.labUnit || ''))) ? '' : `<div class="seg small" id="labPct" title="Show each student's score as points or as a percent of the maximum"><button data-pct="0" class="${st.labPct ? '' : 'on'}">Points</button><button data-pct="1" class="${st.labPct ? 'on' : ''}">%</button></div>`}
        ${(anyFocus && !fullSuite) || one ? '' : `<button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>`}
-       ${kindNow === 'box' && (!anyFocus || fullSuite) ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`
+       ${kindNow === 'box' && (!anyFocus || fullSuite) ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`;
+  const nOpts = (toggles.match(/<(button|select|div class="seg)/g) || []).length;
+  const controls = lab
+    ? `${courseSeg}${pickers}<select id="labKind" class="labSelect" aria-label="Show as">${kinds.map(([k, n]) => `<option value="${k}" ${kindNow === k ? 'selected' : ''}>${n}</option>`).join('')}</select>${nOpts ? `<button class="pill small" id="lbOpts" aria-pressed="${lbOptsOpen}" aria-expanded="${lbOptsOpen}">Options</button><div class="lbOptsBox">${toggles}</div>` : ''}`
     : (hasBoth ? `<div class="seg lbFocus">${[['both', 'Both'], ['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-focus="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '');
   el.innerHTML = `<div class="lbWrap">${lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues, kindNow) : lbMarkup(data, f)}</div>
-    <div class="lbTools ${lbOptsOpen ? 'open' : ''}">${tabs}${controls ? `<button class="pill small" id="lbOpts" aria-expanded="${lbOptsOpen}">${lbOptsOpen ? 'Done' : 'Options'}</button>` : ''}${controls}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
-  const lo = el.querySelector('#lbOpts'); if (lo) lo.onclick = () => { lbOptsOpen = !lbOptsOpen; el.querySelector('.lbTools').classList.toggle('open', lbOptsOpen); lo.setAttribute('aria-expanded', lbOptsOpen); lo.textContent = lbOptsOpen ? 'Done' : 'Options'; };   /* phones only: the Board's controls fold behind one button */
+    <div class="lbTools ${lbOptsOpen ? 'open' : ''}">${tabs}${controls}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
+  const lo = el.querySelector('#lbOpts'); if (lo) lo.onclick = () => { lbOptsOpen = !lbOptsOpen; el.querySelector('.lbTools').classList.toggle('open', lbOptsOpen); lo.setAttribute('aria-expanded', lbOptsOpen); lo.setAttribute('aria-pressed', lbOptsOpen); };   /* the toggles fold behind Options; the card stays open while the chart is changed */
   el.querySelectorAll('[data-focus]').forEach(b => b.onclick = () => { st.lbFocus = b.dataset.focus; if (st.lbFocus !== 'both') st.labPrep = st.lbFocus; save(); renderLeaderboard(); });
   el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { st.lbTab = b.dataset.tab; save(); renderLeaderboard(); });
   // a course switch keeps what was showing: the same assignment (or skill, grade, data set) in the other course when it
   // has one, else what that course showed last (Croix: "when I switched between classes, it was resetting")
   el.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { const from = st.labPrep, to = b.dataset.prep; if (from === to) return;
     if (from !== 'both' && st.labUnit) st.labPick = { ...(st.labPick || {}), [from]: st.labUnit };
-    if (to === 'both') { if (from !== 'both') { const m = labMatch(from, st.labUnit); if (m) st.labPick[from === 'acc' ? 'on' : 'acc'] = m; } }
+    if (to === 'both') { /* each side keeps its own last pick */ }
     else { const m = from !== 'both' ? labMatch(from, st.labUnit) : null; st.labUnit = m || (st.labPick || {})[to] || ''; }
     st.labPrep = to; save(); renderLeaderboard(); });
   el.querySelectorAll('[data-rows]').forEach(b => b.onclick = () => { st.labRows = b.dataset.rows; save(); renderLeaderboard(); });
-  const pr = $('#labPair'); if (pr) pr.onchange = () => { const [c, ...rest] = pr.value.split(':'); const id = rest.join(':');
-    if (c === 'pair') { st.labPick = { ...st.labPick, acc: id, on: labMatch('acc', id) }; }
-    else { st.labPick = { ...st.labPick, [c]: id }; const m = labMatch(c, id); if (m) st.labPick[c === 'acc' ? 'on' : 'acc'] = m; }
-    save(); renderLeaderboard(); };
-  const pw = $('#labWith'); if (pw) pw.onchange = () => { const a = labPickFor('acc'); st.labPick = { ...st.labPick, on: pw.value }; st.labPairs = { ...(st.labPairs || {}), ['acc|' + a]: pw.value, ['on|' + pw.value]: a }; save(); renderLeaderboard(); };   // remembered: next time they match
+  const pa = $('#labA'); if (pa) pa.onchange = () => { st.labPick = { ...(st.labPick || {}), acc: pa.value }; save(); renderLeaderboard(); };
+  const po = $('#labO'); if (po) po.onchange = () => { st.labPick = { ...(st.labPick || {}), on: po.value }; save(); renderLeaderboard(); };
   const sel = $('#labUnit'); if (sel) sel.onchange = () => { if (sel.value === '__skill__') { const cur = (state.settings.currentUnit || {})[st.labPrep]; const g = skillGroups.find(x => cur && new RegExp('[,—] Unit ' + cur + '$').test(x.group)) || skillGroups[0]; st.labUnit = g.items[0].id; } else st.labUnit = sel.value; save(); renderLeaderboard(); };
   const sks = $('#labSkill'); if (sks) sks.onchange = () => { st.labUnit = sks.value; save(); renderLeaderboard(); };
   const lk = $('#labKind'); if (lk) lk.onchange = () => { st.labKind = lk.value; save(); renderLeaderboard(); };
@@ -1172,7 +1177,7 @@ function downloadLeaderboard(which) {
 *{box-sizing:border-box}html,body{margin:0;height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream)}
 ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body></html>`;
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = (lab ? 'Data-Lab-' : 'IXL-Race-') + (data.map(r => r.date).filter(Boolean).sort().pop() || new Date().toISOString().slice(0, 10)) + '.html'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  toast(lab ? 'Saved the Data Lab page — no names; it does contain each class\'s values.' : 'Saved the Race page — class totals only, no names.', false, 4500, true);
+  toast(lab ? 'Saved the Data Lab page: no names; it does contain each class\'s values.' : 'Saved the Race page: class totals only, no names.', false, 4500, true);
 }
 
 /* ---------- file sniffing: xlsx / csv / html-table-as-.xls / tab-text-as-.xls / real binary .xls ---------- */
@@ -1278,7 +1283,7 @@ function parseGradebook(rows) {
     const categoryFromFile = !!category;
     if (!category) category = /\b(test|exam|assessment|benchmark)\b/i.test(name) ? 'Assessments' : /\bixl\b/i.test(name) ? 'IXL' : /\bquiz\b/i.test(name) ? 'Quizzes' : 'Classwork';
     seen[name] = (seen[name] || 0) + 1; if (seen[name] > 1) name = name + ' (' + seen[name] + ')';
-    const vals = data[j]; const missing = vals.filter(v => v == null).length - excusedN[j];
+    const vals = data[j]; const missing = status[j].filter(t => t === 'missing').length;   // NHI only: a blank (not graded yet) is out of the grade, so it isn't missing work (audit, 24 Oct)
     return { name, category, categoryFromFile, max, values: vals, status: status[j], missing, excused: excusedN[j], unread: unread[j], percent: pct[j], assignedOn, due, _col: col };
   }).filter(a => a.values.some(v => v != null) || a.status.some(x => x === 'missing'));   // an all-NHI column still counts as zeros in Focus; only a column nobody has anything in is dropped
   if (!assignments.length) return null;
@@ -1341,7 +1346,7 @@ function askNewClass(fileName, gb, orExisting) {
     m.querySelectorAll('#ncPeriod button').forEach(b => b.onclick = () => { period = Number(b.dataset.p); m.querySelectorAll('#ncPeriod button').forEach(x => x.classList.toggle('on', x === b)); arm(); });
     // A student is in one class per course: say so when this gradebook's names already sit in another class of that course.
     const overlap = pr => { const mine = new Set(gb.students.map(n => norm(n))); return state.order.map(k => state.sections[k]).filter(x => x.prep === pr && !x.placeholder).map(x => ({ x, n: parseRosterText(x.roster).filter(r => mine.has(norm(r.display))).length })).filter(o => o.n); };
-    m.querySelectorAll('#ncPrep button').forEach(b => b.onclick = () => { prep = b.dataset.prep; m.querySelectorAll('#ncPrep button').forEach(x => x.classList.toggle('on', x === b)); const ov = overlap(prep); const w = $('#ncWarn'); w.hidden = !ov.length; w.textContent = ov.length ? `${ov.map(o => `${o.n} of these students ${o.n === 1 ? 'is' : 'are'} already in ${o.x.label}`).join('; ')} — they would appear in both classes. Fix the roster of whichever class is wrong afterwards.` : ''; arm(); });
+    m.querySelectorAll('#ncPrep button').forEach(b => b.onclick = () => { prep = b.dataset.prep; m.querySelectorAll('#ncPrep button').forEach(x => x.classList.toggle('on', x === b)); const ov = overlap(prep); const w = $('#ncWarn'); w.hidden = !ov.length; w.textContent = ov.length ? `${ov.map(o => `${o.n} of these students ${o.n === 1 ? 'is' : 'are'} already in ${o.x.label}`).join('; ')}: they would appear in both classes. Fix the roster of whichever class is wrong afterwards.` : ''; arm(); });
     $('#ncMake').onclick = () => {
       const key = 'period-' + period; const label = `${PERIOD_ORD(period)} Period · ${prep === 'acc' ? 'Accelerated' : 'On-level'}`;
       state.sections[key] = { key, label, autoLabel: label, period, pool: true, accelerated: prep === 'acc', prep, threshold: prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on,
@@ -1384,7 +1389,7 @@ function matchSection(gb, taken) {
   let why = '';
   if (!a || !a.n) why = state.order.length ? 'None of its students are in a class yet.' : '';
   else if (b && b.share > (a.via === 'ixl' ? AUTO_RIVAL_IXL : AUTO_RIVAL)) why = `Its students are split between ${a.label} (${a.n}) and ${b.label} (${b.n}).`;
-  else if (N < 3) why = `It has only ${plural(N, 'student')} — too few to place by itself.`;
+  else if (N < 3) why = `It has only ${plural(N, 'student')}: too few to place by itself.`;
   else if (a.share < (a.via === 'ixl' ? AUTO_SHARE_IXL : AUTO_SHARE)) why = `Only ${a.n} of its ${plural(N, 'student')} ${a.n === 1 ? 'is' : 'are'} in ${a.label}.`;
   else if (a.back < AUTO_BACK) why = `It has only ${a.n} of the ${a.size} students in ${a.label}.`;
   else if (taken && taken.has(a.key)) why = `Another file in this drop already went to ${a.label}.`;
@@ -1416,7 +1421,7 @@ function pickSection(fileName, gb, mt) {
 let closeOpenMenu = null;
 function wireMenu(mb, menu, place) {
   menu.setAttribute('role', 'menu'); menu.querySelectorAll('button').forEach(b => { if (!b.getAttribute('role')) b.setAttribute('role', 'menuitem'); });
-  const onMove = e => { if (e && e.target && e.target.nodeType === 1 && menu.contains(e.target)) return; closeMenu(); };
+  let openedAt = 0; const onMove = e => { if (e && e.target && e.target.nodeType === 1 && menu.contains(e.target)) return; if (e && e.type === 'scroll' && Date.now() - openedAt < 400) return; closeMenu(); };   // the scroll that brought the button into view isn't the user leaving
   const closeMenu = () => { menu.classList.add('hidden'); mb.setAttribute('aria-expanded', 'false'); const ov = $('#menuOverlay'); if (ov) ov.remove(); document.removeEventListener('keydown', onKey, true); window.removeEventListener('resize', onMove); document.removeEventListener('scroll', onMove, true); if (closeOpenMenu === closeMenu) closeOpenMenu = null; };
   const onKey = e => { const items = [...menu.querySelectorAll('button')]; const i = items.indexOf(document.activeElement);
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(); mb.focus(); }
@@ -1424,7 +1429,7 @@ function wireMenu(mb, menu, place) {
     else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); items[e.key === 'Home' ? 0 : items.length - 1].focus(); }
     else if (e.key === 'Tab') { setTimeout(() => { if (!menu.contains(document.activeElement)) closeMenu(); }, 0); } };
   mb.onclick = e => { e.stopPropagation(); if (!menu.classList.contains('hidden')) { closeMenu(); return; } if (closeOpenMenu) closeOpenMenu();
-    menu.classList.remove('hidden'); mb.setAttribute('aria-expanded', 'true'); const ov = document.createElement('div'); ov.id = 'menuOverlay'; ov.onclick = ev => { ev.stopPropagation(); closeMenu(); }; document.body.appendChild(ov);
+    openedAt = Date.now(); menu.classList.remove('hidden'); mb.setAttribute('aria-expanded', 'true'); const ov = document.createElement('div'); ov.id = 'menuOverlay'; ov.onclick = ev => { ev.stopPropagation(); closeMenu(); }; document.body.appendChild(ov);
     document.addEventListener('keydown', onKey, true); closeOpenMenu = closeMenu; if (place) { place(); window.addEventListener('resize', onMove); document.addEventListener('scroll', onMove, true); }
     const first = menu.querySelector('button'); if (first) first.focus(); };
   menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { const open = !menu.classList.contains('hidden'); closeMenu(); if (open) mb.focus(); }, true));   // capture: before the item's own handler
@@ -1462,7 +1467,7 @@ function renderInner() {
     $('#launch').textContent = storageFragile && !pools.length ? 'Open a save' : 'Choose files';
     { const fine = d.querySelector('.fine'); if (fine) fine.textContent = storageFragile && !pools.length ? 'It is the newest tally-full file in your Downloads or Drive (on the classroom panel, the newest tally-board file). Or drop IXL and Focus exports here to start fresh.' : 'A Full save opens the same way. Student data stays in this browser.'; }
     const lp = d.querySelector('p'); lp.hidden = !pools.length; lp.textContent = pools.length ? `Now drop a Focus gradebook for each period${pools.length === 1 ? ` (and the ${pools[0] === 'acc' ? 'on-level' : 'accelerated'} IXL export when you have it)` : ''}.` : '';
-    let r = d.querySelector('.himport'); if (li && (li.lines.length || li.fails.length)) { if (!r) { r = document.createElement('div'); r.className = 'himport'; d.appendChild(r); } r.classList.toggle('warn', !!li.fails.length); r.innerHTML = `<h3>Last import <small>${esc(fmtTime(li.at))}</small></h3><ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b> — ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b> — ${esc(f)}</li>`).join('')}</ul>`; } else if (r) r.remove(); }
+    let r = d.querySelector('.himport'); if (li && (li.lines.length || li.fails.length)) { if (!r) { r = document.createElement('div'); r.className = 'himport'; d.appendChild(r); } r.classList.toggle('warn', !!li.fails.length); r.innerHTML = `<h3>Last import <small>${esc(fmtTime(li.at))}</small></h3><ul>${li.lines.map(l => `<li><b>${esc(l.label)}</b>: ${esc(l.text)}</li>`).join('')}${li.fails.map(f => `<li class="bad"><b>Couldn't read</b>: ${esc(f)}</li>`).join('')}</ul>`; } else if (r) r.remove(); }
   else { const r = $('#drop .himport'); if (r) r.remove(); }
   $('#app').classList.toggle('hidden', !has);
   // Header: three places (Classes, Students, Board), search, the names switch, a More menu, Import. Before the first
@@ -1472,7 +1477,7 @@ function renderInner() {
   renderLeaderboard();
   const hb = $('#btnHide'), hidden = !!state.settings.hideNames;
   hb.setAttribute('aria-pressed', String(!hidden));   // pressed = names showing
-  hb.title = hidden ? 'Names are hidden (initials only) — tap to show them' : 'Names are showing — tap to hide them before projecting';
+  hb.title = hidden ? 'Names are hidden (initials only): tap to show them' : 'Names are showing: tap to hide them before projecting';
   hb.setAttribute('aria-label', hidden ? 'Student names: hidden' : 'Student names: showing');
   hb.innerHTML = hidden ? EYE_OFF : EYE_ON;
   const inStudents = view.mode === 'students' || view.mode === 'student';
@@ -1512,7 +1517,7 @@ function renderTabs() {
     const active = k === state.active && !['home', 'students'].includes(view.mode);
     return `<button class="tab ${active ? 'active' : ''} ${warn ? 'warn' : ''}" role="tab" aria-selected="${active}" data-k="${esc(k)}" style="--cc:${classColor(s)}">
       <span class="n">${esc(s.label)}</span>
-      <span class="m"><span class="badge">Goal ${s.threshold}</span> ${plural(s.students.length, 'student')} · <span title="IXL export of ${esc(fmtDate(dataDate(s)))}">${overdue(s) ? `<span class="age">${ageText(dataDate(s))}</span>` : (fmtDate(dataDate(s)) || '')}</span></span>${warn ? '<span class="vh"> — needs attention</span>' : ''}
+      ${warn ? '<span class="vh"> (needs attention)</span>' : ''}
     </button>`;
   }).join('');
   $('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { state.active = b.dataset.k; view = { mode: 'units', unit: null }; noticesOpen = false; search = ''; $('#search').value = ''; save(); render(); });
@@ -1523,24 +1528,24 @@ function renderNotices() {
   const list = arr => H ? '' : ': ' + esc(arr.map(r => r.display).join('; '));
   const ro = rows.filter(r => r.status === 'rosterOnly'), am = rows.filter(r => r.status === 'ambiguous'), io = rows.filter(r => r.status === 'ixlOnly'), loose = rows.filter(r => r.tier === 'loose');
   if (s.placeholder) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span>This export had <b>no student names</b> in its header row, so Copy is disabled. Re-export from IXL with names included.</span></div>`;
-  else if (s.allBlank) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>No scores were found in this export</b> — every cell is empty. If IXL shows scores for this class, the file may be in a format Tally doesn't recognize; try the .csv export.</span></div>`;
-  if (rs.hasText && !rs.count) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>The pasted roster couldn't be read</b> — no names found. Rows are in IXL order, which is probably not FOCUS order.</span><button data-open="roster">Fix roster</button></div>`;
+  else if (s.allBlank) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>No scores were found in this export</b>: every cell is empty. If IXL shows scores for this class, the file may be in a format Tally doesn't recognize; try the .csv export.</span></div>`;
+  if (rs.hasText && !rs.count) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>The pasted roster couldn't be read</b>: no names found. Rows are in IXL order, which is probably not Focus order.</span><button data-open="roster">Fix roster</button></div>`;
   else if (!rs.count && s.skipRoster) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>No roster.</b> Rows are sorted by last name; Copy includes names so you can check the order.</span><button data-open="roster">Paste roster</button></div>`;
   if (s.pool && !s.awaitingPool && !rosterState(s).count) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>No roster, so no students.</b> Import this period's Focus gradebook or paste the roster in Settings; Tally picks the class out of the course-wide IXL export by name.</span><button data-import="1">Import</button></div>`;
   if (s.pool && s.awaitingPool) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>Waiting for the ${s.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export.</b> This class was made from its Focus gradebook; import the course-wide IXL Score Grid and its ${plural(parseRosterText(s.roster).length, 'student')} will be matched from it.</span><button data-import="1">Import</button></div>`;
   const rvg = rosterVsGradebook(s);
-  if (rvg) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>The Focus gradebook's class list differs from the pasted roster</b> — ${rvg.added.length ? `${plural(rvg.added.length, 'student')} in the gradebook but not on the roster${list(rvg.added.map(d => ({ display: d })))}` : ''}${rvg.added.length && rvg.gone.length ? '; ' : ''}${rvg.gone.length ? `${plural(rvg.gone.length, 'student')} on the roster but not in the gradebook${list(rvg.gone.map(d => ({ display: d })))}` : ''}.</span><button data-gbroster="1">Use the gradebook's list</button></div>`;
-  if ((ro.length || am.length || io.length) && !(s.pool && s.awaitingPool)) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>Roster mismatch</b> — ${ro.length ? `${ro.length} on the roster but not in IXL${list(ro)}. ` : ''}${am.length ? `${am.length} with two IXL matches${list(am)}. ` : ''}${io.length ? `${plural(io.length, 'IXL account')} not on the roster${list(io)}. ` : ''}${io.length ? 'IXL students not on the roster are left out of copies — tap their flag: re-paste the roster for a new student, skip for one who left. ' : ''}Tap a flag to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.</span></div>`;
-  const od = overdue(s); const gbOd = s.grades && state.settings.remindDays && ageDays(s.grades.importedAt) > state.settings.remindDays ? ageDays(s.grades.importedAt) : null;
-  if (od || gbOd) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span>${od ? `<b>This IXL export is ${plural(od, 'day')} old</b> (${fmtDate(dataDate(s))}). ` : ''}${gbOd ? `<b>The Focus gradebook is ${plural(gbOd, 'day')} old</b> (${fmtDate(localDayOf(s.grades.importedAt))}). ` : ''}You asked to be reminded after ${state.settings.remindDays} days — export ${od && gbOd ? 'fresh copies' : 'a fresh copy'} and import ${od && gbOd ? 'them' : 'it'}.</span><button data-import="1">Import</button></div>`;
-  if (rs.count && s.rosterAt && s.date && s.rosterAt.slice(0, 10) < s.date && (Date.now() - new Date(s.rosterAt)) > 21 * 86400000) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>Roster pasted ${fmtDate(s.rosterAt.slice(0, 10))}</b> — older than this export. If anyone enrolled or left since, re-paste it before you copy.</span><button data-open="roster">Re-paste</button></div>`;
+  if (rvg) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>The Focus gradebook's class list differs from the pasted roster</b>: ${rvg.added.length ? `${plural(rvg.added.length, 'student')} in the gradebook but not on the roster${list(rvg.added.map(d => ({ display: d })))}` : ''}${rvg.added.length && rvg.gone.length ? '; ' : ''}${rvg.gone.length ? `${plural(rvg.gone.length, 'student')} on the roster but not in the gradebook${list(rvg.gone.map(d => ({ display: d })))}` : ''}.</span><button data-gbroster="1">Use the gradebook's list</button></div>`;
+  if ((ro.length || am.length || io.length) && !(s.pool && s.awaitingPool)) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>Roster mismatch</b>: ${ro.length ? `${ro.length} on the roster but not in IXL${list(ro)}. ` : ''}${am.length ? `${am.length} with two IXL matches${list(am)}. ` : ''}${io.length ? `${plural(io.length, 'IXL account')} not on the roster${list(io)}. ` : ''}${io.length ? 'IXL students not on the roster are left out of copies: tap their flag: re-paste the roster for a new student, skip for one who left. ' : ''}Tap a flag to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.</span></div>`;
+  const od = overdue(s); const gbOd = s.grades && state.settings.remindDays && ageDays(localDayOf(s.grades.importedAt)) > state.settings.remindDays ? ageDays(localDayOf(s.grades.importedAt)) : null;
+  if (od || gbOd) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span>${od ? `<b>This IXL export is ${plural(od, 'day')} old</b> (${fmtDate(dataDate(s))}). ` : ''}${gbOd ? `<b>The Focus gradebook is ${plural(gbOd, 'day')} old</b> (${fmtDate(localDayOf(s.grades.importedAt))}). ` : ''}You asked to be reminded after ${state.settings.remindDays} days: export ${od && gbOd ? 'fresh copies' : 'a fresh copy'} and import ${od && gbOd ? 'them' : 'it'}.</span><button data-import="1">Import</button></div>`;
+  if (rs.count && s.rosterAt && s.date && s.rosterAt.slice(0, 10) < s.date && (Date.now() - new Date(s.rosterAt)) > 21 * 86400000) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>Roster pasted ${fmtDate(s.rosterAt.slice(0, 10))}</b>: older than this export. If anyone enrolled or left since, re-paste it before you copy.</span><button data-open="roster">Re-paste</button></div>`;
   if (s.grades) { const checks = reconcile(s); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); const stale = checks.filter(c => c.counts.stale > 0 && !off.includes(c));
-    if (off.length) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>Focus doesn't match Tally</b> — ${off.map(c => `${esc(c.unit.short)}: ${!c.maxOK ? 'points possible differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(' · ')}. Tap the unit's Focus badge to see who.</span></div>`;
+    if (off.length) el.innerHTML += `<div class="notice"><span>${ico('warn')}</span><span><b>Focus doesn't match Tally</b>: ${off.map(c => `${esc(c.unit.short)}: ${!c.maxOK ? 'points possible differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(' · ')}. Tap the unit's Focus badge to see who.</span></div>`;
     else if (checks.length && !stale.length) el.innerHTML += `<div class="notice soft"><span>${ico('check')}</span><span><b>Focus matches Tally</b> for ${checks.map(c => esc(c.unit.short)).join(', ')} (gradebook from ${fmtDate(localDayOf(s.grades.importedAt))}).</span></div>`;
     else if (stale.length) el.innerHTML += `<div class="notice info"><span>${ico('info')}</span><span><b>Focus matches what you copied</b>, but ${stale.map(c => `${esc(c.unit.short)}: ${plural(c.counts.stale, 'student')}`).join(' · ')} have moved up since. Copy again when you're ready.</span></div>`; }
   if (loose.length) el.innerHTML += `<div class="notice soft"><span>≈</span><span><b>${plural(loose.length, 'name')} matched loosely</b> (nickname or extra name)${H ? '' : ': ' + esc(loose.map(r => r.display + ' → ' + r.ixlName).join('; '))}. Check once; tap the name to change it.</span></div>`;
   noticeCount = { warn: 0, info: 0 };
-  if (!state.settings.details) {   // calm: no band — the class bar carries a small "N to fix" chip that opens these (renderBar)
+  if (!state.settings.details) {   // calm: no band: the class bar carries a small "N to fix" chip that opens these (renderBar)
     const kids = [...el.children]; const warn = kids.filter(n => !n.classList.contains('info') && !n.classList.contains('soft')).length, info = kids.filter(n => n.classList.contains('info')).length;
     const here = view.mode === 'units' || view.mode === 'unit';   // Grades and Seating have their own business
     if (here) noticeCount = { warn, info };
@@ -1561,11 +1566,9 @@ function renderBar() {
     const hid = units.filter(u => u.hidden).length;
     html = `<h2>${esc(s.label)}</h2>${noticeChip()}<span class="meta det">${units.length} units · ${s.skills.length} skills · ${plural(s.students.length, 'student')} · one point per skill at goal (<b>${t}</b>) · IXL export of ${fmtDate(dataDate(s)) || '?'}${dataDate(s) ? ` (${ageText(dataDate(s))})` : ''}</span>
       <div class="spacer"></div>
-      ${hid ? `<button class="pill toggle" id="toggleAll" aria-pressed="${!!state.settings.showAllUnits}">${plural(hid, 'unassigned unit')}</button>` : ''}
-      <span class="det"><button class="pill toggle" id="printOwed" title="Printer-friendly page: what each student still owes">Still owed</button></span>
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
-      <label class="curUnit" title="The unit this course is working in — every unit up to it counts; later units are gathered under Ahead">Working in <select id="curUnit">${units.some(u => u.current) ? '' : '<option value="">— pick —</option>'}${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
+      <label class="curUnit" title="The unit this course is working in: every unit up to it counts; later units are gathered under Ahead">Working in <select id="curUnit">${units.some(u => u.current) ? '' : '<option value="">— pick —</option>'}${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
       <div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mStillOwed">Still owed (print)</button><button id="mReports">Student reports (print)</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
@@ -1577,13 +1580,14 @@ function renderBar() {
     const ex = u.idx.length - u.active.length;
     html = `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="vh">Legend: filled cells are at goal, sand cells below goal, a dot is not started, hatched is skipped. Tap a skill to skip it for the course, a cell to skip it for one student.</span><span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
       <div class="spacer"></div>
-      <button class="pill toggle soft" id="hideUnit" aria-pressed="${u.assigned}" title="Whether this unit counts for the course — tap to change">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
+      <button class="pill toggle soft" id="hideUnit" aria-pressed="${u.assigned}" title="Whether this unit counts for the course: tap to change">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
       ${s.receipts[u.name] ? `<button class="pill toggle" id="rcUnit" title="What was copied to Focus, and when">Copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}
       <button class="pill toggle" id="csvUnit" title="Download this unit as a CSV keyed by student ID">CSV</button>
       <button class="pill onbar" id="copyUnit"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>`;
   }
   $('#bar').innerHTML = html; $('#bar').classList.toggle('detail', view.mode !== 'units');
   const nt = $('#nToggle'); if (nt) nt.onclick = () => { noticesOpen = !noticesOpen; render(); };
+
   const back = $('#back'); if (back) back.onclick = () => { view = { mode: 'units', unit: null }; render(); };
   const cu = $('#copyUnit'); if (cu) cu.onclick = () => copyUnit(s, units.find(u => u.name === view.unit));
   const ta = $('#toggleAll'); if (ta) ta.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); };
@@ -1592,7 +1596,7 @@ function renderBar() {
   const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu'); wireMenu(mb, menu);
     const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const so = $('#mStillOwed'); if (so) so.onclick = () => openStillOwed(s); const mr = $('#mReports'); if (mr) mr.onclick = () => openStudentReports(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; }
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
-  const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.settings.curUnitTouched = { ...(state.settings.curUnitTouched || {}), [s.prep]: true }; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); landOnCurrent = true; render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b> — ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}${(() => { const off = units.filter(u => u.num && u.num <= Number(cuSel.value) && u.num > (state.settings.skipFirst[s.prep] || 0) && state.assigned[s.prep][u.name] === false).map(u => u.num); return off.length ? ` (not Unit ${off.join(', ')} — marked Not assigned)` : ''; })()}; work in later units shows under Ahead.` : 'No current unit — no unit counts until you pick one.', false, 5000); };
+  const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.settings.curUnitTouched = { ...(state.settings.curUnitTouched || {}), [s.prep]: true }; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); landOnCurrent = true; render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b>: ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}${(() => { const off = units.filter(u => u.num && u.num <= Number(cuSel.value) && u.num > (state.settings.skipFirst[s.prep] || 0) && state.assigned[s.prep][u.name] === false).map(u => u.num); return off.length ? ` (not Unit ${off.join(', ')}: marked Not assigned)` : ''; })()}; work in later units shows under Ahead.` : 'No current unit: no unit counts until you pick one.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
   $('#bar').querySelectorAll('[data-gq]').forEach(b => b.onclick = () => { view.q = Number(b.dataset.gq); render(); });
   const gqz = $('#gradesQuarters'); if (gqz) gqz.onclick = openQuarters;
@@ -1608,9 +1612,9 @@ function renderRosterPanel(s) {
   wrap.innerHTML = `<div class="rpanel">
     <div class="rp-l">
       <h3>Paste the roster for ${esc(s.label)}</h3>
-      <p>Select the student names in the FOCUS gradebook (ID columns and all), copy, and paste here — one student per line, in FOCUS order. Tally will match them to the ${plural(s.students.length, 'IXL name')} in this export.</p>
+      <p>Select the student names in the Focus gradebook (ID columns and all), copy, and paste here: one student per line, in Focus order. Tally will match them to the ${plural(s.students.length, 'IXL name')} in this export.</p>
       <textarea id="rpText" placeholder="Doe, Jane&#10;Smith, John&#10;…" ${state.settings.hideNames ? 'disabled' : ''}>${esc(s.roster)}</textarea>
-      ${state.settings.hideNames ? '<p class="warnline">Names are hidden — turn on Show names to paste a roster.</p>' : ''}
+      ${state.settings.hideNames ? '<p class="warnline">Names are hidden: turn on Show names to paste a roster.</p>' : ''}
       <div class="rp-actions"><button class="pill" id="rpSave">Save roster</button><button class="pill pale" id="rpSkip">Show scores without a roster</button></div>
     </div>
     <div class="rp-r"><div class="report" id="rpReport">${matchReport(s, s.roster)}</div></div>
@@ -1640,12 +1644,12 @@ function renderGrid() {
   const q = norm(search);
   const rows = allRows.map((r, i) => ({ ...r, n: i + 1 })).filter(r => !q || norm(r.display).includes(q) || norm(r.sub).includes(q));
   const wrap = $('#gridwrap');
-  const nameCell = r => `<td class="stu"><div class="stuname">${r.status === 'ok' && r.tier === 'loose' ? `<button class="nm nmbtn" data-fix="${esc(r.display)}" title="Matched loosely to ${esc(shown(r.ixlName))} — tap to change">${esc(shown(r.display))}</button>` : r.status === 'ok' || r.status === 'rosterOnly' || r.status === 'noAccount' ? `<button class="nm nmbtn" data-prof="${esc(r.display)}" title="Open ${esc(shown(r.display))}'s page: grades, trends, what-ifs">${esc(shown(r.display))}</button>` : `<span class="nm">${esc(shown(r.display))}</span>`}${
+  const nameCell = r => `<td class="stu"><div class="stuname">${r.status === 'ok' && r.tier === 'loose' ? `<button class="nm nmbtn" data-fix="${esc(r.display)}" title="Matched loosely to ${esc(shown(r.ixlName))}: tap to change">${esc(shown(r.display))}</button>` : r.status === 'ok' || r.status === 'rosterOnly' || r.status === 'noAccount' ? `<button class="nm nmbtn" data-prof="${esc(r.display)}" title="Open ${esc(shown(r.display))}'s page: grades, trends, what-ifs">${esc(shown(r.display))}</button>` : `<span class="nm">${esc(shown(r.display))}</span>`}${
       r.status === 'rosterOnly' && s.pool && s.awaitingPool ? '' :   // the course export hasn't arrived: nobody is "not in IXL" yet
-      r.status === 'rosterOnly' ? `<button class="flag" data-fix="${esc(r.display)}">NOT IN IXL — FIX</button>` :
-      r.status === 'ambiguous' ? `<button class="flag amb" data-fix="${esc(r.display)}">TWO MATCHES — PICK</button>` :
+      r.status === 'rosterOnly' ? `<button class="flag" data-fix="${esc(r.display)}">NOT IN IXL: FIX</button>` :
+      r.status === 'ambiguous' ? `<button class="flag amb" data-fix="${esc(r.display)}">TWO MATCHES: PICK</button>` :
       r.status === 'noAccount' ? `<button class="flag quiet" data-fix="${esc(r.display)}" title="Tap to match this student to an IXL account">no IXL account</button>` :
-      r.status === 'ixlOnly' ? `<button class="flag" data-ignore="${esc(r.key)}">NOT ON ROSTER — FIX</button>` :
+      r.status === 'ixlOnly' ? `<button class="flag" data-ignore="${esc(r.key)}">NOT ON ROSTER: FIX</button>` :
       (r.sub && !state.settings.hideNames ? `<span class="sub">${esc(r.sub)}</span>` : '')}</div></td>`;
   if (view.mode === 'units') {
     // The grid is the units that count (up to "Working in"), then one column, Ahead, for work in later units — it only
@@ -1664,8 +1668,8 @@ function renderGrid() {
         : u.current && !s.receipts[u.name] ? '<span class="utag now">now</span>' : '';
       // when it was copied stays in the header whatever the badge says (the slot holds both; Copy sits on the row's bottom line)
       const copied = s.receipts[u.name] && !uq ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : '';
-      h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}${u.title ? ' — ' + esc(u.title) : ''}, out of ${u.total}" title="${esc(u.title)} · out of ${u.total}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="ustat">${stat}${copied}</span><span class="usub det">out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span><span class="uact"><button class="copy" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></span></div></th>`; });
-    if (ahead.length) h += `<th class="ahead" scope="col"><div class="uh"><button class="ulink" id="aheadBtn" aria-haspopup="true" aria-expanded="false" aria-label="Ahead: ${esc(span)} — open one" title="Later units — open one to see its skills, or to count it early"><span class="t">Ahead</span><span class="s">${esc(span)} · skills at goal</span></button></div></th>`;
+      h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}${u.title ? ': ' + esc(u.title) : ''}, out of ${u.total}" title="${esc(u.title)} · out of ${u.total}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="ustat">${stat}${copied}</span><span class="usub det">out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span><span class="uact"><button class="copy" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></span></div></th>`; });
+    if (ahead.length) h += `<th class="ahead" scope="col"><div class="uh"><button class="ulink" id="aheadBtn" aria-haspopup="true" aria-expanded="false" aria-label="Ahead: ${esc(span)}: open one" title="Later units: open one to see its skills, or to count it early"><span class="t">Ahead</span><span class="s">${esc(span)} · skills at goal</span></button></div></th>`;
     h += `</tr></thead><tbody>`;
     if (!rows.length) h += `<tr class="nomatch"><td class="idx"></td><td colspan="${shownUnits.length + 1 + (ahead.length ? 1 : 0)}">No students match “${esc(search)}”.</td></tr>`;
     rows.forEach(r => {
@@ -1674,12 +1678,12 @@ function renderGrid() {
         const ui = units.indexOf(u);
         if (r.ixl == null) { h += `<td class="pts na ${u.hidden ? 'quiet' : ''}">—</td>`; return; }
         const p = points(s, u, r.ixl); const tot = totalFor(s, u, r.ixl);
-        h += `<td class="pts ${p === tot && tot ? 'full' : p === 0 ? 'zero' : ''} ${u.hidden ? 'quiet' : ''} ${tot !== u.total ? 'own' : ''}" data-u="${ui}" tabindex="0" role="button" aria-label="${esc(u.short)}: ${p} of ${tot} — open"><span class="v">${p}<small>/${tot}</small></span></td>`;
+        h += `<td class="pts ${p === tot && tot ? 'full' : p === 0 ? 'zero' : ''} ${u.hidden ? 'quiet' : ''} ${tot !== u.total ? 'own' : ''}" data-u="${ui}" tabindex="0" role="button" aria-label="${esc(u.short)}: ${p} of ${tot}: open"><span class="v">${p}<small>/${tot}</small></span></td>`;
       });
       if (ahead.length) { const a = aheadOf(r);
         if (!a || !a.sum) h += `<td class="aheadc none"></td>`;
         else { const w = a.where; const at = w.length === 1 ? w[0].short : w.length === 2 && w.every(u => u.num) ? `Units ${w[0].num} and ${w[1].num}` : `in ${w.length} units`;
-          h += `<td class="aheadc" data-u="${units.indexOf(w[0])}" tabindex="0" role="button" aria-label="Ahead: ${plural(a.sum, 'skill')} at goal, ${esc(at)} — open ${esc(w[0].short)}"><b>${plural(a.sum, 'skill')}</b> <small>· ${esc(at)}</small></td>`; } }
+          h += `<td class="aheadc" data-u="${units.indexOf(w[0])}" tabindex="0" role="button" aria-label="Ahead: ${plural(a.sum, 'skill')} at goal, ${esc(at)}: open ${esc(w[0].short)}"><b>${plural(a.sum, 'skill')}</b> <small>· ${esc(at)}</small></td>`; } }
       h += `</tr>`;
     });
     h += `</tbody><tfoot><tr><td class="idx"></td><td class="stu">Class average</td>`;
@@ -1719,7 +1723,7 @@ function renderGrid() {
       if (r.ixl == null) { h += `<td class="ptsd">—</td>` + u.idx.map(() => `<td class="sc none">—</td>`).join('') + `</tr>`; return; }
       const tot = totalFor(s, u, r.ixl); h += `<td class="ptsd">${points(s, u, r.ixl)}${tot !== u.total ? `<small>/${tot}</small>` : ''}</td>`;
       const mySkips = s.studentSkips[ixlKeyAt(s, r.ixl)] || {};
-      u.idx.forEach(k => { const cur = s.scores[k][r.ixl]; const v = eff(s, k, r.ixl); const kk = skillKey(s.skills[k]); const off = s.excluded[kk] ? ' off' : mySkips[kk] ? ' off own' : ''; const dc = ` data-cell="${k}|${r.ixl}" tabindex="0" role="button" aria-label="${esc(s.skills[k].name)}: ${v == null ? 'not started' : v} — ${mySkips[kk] ? 'counting again' : 'skip for this student'}"`; const hist = v != null && v !== cur ? ' best' : ''; const tt = hist ? ` title="Best score ${v} from an earlier export; now ${cur == null ? 'blank' : cur}"` : ''; if (v == null) h += `<td class="sc none${off}"${dc}>·</td>`; else if (v >= t) h += `<td class="sc pass${off}${hist}"${tt}${dc}>${v}</td>`; else h += `<td class="sc low${off}${hist}"${tt}${dc}>${v}</td>`; });
+      u.idx.forEach(k => { const cur = s.scores[k][r.ixl]; const v = eff(s, k, r.ixl); const kk = skillKey(s.skills[k]); const off = s.excluded[kk] ? ' off' : mySkips[kk] ? ' off own' : ''; const dc = ` data-cell="${k}|${r.ixl}" tabindex="0" role="button" aria-label="${esc(s.skills[k].name)}: ${v == null ? 'not started' : v}: ${mySkips[kk] ? 'counting again' : 'skip for this student'}"`; const hist = v != null && v !== cur ? ' best' : ''; const tt = hist ? ` title="Best score ${v} from an earlier export; now ${cur == null ? 'blank' : cur}"` : ''; if (v == null) h += `<td class="sc none${off}"${dc}>·</td>`; else if (v >= t) h += `<td class="sc pass${off}${hist}"${tt}${dc}>${v}</td>`; else h += `<td class="sc low${off}${hist}"${tt}${dc}>${v}</td>`; });
       h += `</tr>`;
     });
     h += `</tbody><tfoot><tr><td class="idx"></td><td class="stu">% of class at goal</td><td class="ptsd"></td>`;
@@ -1762,13 +1766,13 @@ function openNotOnRoster(s, key) {
     <header><h2>${esc(shown(ixlDisplay(name)))} is in IXL but not on the roster</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one">
       <p>Their scores show in the grid, but <b>Copy leaves them out</b> until the roster says where their row goes.</p>
-      <div class="choice"><b>New student?</b><p>Re-paste the roster from FOCUS so they get a row in FOCUS order.</p><button class="pill" id="nrRoster">Re-paste roster</button></div>
-      <div class="choice"><b>Withdrawn, moved, or a duplicate IXL account?</b><p>Skip them — they leave the grid, copies, and the race. Undo any time in Settings.</p><button class="pill pale" id="nrSkip">Skip this account</button></div>
+      <div class="choice"><b>New student?</b><p>Re-paste the roster from Focus so they get a row in Focus order.</p><button class="pill" id="nrRoster">Re-paste roster</button></div>
+      <div class="choice"><b>Withdrawn, moved, or a duplicate IXL account?</b><p>Skip them: they leave the grid, copies, and the race. Undo any time in Settings.</p><button class="pill pale" id="nrSkip">Skip this account</button></div>
       <div class="rp-actions"><button class="pill pale" id="mCancel">Not now</button></div>
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  $('#nrSkip').onclick = () => { s.ignored[key] = true; save(); close(); render(); toast(`${esc(shown(ixlDisplay(name)))} skipped for ${esc(s.label)} — undo in Settings.`, false); };
+  $('#nrSkip').onclick = () => { s.ignored[key] = true; save(); close(); render(); toast(`${esc(shown(ixlDisplay(name)))} skipped for ${esc(s.label)}: undo in Settings.`, false); };
   $('#nrRoster').onclick = () => { close(); openSettings(); const ta = $('#roster'); if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center' }); } };
 }
 function openFixer(s, display) {
@@ -1783,14 +1787,14 @@ function openFixer(s, display) {
   m.innerHTML = `<div class="panel narrow">
     <header><h2>Match ${esc(shown(display))}</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one">
-      <p>${row && row.ixl != null ? `Currently matched to <b>${esc(shown(row.ixlName))}</b>. ` : row && row.status === 'noAccount' ? 'Marked as <b>no IXL account</b>. ' : ''}Pick the IXL account for this student${row && row.status === 'noAccount' ? ' if they have one now.' : ', or say they have none — Tally stops flagging them and copies a blank row.'}</p>
+      <p>${row && row.ixl != null ? `Currently matched to <b>${esc(shown(row.ixlName))}</b>. ` : row && row.status === 'noAccount' ? 'Marked as <b>no IXL account</b>. ' : ''}Pick the IXL account for this student${row && row.status === 'noAccount' ? ' if they have one now.' : ', or say they have none: Tally stops flagging them and copies a blank row.'}</p>
       <div class="picks">${free.map(x => `<button class="chip ${cur != null && cur === x.i ? 'on' : ''}" data-pick="${esc(x.key)}">${esc(shown(x.name))}${x.dup ? ` <small>#${(x.pkey || x.key).split('#')[1] * 1 + 1}</small>` : ''}</button>`).join('') || '<em>No unmatched IXL students left.</em>'}</div>
       <div class="rp-actions">${row && row.status === 'noAccount' ? '<button class="pill pale" id="reflag">Flag again</button>' : '<button class="pill pale" id="unmatch">No IXL account</button>'}<button class="pill pale" id="mCancel">Cancel</button></div>
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { const pick = b.dataset.pick; s.aliases[display] = pick.startsWith('@pool:') ? pick.slice(6) : pick; if (s.pool) materialize(s); save(); close(); render(); toast(`${esc(shown(display))} → ${esc(shown(pick.replace(/^@pool:/, '').replace(/#\d+$/, '')))}`, false); });
-  const um = $('#unmatch'); if (um) um.onclick = () => { s.aliases[display] = '#none'; if (s.pool) materialize(s); save(); close(); render(); toast(`${esc(shown(display))} — <b>no IXL account</b>. A blank row is copied; tap the tag to change it.`, false, 4500); };
+  const um = $('#unmatch'); if (um) um.onclick = () => { s.aliases[display] = '#none'; if (s.pool) materialize(s); save(); close(); render(); toast(`${esc(shown(display))}: <b>no IXL account</b>. A blank row is copied; tap the tag to change it.`, false, 4500); };
   const rf = $('#reflag'); if (rf) rf.onclick = () => { delete s.aliases[display]; if (s.pool) materialize(s); save(); close(); render(); };
 }
 
@@ -1812,7 +1816,7 @@ function downloadUnitCSV(sec, unit) {
   const lines = [['Student ID', 'Student', 'IXL ' + unit.short, 'Out of', 'Goal', 'Export date'].map(q).join(',')];
   rows.forEach(r => lines.push([r.id || '', r.display, r.ixl == null ? '' : points(sec, unit, r.ixl), r.ixl == null ? '' : totalFor(sec, unit, r.ixl), sec.threshold, sec.date || ''].map(q).join(',')));
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv' })); a.download = `${sec.label.replace(/[^\w-]+/g, '_')}_${unit.short.replace(/\s+/g, '')}_${sec.date || ''}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  toast(`CSV saved — ${plural(rows.length, 'row')} keyed by student ID${rows.some(r => !r.id) ? ' (some rows have no ID in the pasted roster)' : ''}`, false, 4500);
+  toast(`CSV saved: ${plural(rows.length, 'row')} keyed by student ID${rows.some(r => !r.id) ? ' (some rows have no ID in the pasted roster)' : ''}`, false, 4500);
 }
 function legacyCopy(text) {
   const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:0;outline:0;box-shadow:none;background:transparent;font-size:16px;opacity:.01';
@@ -1832,7 +1836,7 @@ function showCopyBox(text, title) {
 }
 async function copyUnit(sec, unit) {
   if (sec.placeholder) { toast('Copy is disabled for this export because it has no student names.', true); return; }
-  if (!unit.total) { toast(`${esc(unit.short)} has no skills that count — include at least one.`, true); return; }
+  if (!unit.total) { toast(`${esc(unit.short)} has no skills that count: include at least one.`, true); return; }
   const rs = rosterState(sec);
   const rowsAll = copyRows(sec);
   const anyPts = rowsAll.some(r => r.ixl != null && points(sec, unit, r.ixl) > 0);
@@ -1845,7 +1849,7 @@ async function copyUnit(sec, unit) {
   if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} }
   const blanks = rowsAll.filter(r => r.ixl == null).length; const leftOut = buildRows(sec).filter(r => r.status === 'ixlOnly').length;
   if (ok) { sec.receipts[unit.name] = { at: new Date().toISOString(), exportDate: sec.date, goal: sec.threshold, outOf: unit.total, skipped: unit.idx.filter(k => !unit.active.includes(k)).map(k => sec.skills[k].name), rows: rowsAll.map(r => [r.display, r.ixl == null ? null : points(sec, unit, r.ixl), r.ixl == null ? null : totalFor(sec, unit, r.ixl)]) }; save(); if (view.mode === 'units') { const sl = $('#gridwrap').scrollLeft; renderGrid(); $('#gridwrap').scrollLeft = sl; } }
-  if (ok) toast(`<b>${esc(unit.short)}</b> copied — ${plural(lines.length, 'row')}${rs.count ? ' in FOCUS order' : ' with names (no roster, so order is by last name)'} · FOCUS title: <b>IXL ${esc(unit.short)} · ${fmtDate(sec.date) || 'today'} · /${unit.total}</b>${blanks ? ` · ${plural(blanks, 'blank row')} (not in IXL)` : ''}${leftOut ? ` · <b>${plural(leftOut, 'IXL student')} not on the roster — left out</b> (tap their flag)` : ''}${modified ? ` · <b>${plural(modified, 'student')} on a modified list</b> — set their max by hand in FOCUS` : ''}`, false, (modified || blanks || leftOut) ? 10000 : 6000);   // carries the title to type and who was left out, so it stays long enough to read twice
+  if (ok) toast(`<b>${esc(unit.short)}</b> copied: ${plural(lines.length, 'row')}${rs.count ? ' in Focus order' : ' with names (no roster, so order is by last name)'} · Focus title: <b>IXL ${esc(unit.short)} · ${fmtDate(sec.date) || 'today'} · /${unit.total}</b>${blanks ? ` · ${plural(blanks, 'blank row')} (not in IXL)` : ''}${leftOut ? ` · <b>${plural(leftOut, 'IXL student')} not on the roster: left out</b> (tap their flag)` : ''}${modified ? ` · <b>${plural(modified, 'student')} on a modified list</b>: set their max by hand in Focus` : ''}`, false, (modified || blanks || leftOut) ? 10000 : 6000);   // carries the title to type and who was left out, so it stays long enough to read twice
   else showCopyBox(text, `IXL ${unit.short} · ${fmtDate(sec.date) || 'today'} · /${unit.total}`);
 }
 
@@ -1871,7 +1875,7 @@ function printStillOwed(sec, mode) {
   const units = unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u)); const t = sec.threshold;   // a closed quarter's units aren't owed any more
   const nm = r => initials ? mask(r.display) : r.display;
   const block = r => {
-    if (r.ixl == null) return `<section class="stu"><h2>${esc(nm(r))}</h2><div class="l">${r.status === 'noAccount' ? 'No IXL account.' : `Not matched to an IXL account — check the roster in Tally (${r.status === 'ambiguous' ? 'two IXL names fit' : 'no IXL name fits'}).`}</div></section>`;
+    if (r.ixl == null) return `<section class="stu"><h2>${esc(nm(r))}</h2><div class="l">${r.status === 'noAccount' ? 'No IXL account.' : `Not matched to an IXL account: check the roster in Tally (${r.status === 'ambiguous' ? 'two IXL names fit' : 'no IXL name fits'}).`}</div></section>`;
     const per = units.map(u => {
       const own = activeFor(sec, u, r.ixl); const p = points(sec, u, r.ixl);
       const below = own.filter(k => { const v = eff(sec, k, r.ixl); return v != null && v < t; }).map(k => `${sec.skills[k].name} (${eff(sec, k, r.ixl)})`);
@@ -1883,7 +1887,7 @@ function printStillOwed(sec, mode) {
     }).join('');
     return `<section class="stu"><h2>${esc(nm(r))}</h2>${per || '<div class="l">No units assigned yet.</div>'}</section>`;
   };
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Still owed — ${esc(sec.label)}</title>
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Still owed: ${esc(sec.label)}</title>
 <style>${printFontCss()}</style>
 <style>
 @page{margin:.6in}
@@ -1916,7 +1920,7 @@ function openGuide() {
   const thrs = [...new Set(secs.map(s => `${s.prep === 'acc' ? 'accelerated' : 'on-level'} ${s.threshold}`))];
   const goalLine = thrs.length ? thrs.join(', ') : `on-level ${DEFAULT_THR.on}, accelerated ${DEFAULT_THR.acc}`;
   const remind = state.settings.remindDays;
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Tally — guide</title>
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Tally: guide</title>
 <style>${printFontCss()}</style>
 <style>
 @page{margin:.55in}
@@ -1942,7 +1946,7 @@ li{margin:3px 0}
 
 <h2>Every week or two</h2>
 <ol>
-<li><b>Export</b> from IXL: Analytics → Score Grid → This school year → Export — one file per course or one per class, both work. From Focus: gradebook → Export, one per period.</li>
+<li><b>Export</b> from IXL: Analytics → Score Grid → This school year → Export: one file per course or one per class, both work. From Focus: gradebook → Export, one per period.</li>
 <li><b>Import</b> all of them at once (the button, or drag them onto the page). Each gradebook goes to its class by its students; Tally asks only when a file isn't plainly one class. Newer exports replace older; best scores are kept.</li>
 <li>Look at <b>Needs attention</b> on the Overview (<b>Classes</b> in the header) and the "N to fix" count beside a class's name: roster mismatches, "Focus doesn't match Tally", old exports (reminder: ${remind ? 'after ' + remind + ' days' : 'off'}).</li>
 <li>Tap <b>Copy</b> on a unit → paste into that unit's Focus column (rows are already in Focus order). The unit header then shows <i>copied ‹date›</i>.</li>
@@ -1967,32 +1971,32 @@ li{margin:3px 0}
 </ul>
 </div>
 </div>
-<div class="box"><b>If something looks wrong:</b> the file name tells Tally the class and date, so don't rename IXL exports. "Points differ" means Focus and Tally disagree on how many skills count — skip or un-skip until they match, or fix the points in Focus.</div>
+<div class="box"><b>If something looks wrong:</b> the file name tells Tally the class and date, so don't rename IXL exports. "Points differ" means Focus and Tally disagree on how many skills count: skip or un-skip until they match, or fix the points in Focus.</div>
 
 <div class="page2">
 <h2>Words on the screen</h2>
 <div class="words">
-<p><b>Goal</b> — the SmartScore a skill must reach to earn its point.</p>
-<p><b>Skip</b> — a skill that doesn't count: for the course (tap the skill in the unit view) or for one student (tap their cell).</p>
-<p><b>Working in</b> — the unit each course is on (class bar). The first import sets it and says so on the Overview; until you pick one yourself it follows Focus's latest IXL column; your own pick is never changed. Units up to it are the grid's columns and count toward the Race and the Focus check.</p>
-<p><b>Ahead</b> — the grid's last column: skills at goal past the current unit, only for students who have some. Tap <b>Ahead</b> to open a later unit; <b>Not assigned → Assigned</b> there counts it early.</p>
-<p><b>Assigned</b> — a unit's button (open the unit). It overrides the rule for that unit, either way, for the whole course. A unit you unassign leaves the grid; the "N unassigned unit" button on the class bar brings it back. On-level's first unit is review and never counts (⋯ → Settings).</p>
-<p><b>Best</b> — a score from an earlier export that was higher than today's. A point once earned is kept.</p>
-<p><b>Copied</b> — a receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</p>
-<p><b>Focus ${ico('check', 'check')} / off</b> — whether the Focus column matches what Tally counts today.</p>
-<p><b>Grades</b> — with a Focus gradebook loaded: the real course grade (weighted categories, missing work as zero, excused work left out; proved against Focus's Grade column), the change since the last import, and what-ifs that each change one thing. <b>Sliding</b> — grade down 3 points or more, or more missing work, since the last import.</p>
-<p><b>Students</b> — every student of every class. Tap one for their page: grades by quarter, missing work, IXL still owed, and the quickest way to the next letter. <b>Show student</b> turns the screen toward them; hold the exit button to leave.</p>
-<p><b>Quarters</b> — when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. An assignment belongs to the quarter its Focus due date falls in. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
-<p><b>Seating</b> — draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
-<p><b>Still owed</b> — a printable list of what each student is missing, by unit.</p>
-<p><b>Retake</b> — a student may retake an assessment when nothing is missing and every IXL skill in the unit the course is working in is at goal. The Students list, the student's page, the what-ifs and Show student all say "eligible" or what stands in the way.</p>
-<p><b>Conference form</b> — on a student's page. Tally fills in the school's parent conference form (grades, FAST, missing work, assessments under 70%, retakes) and drafts Strengths and Concerns. Edit anything, then Print. Your edits to a student's form are kept.</p>
-<p><b>Notes</b> — on a student's page. Dated, only for you: hidden when names are hidden and never on the Board.</p>
-<p><b>FAST</b> — import the FAST report from Focus like any other file. Scores are matched by student ID and show on the student's page and the conference form.</p>
-<p><b>Google Site</b> — the page forgets everything when you leave, so open your newest Full save each visit. Tally autosaves one after 10 minutes of changes and when you switch away; Ctrl+S saves. If Chrome asks about multiple downloads, Allow.</p>
-<p><b>Board</b> — the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade; <b>Average</b> marks each class's average, and <b>Class averages</b> puts the classes side by side). Names never show. Hold the exit button to leave.</p>
-<p><b>Names</b> — the eye button in the header. Crossed out = initials only, for projecting.</p>
-<p><b>⋯</b> — Details view (every count, notice and legend at once), Settings, this Guide, Sync, Full save, Board save.</p>
+<p><b>Goal</b>: the SmartScore a skill must reach to earn its point.</p>
+<p><b>Skip</b>: a skill that doesn't count: for the course (tap the skill in the unit view) or for one student (tap their cell).</p>
+<p><b>Working in</b>: the unit each course is on (class bar). The first import sets it and says so on the Overview; until you pick one yourself it follows Focus's latest IXL column; your own pick is never changed. Units up to it are the grid's columns and count toward the Race and the Focus check.</p>
+<p><b>Ahead</b>: the grid's last column: skills at goal past the current unit, only for students who have some. Tap <b>Ahead</b> to open a later unit; <b>Not assigned → Assigned</b> there counts it early.</p>
+<p><b>Assigned</b>: a unit's button (open the unit). It overrides the rule for that unit, either way, for the whole course. A unit you unassign leaves the grid; the "N unassigned unit" button on the class bar brings it back. On-level's first unit is review and never counts (⋯ → Settings).</p>
+<p><b>Best</b>: a score from an earlier export that was higher than today's. A point once earned is kept.</p>
+<p><b>Copied</b>: a receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</p>
+<p><b>Focus ${ico('check', 'check')} / off</b>: whether the Focus column matches what Tally counts today.</p>
+<p><b>Grades</b>: with a Focus gradebook loaded: the real course grade (weighted categories, missing work as zero, excused work left out; proved against Focus's Grade column), the change since the last import, and what-ifs that each change one thing. <b>Sliding</b>: grade down 3 points or more, or more missing work, since the last import.</p>
+<p><b>Students</b>: every student of every class. Tap one for their page: grades by quarter, missing work, IXL still owed, and the quickest way to the next letter. <b>Show student</b> turns the screen toward them; hold the exit button to leave.</p>
+<p><b>Quarters</b>: when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. An assignment belongs to the quarter its Focus due date falls in. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
+<p><b>Seating</b>: draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
+<p><b>Still owed</b>: a printable list of what each student is missing, by unit.</p>
+<p><b>Retake</b>: a student may retake an assessment when nothing is missing and every IXL skill in the unit the course is working in is at goal. The Students list, the student's page, the what-ifs and Show student all say "eligible" or what stands in the way.</p>
+<p><b>Conference form</b>: on a student's page. Tally fills in the school's parent conference form (grades, FAST, missing work, assessments under 70%, retakes) and drafts Strengths and Concerns. Edit anything, then Print. Your edits to a student's form are kept.</p>
+<p><b>Notes</b>: on a student's page. Dated, only for you: hidden when names are hidden and never on the Board.</p>
+<p><b>FAST</b>: import the FAST report from Focus like any other file. Scores are matched by student ID and show on the student's page and the conference form.</p>
+<p><b>Google Site</b>: the page forgets everything when you leave, so open your newest Full save each visit. Tally autosaves one after 10 minutes of changes and when you switch away; Ctrl+S saves. If Chrome asks about multiple downloads, Allow.</p>
+<p><b>Board</b>: the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade; <b>Average</b> marks each class's average, and <b>Class averages</b> puts the classes side by side). Names never show. Hold the exit button to leave.</p>
+<p><b>Names</b>: the eye button in the header. Crossed out = initials only, for projecting.</p>
+<p><b>⋯</b>: Details view (every count, notice and legend at once), Settings, this Guide, Sync, Full save, Board save.</p>
 </div>
 </div>
 </body></html>`;
@@ -2034,7 +2038,7 @@ function gbUnitFor(sec, a) {
 }
 // Gradebook rows → IXL student indices, using the same matcher as the roster (names and IDs come from the same Focus screen)
 /* The rows a Copy pastes, in the order Focus lists them. With a gradebook loaded that is the gradebook's own list —
-   the Focus page being pasted into — so a student who left or joined can never shift everyone below by a row (audit,
+   the Focus page being pasted into: so a student who left or joined can never shift everyone below by a row (audit,
    22 Oct 2026: a stale roster put 16 of 22 students' points on the wrong row). Without one, the roster. */
 function copyRows(sec) { const gb = openGb(sec); return gb && gb.students.length ? gbRows({ ...sec, grades: gb }) : buildRows(sec).filter(r => r.status !== 'ixlOnly'); }
 const openGb = sec => { if (!sec.grades) return null; try { const o = openSec(sec); return o && o.grades && o.grades.students && o.grades.students.length ? o.grades : sec.grades; } catch (e) { return sec.grades; } };
@@ -2043,9 +2047,12 @@ function rosterFromGradebook(sec, gb) {
   const old = new Map(parseRosterText(sec.roster).filter(r => r.alias).map(r => [norm(r.display), r.alias]));
   return gb.students.map((n, i) => (gb.ids && gb.ids[i] ? gb.ids[i] + '\t' : '') + n + (old.has(norm(n)) ? ' = ' + old.get(norm(n)) : '')).join('\n');
 }
+// A parsed gradebook that goes into a kept quarter directly carries the same stamps as a live one (audit, 24 Oct: an
+// unstamped record read "Focus gradebook of Dec 31" after a reload).
+const stampGb = (gb, f, exportedAt) => ({ ...gb, importedAt: gb.importedAt || new Date().toISOString(), exportedAt: gb.exportedAt || exportedAt, file: gb.file || (f && f.name) || '' });
 function gbRows(sec) {
   if (!sec.grades) return [];
-  const roster = sec.grades.students.join('\n');
+  const roster = rosterFromGradebook(sec, sec.grades).split('\n').map(l => l.replace(/^[^\t]*\t/, '')).join('\n');   // Focus order, with any "= IXL name" typed on the roster (audit, 24 Oct: a typed alias matched on the grid but Copy pasted a blank)
   const rows = buildRows({ ...sec, roster }).slice(0, sec.grades.students.length);
   return rows;
 }
@@ -2081,7 +2088,7 @@ function openFocusCheck(sec, unitName) {
   m.classList.remove('hidden');
   const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : d);
   const bad = rc.rows.filter(r => r.status !== 'match' && r.status !== 'accepted'); const kept = rc.rows.filter(r => r.status === 'accepted');
-  const line = r => `<tr class="${r.status}"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${r.tally == null ? '—' : fmtN(r.tally) + (r.own !== rc.unit.total ? ` <small>/${r.own}</small>` : '')}</td><td>${r.status === 'match' ? '' : r.status === 'stale' ? `matches what you copied${rc.copiedAt ? ' ' + fmtDate(rc.copiedAt.slice(0, 10)) : ''}; up ${fmtN(r.tally - r.focus)} since` : r.status === 'missing' ? 'nothing in Focus yet' : r.status === 'unmatched' ? 'not found in IXL' : `<span class="vh">Focus differs from Tally</span>`}${r.staleOverride ? ` <small class="ghint">(you kept ${r.staleOverride.focus == null ? 'blank' : fmtN(r.staleOverride.focus)} on ${esc(fmtDate((r.staleOverride.at || '').slice(0, 10)))} — Focus has changed since)</small>` : ''}</td><td>${r.status === 'unmatched' ? '' : `<button class="pill pale small" data-keep="${esc(r.display)}" title="Focus is right for this student — stop flagging it">Keep Focus</button>`}</td></tr>`;
+  const line = r => `<tr class="${r.status}"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${r.tally == null ? '—' : fmtN(r.tally) + (r.own !== rc.unit.total ? ` <small>/${r.own}</small>` : '')}</td><td>${r.status === 'match' ? '' : r.status === 'stale' ? `matches what you copied${rc.copiedAt ? ' ' + fmtDate(rc.copiedAt.slice(0, 10)) : ''}; up ${fmtN(r.tally - r.focus)} since` : r.status === 'missing' ? 'nothing in Focus yet' : r.status === 'unmatched' ? 'not found in IXL' : `<span class="vh">Focus differs from Tally</span>`}${r.staleOverride ? ` <small class="ghint">(you kept ${r.staleOverride.focus == null ? 'blank' : fmtN(r.staleOverride.focus)} on ${esc(fmtDate((r.staleOverride.at || '').slice(0, 10)))}: Focus has changed since)</small>` : ''}</td><td>${r.status === 'unmatched' ? '' : `<button class="pill pale small" data-keep="${esc(r.display)}" title="Focus is right for this student: stop flagging it">Keep Focus</button>`}</td></tr>`;
   // Two jobs, never both at once. SETUP (once per unit): Focus's column and Tally disagree on what the unit is out of, so
   // every student "differs" and the student table is noise — the dialog is only "which skills don't count?". CHECK
   // (weekly): the count is the headline, then only the students who differ, then one primary button. Which Focus column
@@ -2097,7 +2104,7 @@ function openFocusCheck(sec, unitName) {
     // the skills fewest students touched are almost always the "also consider" extras that weren't required
     const pop = population(sec); const all = rc.unit.active.map(k => ({ k, n: pop.filter(x => sec.scores[k][x.i] != null).length })).sort((a, b) => a.n - b.n || a.k - b.k); const sug = new Set(all.slice(0, Math.max(0, diff)).map(c => c.k));
     body = `<p class="fclead"><b>Focus's "${esc(rc.assignment.name)}" is out of ${rc.assignment.max}.</b> Tally counts ${plural(rc.unit.total, 'skill')} in ${esc(rc.unit.short)}. ${diff > 0 ? `<b>Which ${diff} don't count?</b>` : `That is ${plural(-diff, 'skill')} fewer than Focus.`}</p>
-      ${diff > 0 ? `<div class="skipPick"><p class="ghint">The ${diff} that the fewest students have touched are ticked — usually the "also consider" extras. This applies to every ${course} class.</p>
+      ${diff > 0 ? `<div class="skipPick"><p class="ghint">The ${diff} that the fewest students have touched are ticked: usually the "also consider" extras. This applies to every ${course} class.</p>
           <div class="skipList">${all.map(c => `<label><input type="checkbox" data-sk="${c.k}" ${sug.has(c.k) ? 'checked' : ''}> ${esc(sec.skills[c.k].name)} <small>${c.n} of ${pop.length}</small></label>`).join('')}</div>
           <p class="ghint" id="skipCount"></p></div>`
         : (rc.unit.idx.length > rc.unit.total ? `<p>Count ${plural(Math.min(-diff, rc.unit.idx.length - rc.unit.total), 'skill')} again in the unit view (tap a hatched skill)${rc.unit.idx.length < rc.assignment.max ? `; IXL has only ${rc.unit.idx.length} in this unit, so` : ', or'} change the assignment's points in Focus${rc.unit.idx.length < rc.assignment.max ? '' : ` to ${rc.unit.total}`}.</p>` : `<p>IXL has only ${plural(rc.unit.total, 'skill')} in ${esc(rc.unit.short)} and none is skipped: change the assignment's points in Focus to ${rc.unit.total}, or see <b>Wrong column?</b> below.</p>`)}
@@ -2112,7 +2119,7 @@ function openFocusCheck(sec, unitName) {
       ${table}
       <div id="keepForm" class="keepForm hidden"></div>
       ${keptFold}
-      <div class="rp-actions">${nFix ? `<button class="pill" id="copyFix" title="${state.settings.copyMode === 'ids' ? 'ID' : 'Name'} and Tally points, one student per line — paste beside the Focus column">Copy ${plural(nFix, 'correction')}</button>` : ''}<button class="pill pale" id="copyCol">Copy the whole column</button><button class="pill pale" id="mCancel">Close</button></div>
+      <div class="rp-actions">${nFix ? `<button class="pill" id="copyFix" title="${state.settings.copyMode === 'ids' ? 'ID' : 'Name'} and Tally points, one student per line: paste beside the Focus column">Copy ${plural(nFix, 'correction')}</button>` : ''}<button class="pill pale" id="copyCol">Copy the whole column</button><button class="pill pale" id="mCancel">Close</button></div>
       ${mapFold}`;
   }
   m.innerHTML = `<div class="panel"><header><h2>${setup ? `Set up ${esc(rc.unit.short)} for Focus` : `Focus check · ${esc(rc.unit.short)}`}</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one fc ${setup ? 'setup' : ''}">${body}</div></div>`;
@@ -2123,19 +2130,19 @@ function openFocusCheck(sec, unitName) {
   $('#gbMap').onchange = async () => { const v = $('#gbMap').value; const to = v ? (unitsOf(sec).find(u => u.name === v) || {}).short : null;
     // this takes the column out of the check (or points it at another unit) for good, so it asks, and says where the way back is
     if (!await ask(v ? `Check Focus's "${rc.assignment.name}" against ${to} instead of ${rc.unit.short}?\n\nYou can undo this in Settings → This class → Focus gradebook.` : `Stop checking Focus's "${rc.assignment.name}" against Tally?\n\nIts badge will go. You can undo this in Settings → This class → Focus gradebook.`)) { $('#gbMap').value = rc.unit.name; return; }
-    sec.gbUnitMap = sec.gbUnitMap || {}; sec.gbUnitMap[rc.assignment.name] = v; save(); close(); toast(v ? `Focus's "${esc(rc.assignment.name)}" is now checked against ${esc(to)}.` : `Focus's "${esc(rc.assignment.name)}" is no longer checked — undo in Settings → This class → Focus gradebook.`, false, 7000); if (v && reconcile(sec).some(x => x.unit.name === v)) openFocusCheck(sec, v); };
+    sec.gbUnitMap = sec.gbUnitMap || {}; sec.gbUnitMap[rc.assignment.name] = v; save(); close(); toast(v ? `Focus's "${esc(rc.assignment.name)}" is now checked against ${esc(to)}.` : `Focus's "${esc(rc.assignment.name)}" is no longer checked: undo in Settings → This class → Focus gradebook.`, false, 7000); if (v && reconcile(sec).some(x => x.unit.name === v)) openFocusCheck(sec, v); };
   const put = async (text, msg) => { let ok = legacyCopy(text); if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} } if (ok) toast(msg, false); else showCopyBox(text, rc.assignment.name); };
   const sc = $('#skipCand'); if (sc) {
-    const count = () => { const n = m.querySelectorAll('[data-sk]:checked').length; const left = rc.unit.total - n; $('#skipCount').innerHTML = `${plural(n, 'skill')} ticked → ${esc(rc.unit.short)} out of <b>${left}</b>${left === rc.assignment.max ? ' — matches Focus' : ` (Focus: ${rc.assignment.max})`}`; sc.disabled = n === 0; };
+    const count = () => { const n = m.querySelectorAll('[data-sk]:checked').length; const left = rc.unit.total - n; $('#skipCount').innerHTML = `${plural(n, 'skill')} ticked → ${esc(rc.unit.short)} out of <b>${left}</b>${left === rc.assignment.max ? ': matches Focus' : ` (Focus: ${rc.assignment.max})`}`; sc.disabled = n === 0; };
     m.querySelectorAll('[data-sk]').forEach(cb => cb.onchange = count); count();
     sc.onclick = () => { const ks = [...m.querySelectorAll('[data-sk]:checked')].map(cb => Number(cb.dataset.sk)); ks.forEach(k => { sec.excluded[skillKey(sec.skills[k])] = true; }); resnapshotPrep(sec.prep); save(); toast(`Skipped ${plural(ks.length, 'skill')} in ${esc(rc.unit.short)} for every ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); openFocusCheck(sec, unitName); };
   }
   m.querySelectorAll('[data-keep]').forEach(b => b.onclick = () => {
     const r = rc.rows.find(x => x.display === b.dataset.keep); if (!r) return; const f = $('#keepForm'); f.classList.remove('hidden');
-    f.innerHTML = `<b>Keep Focus's ${r.focus == null ? 'blank' : fmtN(r.focus)} for ${nm(r.display)}</b> <span class="ghint">(Tally has ${fmtN(r.tally)})</span><div class="two"><input class="txt" id="keepWhy" maxlength="200" placeholder="Why — e.g. late penalty, retake on paper, excused (optional)"><span class="rp-actions"><button class="pill small" id="keepOk">Keep it</button><button class="pill pale small" id="keepNo">Cancel</button></span></div>`;
+    f.innerHTML = `<b>Keep Focus's ${r.focus == null ? 'blank' : fmtN(r.focus)} for ${nm(r.display)}</b> <span class="ghint">(Tally has ${fmtN(r.tally)})</span><div class="two"><input class="txt" id="keepWhy" maxlength="200" placeholder="Why: e.g. late penalty, retake on paper, excused (optional)"><span class="rp-actions"><button class="pill small" id="keepOk">Keep it</button><button class="pill pale small" id="keepNo">Cancel</button></span></div>`;
     if (!coarse()) $('#keepWhy').focus(); $('#keepWhy').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#keepOk').click(); } };
     $('#keepNo').onclick = () => { f.classList.add('hidden'); f.innerHTML = ''; };
-    $('#keepOk').onclick = () => { sec.overrides = sec.overrides || {}; sec.overrides[rc.unit.name] = sec.overrides[rc.unit.name] || {}; sec.overrides[rc.unit.name][r.display] = { focus: r.focus, tally: r.tally, at: new Date().toISOString(), why: $('#keepWhy').value.trim().slice(0, 200) }; save(); toast(`Kept Focus's number for ${esc(nm(r.display))} in ${esc(rc.unit.short)} — it won't be flagged unless Focus changes.`, false, 5000); openFocusCheck(sec, unitName); };
+    $('#keepOk').onclick = () => { sec.overrides = sec.overrides || {}; sec.overrides[rc.unit.name] = sec.overrides[rc.unit.name] || {}; sec.overrides[rc.unit.name][r.display] = { focus: r.focus, tally: r.tally, at: new Date().toISOString(), why: $('#keepWhy').value.trim().slice(0, 200) }; save(); toast(`Kept Focus's number for ${esc(nm(r.display))} in ${esc(rc.unit.short)}: it won't be flagged unless Focus changes.`, false, 5000); openFocusCheck(sec, unitName); };
   });
   m.querySelectorAll('[data-unkeep]').forEach(b => b.onclick = () => { if (sec.overrides && sec.overrides[rc.unit.name]) { delete sec.overrides[rc.unit.name][b.dataset.unkeep]; if (!Object.keys(sec.overrides[rc.unit.name]).length) delete sec.overrides[rc.unit.name]; } save(); openFocusCheck(sec, unitName); });
   const ou = $('#fcOpenUnit'); if (ou) ou.onclick = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; view = { mode: 'unit', unit: rc.unit.name }; render(); };
@@ -2152,7 +2159,7 @@ function matchReport(s, rosterText) {
   const ro = rr.filter(r => r.status === 'rosterOnly'), am = rr.filter(r => r.status === 'ambiguous'), io = rr.filter(r => r.status === 'ixlOnly'), loose = rr.filter(r => r.tier === 'loose'), okc = rr.filter(r => r.status === 'ok').length;
   const ign = Object.keys(s.ignored || {});
   let h = `<span class="${ro.length || am.length || io.length ? 'bad' : 'ok'}">${okc} of ${rs.count} roster names matched to IXL.</span>`;
-  if (loose.length) h += `<div><span class="warn">Matched loosely — check once:</span><ul>${loose.map(r => `<li>${nm(r.display)} → ${nm(r.ixlName)}</li>`).join('')}</ul></div>`;
+  if (loose.length) h += `<div><span class="warn">Matched loosely: check once:</span><ul>${loose.map(r => `<li>${nm(r.display)} → ${nm(r.ixlName)}</li>`).join('')}</ul></div>`;
   if (ro.length) h += `<div>Not found in IXL (tap the flag in the grid to fix):<ul>${ro.map(r => `<li>${nm(r.display)}</li>`).join('')}</ul></div>`;
   const na = rr.filter(r => r.status === 'noAccount'); if (na.length) h += `<div>No IXL account (blank row in copies; tap the tag in the grid to change):<ul>${na.map(r => `<li>${nm(r.display)}</li>`).join('')}</ul></div>`;
   if (am.length) h += `<div>Two IXL matches (tap the flag to pick):<ul>${am.map(r => `<li>${nm(r.display)}</li>`).join('')}</ul></div>`;
@@ -2164,14 +2171,14 @@ function matchReport(s, rosterText) {
 /* ---------- Saving and loading Tally files ----------
    Two saves (Croix, 21 Oct 2026: "I need a full save and a board save, that's it. No settings save." He had made a
    settings-only backup believing it was everything, refreshed, and lost the work). Three kinds of file still load:
-   · a FULL SAVE (`full`): everything this browser holds — exports, rosters, gradebooks, settings. Loading it on another
+   · a FULL SAVE (`full`): everything this browser holds: exports, rosters, gradebooks, settings. Loading it on another
      computer makes that computer this one. Student names and scores are in it: it belongs in the school Drive.
-   · a BOARD FILE (`board`): only what the Race and the Data Lab draw — no names, no IDs, no rosters, no seating, and no
+   · a BOARD FILE (`board`): only what the Race and the Data Lab draw: no names, no IDs, no rosters, no seating, and no
      student's row of Focus grades (each assignment's scores are shuffled on their own, so no row is a person). A Tally
      that loads one shows the Board and nothing else. For the classroom panel.
    · an old BACKUP (neither), written until 21 Oct 2026: rosters, goals, skips, matches, history and kept quarters, no
      scores, merged onto the classes that exist here. Tally no longer writes one; files in his Drive still load.
-   Croix, 19 Oct 2026: the backup from his laptop would not load on the Promethean — a backup carries no scores, so with
+   Croix, 19 Oct 2026: the backup from his laptop would not load on the Promethean: a backup carries no scores, so with
    no exports there was nothing to show, and the picker only let Android offer files typed .json. */
 // File names carry the minute, so the newest save is the last one in the folder: tally-full-2026-10-21-1432.json
 const stamp = iso => { const d = new Date(iso); const p2 = n => String(n).padStart(2, '0'); return `${localDay(iso)}-${p2(d.getHours())}${p2(d.getMinutes())}`; };
@@ -2194,6 +2201,8 @@ function workPrint() {
   const v = (h >>> 0).toString(36) + '.' + txt.length.toString(36); printCache = { n: saveCount, v }; return v;
 }
 const unsavedWork = () => state.order.length > 0 && state.savedPrint !== workPrint();
+// Work that would be lost by replacing this computer's Tally: unsaved here and not held by Sync either.
+const unsavedAnywhere = () => unsavedWork() && !(typeof syncHolds === 'function' && syncHolds());
 function downloadJson(obj, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
 // Two-letter stand-in names ("Aa", "Ab", …): one token, letters only, so every name helper treats them as distinct students.
 const pseudoName = (j, prefix) => (prefix || '') + String.fromCharCode(65 + Math.floor(j / 26) % 26) + String.fromCharCode(97 + j % 26) + (j >= 676 ? String(Math.floor(j / 676)) : '');
@@ -2231,13 +2240,14 @@ async function loadTallyFile(file, cfg) {
   if (cfg.board || cfg.full) {
     const kind = cfg.board ? 'Board save' : 'Full save'; const meta = cfg.board || cfg.full || {}; const when = meta.saved ? whenText(meta.saved) : 'an unknown time';
     // never lose what is on screen: work that is in no Full save is saved first, before anything replaces it
-    if (state.order.length && !state.board && unsavedWork()) { saveFull(); toast(`Your work here was saved first (${esc(state.lastSaveName || 'a Full save')}).`, false, 6000); }
+    if (state.order.length && !state.board && unsavedAnywhere()) { saveFull(); toast(`Your work here was saved first (${esc(state.lastSaveName || 'a Full save')}).`, false, 6000); }
     const older = cfg.full && meta.saved && state.lastBackup && meta.saved < state.lastBackup && !state.board;
     const here = state.order.length ? ` It replaces everything open here (${plural(state.order.length, 'class')}).` : '';
     if ((state.order.length || older) && !await ask(`Open the ${kind} from ${when} (${plural(meta.classes || 0, 'class')})?${older ? ` It is older than the Full save already open here (${whenText(state.lastBackup)}).` : ''}${here}`, 'Open it')) return false;
     const s = JSON.parse(JSON.stringify(cfg.state || {})); if (!s.sections || typeof s.sections !== 'object') throw new Error('not tally');
     if (cfg.board) { s.board = cfg.board; s.settings = { ...(s.settings || {}), hideNames: true, leaderboard: true }; } else delete s.board;
-    state = hydrate(s) || s; migrate(); if (cfg.full) { state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
+    const wasHidden = !!(state.settings && state.settings.hideNames) || !state.order.length;   // a Full save opened on a hidden or empty Tally (the panel) keeps names hidden
+    adopt(hydrate(s) || s); if (cfg.full) { if (wasHidden) state.settings.hideNames = true; state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
     toast(cfg.board ? `Board save opened: ${plural(state.order.length, 'class')}, no names.` : `Full save from ${esc(whenText(meta.saved))} opened: ${plural(state.order.length, 'class')}.`, false, 5000);
     return true;
   }
@@ -2252,56 +2262,62 @@ function storageUse() { const quota = 5242880; let total = 0, tally = 0; try { f
 // The newest thing imported (an IXL export or a gradebook), to tell whether the last backup is behind it.
 function latestImportAt() { let m = ''; for (const k of state.order) { const s = state.sections[k]; [s.importedAt, s.grades && s.grades.importedAt].forEach(v => { if (typeof v === 'string' && v > m) m = v; }); } return m || null; }
 const backupBehind = () => { if (storageFragile) return unsavedWork(); const li = latestImportAt(); return !!(li && (!state.lastBackup || state.lastBackup < li)); };   // where this browser keeps nothing, any unsaved work is due
+var settingsTab = 'class';   // the Settings tab last open (Class · Course · Tally · Files)
 function openSettings(key) {
-  const s = state.sections[key && state.sections[key] ? key : state.active]; if (!s) return;   // `key`: the class picked inside the dialog — the page behind stays where it was
+  const s = state.sections[key && state.sections[key] ? key : state.active]; if (!s) return;   // `key`: the class picked inside the dialog: the page behind stays where it was
   const m = $('#modal'); m.classList.remove('hidden'); const H = state.settings.hideNames;
   // Three scopes, each under its own heading, so nothing reaches past the title it sits under: this class, this course
   // (every class of it), and all of Tally. The class is chosen here — Settings opened from the Overview used to be
   // "1st Period" only because that tab was last active.
   m.innerHTML = `<div class="panel">
     <header><h2>Settings</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body">
-      <section class="scope">
-        <div class="scopeHead"><b>This class</b>${state.order.length > 1 ? `<select id="setClass" aria-label="Class these settings are for">${state.order.map(k => `<option value="${esc(k)}" ${k === s.key ? 'selected' : ''}>${esc(state.sections[k].label)}</option>`).join('')}</select>` : `<span>${esc(s.label)}</span>`}</div>
+    <div class="body tabs">
+      <div class="stabRow"><div class="seg stabs" id="stabs" role="tablist">${[['class', 'Class'], ['course', 'Course'], ['tally', 'Tally'], ['files', 'Files']].map(([k, n]) => `<button data-stab="${k}" role="tab" class="${settingsTab === k ? 'on' : ''}" aria-selected="${settingsTab === k}">${n}</button>`).join('')}</div>${state.order.length > 1 ? `<select id="setClass" aria-label="Class these settings are for">${state.order.map(k => `<option value="${esc(k)}" ${k === s.key ? 'selected' : ''}>${esc(state.sections[k].label)}</option>`).join('')}</select>` : `<span>${esc(s.label)}</span>`}</div>
+      <section class="scope stab ${settingsTab === 'class' ? 'on' : ''}" data-stab="class">
+        <div class="scopeHead"><b>This class</b><span>${esc(s.label)}</span></div>
         <div class="row2">
           <div class="field"><label>Class name (what students see)</label><input type="text" id="secLabel" value="${esc(s.label)}" placeholder="${esc(s.autoLabel)}"></div>
           <div class="field"><label>Goal SmartScore</label><input type="number" id="thr" min="1" max="100" value="${s.threshold}"></div>
         </div>
         <div class="field"><label>Course</label><div class="seg"><button data-prep="acc" class="${s.prep === 'acc' ? 'on' : ''}">Accelerated</button><button data-prep="on" class="${s.prep !== 'acc' ? 'on' : ''}">On-level</button></div></div>
-        <div class="field"><label>Roster — paste from FOCUS, one student per line</label>${H ? '<p class="warnline">Names are hidden. Turn on Show names to view or edit the roster.</p>' : `<textarea id="roster" placeholder="Doe, Jane&#10;Smith, John&#10;…&#10;&#10;Pasting straight from the FOCUS gradebook works, ID columns and all.">${esc(s.roster)}</textarea>`}</div>
+        <div class="field"><label>Roster: paste from Focus, one student per line</label>${H ? '<p class="warnline">Names are hidden. Turn on Show names to view or edit the roster.</p>' : `<textarea id="roster" placeholder="Doe, Jane&#10;Smith, John&#10;…&#10;&#10;Pasting straight from the Focus gradebook works, ID columns and all.">${esc(s.roster)}</textarea>`}</div>
         <div class="report" id="matchReport">${matchReport(s, s.roster)}</div>
         <p>${esc(s.file)} · imported ${fmtTime(s.importedAt)}</p>
         ${s.grades ? `<h3 class="mt">Focus gradebook</h3><p>${plural(s.grades.assignments.length, 'assignment')} · ${plural(s.grades.students.length, 'student')} · imported ${fmtDate(localDayOf(s.grades.importedAt))} from ${esc(s.grades.file || 'file')}</p><button class="pill danger small" id="dropGrades">Remove this gradebook</button>${Object.keys(s.gbUnitMap || {}).length ? `<div id="gbMaps"><p style="margin:12px 0 4px">Focus columns you changed in a Focus check ("Wrong column?"):</p>${Object.keys(s.gbUnitMap).map(n => `<div class="customRow"><b>${esc(n)}</b> <span>${s.gbUnitMap[n] ? 'checked against ' + esc((unitsOf(s).find(u => u.name === s.gbUnitMap[n]) || { short: s.gbUnitMap[n] }).short) : 'not checked against any unit'}</span> <button class="pill pale small" data-unmap="${esc(n)}">Reset</button></div>`).join('')}</div>` : ''}` : ''}
         <h3 class="mt">Remove</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="forget">Remove this class</button></div>
       </section>
-      <section class="scope">
+      <section class="scope stab ${settingsTab === 'course' ? 'on' : ''}" data-stab="course">
         <div class="scopeHead"><b>This course</b><span id="courseOf">every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class</span></div>
         <div class="field"><label>Units not assigned at the start</label><div class="seg small" id="skipFirst">${[0, 1, 2, 3].map(n => `<button data-skip="${n}" class="${(state.settings.skipFirst || {})[s.prep] === n ? 'on' : ''}">${n === 0 ? 'None' : 'First ' + n}</button>`).join('')}</div><p style="margin-top:4px">Review units students don't do. They leave the Race, Data Lab, Focus check and copies. A unit you mark Assigned by hand still wins.</p></div>
         <h3 class="mt">Share with another teacher</h3>
-        <p>Goal, skipped skills and assigned units — no rosters, no names. Another teacher loads it to run on the same rules.</p>
+        <p class="ghint">Goal, skipped skills and assigned units. No rosters, no names.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="exportCourse">Share this setup</button><button class="pill pale small" id="importCourse">Use a shared setup</button><input type="file" id="courseFile" accept=".json" class="hidden"></div>
-        <div class="scopeHead second"><b>All of Tally</b><span>every class, both courses</span></div>
+      </section>
+      <section class="scope stab ${settingsTab === 'tally' ? 'on' : ''}" data-stab="tally">
+        <div class="scopeHead"><b>All of Tally</b><span>every class, both courses</span></div>
         <div class="field"><label class="check" style="margin:0"><input type="checkbox" id="useBest" ${state.settings.useBest ? 'checked' : ''}> Grade on each student's best score across imports</label><p style="margin-top:4px">SmartScores drop when a student keeps practicing and misses; this keeps a point once it's earned.</p></div>
         ${(() => { const q = quarters(), n = currentQuarter(), all = [1, 2, 3, 4].every(qClosed), QN = Q_NAMES[n - 1];
           return `<div class="field"><label>Quarters</label><p style="margin:0 0 6px">${all ? 'Every quarter is closed.' : `${esc(QN)} ends ${esc(fmtDate(q.ends[n - 1]))}.${quarterDue() ? ' It has ended and can be closed.' : ' Tally asks you to close it after that.'}`}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="setQuarters">Quarter dates and closed quarters</button>${all || quarterDue() ? '' : `<button class="pill pale small" id="setQEarly">Close ${esc(QN)} early…</button>`}</div></div>`; })()}
         <div class="field"><label>Remind me when an export gets old</label><div class="seg small" id="remind">${REMIND.map(d => `<button data-remind="${d}" class="${state.settings.remindDays === d ? 'on' : ''}">${d ? d + ' days' : 'Off'}</button>`).join('')}</div><p style="margin-top:4px">A note appears on any class whose IXL export or Focus gradebook is older than this.</p></div>
         <div class="field"><label>Copy puts on the clipboard</label><div class="seg" id="copyMode">${[['points', 'Points only'], ['names', 'Name + points'], ['ids', 'ID + points']].map(([k, n]) => `<button data-cm="${k}" class="${state.settings.copyMode === k ? 'on' : ''}">${n}</button>`).join('')}</div><p style="margin-top:4px">Roster students missing from IXL get a blank line so the column stays aligned. Students on a modified list get their own "out of" after the points.</p></div>
-        <h3 class="mt">Saving</h3>
-        <p><b>Full save</b> is everything: exports, rosters, gradebooks, notes, settings. Open it on another computer and that computer is this one. It holds student names and scores, so keep it in your school Drive.</p>
-        <p><b>Board save</b> is for the classroom panel: only what the Race and the Data Lab draw. No names, IDs, rosters, seating or anyone's row of grades. A Tally that opens it shows the Board and nothing else.</p>
+      </section>
+      <section class="scope stab ${settingsTab === 'files' ? 'on' : ''}" data-stab="files">
+        <div class="scopeHead"><b>Files</b><span>saves, pages for the Board, this computer</span></div>
+        <h3>Saving</h3>
+        <p class="ghint"><b>Full save</b>: everything, names and grades included. Keep it in your school Drive. <b>Board save</b>: only what the Race and Data Lab draw, no names. A Tally that opens it shows the Board and nothing else.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="pill small" id="exportFull">Full save</button><button class="pill pale small" id="exportBoard">Board save</button><button class="pill pale small" id="importCfg">Open a save</button><input type="file" id="cfgFile" class="hidden"><small id="lastBk" class="ghint" style="margin:0">${state.lastBackup ? `Last full save ${esc(ageDays(localDay(state.lastBackup)) === 0 ? 'today' : fmtDate(localDay(state.lastBackup)))}.` : 'No full save from this browser yet.'}</small></div>
         <div class="field" style="margin-top:12px"><label>Autosave where the page can't keep your work (inside a Google Site)</label><div class="seg small" id="autosave">${[0, 5, 10, 15, 30].map(n => `<button data-auto="${n}" class="${state.settings.autosave === n ? 'on' : ''}">${n ? n + ' min' : 'Off'}</button>`).join('')}</div><p style="margin-top:4px">${storageFragile ? 'This page is one of them. ' : ''}A Full save downloads after that long with unsaved changes, and when you switch away from the page. Ctrl+S saves any time.</p></div>
         <h3 class="mt">Our own data (Data Lab)</h3>
-        <p>Numbers the classes collected themselves — minutes to school, letters in a first name. One list per class; no names.</p>
+        <p class="ghint">Numbers the classes collected themselves (minutes to school, letters in a first name). One list per class, no names.</p>
         <div id="customList">${state.custom.map(c => `<div class="customRow"><b>${esc(c.label)}</b> <span>${c.prep === 'acc' ? 'accelerated' : 'on-level'} · ${Object.values(c.values).filter(v => v.length).length} classes</span> <button class="pill pale small" data-editc="${esc(c.id)}">Edit</button> <button class="pill danger small" data-delc="${esc(c.id)}">Delete</button></div>`).join('') || '<p>None yet.</p>'}</div>
         <button class="pill pale small" id="addCustom">Add a data set</button>
         <h3 class="mt">Share</h3>
-        <p>Save the Race or the Data Lab as a page. The Race page has class totals only; the Data Lab page has each class's values but no names.</p>
+        <p class="ghint">The Race or the Data Lab as a page of its own. Class totals and values only, no names.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill pale small" id="saveRace">Save Race</button><button class="pill pale small" id="saveLab">Save Data Lab</button></div>
         <h3 class="mt">This computer</h3>
-        ${(() => { const u = storageUse(); return `<p class="storeLine ${u.pct >= 80 ? 'full' : ''}" id="storeLine"><span class="storeBar"><i style="width:${Math.min(100, Math.max(2, u.pct))}%"></i></span>Storage: <b>${u.mb(u.total)} of about ${u.mb(u.quota)} MB</b> used in this browser${u.other > 20000 ? ` — Tally ${u.mb(u.tally)} MB, other saved pages ${u.mb(u.other)} MB` : ''}.${u.pct >= 80 ? (u.other > u.tally ? ' Nearly full, mostly from other saved pages: save a backup, then clear those pages\' data.' : ' Nearly full: save a backup, then remove an old class or gradebook.') : ''}</p>`; })()}
-        <p>Everything Tally shows — IXL scores, rosters, goals, skips, and the Focus gradebook with its grade history — is saved in this browser. On a shared computer, clear it when you're done.</p>
+        ${(() => { const u = storageUse(); return `<p class="storeLine ${u.pct >= 80 ? 'full' : ''}" id="storeLine"><span class="storeBar"><i style="width:${Math.min(100, Math.max(2, u.pct))}%"></i></span>Storage: <b>${u.mb(u.total)} of about ${u.mb(u.quota)} MB</b> used in this browser${u.other > 20000 ? `: Tally ${u.mb(u.tally)} MB, other saved pages ${u.mb(u.other)} MB` : ''}.${u.pct >= 80 ? (u.other > u.tally ? ' Nearly full, mostly from other saved pages: save a backup, then clear those pages\' data.' : ' Nearly full: save a backup, then remove an old class or gradebook.') : ''}</p>`; })()}
+        <p class="ghint">Everything Tally shows is saved in this browser. On a shared computer, clear it when you're done.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill danger small" id="wipe">Clear all Tally data</button></div>
       </section>
     </div>
@@ -2343,13 +2359,14 @@ function openSettings(key) {
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     const wi = defaultWorkingIn(); noteWorkingIn(wi); save(); close(); render(); toast('Saved' + wi.map(x => `<br>${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join(''), false, wi.length ? 9000 : undefined);
   };
-  $('#forget').onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Everything Tally holds for it goes: IXL data, gradebook, kept quarters, roster, notes, conference text, seating. ${unsavedWork() ? 'A Full save downloads first, so you can get it back.' : 'Your last Full save still has it.'}`, 'Remove the class')) return; if (unsavedWork()) saveFull(); delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
+  $('#forget').onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Everything Tally holds for it goes: IXL data, gradebook, kept quarters, roster, notes, conference text, seating. ${unsavedAnywhere() ? 'A Full save downloads first, so you can get it back.' : syncHolds() ? 'Sync still has it.' : 'Your last Full save still has it.'}`, 'Remove the class')) return; if (unsavedAnywhere()) saveFull(); delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#wipe').onclick = async () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
-    if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? ${unsavedWork() ? 'A Full save downloads first, so you can get it back.' : 'Your last Full save still has it.'}`, 'Clear everything')) return; if (unsavedWork()) saveFull();
+    if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? ${unsavedAnywhere() ? 'A Full save downloads first, so you can get it back.' : syncHolds() ? 'Sync still has it.' : 'Your last Full save still has it.'}`, 'Clear everything')) return; if (unsavedAnywhere()) saveFull();
     try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); localStorage.removeItem(SYNC_KEY); } catch (e) {} try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; setTimeout(() => location.reload(), 700);   // lets the Full save finish downloading   // this computer forgets its sync key too; the synced copy stays
   };
   $('#addCustom').onclick = () => { close(); openCustomEditor(null, s.prep); };
+  m.querySelectorAll('#stabs [data-stab]').forEach(b => b.onclick = () => { settingsTab = b.dataset.stab; m.querySelectorAll('#stabs [data-stab]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); }); m.querySelectorAll('section.stab').forEach(x => x.classList.toggle('on', x.dataset.stab === settingsTab)); });
   const toQ = early => async () => { if (unsaved() && !await ask('Discard the changes you haven\'t saved?')) return; m.classList.remove('private'); openQuarters(early ? { early: true } : {}); };
   const sq = $('#setQuarters'); if (sq) sq.onclick = toQ(false); const se = $('#setQEarly'); if (se) se.onclick = toQ(true);
   m.querySelectorAll('[data-editc]').forEach(b => b.onclick = () => { close(); openCustomEditor(b.dataset.editc); });
@@ -2371,7 +2388,7 @@ function openSettings(key) {
     } catch (err) { toast('That file is not a Tally course settings file.', true); }
   };
   $('#saveRace').onclick = () => downloadLeaderboard('race'); $('#saveLab').onclick = () => downloadLeaderboard('lab');
-  const dg = $('#dropGrades'); if (dg) dg.onclick = async () => { if (!await ask(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.${unsavedWork() ? ' A Full save downloads first.' : ''}`, 'Remove the gradebook')) return; if (unsavedWork()) saveFull(); delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
+  const dg = $('#dropGrades'); if (dg) dg.onclick = async () => { if (!await ask(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.${unsavedAnywhere() ? ' A Full save downloads first.' : ''}`, 'Remove the gradebook')) return; if (unsavedAnywhere()) saveFull(); delete s.grades; if (view.mode === 'grades') view = { mode: 'units', unit: null }; save(); close(); render(); };
   m.querySelectorAll('[data-auto]').forEach(b => b.onclick = () => { state.settings.autosave = Number(b.dataset.auto); save(); m.querySelectorAll('[data-auto]').forEach(x => x.classList.toggle('on', x === b)); renderKeep(); });
   $('#exportBoard').onclick = () => saveBoardFile(); $('#exportFull').onclick = () => { saveFull(); const lb = $('#lastBk'); if (lb) lb.textContent = 'Last full save today.'; };
   $('#importCfg').onclick = () => $('#cfgFile').click();
@@ -2425,7 +2442,7 @@ function openCustomEditor(id, prep) {
     <div class="body one">
       <div class="row2"><div class="field"><label>Name</label><input type="text" id="cLabel" value="${esc(c.label)}" placeholder="Minutes to get to school"></div><div class="field"><label>Unit (shown on the axis)</label><input type="text" id="cUnit" value="${esc(c.unit || '')}" placeholder="minutes"></div></div>
       <div class="field"><label>Course</label><div class="seg">${[['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-cprep="${k}" class="${c.prep === k ? 'on' : ''}">${n}</button>`).join('')}</div></div>
-      <div id="cLists">${classes.map(x => `<div class="field"><label>${esc(x.label)} — one number per student, any order</label><textarea class="cVals" data-sec="${esc(x.key)}" style="min-height:70px">${esc((Array.isArray(c.values[x.key]) ? c.values[x.key] : []).filter(v => typeof v === 'number').join(' '))}</textarea></div>`).join('') || '<p>No classes in this course yet.</p>'}</div>
+      <div id="cLists">${classes.map(x => `<div class="field"><label>${esc(x.label)}: one number per student, any order</label><textarea class="cVals" data-sec="${esc(x.key)}" style="min-height:70px">${esc((Array.isArray(c.values[x.key]) ? c.values[x.key] : []).filter(v => typeof v === 'number').join(' '))}</textarea></div>`).join('') || '<p>No classes in this course yet.</p>'}</div>
       <div class="rp-actions"><button class="pill" id="cSave">Save</button><button class="pill pale" id="mCancel">Cancel</button></div>
     </div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
@@ -2434,7 +2451,7 @@ function openCustomEditor(id, prep) {
   $('#cSave').onclick = () => {
     c.label = $('#cLabel').value.trim(); c.unit = $('#cUnit').value.trim(); if (!c.label) { toast('Give the data set a name.', true); return; }
     c.values = {}; m.querySelectorAll('.cVals').forEach(ta => { const v = parseNums(ta.value); if (v.length) c.values[ta.dataset.sec] = v; });
-    if (!id) state.custom.push(c); save(); close(); render(); toast(`Saved <b>${esc(c.label)}</b> — find it under "Our own data" in the Data Lab.`, false, 4000);
+    if (!id) state.custom.push(c); save(); close(); render(); toast(`Saved <b>${esc(c.label)}</b>: find it under "Our own data" in the Data Lab.`, false, 4000);
   };
 }
 
@@ -2537,7 +2554,7 @@ document.addEventListener('keydown', e => {
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
 /*__SYNC__*/
-window.__tally = { gbUnitFor, openQuarters, closedEarly, quarterDue, openSettings, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { gbUnitFor, openQuarters, closedEarly, quarterDue, openSettings, gradeSummary, syncBusyHere, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.

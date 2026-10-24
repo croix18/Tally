@@ -97,9 +97,10 @@ High ones have a check in `tests/audit-oct22.js` (or an existing suite) that fai
     shows a way out instead of nothing.
 
 ### Fixed — privacy and safety
-24. The page now carries a Content Security Policy: nothing can be sent anywhere but its own site (Sync), even if a
-    file's contents ever got to run. (No script injection was found: names, titles, notes, FAST columns, labels were
-    all tried.)
+24. The page now carries a Content Security Policy that blocks fetches, beacons, images and frames to other hosts.
+    (It does not block a navigation: `location.href` could still carry data out. What actually protects Tally is
+    that every imported value is escaped: names, titles, notes, FAST columns, labels and file names were all tried,
+    across every screen, print page and saved page, and none ran. Corrected 24 Oct.)
 25. The Sync passphrase is hidden as it's typed (Show reveals it; the hint says never to type it while projecting).
 26. Printing one student's report or conference form while names are hidden asks first.
 27. A Board save's grade history no longer keeps a pseudonymous student's grade, missing count and category scores on
@@ -128,3 +129,47 @@ files ends the drop silently; toasts can sit over a dialog's ×; "FOCUS" vs "Foc
 suggested column title differs from Focus's "Unit N IXL"; the Race and "What changed" count different units without
 saying so; a gradebook before any IXL export gives several screens slightly wrong wording; Needs attention's "1 on the roster
 not in IXL: 1st 2nd 3rd 5th" reads as a total.
+
+## Second audit (24 Oct 2026): "a high level approach"
+
+Croix: "look for any kind of bugs, weak spots, vulnerabilities, everything else important that I'm not mentioning. Also
+look for ways to improve the UI." Three auditors in parallel (security and data safety; correctness and robustness; UI
+clarity), each on a snapshot with its own probes; findings fixed with a failing-first check in `tests/audit-oct24.js`.
+
+### Fixed: correctness
+1. **Retakes waited only for the unit being worked in** (High). A Unit 1 IXL column marked NHI with Unit 1 skills unfinished
+   still read "Eligible", while the Students list said "Missing 1". Every unit with an IXL column in the open gradebook
+   now counts (`retakeStatus().behind`), on every screen, in the quickest plan and on the conference form.
+2. **A typed roster alias ("LAST, FIRST = IXL name") matched on the grid but Copy pasted a blank** (High): the rows Copy
+   and the Focus check use are built from the gradebook's names and now carry the aliases.
+3. **"Missing work" counted blank (not yet graded) cells** (High): Overview card, Grades headline and digest. NHI only now,
+   on import and for gradebooks already saved.
+4. The quickest plan listed a retake with nothing above it when Focus already gave full IXL credit; the required IXL
+   step is listed. A student with no IXL link is no longer planned IXL skills it can't name.
+5. "Update the kept record" left the archive undated ("Focus gradebook of Dec 31" after a reload): stamped.
+6. The Students list labelled every row with the latest quarter any class had reached: the grade column says each
+   row's quarter when classes differ, and a kept-but-open quarter's chip says "kept".
+7. The Focus-gradebook age reminder used the UTC day (a day late after an evening import).
+
+### Fixed: security and privacy
+8. **Sync's conflict question could appear on the projected Board, and either answer put a Full save (every name and
+   grade) in the panel's Downloads** (Medium). The Board and Show student count as busy (asked after Hold to exit), and no
+   flow downloads a Full save when Sync already holds the work: Clear all, Remove class, Remove gradebook, opening a save.
+9. The passphrase rule accepted four words ("windy hill middle school"): five different words now, or a long varied phrase.
+10. A Full save opened on a hidden or empty Tally (the panel) keeps names hidden.
+11. A state that can't be migrated never replaces the one in use half-done (`adopt()`).
+12. Downloads no longer carry a student's name (Student-report.html, Conference-form.html).
+13. Own `__proto__` keys in a save's receipts, column links, pools, grading and pending settings are dropped on load;
+    a seating backup with a hostile period id can't throw.
+
+### For Croix
+- Two students with the same full name in one gradebook share one page, notes and conference text (the second is read as
+  the first). Rare; say if it ever happens and Tally will key them by Focus ID.
+- The GitHub Pages address (croix18.github.io) shares one origin with every other project there: anything on it could
+  read Tally's storage. Tally should stay on mrshaffer.org, ideally tally.mrshaffer.org.
+
+### UI (round 8)
+One control vocabulary (primary, secondary, quiet, segment); the class screen is one bar with its notices folded under
+"N to fix" and its duplicates behind ⋯; one primary action per screen; one stat tile; attention said once; Settings as
+four tabs with a line per control; the Board's toggles behind Options at every width; em dashes and "FOCUS" gone from
+on-screen text; the Data Lab compares any two data sets, one picked per course.
