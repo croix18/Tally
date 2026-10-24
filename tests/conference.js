@@ -64,9 +64,9 @@ function fastCsv(rows) {
   // ---- 2. the student page: FAST and notes -------------------------------------------------------------------------------
   const open=async i=>{ await p.evaluate(({K,nm})=>window.__tally.openProfile(K,nm),{K,nm:S[i]}); await p.waitForTimeout(300); };
   await open(0);
-  const ft=await p.evaluate(()=>[...document.querySelectorAll('#pTests tr')].map(tr=>[...tr.children].map(c=>c.textContent.trim()).join(' ').replace(/\s+/g,' ').trim()));
+  const ft=await p.evaluate(()=>[...document.querySelectorAll('#pTests .ftab:not(.targets) tr')].map(tr=>[...tr.children].map(c=>c.textContent.trim()).join(' ').replace(/\s+/g,' ').trim()));
   check(ft.length===2 && /^PM1 2026-27 Level 3 240 −7 above grade$/.test(ft[0]) && /^PM3 2025-26 Level 4 247 81st pct$/.test(ft[1]),'the student page lists FAST newest first with the change in scale score: '+ft.join(' / '));
-  await open(3); const byName=await p.evaluate(()=>document.querySelectorAll('#pTests tr').length); check(byName===2,'the student without an ID in the report is found by name');
+  await open(3); const byName=await p.evaluate(()=>document.querySelectorAll('#pTests .ftab:not(.targets) tr').length); check(byName===2,'the student without an ID in the report is found by name');
   await open(2); const fl=await p.evaluate(()=>({ flags:[...document.querySelectorAll('#pTests .fflag')].map(x=>x.textContent), all:[...document.querySelectorAll('#pTests .fall dt')].map(x=>x.textContent) }));
   check(fl.flags.join(' | ')==='Lowest 30% | 504 | ELL (LY)' && ['Race','L30','ELL','504','Percentile','Scale growth PM1','Teacher'].every(k=>fl.all.includes(k)),'the student page shows the flags (L30 first) and, folded, everything the report said: '+fl.flags.join(' | '));
   await p.click('#btnStudents'); await p.waitForTimeout(400); await p.click('#stuL30'); await p.waitForTimeout(300);
@@ -75,6 +75,14 @@ function fastCsv(rows) {
   await p.click('#stuL30'); await p.waitForTimeout(200);
   await open(1); const zero=await p.evaluate(()=>document.querySelector('#pTests').textContent); check(/below 1st pct/.test(zero),'a percentile of 0 reads "below 1st"');
   await open(5); check(await p.evaluate(()=>!document.querySelector('#pTests')),'a student with no results has no FAST section');
+  // 1c. FAST targets (24 Oct 2026): last year's PM3 in its grade-6 bucket, this year's PM1 in its grade-7 bucket, and what PM2 / PM3 need
+  const tg=await p.evaluate(({K,S})=>{ const T=window.__tally; const s=T.state.sections[K]; return [0,1,2,4].map(i=>{ const t=T.fastTargets(s,S[i]); return t && { prior:t.prior&&t.prior.scale, pb:t.priorBucket&&t.priorBucket.label, latest:t.latest&&t.latest.scale, lb:t.latestBucket&&t.latestBucket.label, gain:t.gain&&t.gain.score, rows:t.rows.map(r=>r.what+'='+r.score+(r.met?'*':'')) }; }); },{K,S});
+  check(tg[1].pb==='Low Level 1' && tg[1].lb==='Mid Level 1' && tg[1].gain===191 && /Learning gain=191\*/.test(tg[1].rows.join()),'a Low Level 1 on last year\'s grade-6 PM3 (168) needs 191 this year for a gain; a 196 PM1 already is one: '+tg[1].rows.join(' '));
+  check(tg[0].pb==='Level 4' && tg[0].gain===248 && tg[0].lb==='Level 3','a Level 4 last year (247) gains only by staying Level 4 with a higher score: 248 or more; the 240 PM1 is Level 3 for now');
+  check(tg[2].pb==='High Level 2' && tg[2].gain===235 && /Learning gain=235\*/.test(tg[2].rows.join()) && /Level 3=235/.test(tg[2].rows.join())===false,'a High Level 2 gains at Level 3 (235), and the Level 3 row is not listed twice');
+  check(tg[3] && tg[3].prior==null && tg[3].gain==null && /Level 4=247\*/.test(tg[3].rows.join()) && /Level 5=258$/.test(tg[3].rows.join()),'a student new this year has no gain target but the level targets, met where PM1 already reached them');
+  await open(1); const tgt=(await p.textContent('#pTests')).replace(/\s+/g,' ');
+  check(/Last year's PM3 ?168/.test(tgt) && /Low Level 1/.test(tgt) && /What PM2 and PM3 need/.test(tgt) && /Learning gain ?Mid Level 1 ?191/.test(tgt) && /reached on PM1/.test(tgt) && /Level 3 ?passing ?235/.test(tgt),'the student page shows the buckets and the targets in plain words: '+tgt.slice(0,160));
   // notes
   await open(0); const note1='Talked with mom on the phone. Works better near the front.', note2='Asked for help after class on two-step equations.';
   await p.fill('#noteText', note1); await p.click('#noteAdd'); await p.waitForTimeout(300); await p.fill('#noteText', note2); await p.keyboard.press('Control+Enter'); await p.waitForTimeout(300);

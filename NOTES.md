@@ -576,6 +576,16 @@ per-section-file era and many items in them are now done).
     beside them (tests call `seeTab(p, sel)` from tests/lib.js before touching a control); the Board's toggles sit
     behind Options at every width (`lbOpt(p, sel)` in tests); em dashes in on-screen text became colons or full stops;
     "FOCUS" is "Focus".
+- **24 Oct 2026 — FAST levels and learning gains on the student page** (conference.js, `FAST_MATH`, `fastTargets`).
+  Croix sent the state cut-score chart (FAST Mathematics, grades 3 to 8, with the Level 1 and Level 2 subcategories)
+  and asked for each student's last-year PM3, this year's PM1, and "what they need to get on PM2 and PM3 to reach a
+  gain / the next level, to pass with a 3". His rule: "a gain is defined by moving to the next bucket up" (a Low
+  Level 1 on the grade-6 test, 180, needs 191 on the grade-7 test, Mid Level 1). From Level 3 or 4 a gain is the same
+  level with a higher score, or the level above; from Level 5, Level 5 again. The page's FAST section shows the two
+  scores in their buckets (each on its own grade's table: last year's uses the report's PM3TestLevel, else the grade
+  below) and a table of targets on this year's scale: the gain, then Level 2, Level 3 (passing), Level 4, Level 5,
+  each marked reached when the latest window already got there, else "N more than PM1". The conference form's
+  "From the gradebook" aside carries the gain line. The accelerated classes sit the grade-7 test too, so one table.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

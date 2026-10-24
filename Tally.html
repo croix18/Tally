@@ -33,6 +33,8 @@ div.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:16px}   /* 
 #pTests .ftab{width:100%;border-collapse:collapse;font-size:var(--t-m)}#pTests th,#pTests td{padding:6px 8px 6px 0;border-top:1px solid var(--grid);text-align:left;white-space:nowrap}#pTests th{font-weight:var(--w-bold);color:var(--ink-soft);font-size:var(--t-s)}#pTests td.num{font-variant-numeric:tabular-nums;font-weight:var(--w-bold)}#pTests small{font-size:var(--t-xs)}#pTests small.neg{color:var(--g-f,#b3261e)}#pTests small.pos{color:var(--teal)}#pTests td:last-child{color:var(--ink-soft);font-size:var(--t-s)}
 .fflags{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 8px}.fflag{display:inline-block;padding:2px 9px;border-radius:var(--r-pill);font-size:var(--t-xs);font-weight:var(--w-heavy);background:var(--paleturq);color:var(--navy);letter-spacing:.02em}.fflag.l30{background:var(--g-d-wash);color:var(--navy)}.fflag.small{padding:1px 6px;vertical-align:1px}#pTests .fall{margin-top:8px}#pTests .fall summary{cursor:pointer;font-size:var(--t-s);font-weight:var(--w-bold);color:var(--teal)}#pTests .fall dl{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:8px 0 0;font-size:var(--t-s)}#pTests .fall dt{color:var(--ink-soft)}#pTests .fall dd{margin:0;font-weight:var(--w-bold)}
 .flvl{display:inline-block;padding:2px 8px;border-radius:var(--r-pill);font-size:var(--t-s);font-weight:var(--w-bold)}.flvl.l1{background:var(--g-f-wash)}.flvl.l2{background:var(--g-d-wash)}.flvl.l3{background:var(--g-b-wash)}.flvl.l4,.flvl.l5{background:var(--g-a-wash)}
+.fastT{margin-top:12px}.fastT .gcards.two{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:10px}.fastT .gcard span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.fastT .pos{color:var(--teal)}
+.ftab.targets td{padding:6px 8px;border-top:1px solid var(--grid)}.ftab.targets tr.met td{color:var(--teal)}.ftab.targets td .why{color:var(--ink-soft)}.ftab.targets td.num{width:70px;font-size:var(--t-l)}
 #modal .panel.confPanel{width:min(1120px,96vw)}#modal .body.confBody{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start}
 .confForm .row3{display:grid;gap:12px}.confForm .r2{grid-template-columns:1fr 90px}.confForm .r3{grid-template-columns:1fr 1fr 90px}.confForm .r4{grid-template-columns:130px 1fr}.confForm .row3>.field{min-width:0}
 .cf-rcs>div{display:flex;gap:6px;flex-wrap:wrap}.cf-rc{display:flex;flex-direction:column;gap:2px;font-size:var(--t-xs);font-weight:var(--w-bold);color:var(--ink-soft)}.cf-rc input{width:50px;text-align:center;border:2px solid var(--grid);border-radius:var(--r-m);padding:6px 4px;font:inherit;font-size:var(--t-m);color:var(--ink)}
@@ -3545,13 +3547,61 @@ function testHistory(sec, name) {
   if (!out.some(h => /FAST/i.test(h.test)) && si && (si.level || si.pct != null || si.scale != null)) out.push({ test: 'FAST', pm: 'PM3', year: '', level: si.level, scale: si.scale, pct: si.pct, src: 'seating' });
   return out;
 }
+/* ---------- FAST achievement levels and learning gains ----------
+   Cut scores approved by the State Board of Education, 10 Jan 2024 (FAST Mathematics, grades 3 to 8), with the Level 1
+   and Level 2 subcategories the school grade's learning gains use. Each grade's row: the first score of Low 1, Mid 1,
+   High 1, Low 2, High 2, Level 3, Level 4, Level 5, and the top of the scale.
+   A learning gain (Croix, 24 Oct 2026: "a gain is defined by moving to the next bucket up"): from Level 1 or 2, the
+   next subcategory up or a higher level; from Level 3 or 4, the same level with a higher scale score, or a higher
+   level; from Level 5, Level 5 again. */
+const FAST_MATH = { 3: [140, 155, 169, 183, 191, 198, 209, 225, 260], 4: [155, 170, 185, 200, 206, 211, 221, 238, 273], 5: [158, 175, 191, 207, 215, 222, 234, 246, 285],
+  6: [168, 183, 198, 213, 221, 229, 239, 254, 287], 7: [175, 191, 207, 223, 229, 235, 247, 258, 288], 8: [183, 198, 213, 227, 236, 244, 254, 263, 291] };
+const FAST_BUCKETS = [[1, 'Low Level 1'], [1, 'Mid Level 1'], [1, 'High Level 1'], [2, 'Low Level 2'], [2, 'High Level 2'], [3, 'Level 3'], [4, 'Level 4'], [5, 'Level 5']];
+// The bucket a scale score falls in on a grade's table: { idx 0..7, level, label }, or null off the table.
+function fastBucket(grade, scale) { const cuts = FAST_MATH[grade]; if (!cuts || scale == null || scale < cuts[0]) return null; let i = 0; for (let k = 1; k < 8; k++) if (scale >= cuts[k]) i = k; return { idx: i, level: FAST_BUCKETS[i][0], label: FAST_BUCKETS[i][1], grade }; }
+const fastLevelFloor = (grade, level) => { const c = FAST_MATH[grade]; return c ? [null, c[0], c[3], c[5], c[6], c[7]][level] : null; };
+// The lowest score on this grade's table that counts as a learning gain over a prior-year result.
+function fastGainFloor(grade, prior) {
+  const c = FAST_MATH[grade]; const pb = prior && prior.grade ? fastBucket(prior.grade, prior.scale) : null; if (!c || !pb) return null;
+  if (pb.level <= 2) return { score: c[pb.idx + 1], label: FAST_BUCKETS[pb.idx + 1][1] };
+  if (pb.level === 5) return { score: c[7], label: 'Level 5 again' };
+  const floor = Math.max(fastLevelFloor(grade, pb.level), prior.scale + 1); return { score: floor, label: `Level ${pb.level} with a higher score, or Level ${pb.level + 1}` };
+}
+// Everything the page says about a student's FAST year: last year's PM3, this year's windows, and what PM2 / PM3 need.
+function fastTargets(sec, name) {
+  const hist = testHistory(sec, name).filter(h => /FAST/i.test(h.test) && h.scale != null); if (!hist.length) return null;
+  const fi = fastInfo(sec, name); const gradeNow = Number(String(fi.GradeLevel || state.settings.gradeLevel || '7').replace(/^0+/, '')) || 7;
+  const years = [...new Set(hist.map(h => h.year).filter(Boolean))].sort(); const thisYear = years[years.length - 1]; const lastYear = years.length > 1 ? years[years.length - 2] : null;
+  const prior0 = hist.find(h => h.pm === 'PM3' && h.year === lastYear) || (lastYear ? null : hist.find(h => h.pm === 'PM3' && !h.year));
+  const prior = prior0 ? { ...prior0, grade: prior0.grade || gradeNow - 1 } : null;
+  const now = hist.filter(h => h.year === thisYear && h.year).sort((a, b) => a.pm.localeCompare(b.pm)); const latest = now[now.length - 1] || null;
+  const b = s => fastBucket(gradeNow, s); const c = FAST_MATH[gradeNow];
+  const gain = prior ? fastGainFloor(gradeNow, prior) : null;
+  const rows = [];
+  if (gain) rows.push({ k: 'gain', what: 'Learning gain', sub: gain.label, score: gain.score, why: 'counts for the school grade' });
+  if (c) [[2, 'Level 2'], [3, 'Level 3'], [4, 'Level 4'], [5, 'Level 5']].forEach(([lv, lab]) => { const sc = fastLevelFloor(gradeNow, lv); if (!rows.some(r => r.score === sc)) rows.push({ k: 'l' + lv, what: lab, sub: lv === 3 ? 'passing' : '', score: sc }); });
+  rows.sort((x, y) => x.score - y.score);
+  rows.forEach(r => { r.met = latest && latest.scale != null && latest.scale >= r.score; r.gap = latest && latest.scale != null ? r.score - latest.scale : null; });
+  return { gradeNow, prior, priorBucket: prior ? fastBucket(prior.grade, prior.scale) : null, latest, latestBucket: latest ? b(latest.scale) : null, now, rows, gain };
+}
+function fastTargetsHtml(t) {
+  if (!t) return '';
+  const lvl = bk => bk ? `<span class="flvl l${bk.level}">${esc(bk.label)}</span>` : '';
+  const grade = g => `<small>grade ${g} test</small>`;
+  const cards = `${t.prior ? `<div class="gcard"><small>Last year's PM3</small><b>${t.prior.scale}</b><span>${lvl(t.priorBucket)} ${grade(t.prior.grade)}</span></div>` : `<div class="gcard"><small>Last year's PM3</small><b>—</b><span>not in Tally, so no gain target</span></div>`}
+    ${t.latest ? `<div class="gcard"><small>${esc(t.latest.pm)} this year</small><b>${t.latest.scale}</b><span>${lvl(t.latestBucket)} ${grade(t.gradeNow)}${t.gain && t.latest.scale >= t.gain.score ? ' <b class="pos">already a gain</b>' : ''}</span></div>` : `<div class="gcard"><small>This year</small><b>—</b><span>no window scored yet</span></div>`}`;
+  const list = t.rows.map(r => `<tr class="${r.met ? 'met' : ''}"><td>${esc(r.what)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ''}</td><td class="num"><b>${r.score}</b>${r.k === 'gain' ? '' : ''}</td><td>${r.met ? `${ico('check')} reached on ${esc(t.latest.pm)}` : r.gap != null ? `<small>${r.gap} more than ${esc(t.latest.pm)}</small>` : ''}${r.why && !r.met ? ` <small class="why">· ${esc(r.why)}</small>` : ''}</td></tr>`).join('');
+  return `<div class="fastT"><div class="gcards two">${cards}</div>
+    <h4 class="subh">What PM2 and PM3 need <small>grade ${t.gradeNow} scale</small></h4>
+    <table class="ftab targets"><tbody>${list}</tbody></table></div>`;
+}
 // The student page's FAST section: newest first, with the change in scale score from one window to the next.
 function testsSection(sec, name) {
   const hist = testHistory(sec, name); const fi = fastInfo(sec, name); if (!hist.length && !Object.keys(fi).length) return '';
   if (state.settings.hideNames) return `<section class="gsec" id="pTests"><h3>FAST</h3><p class="ghint">Hidden while names are hidden.</p></section>`;
   const flags = fastFlags(fi); const keys = Object.keys(fi).filter(k => !['Student', 'ID'].includes(k));
   return `<section class="gsec" id="pTests"><h3>FAST</h3>${flags.length ? `<div class="fflags">${flags.map(x => `<span class="fflag ${x.cls}">${esc(x.t)}</span>`).join('')}</div>` : ''}<table class="ftab"><tbody>${hist.map((h, j) => { const prev = hist[j + 1]; const dv = prev && h.scale != null && prev.scale != null ? h.scale - prev.scale : null;
-    return `<tr><th scope="row">${esc([h.pm, h.year].filter(Boolean).join(' '))}</th><td>${h.level != null ? `<span class="flvl l${Math.min(5, Math.max(1, h.level))}">Level ${h.level}</span>` : ''}</td><td class="num">${h.scale != null ? h.scale : ''}${dv != null ? ` <small class="${dv < 0 ? 'neg' : 'pos'}">${dv > 0 ? '+' : dv < 0 ? '−' : '±'}${Math.abs(dv)}</small>` : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct).replace(' percentile', ' pct')) : h.above ? 'above grade' : h.grade != null ? 'grade ' + h.grade + ' test' : ''}</td></tr>`; }).join('')}</tbody></table>${keys.length ? `<details class="fall"><summary>Everything in the report</summary><dl>${keys.map(k => `<dt>${esc(k)}</dt><dd>${esc(fi[k])}</dd>`).join('')}</dl></details>` : ''}</section>`;
+    return `<tr><th scope="row">${esc([h.pm, h.year].filter(Boolean).join(' '))}</th><td>${h.level != null ? `<span class="flvl l${Math.min(5, Math.max(1, h.level))}">Level ${h.level}</span>` : ''}</td><td class="num">${h.scale != null ? h.scale : ''}${dv != null ? ` <small class="${dv < 0 ? 'neg' : 'pos'}">${dv > 0 ? '+' : dv < 0 ? '−' : '±'}${Math.abs(dv)}</small>` : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct).replace(' percentile', ' pct')) : h.above ? 'above grade' : h.grade != null ? 'grade ' + h.grade + ' test' : ''}</td></tr>`; }).join('')}</tbody></table>${fastTargetsHtml(fastTargets(sec, name))}${keys.length ? `<details class="fall"><summary>Everything in the report</summary><dl>${keys.map(k => `<dt>${esc(k)}</dt><dd>${esc(fi[k])}</dd>`).join('')}</dl></details>` : ''}</section>`;
 }
 
 // Kept conference text, per student: only the boxes you edited ({ strengths, …, saved }), and base: Tally's draft each
@@ -3593,7 +3643,7 @@ function openConference(sec, name) {
         ${H ? '<p class="ghint">Hidden while names are hidden.</p>' : d.notes.length ? `<ul class="cfNotes">${d.notes.slice().reverse().map(n => `<li><time>${esc(fmtDate(localDay(n.at)))}</time><p>${esc(n.text)}</p><span><button class="pill pale small" data-cfadd="strengths" data-nid="${esc(n.id)}">+ Strengths</button><button class="pill pale small" data-cfadd="concerns" data-nid="${esc(n.id)}">+ Concerns</button></span></li>`).join('')}</ul>` : '<p class="ghint">No notes for this student.</p>'}
         ${(() => { const fl = H ? [] : fastFlags(fastInfo(sec, name)); return fl.length ? `<h3>From FAST</h3><div class="fflags">${fl.map(x => `<span class="fflag ${x.cls}">${esc(x.t)}</span>`).join('')}</div>` : ''; })()}
         <h3>From the gradebook</h3>
-        <ul class="cfFacts">${[d.r ? `${esc(Q_NAMES[d.q - 1])}: ${d.r.rounded}% ${d.r.letter}` : '', ...Object.entries(d.cats).filter(([, x]) => x.pct != null).map(([c, x]) => `${esc(c)}: ${Math.round(x.pct)}%`), d.ix && d.ix.poss ? `IXL: ${d.ix.done} of ${d.ix.poss} skills at goal` : '', `Missing: ${d.missing.length + d.missedTests.length}`, d.rt.ok ? 'Retake: eligible' : `Retake: ${esc(retakeWhy(d.rt))}`, d.ixlGrade && d.ixlGrade.max ? `IXL in Focus: ${d.ixlGrade.got} of ${d.ixlGrade.max}` : ''].filter(Boolean).map(x => `<li>${x}</li>`).join('')}</ul>
+        <ul class="cfFacts">${[(() => { const t = H ? null : fastTargets(sec, name); return t && t.gain ? `FAST gain: ${t.gain.score} or more on PM3${t.latest ? ` (${esc(t.latest.pm)} ${t.latest.scale}${t.latest.scale >= t.gain.score ? ', a gain already' : ''})` : ''}` : t && t.latest ? `FAST ${esc(t.latest.pm)}: ${t.latest.scale}, ${esc(t.latestBucket ? t.latestBucket.label : '')}` : ''; })(), d.r ? `${esc(Q_NAMES[d.q - 1])}: ${d.r.rounded}% ${d.r.letter}` : '', ...Object.entries(d.cats).filter(([, x]) => x.pct != null).map(([c, x]) => `${esc(c)}: ${Math.round(x.pct)}%`), d.ix && d.ix.poss ? `IXL: ${d.ix.done} of ${d.ix.poss} skills at goal` : '', `Missing: ${d.missing.length + d.missedTests.length}`, d.rt.ok ? 'Retake: eligible' : `Retake: ${esc(retakeWhy(d.rt))}`, d.ixlGrade && d.ixlGrade.max ? `IXL in Focus: ${d.ixlGrade.got} of ${d.ixlGrade.max}` : ''].filter(Boolean).map(x => `<li>${x}</li>`).join('')}</ul>
       </aside>
     </div>
     <footer>${kept ? `<small class="ghint" style="margin:0">Your edits from ${esc(fmtDate(localDay(kept.saved)))}</small><button class="linkbtn" id="cfRefill">Start over from Tally</button>` : ''}<div class="spacer"></div><button class="pill pale" id="mCancel">Close</button><button class="pill" id="cfPrint">Print</button></footer></div>`;
