@@ -198,7 +198,7 @@ function renderProfile() {
   const backLabel = profileBack && profileBack.mode === 'grades' ? 'Grades' : profileBack && profileBack.mode === 'home' ? 'Overview' : profileBack && profileBack.mode === 'seating' ? 'Seating' : profileBack && (profileBack.mode === 'units' || profileBack.mode === 'unit') ? sec.label : 'Students';
   $('#bar').innerHTML = `<div class="crumb"><button id="back">‹ ${esc(backLabel)}</button><h2>${esc(shownName)}</h2></div><span class="meta"><span class="qdot" style="--cc:${classColor(sec)}"></span>${esc(sec.label)}${f.id && !H ? ` · ID ${esc(f.id)}` : ''}${at >= 0 ? ` · ${at + 1} of ${list.length}` : ''}</span><div class="spacer"></div>
     <span class="pnav"><button class="pill toggle" id="pPrev" ${at > 0 ? '' : 'disabled'} title="Previous student in this class">‹ Prev</button><button class="pill toggle" id="pNext" ${at >= 0 && at < list.length - 1 ? '' : 'disabled'} title="Next student in this class">Next ›</button></span>
-    ${openB ? `<button class="pill toggle" id="pPrint" title="One printed page for the student and home">Print report</button>` : ''}<button class="pill toggle" id="pConf" title="The school's parent conference form, filled in from Tally">Conference form</button>${openB ? `<button class="pill" id="pShow" title="Turn the screen toward the student: their grade and what-ifs, nothing else">Show student</button>` : ''}`;
+    ${openB ? `<button class="pill toggle" id="pPrint" title="The weekly report: one printed page for the student and home">Weekly report</button>` : ''}${testHistory(sec, name).some(h => /FAST/i.test(h.test) && h.scale != null) ? `<button class="pill toggle" id="pFast" title="One printed page: FAST levels, this year's targets and a goal box">FAST report</button>` : ''}<button class="pill toggle" id="pConf" title="The school's parent conference form, filled in from Tally">Conference form</button>${openB ? `<button class="pill" id="pShow" title="Turn the screen toward the student: their grade and what-ifs, nothing else">Show student</button>` : ''}`;
   $('#bar').classList.add('detail');
 
   // headline tiles
@@ -268,6 +268,7 @@ function renderProfile() {
   const go = d => { const n = list[at + d]; if (n) { view.stu = { key: sec.key, name: n }; render(); } };
   $('#pPrev').onclick = () => go(-1); $('#pNext').onclick = () => go(1);
   const pp = $('#pPrint'); if (pp) pp.onclick = () => printStudentReports(sec, [f.gi], `${name}: report`);
+  const pf = $('#pFast'); if (pf) pf.onclick = async () => { if (state.settings.hideNames && !await ask('Names are hidden, but the report opens with the student\'s full name and scores on screen. Open it?', 'Open the report')) return; printFastReports(sec, [name], 'FAST report'); };
   const ps = $('#pShow'); if (ps) ps.onclick = () => openShow(sec, name);
   wireNotes(sec, name);
   const pc = $('#pConf'); if (pc) pc.onclick = () => openConference(sec, name);

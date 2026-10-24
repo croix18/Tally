@@ -81,6 +81,12 @@ function fastCsv(rows) {
   check(tg[0].pb==='Level 4' && tg[0].gain===263 && tg[0].lb==='High Level 2','a Level 4 last year (247) needs a Level 5 for a gain: 263 on the grade-8 scale; the 240 PM1 is High Level 2 there');
   check(tg[2].pb==='High Level 2' && tg[2].gain===244 && tg[2].rows.includes('Learning gain=244') && !/Level 3=244/.test(tg[2].rows.join()),'a High Level 2 gains at Level 3 (244 on the grade-8 scale), and the Level 3 row is not listed twice');
   check(tg[3] && tg[3].prior==null && tg[3].gain==null && /Level 3=244\*/.test(tg[3].rows.join()) && /Level 4=254$/.test(tg[3].rows.join().replace(/,Level 5.*$/,'')),'a student new this year has no gain target but the level targets, met where PM1 already reached them');
+  // 1d. the FAST report: one page, scales for both years, the targets, a goal box
+  await open(1); check(await p.locator('#pFast').count()===1,'a student with FAST results gets a FAST report button');
+  const [fr]=await Promise.all([ctx.waitForEvent('page'), p.click('#pFast')]); await fr.waitForLoadState(); await fr.waitForTimeout(500);
+  const frTxt=(await fr.evaluate(()=>document.body.innerText)).replace(/\s+/g,' '); const frPages=(await fr.pdf({format:'Letter'})).toString('latin1').match(/\/Type\s*\/Page[^s]/g).length;
+  check(frPages===1 && await fr.locator('.scale').count()===2 && await fr.locator('.mk.now').count()>=2 && /WHAT PM2 AND PM3 NEED/i.test(frTxt) && /Learning gain Mid Level 1 198/.test(frTxt) && /My goal for PM3/.test(frTxt) && /grade 6 scale/.test(frTxt) && /grade 8 scale/.test(frTxt),'the FAST report prints on one page: two scales with the scores marked, the targets, a goal box ('+frPages+' page)');
+  await fr.close();
   await open(1); const tgt=(await p.textContent('#pTests')).replace(/\s+/g,' ');
   check(/Last year's PM3 ?168/.test(tgt) && /grade 6 test/.test(tgt) && /grade 8 test/.test(tgt) && /What PM2 and PM3 need ?grade 8 scale/.test(tgt) && /Learning gain ?Mid Level 1 ?198/.test(tgt) && /2 more than PM1/.test(tgt) && /Level 3 ?passing ?244/.test(tgt),'the student page shows the buckets and the targets in plain words: '+tgt.slice(0,160));
   // notes

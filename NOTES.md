@@ -590,6 +590,20 @@ per-section-file era and many items in them are now done).
   each marked reached when the latest window already got there, else "N more than PM1". The conference form's
   "From the gradebook" aside carries the gain line. The accelerated classes sit the grade-8 test, so their windows this
   year sit on the grade-8 table while last year's PM3 stays on grade 6 (`gradeNow = gradeLevel + 1` for `prep === 'acc'`).
+- **24 Oct 2026 — Two printed reports per student.** Croix: "a highly organized, easy to read and understand, high
+  concentration on data, report … two reports. One is FAST test data … The other is the print report from the individual
+  pages, but I want it revamped for clarity, ease of use, and accountability … I will print for students every week."
+  - **Weekly report** (`studentReportSection`, grades.js): header with a "Since the last report" strip (grade, missing
+    work, IXL skills, each with its change), the grade with its categories beside a four-number scoreboard (missing,
+    IXL at goal, tests and quizzes, retake), "Do this week" as a checklist of the quickest path's steps with a box and
+    the grade after each, the retake line, IXL by unit with a bar, tests and quizzes in one line, "What would move the
+    grade", and a pledge box (This week I will · Last week's plan done/partly/not yet · student, parent, date). One
+    Letter page. Printing logs `sec.reportLog[norm(name)]` (date, grade, missing, ixl; last 12) so the next report can
+    say what moved; a re-print the same day replaces that day's entry.
+  - **FAST report** (`fastReportSection`, conference.js; the ⋯ menu's Student reports dialog and a FAST report button
+    on the student page): cards (last year's PM3, each window this year, the gain target, Level 3), last year's scale
+    and this year's scale drawn from the cut scores with the scores and targets marked, a sentence on what a gain means
+    for this student, the targets table, every window, and a goal box (PM2, PM3, how I'll get there, signatures).
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

@@ -57,7 +57,13 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   check(/missing work were turned in/i.test(card) && /retaken/i.test(card) && /next assessment scored/i.test(card) && /→ \d+/.test(card),'page has missing, retakes, next-assessment what-ifs');
   await p.fill('.wiMax','50'); await p.waitForTimeout(150); check((await p.getAttribute('.wiPts','max'))==='50','next-assessment slider follows points possible');
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop.waitForLoadState(); await pop.waitForTimeout(300); const ptxt=await pop.evaluate(()=>document.body.innerText);
-  check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /What would move the grade/i.test(ptxt) && /weighted Assessments 70%/.test(ptxt),'print page: one student, formula stated'); await pop.close();
+  check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /What would move the grade/i.test(ptxt) && /weighted Assessments 70%/.test(ptxt),'print page: one student, formula stated');
+  check(/Do this week/i.test(ptxt) && /This week I will/.test(ptxt) && /Last week's plan/.test(ptxt) && /First report/.test(ptxt) && await pop.locator('.todo li .box').count()>=1,'the weekly report has the checklist, the plan box and signature lines; a first report says so'); await pop.close();
+  const logged=await p.evaluate(()=>{ const s=Object.values(window.__tally.state.sections)[0]; const L=s.reportLog||{}; const k=Object.keys(L)[0]; return k && L[k].length===1 && L[k][0].grade!=null && typeof L[k][0].missing==='number'; });
+  check(logged,'printing a report logs the grade, missing count and IXL skills for the next report\'s "since" strip');
+  await p.evaluate(()=>{ const s=Object.values(window.__tally.state.sections)[0]; const L=s.reportLog; const k=Object.keys(L)[0]; L[k]=[{ date:'2026-10-10', grade:L[k][0].grade-5, missing:L[k][0].missing+2, ixl:L[k][0].ixl }]; window.__tally.save(); });
+  const [pop2]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop2.waitForLoadState(); await pop2.waitForTimeout(300); const pt2=await pop2.evaluate(()=>document.body.innerText);
+  check(/Since the last report/.test(pt2) && /Oct 10/.test(pt2) && /\+5/.test(pt2) && /−2/.test(pt2),'the next report says what moved since the last one (grade +5, missing −2)'); await pop2.close();
   await p.click('#back'); await p.waitForTimeout(300);
   check(await p.locator('.gstu').count()===1,'back returns to Grades');
   // hidden names mask the overview and the card

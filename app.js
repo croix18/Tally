@@ -52,6 +52,8 @@ function load() { let raw = null; try { raw = localStorage.getItem(LS_KEY); } ca
 // Objects keyed by names from files keep only safe keys (an own "__proto__" key in a save would otherwise be carried
 // along for good).
 function safeObj(o) { if (!o || typeof o !== 'object' || Array.isArray(o)) return {}; const out = {}; for (const k of Object.keys(o)) if (SAFE_KEY(k)) out[k] = o[k]; return out; }
+// The printed-report log per student: { [norm(name)]: [{ date, grade, missing, ixl }] }, the last dozen.
+function cleanReportLog(o) { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !Array.isArray(o[k])) continue; const l = o[k].filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date))).map(e => ({ date: String(e.date), grade: e.grade == null ? null : Number(e.grade), missing: Number(e.missing) || 0, ixl: e.ixl == null ? null : Number(e.ixl) })).slice(-12); if (l.length) out[k] = l; } return out; }
 function hydrate(s) {
   try {
     if (!s || !s.sections) return null;
@@ -101,7 +103,7 @@ function migrate() {
     if (typeof s.label !== 'string') s.label = s.autoLabel || k;
     // A gradebook is only usable whole: assignments with values/status arrays of the students' length.
     if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) delete s.grades; else gb.assignments.forEach(a => { a.missing = a.status ? a.status.filter(t => t === 'missing').length : Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); }
-    s.stuNotes = cleanNotes(s.stuNotes); s.confForms = cleanConfForms(s.confForms);
+    s.stuNotes = cleanNotes(s.stuNotes); s.confForms = cleanConfForms(s.confForms); s.reportLog = cleanReportLog(s.reportLog);
     s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s.overrides = cleanOverrides(s.overrides); s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
     if (s.hiddenUnits && Object.keys(s.hiddenUnits).length) { for (const u in s.hiddenUnits) if (state.assigned[s.prep || 'on'][u] == null) state.assigned[s.prep || 'on'][u] = !s.hiddenUnits[u]; s.hiddenUnits = {}; }
@@ -1352,7 +1354,7 @@ function askNewClass(fileName, gb, orExisting) {
       state.sections[key] = { key, label, autoLabel: label, period, pool: true, accelerated: prep === 'acc', prep, threshold: prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on,
         date: null, file: '', importedAt: new Date().toISOString(), students: [], skills: [], scores: [], roster: '', rosterAt: null, skipRoster: false,
         excluded: state.skips[prep], ignored: {}, aliases: {}, hiddenUnits: {}, studentSkips: {}, history: [], team: '', placeholder: false, allBlank: false, best: null, receipts: {}, _keys: null };
-      const held = state.pendingCfg[key]; if (held) { const s0 = state.sections[key]; ['threshold', 'roster', 'rosterAt', 'skipRoster', 'ignored', 'aliases', 'studentSkips', 'history', 'gradeHistory', 'seating', 'seatInfo', 'qArchive', 'stuNotes', 'confForms', 'overrides', 'hiddenUnits'].forEach(f => { if (held[f] != null) s0[f] = held[f]; }); if (held.label) s0.label = held.label; delete state.pendingCfg[key]; }   // a backup loaded before the class existed
+      const held = state.pendingCfg[key]; if (held) { const s0 = state.sections[key]; ['threshold', 'roster', 'rosterAt', 'skipRoster', 'ignored', 'aliases', 'studentSkips', 'history', 'gradeHistory', 'seating', 'seatInfo', 'qArchive', 'stuNotes', 'confForms', 'reportLog', 'overrides', 'hiddenUnits'].forEach(f => { if (held[f] != null) s0[f] = held[f]; }); if (held.label) s0.label = held.label; delete state.pendingCfg[key]; }   // a backup loaded before the class existed
       if (!state.order.includes(key)) state.order.push(key); state.active = key;
       done(key);
     };

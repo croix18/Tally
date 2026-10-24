@@ -226,6 +226,9 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   two data sets; one control vocabulary; Settings in tabs; Board toggles behind Options. New suite `tests/audit-oct24.js`. 41 suites, 1317 checks.
 - 24 Oct: FAST achievement levels, subcategories and learning-gain targets on the student page (`fastTargets`),
   checked in `tests/conference.js`. 41 suites, 1322 checks.
+- 24 Oct: two printed reports per student: the weekly report revamped for accountability (checklist, since-last-report
+  strip, pledge box; `reportLog`) and a FAST report (scales, targets, goal box). Checked in `tests/grades.js` and
+  `tests/conference.js`.
 - Next: nothing owed. Remaining "Croix's calls": the seating row toggles, Back-button handling, the weight
   hierarchy. Bigger items from NOTES' Open items: Publish to the room (Windmill), the parent version of the student
   report, modified assignment lists per student, the Race naming pass. Build 3 candidates and "Croix's calls" wait for him.
