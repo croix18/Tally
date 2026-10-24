@@ -3551,9 +3551,11 @@ function testHistory(sec, name) {
    Cut scores approved by the State Board of Education, 10 Jan 2024 (FAST Mathematics, grades 3 to 8), with the Level 1
    and Level 2 subcategories the school grade's learning gains use. Each grade's row: the first score of Low 1, Mid 1,
    High 1, Low 2, High 2, Level 3, Level 4, Level 5, and the top of the scale.
-   A learning gain (Croix, 24 Oct 2026: "a gain is defined by moving to the next bucket up"): from Level 1 or 2, the
-   next subcategory up or a higher level; from Level 3 or 4, the same level with a higher scale score, or a higher
-   level; from Level 5, Level 5 again. */
+   A learning gain (Croix, 24 Oct 2026: "a gain is defined by moving to the next bucket up … The threes need to get a
+   four for a gain. The fours need a five. The fives have to maintain their five."): from Level 1 or 2, the next
+   subcategory up or a higher level; from Level 3 or 4, the level above; from Level 5, Level 5 again.
+   Accelerated classes sit the grade-8 test, so their scores this year sit on the grade-8 table while last year's PM3
+   stays on the grade-6 one. */
 const FAST_MATH = { 3: [140, 155, 169, 183, 191, 198, 209, 225, 260], 4: [155, 170, 185, 200, 206, 211, 221, 238, 273], 5: [158, 175, 191, 207, 215, 222, 234, 246, 285],
   6: [168, 183, 198, 213, 221, 229, 239, 254, 287], 7: [175, 191, 207, 223, 229, 235, 247, 258, 288], 8: [183, 198, 213, 227, 236, 244, 254, 263, 291] };
 const FAST_BUCKETS = [[1, 'Low Level 1'], [1, 'Mid Level 1'], [1, 'High Level 1'], [2, 'Low Level 2'], [2, 'High Level 2'], [3, 'Level 3'], [4, 'Level 4'], [5, 'Level 5']];
@@ -3565,15 +3567,16 @@ function fastGainFloor(grade, prior) {
   const c = FAST_MATH[grade]; const pb = prior && prior.grade ? fastBucket(prior.grade, prior.scale) : null; if (!c || !pb) return null;
   if (pb.level <= 2) return { score: c[pb.idx + 1], label: FAST_BUCKETS[pb.idx + 1][1] };
   if (pb.level === 5) return { score: c[7], label: 'Level 5 again' };
-  const floor = Math.max(fastLevelFloor(grade, pb.level), prior.scale + 1); return { score: floor, label: `Level ${pb.level} with a higher score, or Level ${pb.level + 1}` };
+  return { score: fastLevelFloor(grade, pb.level + 1), label: `Level ${pb.level + 1}` };
 }
 // Everything the page says about a student's FAST year: last year's PM3, this year's windows, and what PM2 / PM3 need.
 function fastTargets(sec, name) {
   const hist = testHistory(sec, name).filter(h => /FAST/i.test(h.test) && h.scale != null); if (!hist.length) return null;
-  const fi = fastInfo(sec, name); const gradeNow = Number(String(fi.GradeLevel || state.settings.gradeLevel || '7').replace(/^0+/, '')) || 7;
+  const fi = fastInfo(sec, name); const gradeLevel = Number(String(fi.GradeLevel || state.settings.gradeLevel || '7').replace(/^0+/, '')) || 7;
+  const gradeNow = sec.prep === 'acc' ? gradeLevel + 1 : gradeLevel;   // the test taken this year: accelerated classes sit the grade above
   const years = [...new Set(hist.map(h => h.year).filter(Boolean))].sort(); const thisYear = years[years.length - 1]; const lastYear = years.length > 1 ? years[years.length - 2] : null;
   const prior0 = hist.find(h => h.pm === 'PM3' && h.year === lastYear) || (lastYear ? null : hist.find(h => h.pm === 'PM3' && !h.year));
-  const prior = prior0 ? { ...prior0, grade: prior0.grade || gradeNow - 1 } : null;
+  const prior = prior0 ? { ...prior0, grade: prior0.grade || gradeLevel - 1 } : null;
   const now = hist.filter(h => h.year === thisYear && h.year).sort((a, b) => a.pm.localeCompare(b.pm)); const latest = now[now.length - 1] || null;
   const b = s => fastBucket(gradeNow, s); const c = FAST_MATH[gradeNow];
   const gain = prior ? fastGainFloor(gradeNow, prior) : null;
