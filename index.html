@@ -1542,21 +1542,18 @@ function printStudentReports(s, indices, title) {
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}</body></html>`;
   const go = () => { indices.forEach(i => logReport(s, i, rows[i])); save(); openPrint(html, (indices.length === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', indices.length === 1); };   // one student's report: a file name without the name; the log is written only for a report that opens
   const why = [...staleExports(s, indices), ...(state.settings.hideNames ? [`names are hidden, but the ${indices.length === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen`] : [])];   // projected: say so first (audit)
-  if (why.length) { ask(`Before printing: ${why.join('; ')}. Print anyway?`, 'Print anyway').then(ok => { if (ok) go(); }); return; }
+  if (why.length) { ask(`Before printing: ${why.join('; ')}. A weekly report wants today's numbers. Print anyway?`, 'Print anyway').then(ok => { if (ok) go(); }); return; }
   go();
 }
-/* Croix (24 Oct 2026): "remind me to update if it's been too long before generating the weekly report". The reasons a
-   weekly report would carry stale numbers: an export older than REPORT_FRESH_DAYS, or one no newer than the last
-   report printed for any of these students (every "same" on the strip would be the export, not the student). */
-const REPORT_FRESH_DAYS = 5;
+/* Croix (24 Oct 2026): "remind me to update if it's been too long before generating the weekly report", then "tighter.
+   Like Monday morning print should have a Monday morning grade and ixl updates": a weekly report wants today's Focus
+   gradebook and today's IXL export, so anything older is named before printing. */
 function staleExports(s0, indices) {
-  const s = openSec(s0); const gb = s.grades; const out = []; const names = indices.map(i => gb.students[i]); const today = localDay(new Date().toISOString());
-  const lastOf = key => names.map(n => ((s0.reportLog || {})[norm(n)] || []).filter(e => e.date < today).pop()).filter(Boolean).map(e => e[key]).filter(Boolean);
+  const s = openSec(s0); const gb = s.grades; const out = [];
+  const when = d => { const n = ageDays(d); return n === 1 ? 'yesterday' : `${fmtDate(d)}, ${plural(n, 'day')} ago`; };
   const gbDay = localDayOf(gb.importedAt) || '', ixDay = dataDate(s) || '';
-  const gbAge = ageDays(gbDay), ixAge = ageDays(ixDay);
-  if (gbAge != null && gbAge > REPORT_FRESH_DAYS) out.push(`the Focus gradebook in Tally is ${plural(gbAge, 'day')} old`);
-  else if (gbDay && lastOf('gb').some(d => d === gbDay)) out.push('the Focus gradebook has not been re-imported since the last report');
-  if (s.students.length) { if (ixAge != null && ixAge > REPORT_FRESH_DAYS) out.push(`the IXL export is ${plural(ixAge, 'day')} old`); else if (ixDay && lastOf('ix').some(d => d === ixDay)) out.push('the IXL export has not been re-imported since the last report'); }
+  if (gbDay && ageDays(gbDay) > 0) out.push(`the Focus gradebook in Tally is from ${when(gbDay)}`);
+  if (s.students.length && ixDay && ageDays(ixDay) > 0) out.push(`the IXL export is from ${when(ixDay)}`);
   return out;
 }
 function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.students[i]}: report`); }

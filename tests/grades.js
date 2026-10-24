@@ -90,7 +90,11 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const [popB]=await Promise.all([ctx.waitForEvent('page'), p.click('#rpWeekly')]); await popB.waitForLoadState(); await popB.waitForTimeout(300);
   const printedLetters=await popB.$$eval('section.rep .big',es=>es.map(e=>e.textContent.replace(/^\d+%/,'')));
   check(printedLetters.length===cdf && printedLetters.every(l=>/^[CDF]$/.test(l)),'the batch holds exactly the C, D and F students: '+printedLetters.join('')); await popB.close();
-  check(msgs.length===1 && /the IXL export is \d+ days old\. Print anyway\?/.test(msgs[0]) && !/Focus gradebook/.test(msgs[0]),'before printing, Tally says the IXL export is old (the gradebook came in today): "'+msgs[0]+'"');
+  check(msgs.length===1 && /the IXL export is from .*\d+ days ago\. A weekly report wants today's numbers\. Print anyway\?/.test(msgs[0]) && !/Focus gradebook/.test(msgs[0]),'before printing, Tally says the IXL export is not today\'s (the gradebook came in today): "'+msgs[0]+'"');
+  await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date(Date.now()-864e5).toISOString(); T.save(); });
+  const why=await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; return T.staleExports(s,[0]); });
+  check(why.length===2 && /Focus gradebook in Tally is from yesterday/.test(why[0]),'a gradebook from yesterday is named too (Croix: a Monday morning print should have a Monday morning grade): '+why.join('; '));
+  await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date().toISOString(); T.save(); });
   // hidden names mask the overview and the card
   await p.click('#btnHide'); await p.waitForTimeout(400);
   check(!(await p.textContent('.gstu')).includes(first),'Names off masks the students table');

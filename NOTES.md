@@ -622,9 +622,9 @@ per-section-file era and many items in them are now done).
   - **Batches and the reminder (24 Oct, Croix).** "Make those dashed lines solid for the signatures and date": the
     signature lines in both reports are ruled lines. "One at a time is fine for the path towards a better grade": the
     checklist keeps aiming at the next letter. "Remind me to update if it's been too long before generating the weekly
-    report": `staleExports` asks before a weekly print when the Focus gradebook or the IXL export is more than
-    `REPORT_FRESH_DAYS` (5) days old, or no newer than the last report printed for any of those students; with names
-    hidden that is folded into the same one question. "Batches of reports by class … as well as by class average, so if
+    report": `staleExports` asks before a weekly print unless the Focus gradebook and the IXL export are both from today
+    (first five days, then Croix: "tighter. Like Monday morning print should have a Monday morning grade and ixl
+    updates"); with names hidden that is folded into the same one question. "Batches of reports by class … as well as by class average, so if
     I only wanted to print reports for my c, d, and f students": the Student reports dialog (⋯ on the class) is pick
     who (Everyone · Owe something · By grade, with A/B/C/D/F/No grade yet chips, C D F on by default; the choice is
     kept for the session in `reportWho`), then Weekly report or FAST report, each button counting its pages. The
