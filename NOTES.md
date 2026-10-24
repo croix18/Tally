@@ -647,6 +647,25 @@ per-section-file era and many items in them are now done).
     FAST so far" with one Level column (the subcategory); the goal box has taller lines, three for "How I'll get
     there", and room before the signatures. The weekly report's "check the roster in Tally" line is now "IXL is not
     linked to this report yet".
+- **24 Oct 2026 — The state's score report PDF.** Croix: "I want to upload this report of their pm 1 data because it
+  will fill in their percentiles as well as give more in depth detail of the standard sections broken down. I can
+  only get it as a pdf, so I'd need tally to be able to get it and match it to the students names." The report is
+  Cambium's "Score, Achievement and Points Earned on Grade N FAST Mathematics (PM1 2026-27) of All Rosters, by Student
+  and Reporting Category": page 1 the Total table (Student · FLEID · Scale Score · Achievement Level · Percentile
+  Rank, summary rows above the students), then one page per reporting category whose rows read Below / At/Near /
+  Above the Standard. pdf.js 3.11 (vendor/, Apache-2.0, +1.4 MB; the worker is inert text started as a blob worker,
+  so startup is unchanged; the CSP's script-src gained `blob:`) reads the text with positions; `parseFastItemsPdf`
+  (conference.js) anchors each row on its FLEID, takes the name from the items left of it within a line's reach (names
+  wrap), the values from the items right of it, and the category from the last header seen on the page. Students are
+  matched by name (the FLEID is not a Focus ID; it is kept in testInfo and matches next time). `mergeTests` now merges a
+  window's fields instead of replacing the record, so the Focus report's level, scale and above-grade flag stay and
+  the PDF adds pct, grade and cats ({ "1. Number Sense…": below | near | above }, kept by cleanTests). `fastTargets`
+  takes the test grade the PDF names. Shown as "By topic" on the student page (dots: coral below, sand near, turquoise
+  above) and as a three-column table on the FAST report beside "Every FAST so far". Fixtures:
+  fixtures/make_fast_items_pdf.py draws the report's shape with reportlab from the scrubbed roster (grade 7 and 8)
+  with the answers in JSON; tests/fast-pdf.js. Not seen: the real PDF (Croix can't upload it); the parser tolerates
+  split text items, "n/a", "<1", repeated headers and a table split across pages. If a real file fails, the fail toast
+  says so and nothing changes.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

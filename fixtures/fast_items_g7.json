@@ -1,0 +1,319 @@
+{
+ "grade": 7,
+ "cats": [
+  "1. Number Sense and Operations and Algebraic Reasoning",
+  "2. Proportional Reasoning and Relationships",
+  "3. Geometric Reasoning",
+  "4. Data Analysis and Probability"
+ ],
+ "rows": [
+  {
+   "name": "SUTTER, HAYDEN SKYLER",
+   "fleid": "FL100000000000",
+   "scale": 231,
+   "level": 2,
+   "pct": 54,
+   "cats": [
+    "Below the Standard",
+    "At/Near the Standard",
+    "Above the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "LOWELL CALDER, CASEY DE LOS AVERY",
+   "fleid": "FL100000007919",
+   "scale": 199,
+   "level": 1,
+   "pct": 17,
+   "cats": [
+    "Above the Standard",
+    "Below the Standard",
+    "At/Near the Standard",
+    "Above the Standard"
+   ]
+  },
+  {
+   "name": "INGRAM, SHILOH PHOENIX DE LA FUENTE-WASHINGTON",
+   "fleid": "FL100000015838",
+   "scale": 197,
+   "level": 1,
+   "pct": 15,
+   "cats": [
+    "Above the Standard",
+    "Below the Standard",
+    "Below the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "EASTON, LOGAN KAI",
+   "fleid": "FL100000023757",
+   "scale": 245,
+   "level": 3,
+   "pct": 70,
+   "cats": [
+    "At/Near the Standard",
+    "Below the Standard",
+    "Below the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "YORK VANCE, REMY",
+   "fleid": "FL100000031676",
+   "scale": 260,
+   "level": 5,
+   "pct": null,
+   "cats": [
+    "At/Near the Standard",
+    "Below the Standard",
+    "Above the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "TOLLIVER, PARKER",
+   "fleid": "FL100000039595",
+   "scale": 218,
+   "level": 1,
+   "pct": 39,
+   "cats": [
+    "Above the Standard",
+    "Above the Standard",
+    "Above the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "WHITLOCK, DEVIN",
+   "fleid": "FL100000047514",
+   "scale": 240,
+   "level": 3,
+   "pct": 0,
+   "cats": [
+    "Below the Standard",
+    "Below the Standard",
+    "Below the Standard",
+    "Above the Standard"
+   ]
+  },
+  {
+   "name": "NASH II, QUINN LENNOX",
+   "fleid": "FL100000055433",
+   "scale": 207,
+   "level": 1,
+   "pct": 26,
+   "cats": [
+    "At/Near the Standard",
+    "At/Near the Standard",
+    "Below the Standard",
+    "Above the Standard"
+   ]
+  },
+  {
+   "name": "WEXLER OAKES, EMERSON",
+   "fleid": "FL100000063352",
+   "scale": 205,
+   "level": 1,
+   "pct": 24,
+   "cats": [
+    "Above the Standard",
+    "At/Near the Standard",
+    "Above the Standard",
+    "Above the Standard"
+   ]
+  },
+  {
+   "name": "DORSEY, MICAH FLYNN-WINTER",
+   "fleid": "FL100000071271",
+   "scale": 213,
+   "level": 1,
+   "pct": 33,
+   "cats": [
+    "Below the Standard",
+    "Above the Standard",
+    "Above the Standard",
+    "Above the Standard"
+   ]
+  },
+  {
+   "name": "COBB, TAYLOR JORDAN",
+   "fleid": "FL100000079190",
+   "scale": 214,
+   "level": 1,
+   "pct": 34,
+   "cats": [
+    "At/Near the Standard",
+    "Below the Standard",
+    "Above the Standard",
+    "Above the Standard"
+   ]
+  },
+  {
+   "name": "RHODES, SUTTON ELLIS",
+   "fleid": "FL100000087109",
+   "scale": 198,
+   "level": 1,
+   "pct": 16,
+   "cats": [
+    "Above the Standard",
+    "Below the Standard",
+    "Above the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "IVERSON, NOOR LOGAN",
+   "fleid": "FL100000095028",
+   "scale": 253,
+   "level": 4,
+   "pct": 79,
+   "cats": [
+    "Above the Standard",
+    "Above the Standard",
+    "At/Near the Standard",
+    "At/Near the Standard"
+   ]
+  },
+  {
+   "name": "FAIRLEY, BELLAMY NICO",
+   "fleid": "FL100000102947",
+   "scale": 249,
+   "level": 4,
+   "pct": 75,
+   "cats": [
+    "Above the Standard",
+    "At/Near the Standard",
+    "At/Near the Standard",
+    "At/Near the Standard"
+   ]
+  },
+  {
+   "name": "MERCER, EVERLY MARLOW",
+   "fleid": "FL100000110866",
+   "scale": 221,
+   "level": 1,
+   "pct": 42,
+   "cats": [
+    "Below the Standard",
+    "Above the Standard",
+    "Below the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "VOSS HOLLIS, DEVIN ZANE",
+   "fleid": "FL100000118785",
+   "scale": 228,
+   "level": 2,
+   "pct": 50,
+   "cats": [
+    "Above the Standard",
+    "At/Near the Standard",
+    "At/Near the Standard",
+    "Above the Standard"
+   ]
+  },
+  {
+   "name": "JARVIS-DUNMORE, TATUM",
+   "fleid": "FL100000126704",
+   "scale": 247,
+   "level": 4,
+   "pct": 72,
+   "cats": [
+    "At/Near the Standard",
+    "Above the Standard",
+    "Below the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "JARVIS VANCE75, YAEL76 PEYTON77",
+   "fleid": "FL100000134623",
+   "scale": 255,
+   "level": 4,
+   "pct": 82,
+   "cats": [
+    "At/Near the Standard",
+    "Below the Standard",
+    "At/Near the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "ORME78, SUTTON",
+   "fleid": "FL100000142542",
+   "scale": 252,
+   "level": 4,
+   "pct": 78,
+   "cats": [
+    "At/Near the Standard",
+    "Below the Standard",
+    "Above the Standard",
+    "Below the Standard"
+   ]
+  },
+  {
+   "name": "QUILL79 ORME80, KAI JORDAN",
+   "fleid": "FL100000150461",
+   "scale": 261,
+   "level": 5,
+   "pct": 88,
+   "cats": [
+    "Above the Standard",
+    "At/Near the Standard",
+    "At/Near the Standard",
+    "Above the Standard"
+   ]
+  },
+  {
+   "name": "HALE81, SKYLER82",
+   "fleid": "FL100000158380",
+   "scale": 234,
+   "level": 2,
+   "pct": 57,
+   "cats": [
+    "Above the Standard",
+    "At/Near the Standard",
+    "Above the Standard",
+    "At/Near the Standard"
+   ]
+  },
+  {
+   "name": "ZINK83, YAEL84",
+   "fleid": "FL100000166299",
+   "scale": 198,
+   "level": 1,
+   "pct": 16,
+   "cats": [
+    "Below the Standard",
+    "At/Near the Standard",
+    "At/Near the Standard",
+    "Above the Standard"
+   ]
+  },
+  {
+   "name": "VANCE85, BELLAMY86 FINLEY87",
+   "fleid": "FL100000174218",
+   "scale": 198,
+   "level": 1,
+   "pct": 16,
+   "cats": [
+    "Below the Standard",
+    "Above the Standard",
+    "Above the Standard",
+    "At/Near the Standard"
+   ]
+  }
+ ],
+ "skip": {
+  "1": [
+   "FL100000039595"
+  ],
+  "3": [
+   "FL100000000000",
+   "FL100000071271"
+  ]
+ }
+}

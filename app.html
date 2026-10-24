@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- Nothing leaves this page except to its own site (Sync), even if a bug let a file's contents run: student data cannot be sent elsewhere (audit, 22 Oct 2026). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'self'; media-src data: blob:; worker-src blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'self'; media-src data: blob:; worker-src blob:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tally — IXL unit points for FOCUS</title>
 <style id="tallyFont">/*__FONT__*/
@@ -31,6 +31,7 @@ div.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:16px}   /* 
 .boardCard{max-width:520px;margin:12vh auto 0;background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:28px 32px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}.boardCard h2{margin:0;font-size:var(--t-xl)}.boardCard p{margin:0;color:var(--ink-soft)}body.boardOnly #bar{display:none}body.boardOnly #board{background:transparent;box-shadow:none;border:none}body.boardOnly #gridwrap{padding-top:20px}
 #pNotes .noteAdd{display:flex;gap:8px;align-items:flex-end;margin:4px 0 8px}#pNotes textarea{flex:1;min-height:56px;font:inherit;font-size:var(--t-m);padding:8px 10px;border:1px solid var(--grid);border-radius:var(--r-s);resize:vertical}#pNotes .notes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}#pNotes .notes li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:baseline;padding:8px 0;border-top:1px solid var(--grid)}#pNotes time{font-size:var(--t-xs);font-weight:var(--w-black);color:var(--teal);white-space:nowrap}#pNotes .notes p{margin:0;white-space:pre-wrap;font-size:var(--t-m)}#pNotes .linkbtn{font-size:var(--t-xs)}
 #pTests .ftab{width:100%;border-collapse:collapse;font-size:var(--t-m)}#pTests th,#pTests td{padding:6px 8px 6px 0;border-top:1px solid var(--grid);text-align:left;white-space:nowrap}#pTests th{font-weight:var(--w-bold);color:var(--ink-soft);font-size:var(--t-s)}#pTests td.num{font-variant-numeric:tabular-nums;font-weight:var(--w-bold)}#pTests small{font-size:var(--t-xs)}#pTests small.neg{color:var(--g-f,#b3261e)}#pTests small.pos{color:var(--teal)}#pTests td:last-child{color:var(--ink-soft);font-size:var(--t-s)}
+.fcats{display:flex;flex-direction:column;gap:4px;margin:4px 0 10px}.fcat{display:flex;align-items:center;gap:8px;font-size:var(--t-s);font-weight:var(--w-bold)}.fcat i{width:10px;height:10px;border-radius:50%;flex:none;border:1px solid var(--grid)}.fcat.below i{background:var(--coral);border-color:var(--bad)}.fcat.near i{background:var(--sand)}.fcat.above i{background:var(--turq);border-color:var(--teal)}.fcat small{color:var(--ink-soft);font-weight:var(--w-med)}
 .fflags{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 8px}.fflag{display:inline-block;padding:2px 9px;border-radius:var(--r-pill);font-size:var(--t-xs);font-weight:var(--w-heavy);background:var(--paleturq);color:var(--navy);letter-spacing:.02em}.fflag.l30{background:var(--g-d-wash);color:var(--navy)}.fflag.small{padding:1px 6px;vertical-align:1px}#pTests .fall{margin-top:8px}#pTests .fall summary{cursor:pointer;font-size:var(--t-s);font-weight:var(--w-bold);color:var(--teal)}#pTests .fall dl{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:8px 0 0;font-size:var(--t-s)}#pTests .fall dt{color:var(--ink-soft)}#pTests .fall dd{margin:0;font-weight:var(--w-bold)}
 .flvl{display:inline-block;padding:2px 8px;border-radius:var(--r-pill);font-size:var(--t-s);font-weight:var(--w-bold)}.flvl.l1{background:var(--g-f-wash)}.flvl.l2{background:var(--g-d-wash)}.flvl.l3{background:var(--g-b-wash)}.flvl.l4,.flvl.l5{background:var(--g-a-wash)}
 .fastT{margin-top:12px}.fastT .gcards.two{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:10px}.fastT .gcard span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.fastT .pos{color:var(--teal)}
@@ -770,5 +771,11 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
 <script>
 /*__APP__*/
 </script>
+<!-- pdf.js (vendor/): the library runs here; its worker sits inert below and starts as a blob worker only when a PDF is
+     dropped on Tally (the FLDOE score report). -->
+<script>
+/*__PDFJS__*/
+</script>
+<script type="text/plain" id="pdfjsWorker">/*__PDFJS_WORKER__*/</script>
 </body>
 </html>

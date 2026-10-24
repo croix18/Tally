@@ -129,7 +129,9 @@ function cleanTests(o) {   // a declaration: migrate() runs before this file's c
   const out = {}; if (!o || typeof o !== 'object') return out; const n = v => typeof v === 'number' && isFinite(v) ? v : undefined;
   for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !/^(id|n):/.test(k) || !Array.isArray(o[k])) continue;
     const list = o[k].filter(h => h && typeof h.test === 'string').slice(-40).map(h => { const x = { test: h.test.slice(0, 20), pm: typeof h.pm === 'string' ? h.pm.slice(0, 6) : '', year: typeof h.year === 'string' ? h.year.slice(0, 9) : '' };
-      ['level', 'scale', 'pct', 'grade'].forEach(f => { if (n(h[f]) != null) x[f] = h[f]; }); if (h.above) x.above = true; return x; }).filter(h => h.level != null || h.scale != null);
+      ['level', 'scale', 'pct', 'grade'].forEach(f => { if (n(h[f]) != null) x[f] = h[f]; }); if (h.above) x.above = true;
+      if (h.cats && typeof h.cats === 'object') { const c = {}; Object.keys(h.cats).slice(0, 8).forEach(name => { const v = h.cats[name]; if (typeof name === 'string' && name.length <= 80 && ['below', 'near', 'above'].includes(v)) c[name] = v; }); if (Object.keys(c).length) x.cats = c; }   // the score report's reporting categories
+      return x; }).filter(h => h.level != null || h.scale != null);
     if (list.length) out[k.slice(0, 120)] = list; }
   return out;
 }
@@ -142,7 +144,9 @@ function cleanTestInfo(o) {
     if (Object.keys(per).length) out[k.slice(0, 120)] = per; }
   return out;
 }
-function mergeTests(a, b) { const out = { ...(a || {}) }; for (const k in b) { const keep = (out[k] || []).filter(h => !b[k].some(x => testSig(x) === testSig(h))); out[k] = keep.concat(b[k]); } return out; }
+// A window already on file gains the new fields and keeps the rest (the Focus report brings levels and scales, the
+// score report PDF brings percentiles and reporting categories; each fills in what the other lacks).
+function mergeTests(a, b) { const out = { ...(a || {}) }; for (const k in b) { const old = out[k] || []; const keep = old.filter(h => !b[k].some(x => testSig(x) === testSig(h))); out[k] = keep.concat(b[k].map(x => { const was = old.find(h => testSig(h) === testSig(x)); return was ? { ...was, ...x, ...(was.cats || x.cats ? { cats: { ...(was.cats || {}), ...(x.cats || {}) } } : {}) } : x; })); } return out; }
 // Every student on every roster, for matching an imported report by name.
 function rosterPeople() { const out = []; rowCache = new Map(); state.order.forEach(k => { const s = state.sections[k]; if (!s || s.board || s.placeholder) return; classStudents(s).forEach(n => { const f = findStudent(s, n); const m = String(n).match(/^([^,]+),\s*(.+)$/);
   out.push({ name: n, id: f.id ? String(f.id).trim() : '', nn: norm(n), last: m ? norm(m[1]) : norm(n).split(' ').pop(), first: (m ? norm(m[2]) : norm(n)).split(' ')[0] || '' }); }); });
@@ -171,6 +175,73 @@ function importFast(fx, file) {
   toast(`FAST report (${esc(wins)}): ${plural(byName + byId, 'student')} matched to your classes${byId ? ` (${byId} by ID, the rest by name)` : ' by name'}${unmatched.length ? ` · <b>${unmatched.length} not in your classes</b>: ${names}${unmatched.length > 3 ? '…' : ''} (kept, in case they join)` : ''}${fx.blank ? ` · ${plural(fx.blank, 'row')} with no name or ID skipped` : ''}. Every column was kept.`, false, 10000);
   render();
 }
+/* ---------- the FLDOE score report, a PDF ----------
+   "Score, Achievement and Points Earned on Grade N FAST Mathematics (PM1 2026-27) of All Rosters, by Student and
+   Reporting Category" (Cambium's reporting site; Croix, 24 Oct 2026: "it will fill in their percentiles as well as
+   give more in depth detail of the standard sections broken down. I can only get it as a pdf"). Page 1 is the Total
+   table: Student · FLEID · Scale Score · Achievement Level · Percentile Rank, with State / District / School / My
+   Students summary rows above the students. Each later page is one reporting category (its name in the header, "1.
+   Number Sense and Operations and Algebraic Reasoning") whose rows read Below / At/Near / Above the Standard. pdf.js
+   gives the text with positions; a row is anchored on its FLEID, the name is whatever sits left of it on the same
+   line or the line above and below (long names wrap), and the values are whatever sits right of it. */
+const FLEID_RE = /^FL\d{12}$/;
+function parseFastItemsPdf(pages) {
+  const flat = pages.flat().map(i => i.s).join(' ').replace(/\s+/g, ' ');
+  const g = /Grade\s+(\d{1,2})\s+FAST\s+Math/i.exec(flat); const w = /\((PM\d)\s+(\d{4})\s*[-–]\s*(\d{2,4})\)/.exec(flat) || /Test Reasons:\s*(PM\d)\s+(\d{4})\s*[-–]\s*(\d{2,4})/.exec(flat);
+  if (!g || !w || !pages.some(pg => pg.some(i => FLEID_RE.test(i.s.trim())))) return null;
+  const grade = Number(g[1]); const pm = w[1].toUpperCase(); const year = `${w[2]}-${w[3].slice(-2)}`;
+  const students = new Map(); const cats = [];
+  pages.forEach(items => {
+    const its = items.filter(i => i.s && i.s.trim()).map(i => ({ ...i, s: i.s.trim() })).sort((a, b) => b.y - a.y || a.x - b.x);
+    const lines = []; its.forEach(i => { const ln = lines.find(l => Math.abs(l.y - i.y) <= 3); if (ln) { ln.items.push(i); } else lines.push({ y: i.y, items: [i] }); });
+    let cat = null;
+    lines.forEach(ln => {
+      ln.items.sort((a, b) => a.x - b.x); const text = ln.items.map(i => i.s).join(' ').replace(/\s+/g, ' ');
+      const h = /(?:^|\s)(\d\.\s+[A-Z][^]*)$/.exec(text.replace(/^Student\s+FLEID\s+/i, '').replace(/^Student\s+/i, '').replace(/^FLEID\s+/i, ''));
+      if (h && !/Total$/.test(text)) { cat = h[1].replace(/\s+/g, ' ').trim(); if (!cats.includes(cat)) cats.push(cat); return; }
+      if (/\bTotal$/.test(text) && /^Student/i.test(text)) { cat = null; return; }
+      ln.items.filter(i => FLEID_RE.test(i.s)).forEach(F => {
+        const near = its.filter(i => i !== F && Math.abs(i.y - F.y) <= 11);   /* a wrapped name's second line */
+        const name = near.filter(i => i.x < F.x - 1).sort((a, b) => b.y - a.y || a.x - b.x).map(i => i.s).join(' ').replace(/\s+/g, ' ').trim();
+        const right = near.filter(i => i.x > F.x + (F.w || 0) - 1 && Math.abs(i.y - F.y) <= 4).sort((a, b) => a.x - b.x).map(i => i.s).join(' ').replace(/\s+/g, ' ');
+        const st = students.get(F.s) || { fleid: F.s, name: '', scale: null, level: null, pct: null, cats: {} }; if (name && !st.name) st.name = name;
+        if (cat) { const pf = /(Below|At\/Near|Above)\s+the\s+Standard/i.exec(right); if (pf) st.cats[cat] = { below: 'below', 'at/near': 'near', above: 'above' }[pf[1].toLowerCase()]; }
+        else { const lv = /Level\s*(\d)/.exec(right); const sc = /(?:^|\s)(\d{3})(?=\s|$)/.exec(right); const after = lv ? right.slice(lv.index + lv[0].length) : '';
+          if (sc) st.scale = Number(sc[1]); if (lv) st.level = Number(lv[1]);
+          const pc = /(?:^|\s)(n\/a|<\s*\d+|\d{1,2})(?=\s|$)/.exec(after); if (pc) st.pct = /n\/a/i.test(pc[1]) ? null : /^</.test(pc[1]) ? 0 : Number(pc[1]); }
+        students.set(F.s, st);
+      });
+    });
+  });
+  const list = [...students.values()].filter(st => st.name && (st.scale != null || st.level != null || Object.keys(st.cats).length));
+  return { grade, pm, year, cats, students: list, kind: 'items' };
+}
+// Match the score report's students to the rosters by name (its FLEID is not a Focus ID), add what it knows to the
+// window already on file, and keep the FLEID so the next report matches by it.
+function importFastItems(fx, file) {
+  if (!fx.students.length) { toast(`${esc(file)}: no student rows in this score report.`, true, 8000); return; }
+  const people = rosterPeople(); const byFleid = {}; Object.keys(state.testInfo || {}).forEach(k => { const f = ((state.testInfo[k] || {}).FAST || {}).fields || {}; if (f.FLEID) byFleid[f.FLEID] = k; });
+  const add = {}, info = {}; const unmatched = []; let matched = 0, byFl = 0; const at = new Date().toISOString();
+  fx.students.forEach(st => {
+    let keys = null; const prev = byFleid[st.fleid]; let hit = matchPerson(people, st.name, '');
+    if (hit) { matched++; keys = [hit.p.id ? 'id:' + hit.p.id : null, 'n:' + hit.p.nn].filter(Boolean); }
+    else if (prev) { matched++; byFl++; keys = [prev]; }
+    else { unmatched.push(st); keys = ['n:' + norm(st.name)]; }
+    const t = { test: 'FAST', pm: fx.pm, year: fx.year, grade: fx.grade }; if (st.scale != null) t.scale = st.scale; if (st.level != null) t.level = st.level; if (st.pct != null) t.pct = st.pct; if (Object.keys(st.cats).length) t.cats = st.cats;
+    keys.forEach(k => { add[k] = [t]; const was = ((state.testInfo || {})[k] || {}).FAST || {}; info[k] = { FAST: { fields: { ...(was.fields || {}), FLEID: st.fleid, Student: (was.fields || {}).Student || st.name }, at, file: String(file || '') } }; });
+  });
+  state.tests = mergeTests(state.tests, cleanTests(add));
+  state.testInfo = { ...(state.testInfo || {}), ...cleanTestInfo(info) };
+  save();
+  const names = unmatched.slice(0, 3).map(st => esc(shown(st.name))).join('; ');
+  toast(`FAST score report (${esc(fx.pm)} ${esc(fx.year)}, ${esc(fastTestName(fx.grade))}): ${plural(matched, 'student')} matched to your classes by name${byFl ? ` (${byFl} by FLEID)` : ''} · percentiles and ${fx.cats.length === 1 ? 'one reporting category' : fx.cats.length + ' reporting categories'} added${unmatched.length ? ` · <b>${unmatched.length} not in your classes</b>: ${names}${unmatched.length > 3 ? '…' : ''} (kept, in case they join)` : ''}.`, false, 10000);
+  render();
+}
+// The reporting categories a window carries ("1. Number Sense and Operations and Algebraic Reasoning": below | near |
+// above), named without their number, in the report's order.
+const CAT_WORDS = { below: 'Below the standard', near: 'At or near the standard', above: 'Above the standard' };
+function catList(h) { return h && h.cats ? Object.keys(h.cats).map(k => ({ name: k.replace(/^\d+\.\s*/, ''), v: h.cats[k] })) : []; }
+function catsHtml(h) { const cs = catList(h); return cs.length ? `<div class="fcats">${cs.map(c => `<span class="fcat ${c.v}"><i></i>${esc(c.name)} <small>${esc(CAT_WORDS[c.v].replace(' the standard', ''))}</small></span>`).join('')}</div>` : ''; }
 // Everything the FAST report said about a student, by column heading ({} when there is no report).
 function fastInfo(sec, name) { const f = findStudent(sec, name); for (const k of testKeys(f.id, name)) { const v = ((state.testInfo || {})[k] || {}).FAST; if (v) return v.fields || {}; } return {}; }
 const flagOn = v => v != null && String(v).trim() !== '' && !/^(n|no|0|-|none)$/i.test(String(v).trim());
@@ -229,7 +300,8 @@ function fastTargets(sec, name) {
   const above = sec.prep === 'acc' || now.some(h => h.above);
   const agree = g => now.filter(h => h.level != null && fastBucket(g, h.scale) && fastBucket(g, h.scale).level === h.level).length;
   const pref = above ? [gradeLevel + 1, gradeLevel] : [gradeLevel, gradeLevel + 1];
-  const gradeNow = agree(pref[1]) > agree(pref[0]) && FAST_MATH[pref[1]] ? pref[1] : pref[0];
+  const known = now.find(h => h.grade && FAST_MATH[h.grade]);   // the score report names its test outright
+  const gradeNow = known ? known.grade : agree(pref[1]) > agree(pref[0]) && FAST_MATH[pref[1]] ? pref[1] : pref[0];
   const b = s => fastBucket(gradeNow, s); const c = FAST_MATH[gradeNow];
   const gain = prior ? fastGainFloor(gradeNow, prior) : null;
   const rows = [];
@@ -296,7 +368,10 @@ function fastReportSection(sec, name) {
     <h2>This year <span class="hs">${esc(nowName)}</span></h2>${fastScaleHtml(t.gradeNow, thisYearMarks)}
     <p class="gain">${gainWords}</p>
     <h2>Your targets for PM2 and PM3</h2><table class="targets"><tbody>${rows}</tbody></table>
-    <h2>Every FAST so far</h2><table class="hist"><thead><tr><th>Test</th><th>Window</th><th class="r">Score</th><th>Level</th><th>Percentile</th></tr></thead><tbody>${histRows}</tbody></table>
+    ${(() => { const h = t.now.slice().reverse().find(x => x.cats) || null; const cs = catList(h);
+      const topics = cs.length ? `<div><h2>By topic <span class="hs">${esc(h.pm)}</span></h2><table class="topics"><thead><tr><th></th><th>Below</th><th>At/near</th><th>Above</th></tr></thead><tbody>${cs.map(c => `<tr><td>${esc(c.name)}</td>${['below', 'near', 'above'].map(v => `<td class="c ${c.v === v ? 'on' : ''}">${c.v === v ? '●' : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '';
+      const history = `<div><h2>Every FAST so far</h2><table class="hist"><thead><tr><th>Test</th><th>Window</th><th class="r">Score</th><th>Level</th><th>Percentile</th></tr></thead><tbody>${histRows}</tbody></table></div>`;
+      return topics ? `<div class="two">${history}${topics}</div>` : history; })()}
     <div class="pledge"><div><b>My goal for PM2</b><i></i></div><div><b>My goal for PM3</b><i></i></div><div class="wide"><b>How I'll get there</b><i></i><i></i><i></i></div><div class="sig"><span>Student</span><span>Teacher</span><span>Date</span></div></div></section>`;
 }
 const FAST_REPORT_CSS = `
@@ -306,7 +381,8 @@ const FAST_REPORT_CSS = `
 .bands .l1{background:#f0f0f0}.bands .l2{background:#dcdcdc}.bands .l3{background:#c4c4c4}.bands .l4{background:#a8a8a8}.bands .l5{background:#8c8c8c}.bands .l4,.bands .l5{color:#fff}.bands .l4 small,.bands .l5 small{color:#eee}
 .marks{position:relative;height:34px}.marks.tiered{height:56px}.mk{position:absolute;bottom:0;transform:translateX(-50%);text-align:center;font-size:7.5pt;line-height:1.05;display:flex;flex-direction:column;align-items:center;white-space:nowrap}.mk b{font-size:8.5pt}.mk i{display:block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #000}.marks .mk.tall i{border:none;border-left:1px solid #000;height:30px}.marks.under{height:30px}.marks.under .mk{bottom:auto;top:0}.marks.under .mk i{border-top:none;border-bottom:8px solid #555}.marks.under .mk b{color:#333;font-size:7.5pt}.marks.under.tiered{height:52px}.marks.under .mk.tall i{border:none;border-left:1px solid #555;height:30px}
 .rep.fast .gain{margin:4px 0 8px;font-size:10pt;line-height:1.4}
-.rep.fast .targets td{padding:3px 6px;font-size:10pt}.rep.fast .targets tr.met td{color:#0F766E}.rep.fast .hist td,.rep.fast .hist th{font-size:9pt}
+.rep.fast .topics th{text-align:center;font-size:8pt}.rep.fast .topics th:first-child{text-align:left}.rep.fast .topics td{font-size:9pt;padding:2px 6px}.rep.fast .topics td.c{text-align:center;width:52px;color:#000;font-size:11pt;line-height:1}.rep.fast .topics td.c.on{background:#e8e8e8}
+.rep.fast .targets td{padding:3px 6px;font-size:10pt}.rep.fast .targets tr.met td{color:#0F766E}.rep.fast .hist td,.rep.fast .hist th{font-size:8.5pt;white-space:nowrap;padding:2px 5px}
 .rep.fast .pledge{grid-template-columns:1fr 1fr;gap:10px 24px;padding:10px 12px 12px;margin-top:12px}.rep.fast .pledge .wide{grid-column:1/-1}.rep.fast .pledge b{display:block;margin-bottom:4px}.rep.fast .pledge i{display:block;border-bottom:1px solid #000;height:22px}.rep.fast .pledge .sig{margin-top:8px}`;
 function printFastReports(sec, names, title) {
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}${FAST_REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${names.map(n => fastReportSection(sec, n)).join('')}</body></html>`;
@@ -320,7 +396,7 @@ function testsSection(sec, name) {
   if (state.settings.hideNames) return `<section class="gsec" id="pTests"><h3>FAST</h3><p class="ghint">Hidden while names are hidden.</p></section>`;
   const flags = fastFlags(fi); const keys = Object.keys(fi).filter(k => !['Student', 'ID'].includes(k));
   return `<section class="gsec" id="pTests"><h3>FAST</h3>${flags.length ? `<div class="fflags">${flags.map(x => `<span class="fflag ${x.cls}">${esc(x.t)}</span>`).join('')}</div>` : ''}<table class="ftab"><tbody>${hist.map((h, j) => { const prev = hist[j + 1]; const dv = prev && h.scale != null && prev.scale != null ? h.scale - prev.scale : null;
-    return `<tr><th scope="row">${esc([h.pm, h.year].filter(Boolean).join(' '))}</th><td>${h.level != null ? `<span class="flvl l${Math.min(5, Math.max(1, h.level))}">Level ${h.level}</span>` : ''}</td><td class="num">${h.scale != null ? h.scale : ''}${dv != null ? ` <small class="${dv < 0 ? 'neg' : 'pos'}">${dv > 0 ? '+' : dv < 0 ? '−' : '±'}${Math.abs(dv)}</small>` : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct).replace(' percentile', ' pct')) : h.above ? 'above grade' : h.grade != null ? 'grade ' + h.grade + ' test' : ''}</td></tr>`; }).join('')}</tbody></table>${fastTargetsHtml(fastTargets(sec, name))}${keys.length ? `<details class="fall"><summary>Everything in the report</summary><dl>${keys.map(k => `<dt>${esc(k)}</dt><dd>${esc(fi[k])}</dd>`).join('')}</dl></details>` : ''}</section>`;
+    return `<tr><th scope="row">${esc([h.pm, h.year].filter(Boolean).join(' '))}</th><td>${h.level != null ? `<span class="flvl l${Math.min(5, Math.max(1, h.level))}">Level ${h.level}</span>` : ''}</td><td class="num">${h.scale != null ? h.scale : ''}${dv != null ? ` <small class="${dv < 0 ? 'neg' : 'pos'}">${dv > 0 ? '+' : dv < 0 ? '−' : '±'}${Math.abs(dv)}</small>` : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct).replace(' percentile', ' pct')) : h.above ? 'above grade' : h.grade != null ? 'grade ' + h.grade + ' test' : ''}</td></tr>`; }).join('')}</tbody></table>${(() => { const h = hist.find(x => x.cats); return h ? `<h4 class="subh">By topic <small>${esc([h.pm, h.year].filter(Boolean).join(' '))}</small></h4>${catsHtml(h)}` : ''; })()}${fastTargetsHtml(fastTargets(sec, name))}${keys.length ? `<details class="fall"><summary>Everything in the report</summary><dl>${keys.map(k => `<dt>${esc(k)}</dt><dd>${esc(fi[k])}</dd>`).join('')}</dl></details>` : ''}</section>`;
 }
 
 // Kept conference text, per student: only the boxes you edited ({ strengths, …, saved }), and base: Tally's draft each

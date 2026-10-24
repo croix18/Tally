@@ -373,6 +373,11 @@ async function importFiles(files) {
         toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).map(n => shown(n)).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
         render(); continue;
       }
+      if (/\.pdf$/i.test(f.name) || await isPdf(f)) {   // the FLDOE score report: percentiles and reporting categories, matched by name
+        let pages; try { pages = await pdfTextPages(await f.arrayBuffer()); } catch (e) { fails.push(f.name + ': Tally could not read this PDF' + (e && e.message ? ` (${e.message})` : '')); continue; }
+        const fx = parseFastItemsPdf(pages); if (!fx) { fails.push(f.name + ': not the FAST score report Tally reads ("Score, Achievement and Points Earned on Grade N FAST Mathematics"), or its text could not be read'); continue; }
+        importFastItems(fx, f.name); continue;
+      }
       const rows = await fileToRows(f);
       const fast = parseFastReport(rows); if (fast) { importFast(fast, f.name); continue; }   // a FAST report: scores only, matched to students by ID
       let g;
@@ -1183,6 +1188,19 @@ ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body>
 }
 
 /* ---------- file sniffing: xlsx / csv / html-table-as-.xls / tab-text-as-.xls / real binary .xls ---------- */
+// pdf.js (vendor/) reads a PDF's text with positions. Its worker is the inert script at the end of the page, started as
+// a blob worker on first use (the CSP allows blob workers and nothing from the network); fonts are never loaded.
+let pdfWorkerUrl = null;
+async function isPdf(f) { try { const u8 = new Uint8Array(await f.slice(0, 5).arrayBuffer()); return u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46; } catch (e) { return false; } }
+async function pdfTextPages(buf) {
+  if (typeof pdfjsLib === 'undefined') throw new Error('PDF reading is not in this copy of Tally');
+  if (!pdfWorkerUrl) { const src = document.getElementById('pdfjsWorker'); pdfWorkerUrl = URL.createObjectURL(new Blob([src ? src.textContent : ''], { type: 'text/javascript' })); pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl; }
+  const doc = await pdfjsLib.getDocument({ data: buf, isEvalSupported: false, disableFontFace: true, useSystemFonts: false, stopAtErrors: false }).promise;
+  const pages = [];
+  try { for (let n = 1; n <= doc.numPages; n++) { const pg = await doc.getPage(n); const tc = await pg.getTextContent(); pages.push(tc.items.filter(i => typeof i.str === 'string').map(i => ({ s: i.str, x: i.transform[4], y: i.transform[5], w: i.width, h: i.height }))); pg.cleanup(); } }
+  finally { await doc.destroy(); }
+  return pages;
+}
 async function fileToRows(f) {
   const buf = await f.arrayBuffer(); const u8 = new Uint8Array(buf);
   if (u8[0] === 0x50 && u8[1] === 0x4B) return xlsxToRows(buf);                        // zip → xlsx
@@ -1994,7 +2012,7 @@ li{margin:3px 0}
 <p><b>Retake</b>: a student may retake an assessment when nothing is missing and every IXL skill in the unit the course is working in is at goal. The Students list, the student's page, the what-ifs and Show student all say "eligible" or what stands in the way.</p>
 <p><b>Conference form</b>: on a student's page. Tally fills in the school's parent conference form (grades, FAST, missing work, assessments under 70%, retakes) and drafts Strengths and Concerns. Edit anything, then Print. Your edits to a student's form are kept.</p>
 <p><b>Notes</b>: on a student's page. Dated, only for you: hidden when names are hidden and never on the Board.</p>
-<p><b>FAST</b>: import the FAST report from Focus like any other file. Scores are matched by student ID and show on the student's page and the conference form.</p>
+<p><b>FAST</b>: import the FAST report from Focus like any other file. Scores are matched by student ID and show on the student's page and the conference form. The state's score report PDF ("Score, Achievement and Points Earned on Grade 7 FAST Mathematics", from the FAST reporting site) imports the same way: it adds each student's percentile and the result by reporting category, matched by name.</p>
 <p><b>Google Site</b>: the page forgets everything when you leave, so open your newest Full save each visit. Tally autosaves one after 10 minutes of changes and when you switch away; Ctrl+S saves. If Chrome asks about multiple downloads, Allow.</p>
 <p><b>Board</b>: the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade; <b>Average</b> marks each class's average, and <b>Class averages</b> puts the classes side by side). Names never show. Hold the exit button to leave.</p>
 <p><b>Names</b>: the eye button in the header. Crossed out = initials only, for projecting.</p>
@@ -2556,7 +2574,7 @@ document.addEventListener('keydown', e => {
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
 /*__SYNC__*/
-window.__tally = { gbUnitFor, openQuarters, closedEarly, quarterDue, openSettings, gradeSummary, syncBusyHere, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { gbUnitFor, openQuarters, closedEarly, quarterDue, openSettings, gradeSummary, syncBusyHere, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.

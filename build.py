@@ -32,6 +32,10 @@ if not test:
     assert n == 1, 'expected exactly one window.__tally line in app.js'
     assert '__tally' not in app, 'app.js still references window.__tally after stripping'
 
+# pdf.js (vendor/, Apache-2.0) reads the FLDOE score report PDF; neither file may hold "</script", which would end its tag.
+pdfjs = (root / 'vendor' / 'pdf.min.js').read_text(); pdfworker = (root / 'vendor' / 'pdf.worker.min.js').read_text()
+assert '</script' not in pdfjs and '</script' not in pdfworker and '<!--' not in pdfworker and '<!--' not in pdfjs
+
 def build(src, out, **parts):
     html = (root / src).read_text()
     for k, v in parts.items():
@@ -42,9 +46,9 @@ def build(src, out, **parts):
     print(out, len(html), 'bytes', '(test build)' if test else '')
 
 if test:   # the test build is its own file, so a test run can never leave window.__tally in the shipped pages
-    build('app.html', 'Tally.test.html', PARSER=parser, APP=app, FONT=font)
+    build('app.html', 'Tally.test.html', PARSER=parser, APP=app, FONT=font, PDFJS=pdfjs, PDFJS_WORKER=pdfworker)
     build('scrub.src.html', 'Scrub.test.html', PARSER=parser, FONT=font)
 else:
-    build('app.html', 'Tally.html', PARSER=parser, APP=app, FONT=font)
+    build('app.html', 'Tally.html', PARSER=parser, APP=app, FONT=font, PDFJS=pdfjs, PDFJS_WORKER=pdfworker)
     (root / 'index.html').write_bytes((root / 'Tally.html').read_bytes())   # GitHub Pages serves the app at the repo root
     build('scrub.src.html', 'Scrub.html', PARSER=parser, FONT=font)
