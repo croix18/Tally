@@ -777,11 +777,9 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
 <script>
 /*__APP__*/
 </script>
-<!-- pdf.js (vendor/): the library runs here; its worker sits inert below and starts as a blob worker only when a PDF is
-     dropped on Tally (the FLDOE score report). -->
-<script>
-/*__PDFJS__*/
-</script>
-<script type="text/plain" id="pdfjsWorker">/*__PDFJS_WORKER__*/</script>
+<!-- pdf.js (vendor/): the library and its worker sit inert below (no cost at start-up); the first PDF dropped on Tally
+     (the FLDOE score report, IXL's Students Quickview) starts the library on the page and the worker as a blob worker. -->
+<script type="text/plain" id="tallyPdfLib">/*__PDFJS__*/</script>
+<script type="text/plain" id="tallyPdfWorker">/*__PDFJS_WORKER__*/</script>
 </body>
 </html>

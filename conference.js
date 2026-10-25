@@ -67,7 +67,7 @@ function conferenceDraft(d) {
   if (d.r && d.r.rounded != null && d.r.rounded >= 85 && d.graded >= 3) S.push(`• ${d.r.rounded}% in the class so far (${d.r.letter})`);
   if (real.length >= 2) { const avg = real.reduce((a, t) => a + t.pct, 0) / real.length; if (confRound(avg) >= 85 && !(best && real.length === 2)) S.push(`• Tests and quizzes average ${P(avg)}`); }
   if (d.r && !d.missing.length && !d.missedTests.length && d.graded >= 3) S.push('• Every assignment turned in');
-  if (!d.rt.noIxl && d.rt.unit && d.rt.nUnit && !d.rt.short.length) S.push(`• Every ${d.rt.unit.short} IXL skill finished`);
+  if (d.rt.unitDone) S.push(`• Every ${d.rt.unit.short} IXL skill finished`);
   if (d.sum.d != null && d.sum.d >= 3 && d.prevDate && d.r) S.push(`• Grade up ${d.sum.d} points since ${fmtDate(d.prevDate)} (now ${d.r.rounded}%)`);
   // ---- concerns ----
   const now = d.r ? d.r.rounded : null;
@@ -166,7 +166,7 @@ function importFast(fx, file) {
   fx.students.forEach(st => {
     const hit = matchPerson(people, st.name, st.id); if (hit) { if (hit.how === 'id') byId++; else byName++; } else unmatched.push(st);
     const keys = hit ? [hit.p.id ? 'id:' + hit.p.id : null, 'n:' + hit.p.nn, st.id && st.id !== hit.p.id ? 'id:' + st.id : null].filter(Boolean) : [st.id ? 'id:' + st.id : null, st.name ? 'n:' + norm(st.name) : null].filter(Boolean);
-    keys.forEach(k => { add[k] = (add[k] || []).filter(h => !st.tests.some(x => testSig(x) === testSig(h))).concat(st.tests.map(t => ({ ...t }))); info[k] = { FAST: { fields: { ...st.info, ...(st.name ? { Student: st.name } : {}), ...(st.id ? { ID: st.id } : {}) }, at, file: String(file || '') } }; });
+    keys.forEach(k => { add[k] = (add[k] || []).filter(h => !st.tests.some(x => testSig(x) === testSig(h))).concat(st.tests.map(t => ({ ...t }))); const fl = ((((state.testInfo || {})[k] || {}).FAST || {}).fields || {}).FLEID; info[k] = { FAST: { fields: { ...st.info, ...(st.name ? { Student: st.name } : {}), ...(st.id ? { ID: st.id } : {}), ...(fl ? { FLEID: fl } : {}) }, at, file: String(file || '') } }; });   // the score report's FLEID survives a Focus re-import (audit, 25 Oct 2026)
   });
   state.tests = mergeTests(state.tests, cleanTests(add));
   state.testInfo = { ...(state.testInfo || {}), ...cleanTestInfo(info) };
@@ -190,11 +190,10 @@ function parseFastItemsPdf(pages) {
   const g = /Grade\s+(\d{1,2})\s+FAST\s+Math/i.exec(flat); const w = /\((PM\d)\s+(\d{4})\s*[-–]\s*(\d{2,4})\)/.exec(flat) || /Test Reasons:\s*(PM\d)\s+(\d{4})\s*[-–]\s*(\d{2,4})/.exec(flat);
   if (!g || !w || !pages.some(pg => pg.some(i => FLEID_RE.test(i.s.trim())))) return null;
   const grade = Number(g[1]); const pm = w[1].toUpperCase(); const year = `${w[2]}-${w[3].slice(-2)}`;
-  const students = new Map(); const cats = [];
+  const students = new Map(); const cats = []; let cat = null;   // a category table that runs onto a page without its header keeps its category (audit, 25 Oct 2026)
   pages.forEach(items => {
     const its = items.filter(i => i.s && i.s.trim()).map(i => ({ ...i, s: i.s.trim() })).sort((a, b) => b.y - a.y || a.x - b.x);
     const lines = []; its.forEach(i => { const ln = lines.find(l => Math.abs(l.y - i.y) <= 3); if (ln) { ln.items.push(i); } else lines.push({ y: i.y, items: [i] }); });
-    let cat = null;
     lines.forEach(ln => {
       ln.items.sort((a, b) => a.x - b.x); const text = ln.items.map(i => i.s).join(' ').replace(/\s+/g, ' ');
       const h = /(?:^|\s)(\d\.\s+[A-Z][^]*)$/.exec(text.replace(/^Student\s+FLEID\s+/i, '').replace(/^Student\s+/i, '').replace(/^FLEID\s+/i, ''));
@@ -218,8 +217,8 @@ function parseFastItemsPdf(pages) {
 }
 // Match the score report's students to the rosters by name (its FLEID is not a Focus ID), add what it knows to the
 // window already on file, and keep the FLEID so the next report matches by it.
-function importFastItems(fx, file) {
-  if (!fx.students.length) { toast(`${esc(file)}: no student rows in this score report.`, true, 8000); return; }
+function importFastItems(fx, file, collect) {
+  if (!fx.students.length) { const t = `${file}: no student rows in this score report`; if (collect) collect.fails.push(t); else toast(esc(t) + '.', true, 8000); return; }
   const people = rosterPeople(); const byFleid = {}; Object.keys(state.testInfo || {}).forEach(k => { const f = ((state.testInfo[k] || {}).FAST || {}).fields || {}; if (f.FLEID) byFleid[f.FLEID] = k; });
   const add = {}, info = {}; const unmatched = []; let matched = 0, byFl = 0; const at = new Date().toISOString();
   fx.students.forEach(st => {
@@ -235,7 +234,8 @@ function importFastItems(fx, file) {
   save();
   const names = unmatched.slice(0, 3).map(st => esc(shown(st.name))).join('; ');
   toast(`FAST score report (${esc(fx.pm)} ${esc(fx.year)}, ${esc(fastTestName(fx.grade))}): ${plural(matched, 'student')} matched to your classes by name${byFl ? ` (${byFl} by FLEID)` : ''} · percentiles and ${fx.cats.length === 1 ? 'one reporting category' : fx.cats.length + ' reporting categories'} added${unmatched.length ? ` · <b>${unmatched.length} not in your classes</b>: ${names}${unmatched.length > 3 ? '…' : ''} (kept, in case they join)` : ''}.`, false, 10000);
-  render();
+  if (collect) collect.lines.push({ label: 'FAST score report', text: `${fx.pm} ${fx.year}, ${fastTestName(fx.grade)}: ${plural(matched, 'student')} matched · percentiles and ${fx.cats.length} reporting ${fx.cats.length === 1 ? 'category' : 'categories'} added${unmatched.length ? ` · ${unmatched.length} not in your classes` : ''}` });
+  else render();
 }
 // The reporting categories a window carries ("1. Number Sense and Operations and Algebraic Reasoning": below | near |
 // above), named without their number, in the report's order.
@@ -252,10 +252,13 @@ const isL30 = (sec, name) => flagOn(fastInfo(sec, name).L30);
 // Test history for one student: imported FAST results, then the FAST score the Seating Chart backup carried.
 function testHistory(sec, name) {
   const f = findStudent(sec, name); const seen = new Set(); const out = [];
-  testKeys(f.id, name).forEach(k => ((state.tests || {})[k] || []).forEach(h => { const sig = testSig(h); if (seen.has(sig)) return; seen.add(sig); out.push(h); }));
+  testKeys(f.id, name).forEach(k => { const l = (state.tests || {})[k]; (Array.isArray(l) ? l : []).forEach(h => { if (!h) return; const sig = testSig(h); if (seen.has(sig)) return; seen.add(sig); out.push(h); }); });   // one odd entry never stops every student's FAST page
   out.sort((a, b) => (b.year + b.pm).localeCompare(a.year + a.pm));
   const si = (sec.seatInfo || {})[f.row && f.row.display ? f.row.display : name] || null;
-  if (!out.some(h => /FAST/i.test(h.test)) && si && (si.level || si.pct != null || si.scale != null)) out.push({ test: 'FAST', pm: 'PM3', year: '', level: si.level, scale: si.scale, pct: si.pct, src: 'seating' });
+  /* The Seating Chart backup carries last year's PM3. It stays until an imported PM3 says the same thing: importing only
+     this year's score report used to drop it, and with it the student's gain target (audit, 25 Oct 2026). */
+  const cy = fastYearNow();
+  if (!out.some(h => /FAST/i.test(h.test) && h.pm === 'PM3' && h.year && h.year !== cy) && si && (si.level || si.pct != null || si.scale != null)) out.push({ test: 'FAST', pm: 'PM3', year: '', level: si.level, scale: si.scale, pct: si.pct, src: 'seating' });
   return out;
 }
 /* ---------- FAST achievement levels and learning gains ----------
@@ -285,7 +288,11 @@ function fastGainFloor(grade, prior) {
   return { score: fastLevelFloor(grade, pb.level + 1), label: `Level ${pb.level + 1}` };
 }
 // The newest school year ('2026-27') among every FAST result in Tally, and the one before a given year.
-function fastYearNow() { let y = ''; Object.values(state.tests || {}).forEach(list => (list || []).forEach(h => { if (/FAST/i.test(h.test) && h.year && h.year > y) y = h.year; })); return y || null; }
+/* PM3 closes a school year, so a newest year that holds nothing but PM3s is last year: a Focus report pulled in August,
+   before PM1, carries only last spring's PM3 (audit, 25 Oct 2026). */
+function fastYearNow() { let y = ''; const pms = {}; Object.values(state.tests || {}).forEach(list => (Array.isArray(list) ? list : []).forEach(h => { if (h && /FAST/i.test(h.test) && h.year) { if (h.year > y) y = h.year; (pms[h.year] = pms[h.year] || new Set()).add(h.pm); } }));
+  if (!y) return null; return [...pms[y]].every(pm => pm === 'PM3') ? nextSchoolYear(y) : y; }
+function nextSchoolYear(y) { const m = /^(\d{4})-(\d{2,4})$/.exec(y || ''); if (!m) return null; const a = Number(m[1]) + 1; return `${a}-${String(a + 1).slice(-m[2].length)}`; }
 function prevSchoolYear(y) { const m = /^(\d{4})-(\d{2,4})$/.exec(y || ''); if (!m) return null; const a = Number(m[1]) - 1; return `${a}-${String(a + 1).slice(-m[2].length)}`; }
 // Everything the page says about a student's FAST year: last year's PM3, this year's windows, and what PM2 / PM3 need.
 function fastTargets(sec, name) {
@@ -295,7 +302,7 @@ function fastTargets(sec, name) {
      has only last year's PM3, and that is still last year's (audit, 24 Oct 2026: it was shown as "PM3 this year" on
      the wrong grade's scale). Last year is the school year before it. */
   const thisYear = fastYearNow(); const lastYear = thisYear ? prevSchoolYear(thisYear) : null;
-  const prior0 = hist.find(h => h.pm === 'PM3' && h.year === lastYear) || (hist.some(h => h.year) ? null : hist.find(h => h.pm === 'PM3' && !h.year));
+  const prior0 = hist.find(h => h.pm === 'PM3' && h.year === lastYear) || hist.find(h => h.pm === 'PM3' && !h.year) || null;   // an imported last-year PM3, else the Seating Chart's
   const prior = prior0 ? { ...prior0, grade: prior0.grade || gradeLevel - 1 } : null;
   const now = hist.filter(h => h.year === thisYear && h.year).sort((a, b) => a.pm.localeCompare(b.pm)); const latest = now[now.length - 1] || null;
   /* The test taken this year: accelerated classes sit the grade above, and the FAST report's "tested above grade" flag
@@ -304,8 +311,9 @@ function fastTargets(sec, name) {
   const above = sec.prep === 'acc' || now.some(h => h.above);
   const agree = g => now.filter(h => h.level != null && fastBucket(g, h.scale) && fastBucket(g, h.scale).level === h.level).length;
   const pref = above ? [gradeLevel + 1, gradeLevel] : [gradeLevel, gradeLevel + 1];
-  const known = now.find(h => h.grade && FAST_MATH[h.grade]);   // the score report names its test outright
-  const gradeNow = known ? known.grade : agree(pref[1]) > agree(pref[0]) && FAST_MATH[pref[1]] ? pref[1] : pref[0];
+  const known = now.slice().reverse().find(h => h.grade && FAST_MATH[h.grade]);   // the score report names its test outright; the newest window wins (a student moved to accelerated after PM1 sits the grade-8 test now)
+  let gradeNow = known ? known.grade : agree(pref[1]) > agree(pref[0]) && FAST_MATH[pref[1]] ? pref[1] : pref[0];
+  if (!FAST_MATH[gradeNow]) gradeNow = Math.max(3, Math.min(8, gradeNow));   /* the state tables run grades 3 to 8: an accelerated class with GradeLevel 8 would ask for a grade-9 table and crash the report (audit, 25 Oct 2026) */
   const b = s => fastBucket(gradeNow, s); const c = FAST_MATH[gradeNow];
   const gain = prior ? fastGainFloor(gradeNow, prior) : null;
   const rows = [];
@@ -341,10 +349,15 @@ function fastScaleHtml(grade, marks, W) {
   const bands = [[c[0], c[1], 'Low 1', 'l1'], [c[1], c[2], 'Mid 1', 'l1'], [c[2], c[3], 'High 1', 'l1'], [c[3], c[4], 'Low 2', 'l2'], [c[4], c[5], 'High 2', 'l2'], [c[5], c[6], 'Level 3', 'l3'], [c[6], c[7], 'Level 4', 'l4'], [c[7], c[8], 'Level 5', 'l5']];
   /* Scores sit above the bands and targets below, so a PM1 next to its target never overlaps it; marks at the same
      score share one label, and marks within a few points of each other take turns standing taller (audit, 24 Oct). */
+  /* Marks closer than a label's width are drawn as one mark with a line per window ("PM1 245 / PM2 246 / PM3 248"),
+     at their middle: three windows a few points apart used to print on top of each other (audit, 25 Oct 2026). A
+     mark near either end is anchored inward so its label stays on the page. */
   const row = (list, cls) => { const ms = []; list.filter(m => m.v != null).sort((a, b) => a.v - b.v).forEach(m => { const v = Math.max(lo, Math.min(m.v, hi)); const same = ms.find(x => x.v === v); if (same) same.label += ' · ' + m.label; else ms.push({ v, label: m.label, shown: m.v }); });
-    ms.forEach((m, j) => { m.tall = j > 0 && X(m.v) - X(ms[j - 1].v) < 7 && !ms[j - 1].tall; });
-    const under = /under/.test(cls);
-    return ms.length ? `<div class="${cls}${ms.some(m => m.tall) ? ' tiered' : ''}">${ms.map(m => `<div class="mk${m.tall ? ' tall' : ''}" style="left:${X(m.v)}%">${under ? `<i></i><b>${esc(m.label)}</b><small>${m.shown}</small>` : `<b>${esc(m.label)}</b><small>${m.shown}</small><i></i>`}</div>`).join('')}</div>` : ''; };
+    const groups = []; ms.forEach(m => { m.x = X(m.v); const g = groups[groups.length - 1]; if (g && m.x - g[g.length - 1].x < 6) g.push(m); else groups.push([m]); });
+    const under = /under/.test(cls); const tall = Math.max(1, ...groups.map(g => g.length));
+    const mark = g => { const x = g.reduce((a, m) => a + m.x, 0) / g.length; const text = g.length === 1 ? `<b>${esc(g[0].label)}</b><small>${g[0].shown}</small>` : g.map(m => `<span class="ln"><b>${esc(m.label)}</b> ${m.shown}</span>`).join('');
+      return `<div class="mk${g.length > 1 ? ' grp' : ''}${x < 5 ? ' edgeL' : x > 95 ? ' edgeR' : ''}" data-n="${g.length}" style="left:${x}%">${under ? `<i></i>${text}` : `${text}<i></i>`}</div>`; };
+    return groups.length ? `<div class="${cls}" style="height:${(under ? 30 : 34) + (tall > 2 ? 9 * (tall - 2) : 0)}px">${groups.map(mark).join('')}</div>` : ''; };
   return `<div class="scale">${row(marks.filter(m => m.cls !== 'tg'), 'marks')}
     <div class="bands">${bands.map(([a, b, lab, cls]) => `<div class="${cls}" style="left:${X(a)}%;width:${X(b) - X(a)}%"><span>${lab}</span><small>${a}</small></div>`).join('')}</div>${row(marks.filter(m => m.cls === 'tg'), 'marks under')}</div>`;
 }
@@ -360,20 +373,20 @@ function fastLineChart(t) {
      244 now sit level (Croix, 25 Oct 2026: "Scale the chart for the grade 8 test … don't include the FAST level
      labels. Put pm3 from last year on the chart where it would lie on the 8th grade test"). The level floors of this
      year's test are dotted lines, marked only by their scores. */
-  const c = FAST_MATH[t.gradeNow]; const floors = [c[3], c[5], c[6], c[7]];
+  const c = FAST_MATH[t.gradeNow]; if (!c) return ''; const floors = [c[3], c[5], c[6], c[7]];
   const pts = [{ lab: 'PM3', v: t.prior ? t.prior.scale : null }, ...['PM1', 'PM2', 'PM3'].map(pm => { const h = t.now.find(x => x.pm === pm); return { lab: pm, v: h ? h.scale : null }; })];
   const vals = pts.map(p => p.v).filter(v => v != null); const lo = Math.min(...vals, t.gain ? t.gain.score : Infinity, c[5]) - 8, hi = Math.max(...vals, t.gain ? t.gain.score : -Infinity, c[7]) + 6;
-  const w = 330, h = 168, L = 30, R = 10, T = 10, B = 30; const iw = w - L - R, ih = h - T - B;
+  const w = 330, h = 146, L = 30, R = 34, T = 10, B = 28; const iw = w - L - R, ih = h - T - B;   /* the gain is labelled in the right margin, clear of the last point (audit, 25 Oct 2026) */
   const X = i => L + iw * (i + .5) / pts.length, Y = v => T + ih * (1 - (v - lo) / (hi - lo));
   const got = pts.map((p, i) => p.v == null ? null : { i, x: X(i), y: Y(p.v), v: p.v });
   const line = got.filter(Boolean); const path = line.map((p, j) => `${j ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const gy = t.gain ? Y(t.gain.score) : null;
   return `<svg class="fline" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="FAST scale scores by window">
     ${floors.filter(v => v > lo && v < hi && !(t.gain && v === t.gain.score)).map(v => `<line x1="${L}" x2="${L + iw}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#999" stroke-width=".8" stroke-dasharray="1.5 2.5"/><text x="${L - 4}" y="${(Y(v) + 3).toFixed(1)}" text-anchor="end" font-size="7.5" fill="#555">${v}</text>`).join('')}
-    ${gy != null ? `<line x1="${L}" x2="${L + iw}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#000" stroke-width="1" stroke-dasharray="4 3"/><text x="${L + iw - 2}" y="${(gy - 3).toFixed(1)}" text-anchor="end" font-size="8" font-weight="700">gain ${t.gain.score}</text>` : ''}
+    ${gy != null ? `<line x1="${L}" x2="${L + iw}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#000" stroke-width="1" stroke-dasharray="4 3"/><text x="${L + iw + 3}" y="${(gy - 1).toFixed(1)}" font-size="7.5" font-weight="700">gain</text><text x="${L + iw + 3}" y="${(gy + 8).toFixed(1)}" font-size="8" font-weight="900">${t.gain.score}</text>` : ''}
     ${path ? `<path d="${path}" fill="none" stroke="#000" stroke-width="2"/>` : ''}
-    ${line.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#000" stroke="#fff" stroke-width="1.5"/><text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="900">${p.v}</text>`).join('')}
-    ${pts.map((p, i) => `<text x="${X(i).toFixed(1)}" y="${h - 16}" text-anchor="middle" font-size="8.5" font-weight="700">${p.lab}</text><text x="${X(i).toFixed(1)}" y="${h - 6}" text-anchor="middle" font-size="7" fill="#444">${i === 0 ? esc(syLast) : p.v == null ? esc(FAST_WHEN[p.lab] || '') : esc(syNow)}</text>`).join('')}
+    ${line.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#000" stroke="#fff" stroke-width="1.5"/><text x="${p.x.toFixed(1)}" y="${(gy != null && p.y > gy && p.y - gy < 15 || p.y - 7 < T + 2 ? p.y + 14 : p.y - 7).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="900">${p.v}</text>`).join('')}
+    ${pts.map((p, i) => `<text x="${X(i).toFixed(1)}" y="${h - 16}" text-anchor="middle" font-size="8.5" font-weight="700">${p.lab}</text><text x="${X(i).toFixed(1)}" y="${h - 6}" text-anchor="middle" font-size="7" fill="#444">${i === 0 ? esc(syLast) : p.v != null ? esc(syNow) : pts.slice(i + 1).some(q => q.v != null) ? 'missed' : esc(FAST_WHEN[p.lab] || '')}</text>`).join('')}
   </svg>`;
 }
 function fastReportSection(sec, name) {
@@ -383,7 +396,7 @@ function fastReportSection(sec, name) {
   /* The level pill shows where the score sits inside its level, filled like the scale below (Croix, 25 Oct 2026: "Maybe
      it could fill in their level within their current level. Like the graph below"). */
   const lvl = (g, sc) => { const bk = fastBucket(g, sc); const c = FAST_MATH[g]; if (!bk || !c) return ''; const lo = c[bk.idx], hi = c[bk.idx + 1]; const pc = Math.max(4, Math.min(100, Math.round((sc - lo) / Math.max(1, hi - lo) * 100)));
-    return `<span class="lv l${bk.level}"><i style="width:${pc}%"></i><em>${esc(bk.label)}</em><small>${lo}–${hi}</small></span>`; };
+    return `<span class="lv l${bk.level}"><i style="width:${pc}%"></i><em>${esc(bk.label)}</em><small>${lo}–${bk.idx === 7 ? hi : hi - 1}</small></span>`; };   // Level 4 on grade 6 is 239–253: 254 is Level 5 (audit, 25 Oct 2026)
   const l3 = fastLevelFloor(t.gradeNow, 3); const gainIsL3 = !!t.gain && t.gain.score === l3;
   const nowName = fastTestName(t.gradeNow), priorGrade = t.prior ? t.prior.grade : t.gradeLevel - 1, priorName = fastTestName(priorGrade);
   const diff = h => t.prior && t.prior.scale != null ? ` <small class="chg">(${h.scale >= t.prior.scale ? '+' : '−'}${Math.abs(h.scale - t.prior.scale)})</small>` : '';
@@ -402,9 +415,9 @@ function fastReportSection(sec, name) {
   const lvOf = (g, v) => { const bk = fastBucket(g, v); return bk ? ` (${esc(bk.label)})` : ''; };
   const gainLv = t.gain ? (fastBucket(t.gradeNow, t.gain.score) || { label: t.gain.label }).label : '';
   const said = [
-    t.prior ? `${esc(first)} scored a <b>${t.prior.scale}</b>${lvOf(priorGrade, t.prior.scale)} on the ${esc(syLast)} ${esc(priorName)}.` : `There is no PM3 score from last year on file, so there is no learning-gain target yet; the level targets below still apply.`,
-    t.gain ? `A learning gain in ${esc(syNow)} means scoring a <b>${t.gain.score} (${esc(gainLv)}) or higher</b> on the ${esc(nowName)}.` : '',
-    t.latest ? `On the ${esc(t.latest.pm)}, ${esc(first)} scored a <b>${t.latest.scale}</b>${lvOf(t.gradeNow, t.latest.scale)}${t.gain ? (t.latest.scale >= t.gain.score ? (t.latest.pm === 'PM3' ? ', a gain.' : ', already a gain. PM3 is the one that counts, so hold it there.') : ` and <b>${t.gain.score - t.latest.scale} more points</b> are needed for a gain.`) : '.'}` : ''];   /* the name once (Croix, 25 Oct 2026: "I might've put Hayden's name in that text too many times") */
+    t.prior ? `${esc(first)} scored a <b>${t.prior.scale}</b>${lvOf(priorGrade, t.prior.scale)} on ${/\//.test(syLast) ? `the ${esc(syLast)}` : "last year's"} ${esc(priorName)}.` : `There is no PM3 score from last year on file, so there is no learning-gain target yet; the level targets below still apply.`,
+    t.gain ? `A learning gain ${/\//.test(syNow) ? `in ${esc(syNow)}` : 'this year'} means scoring a <b>${t.gain.score} (${esc(gainLv)}) or higher</b> on the ${esc(nowName)}.` : '',
+    t.latest ? `On the ${esc(t.latest.pm)}, ${esc(first)} scored a <b>${t.latest.scale}</b>${lvOf(t.gradeNow, t.latest.scale)}${t.gain ? (t.latest.scale >= t.gain.score ? (t.latest.pm === 'PM3' ? ', a gain.' : ', already a gain. PM3 is the one that counts, so hold it there.') : (n => ` and <b>${n} more point${n === 1 ? '' : 's'}</b> ${n === 1 ? 'is' : 'are'} needed for a gain.`)(t.gain.score - t.latest.scale)) : '.'}` : ''];   /* the name once (Croix, 25 Oct 2026: "I might've put Hayden's name in that text too many times") */
   const gainWords = said.filter(Boolean).join(' ');
   const rows = t.rows.map(r => `<tr class="${r.met ? 'met' : ''}"><td><span class="box"></span>${esc(r.what)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ''}</td><td class="r"><b>${r.score}</b></td><td>${r.met ? `✓ reached on ${esc(t.latest.pm)}` : r.gap != null ? `${r.gap} more than ${esc(t.latest.pm)}` : ''}</td></tr>`).join('');
   const W = fastBandWidths([priorGrade, t.gradeNow].filter((g, i, a) => FAST_MATH[g] && a.indexOf(g) === i));
@@ -421,18 +434,20 @@ function fastReportSection(sec, name) {
     <div class="pledge"><div><b>My goal for PM2</b><i></i></div><div><b>My goal for PM3</b><i></i></div><div class="wide"><b>How I'll get there</b><i></i><i></i><i></i></div><div class="sig"><span>Student</span><span>Teacher</span><span>Date</span></div></div></section>`;
 }
 const FAST_REPORT_CSS = `
-.rep.fast h2{margin:8px 0 3px}.rep.fast .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:8px 0 2px}.rep.fast .cards>div{border:1px solid #bbb;border-radius:6px;padding:7px 10px}.rep.fast .cards small{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:#333}.rep.fast .cards b{font-size:19pt;font-weight:900;line-height:1.1;display:block}.rep.fast .cards span{display:block;font-size:8pt;color:#444}.rep.fast .cards .goal{border:1.5px solid #000}
+.rep.fast h2{margin:6px 0 3px}.rep.fast .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:8px 0 2px}.rep.fast .cards>div{border:1px solid #bbb;border-radius:6px;padding:5px 9px}.rep.fast .cards small{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:#333}.rep.fast .cards b{font-size:17pt;font-weight:900;line-height:1.1;display:block}.rep.fast .cards span{display:block;font-size:8pt;color:#444}.rep.fast .cards .goal{border:1.5px solid #000}
 .rep.fast .cards .lv{position:relative;display:flex;justify-content:space-between;align-items:center;border:1px solid #000;border-radius:8px;padding:0 7px;height:15px;font-size:8pt;margin:3px 0 2px;overflow:hidden;background:#fff}.rep.fast .lv i{position:absolute;left:0;top:0;bottom:0;background:#c9c9c9}.rep.fast .lv em,.rep.fast .lv small{position:relative;font-style:normal}.rep.fast .lv em{font-weight:bold}.rep.fast .lv small{font-size:6.5pt;color:#333;text-transform:none;letter-spacing:0;display:inline}.rep.fast .cards b .chg{display:inline;font-size:11pt;font-weight:bold;text-transform:none;letter-spacing:0;color:#000;margin-left:4px}
-.scale{margin:3px 0 8px}.bands{position:relative;height:26px;border:1px solid #000;border-radius:4px;overflow:hidden}.bands>div{position:absolute;top:0;bottom:0;border-left:1px solid #000;font-size:7.5pt;padding:2px 0 0 3px;overflow:hidden;white-space:nowrap}.bands>div:first-child{border-left:none}.bands span{display:block;font-weight:bold}.bands small{display:block;font-size:7pt;color:#333}
+.scale{margin:2px 0 5px}.bands{position:relative;height:26px;border:1px solid #000;border-radius:4px;overflow:hidden}.bands>div{position:absolute;top:0;bottom:0;border-left:1px solid #000;font-size:7.5pt;padding:2px 0 0 3px;overflow:hidden;white-space:nowrap}.bands>div:first-child{border-left:none}.bands span{display:block;font-weight:bold}.bands small{display:block;font-size:7pt;color:#333}
 .bands .l1{background:#f0f0f0}.bands .l2{background:#dcdcdc}.bands .l3{background:#c4c4c4}.bands .l4{background:#a8a8a8}.bands .l5{background:#8c8c8c}.bands .l4,.bands .l5{color:#fff}.bands .l4 small,.bands .l5 small{color:#eee}
-.marks{position:relative;height:34px}.marks.tiered{height:56px}.mk{position:absolute;bottom:0;transform:translateX(-50%);text-align:center;font-size:7.5pt;line-height:1.05;display:flex;flex-direction:column;align-items:center;white-space:nowrap}.mk b{font-size:8.5pt}.mk i{display:block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #000}.marks .mk.tall i{border:none;border-left:1px solid #000;height:30px}.marks.under{height:30px}.marks.under .mk{bottom:auto;top:0}.marks.under .mk i{border-top:none;border-bottom:8px solid #555}.marks.under .mk b{color:#333;font-size:7.5pt}.marks.under.tiered{height:52px}.marks.under .mk.tall i{border:none;border-left:1px solid #555;height:30px}
-.rep.fast .gain{margin:4px 0 8px;font-size:10pt;line-height:1.4}.rep.fast .slab{font-size:8.5pt;font-weight:bold;margin:2px 0 -2px}.rep.fast .slab.first{margin-top:12px}.rep.fast .two.tl{display:grid;grid-template-columns:1fr 330px;gap:0 16px;align-items:start}.rep.fast .fline{display:block;margin-top:4px}.rep.fast .two.tl .targets td{font-size:9.5pt;padding:3px 4px}
-.rep.fast .topics th{text-align:center;font-size:8pt}.rep.fast .topics th:first-child{text-align:left}.rep.fast .topics td{font-size:9pt;padding:2px 6px}.rep.fast .topics td.c{text-align:center;width:60px;color:#000;font-size:11pt;line-height:1}.rep.fast .topics th.c{width:60px}
+.marks{position:relative;height:34px}.mk{position:absolute;bottom:0;transform:translateX(-50%);text-align:center;font-size:7.5pt;line-height:1.05;display:flex;flex-direction:column;align-items:center;white-space:nowrap}.mk b{font-size:8.5pt}.mk i{display:block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #000}.mk .ln{display:block;font-size:7.5pt;line-height:1.1}.mk .ln b{font-size:8pt}.mk.edgeL{transform:none;align-items:flex-start;text-align:left}.mk.edgeL i{margin-left:-5px}.mk.edgeR{transform:translateX(-100%);align-items:flex-end;text-align:right}.mk.edgeR i{margin-right:-5px}.marks.under{height:30px}.marks.under .mk{bottom:auto;top:0}.marks.under .mk i{border-top:none;border-bottom:8px solid #555}.marks.under .mk b{color:#333;font-size:7.5pt}
+.rep.fast .gain{margin:3px 0 5px;font-size:10pt;line-height:1.35}.rep.fast .slab{font-size:8.5pt;font-weight:bold;margin:2px 0 -2px}.rep.fast .slab.first{margin-top:9px}.rep.fast .two.tl{display:grid;grid-template-columns:1fr 330px;gap:0 16px;align-items:start}.rep.fast .fline{display:block;margin-top:4px}.rep.fast .two.tl .targets td{font-size:9.5pt;padding:3px 4px}
+.rep.fast .topics th{text-align:center;font-size:8pt}.rep.fast .topics th:first-child{text-align:left}.rep.fast .topics td{font-size:9pt;padding:1px 6px}.rep.fast .topics td.c{text-align:center;width:60px;color:#000;font-size:11pt;line-height:1}.rep.fast .topics th.c{width:60px}
 .rep.fast .targets td{padding:3px 6px;font-size:10pt}.rep.fast .targets tr.met td{color:#0F766E}.rep.fast .hist td,.rep.fast .hist th{font-size:8.5pt;white-space:nowrap;padding:2px 5px}
-.rep.fast .pledge{grid-template-columns:1fr 1fr;gap:8px 24px;padding:8px 12px 10px;margin-top:10px}.rep.fast .pledge .wide{grid-column:1/-1}.rep.fast .pledge b{display:block;margin-bottom:3px}.rep.fast .pledge i{display:block;border-bottom:1px solid #000;height:20px}.rep.fast .pledge .sig{margin-top:6px}`;
+.rep.fast .pledge{break-inside:avoid;page-break-inside:avoid;grid-template-columns:1fr 1fr;gap:6px 24px;padding:7px 12px 8px;margin-top:8px}.rep.fast .pledge .wide{grid-column:1/-1}.rep.fast .pledge b{display:block;margin-bottom:3px}.rep.fast .pledge i{display:block;border-bottom:1px solid #000;height:18px}.rep.fast .pledge .sig{margin-top:6px}`;
 function printFastReports(sec, names, title) {
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}${FAST_REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${names.map(n => fastReportSection(sec, n)).join('')}</body></html>`;
-  const go = () => openPrint(html, names.length === 1 ? 'FAST-report.html' : `FAST-reports-${sec.label.replace(/[^\w-]+/g, '_')}.html`, names.length === 1);
+  const failed = []; const body = names.map(n => safeSection(() => fastReportSection(sec, n), n, failed)).join('');
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}${FAST_REPORT_CSS}</style></head><body>${printBar(names.length)}${body}</body></html>`;
+  const go = () => { openPrint(html, names.length === 1 ? 'FAST-report.html' : `FAST-reports-${sec.label.replace(/[^\w-]+/g, '_')}.html`, names.length === 1);
+    if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(n => shown(n)).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
   if (state.settings.hideNames) { ask(`Names are hidden, but the ${names.length === 1 ? 'report opens with the student\'s full name and scores' : 'reports open with every student\'s full name and scores'} on screen. Open ${names.length === 1 ? 'it' : 'them'}?`, 'Open').then(ok => { if (ok) go(); }); return; }
   go();
 }

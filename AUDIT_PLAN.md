@@ -173,3 +173,68 @@ One control vocabulary (primary, secondary, quiet, segment); the class screen is
 "N to fix" and its duplicates behind ⋯; one primary action per screen; one stat tile; attention said once; Settings as
 four tabs with a line per control; the Board's toggles behind Options at every width; em dashes and "FOCUS" gone from
 on-screen text; the Data Lab compares any two data sets, one picked per course.
+
+## Third audit (25 Oct 2026): the day's work
+
+Croix: "Can you run an audit and debugging and hardening on everything that we've done today. It's been a lot and might be
+messy." Three reviewers in parallel (the weekly report, signed reports and family; the FAST report; the two PDF imports),
+each on its own snapshot with probes, then a pass of my own. Every finding below has a check that fails on the code before
+the fix: `tests/audit-oct25.js` (39 checks), with more in `tests/quickview.js` and `tests/grades.js`.
+
+### Fixed: the weekly report, signed reports, family
+1. "Nothing missing and every assessment at full marks" printed for a student with missing work whenever the IXL copy
+   alone reached the next letter, or with no IXL link (High). The report now says only what is true.
+2. The tests-and-quizzes tile left NHI out (a 77% where the student page said 51%) and read "5 gradeds".
+3. A reprint, or only opening the report, wiped that week's "back, signed" tick (High): one log entry per school week,
+   the tick kept. "Since the last report" moves from the last report of an earlier week.
+4. Focus was dated by the import, not the file: Friday's export brought in on Monday passed the Monday-morning reminder
+   and "unchanged since then" compared days. Dated by the file now (`exportedAt`, `gbAt`).
+5. "Eligible: … Unit 3 IXL at goal" named the unit being worked in even when Focus had no column for it, so nothing had
+   been checked. The words name the checked units; the conference strength uses the unit's own skills.
+6. Two-sided printing puts the next student on the back of a sheet that goes home: a batch's Print bar says to print
+   one-sided (question for Croix below).
+7. An NHI IXL column was listed twice in "What would move the grade".
+8. An eleventh family contact vanished at the next load (cap 10, no word): 20, and Add contact hides at the cap.
+9. Signed reports said "no reports have been printed" once the gradebook was removed; Remove class didn't mention
+   family, weekly reports or practice; the hidden-names question said "a weekly report wants today's numbers" with
+   today's exports in; a class made by its IXL export from held backup settings dropped notes, family and practice.
+10. One student's bad record blanked a whole batch (weekly or FAST): that page says so, the rest print, a toast names it.
+11. A report log from a file kept impossible dates ("2026-13-45", which would then throw) and NaN grades.
+
+### Fixed: the FAST report
+12. A category table continuing onto a page without its header lost its category for those students (the score report
+    splits long tables).
+13. Re-importing the Focus FAST report dropped the FLEID the score report had stored, so the next PDF matched by name only.
+14. Last year's PM3 from the Seating Chart disappeared as soon as this year's PM1 was imported, and with it the gain target.
+15. A Focus report holding only last spring's PM3 (pulled before PM1) made that year "this year".
+16. The test grade came from the first window that named one, not the newest; an accelerated class with GradeLevel 8
+    asked for a grade-9 table and the report threw.
+17. Level pills ended at the next level's floor (Level 4 on grade 6 read 239–254; 254 is Level 5).
+18. Three windows a few points apart printed on top of each other; a mark near either end ran off its bar.
+19. "1 more points are needed"; the chart's "gain" label sat on the last point; a skipped PM2 read "Dec 8" after PM3.
+20. With every window and four topics the page ran to two sheets and the goal box could split: one sheet, kept whole.
+
+### Fixed: the PDFs
+21. IXL Quickview: a name or a time wrapped onto a second line inside its cell lost the row or misread the time ("1 hr" for
+    1 hr 23 min): the likely cause of Croix's "the time spent is extremely hit or miss" (High). Rows are rebuilt from
+    their pieces by column; `fixtures/ixl_quickview_hard.pdf` draws a browser-printed table (the old parser lost most rows
+    of it and misread every wrapped time).
+22. A student header that didn't read put that student's rows on the student above; the same header repeated on the next
+    page made a second student; "Practiced Oct 3" and "2 weeks ago" were not read; an accented name ("José") never matched.
+23. Unmatched names showed in the toast with names hidden.
+24. A PDF dropped on the window was refused ("Drop an IXL Score Grid…"); a PDF-only import jumped to the class's units and
+    left no line on the Overview.
+25. Every PDF started its own pdf.js worker (over http, three PDFs started three); a failed load wasn't cleaned up.
+26. Practice data took most of the space (a skill's name on every student's every skill): four numbers per skill, names
+    once per class, numbers clamped on import and load.
+27. pdf.js (320 KB) was parsed at every start-up though only a PDF needs it: inert like its worker now. Its element id
+    `pdfjsWorker` shadowed pdf.js's own global; renamed. The build's `</script` check is case-insensitive.
+28. "Not practiced in a week" was counted to today, so an old Quickview made everyone idle; a missing last-practiced day
+    read "null days ago".
+
+### For Croix
+- Does he print two-sided? If so, each student's report should start on a fresh sheet; that costs a blank page after
+  every one-page report, so it would be a setting rather than the default.
+- The FAST window dates (PM2 on Dec 8, PM3 in May) are written into the code; they could be a setting he updates each year.
+- A short text sample of one Quickview block (names removed) would confirm the wrapped-cell cause of the time misses;
+  the parser now handles every layout the fixture draws.

@@ -53,7 +53,7 @@ function load() { let raw = null; try { raw = localStorage.getItem(LS_KEY); } ca
 // along for good).
 function safeObj(o) { if (!o || typeof o !== 'object' || Array.isArray(o)) return {}; const out = {}; for (const k of Object.keys(o)) if (SAFE_KEY(k)) out[k] = o[k]; return out; }
 // The printed-report log per student: { [norm(name)]: [{ date, grade, missing, ixl }] }, the last dozen.
-function cleanReportLog(o) { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !Array.isArray(o[k])) continue; const l = o[k].filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date))).map(e => ({ date: String(e.date), ...(/^\d{4}-\d{2}-\d{2}$/.test(String(e.back)) ? { back: String(e.back) } : {}), ...(e.cleared ? { cleared: true } : {}), q: e.q >= 1 && e.q <= 4 ? Number(e.q) : null, gb: /^\d{4}-\d{2}-\d{2}$/.test(String(e.gb)) ? String(e.gb) : '', ix: /^\d{4}-\d{2}-\d{2}$/.test(String(e.ix)) ? String(e.ix) : '', grade: e.grade == null ? null : Number(e.grade), missing: Number(e.missing) || 0, ixl: e.ixl == null ? null : Number(e.ixl) })).slice(-12); if (l.length) out[k] = l; } return out; }
+function cleanReportLog(o) { const out = {}; const num = v => v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v); const day = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && !isNaN(new Date(v + 'T12:00:00')); if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !Array.isArray(o[k])) continue; const l = o[k].filter(e => e && day(e.date)).map(e => ({ date: String(e.date), ...(day(e.back) ? { back: String(e.back) } : {}), ...(e.cleared ? { cleared: true } : {}), q: [1, 2, 3, 4].includes(Number(e.q)) ? Number(e.q) : null, gb: day(e.gb) ? String(e.gb) : '', ...(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(String(e.gbAt)) ? { gbAt: String(e.gbAt) } : {}), ix: day(e.ix) ? String(e.ix) : '', grade: num(e.grade), missing: Math.max(0, Math.round(num(e.missing) || 0)), ixl: num(e.ixl) })).sort((a, b) => a.date.localeCompare(b.date)).slice(-12); if (l.length) out[k] = l; } return out; }
 function hydrate(s) {
   try {
     if (!s || !s.sections) return null;
@@ -362,7 +362,7 @@ function points(sec, unit, si) {
 
 /* ---------- import ---------- */
 async function importFiles(files) {
-  let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [], poolImported = [], sameData = [], courseFixed = [];
+  let ok = [], fails = [], skipped = 0, gbImported = [], deferred = [], poolImported = [], sameData = [], courseFixed = []; const pdfOut = { lines: [], fails };   // a PDF's result joins the Overview's import lines
   for (const f of files) {
     try {
       if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts): a Tally backup goes through Settings
@@ -375,9 +375,9 @@ async function importFiles(files) {
       }
       if (/\.pdf$/i.test(f.name) || await isPdf(f)) {   // the FLDOE score report: percentiles and reporting categories, matched by name
         let pages; try { pages = await pdfTextPages(await f.arrayBuffer()); } catch (e) { fails.push(f.name + ': Tally could not read this PDF' + (e && e.message ? ` (${e.message})` : '')); continue; }
-        const qv = parseIxlQuickviewPdf(pages); if (qv) { importQuickview(qv, f.name); continue; }   // IXL's Students Quickview: effort and recency by skill
+        const qv = parseIxlQuickviewPdf(pages); if (qv) { importQuickview(qv, f.name, pdfOut); continue; }   // IXL's Students Quickview: effort and recency by skill
         const fx = parseFastItemsPdf(pages); if (!fx) { fails.push(f.name + ': not a PDF Tally reads (the FAST score report "Score, Achievement and Points Earned…" or IXL\'s Students Quickview), or its text could not be read'); continue; }
-        importFastItems(fx, f.name); continue;
+        importFastItems(fx, f.name, pdfOut); continue;
       }
       const rows = await fileToRows(f);
       const fast = parseFastReport(rows); if (fast) { importFast(fast, f.name); continue; }   // a FAST report: scores only, matched to students by ID
@@ -451,6 +451,8 @@ async function importFiles(files) {
         grades: keep.grades, gradeHistory: keep.gradeHistory || [], qArchive: keep.qArchive || {}, seating: keep.seating, seatInfo: keep.seatInfo || {}, overrides: keep.overrides || {}, period: keep.period != null ? keep.period : (meta.period || undefined),   // the weekly re-import must not drop what the gradebook, the seating chart and the backup put here
         placeholder, allBlank, awaitingPool: false, fromSection: !!(prev && prev.pool)
       };
+      // a class held from a backup (its export not imported yet) brings its teacher-written records along (audit, 25 Oct 2026)
+      if (!prev) ['stuNotes', 'family', 'practice', 'confForms', 'reportLog', 'hiddenUnits'].forEach(k => { if (pend[k] != null) state.sections[meta.key][k] = pend[k]; });   // the same list a gradebook-made class takes (below)
       // an older file accepted on purpose keeps the newer weeks' history (audit: they used to be deleted for good)
       snapshot(state.sections[meta.key]);
       state.sections[meta.key].best = prev ? prev.best : null; state.sections[meta.key].receipts = prev ? prev.receipts : {}; state.sections[meta.key]._keys = null; mergeBest(state.sections[meta.key]);
@@ -523,7 +525,7 @@ async function importFiles(files) {
   const classes = ok.filter(s => !s.pool || s.fromSection).map(s => ({ label: s.label, text: `IXL export: goal ${s.threshold}, ${plural(s.students.length, 'student')}` }));
   const same = sameData.map(l => ({ label: l, text: 'IXL export: no change: this class already has the course export from the same day or later' }));
   courseFixed.forEach(t => same.push({ label: 'IXL course export', text: t }));
-  const lines = [...pools, ...classes, ...same, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook: ' + g.text })), ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: wiText(x) }))];
+  const lines = [...pools, ...classes, ...same, ...gbImported.map(g => ({ label: g.label, text: 'Focus gradebook: ' + g.text })), ...pdfOut.lines, ...workingIn.map(x => ({ label: x.prep === 'acc' ? 'Accelerated' : 'On-level', wi: x.prep + ':' + x.unit, text: wiText(x) }))];
   if (lines.length || fails.length || skipped) {   // files dropped within a quarter of an hour read as one import; a newer line for the same class replaces the older
     const prev = state.lastImport && Date.now() - new Date(state.lastImport.at) < 15 * 60000 ? state.lastImport : { lines: [], fails: [], skipped: 0 };
     const fresh = lines.map(l => ({ label: String(l.label).slice(0, 80), text: String(l.text).replace(/<[^>]+>/g, '').slice(0, 300), pool: l.pool || null, wi: l.wi || null }));
@@ -533,11 +535,14 @@ async function importFiles(files) {
   // that class (the roster panel or the Focus badges are the next step), and a class still needing its roster always does.
   const needRoster = ok.find(s => !s.pool && !rosterState(s).count); if (needRoster) state.active = needRoster.key;
   const touched = new Set([...ok.map(s => s.key), ...gbImported.map(g => g.key)]).size;
-  search = ''; $('#search').value = ''; view = (touched > 1 || pools.length) && !needRoster ? { mode: 'home', unit: null } : { mode: 'units', unit: null };
+  // A drop of PDFs only (or other files that report for themselves) leaves the screen where it was (audit, 25 Oct 2026:
+  // dropping a Quickview on a student's page used to jump to the class's units).
+  const moved = ok.length || gbImported.length || poolImported.length || sameData.length || courseFixed.length || deferred.length;
+  if (moved) { search = ''; $('#search').value = ''; view = (touched > 1 || pools.length) && !needRoster ? { mode: 'home', unit: null } : { mode: 'units', unit: null }; }
   save(); render();
   const n = lines.length - workingIn.length;   // files, not notes
   if (fails.length) toast(`${n ? `${plural(n, 'file')} imported, ` : ''}${plural(fails.length, 'file')} couldn't be read: ${esc(fails[0])}${fails.length > 1 ? ' …' : ''}`, true);
-  else if (n) toast(`Imported ${plural(n, 'file')}${skipped ? ` · ${skipped} skipped` : ''}${view.mode === 'home' ? '.' : ': details on the Overview.'}`, false, 3500);
+  else if (n > pdfOut.lines.length) toast(`Imported ${plural(n, 'file')}${skipped ? ` · ${skipped} skipped` : ''}${view.mode === 'home' ? '.' : ': details on the Overview.'}`, false, 3500);   // a PDF alone keeps its own, fuller message
   else if (skipped) toast('Nothing imported.', false);
 }
 
@@ -1189,14 +1194,23 @@ ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body>
 }
 
 /* ---------- file sniffing: xlsx / csv / html-table-as-.xls / tab-text-as-.xls / real binary .xls ---------- */
-// pdf.js (vendor/) reads a PDF's text with positions. Its worker is the inert script at the end of the page, started as
-// a blob worker on first use (the CSP allows blob workers and nothing from the network); fonts are never loaded.
-let pdfWorkerUrl = null;
+// pdf.js (vendor/) reads a PDF's text with positions. The library and its worker are inert text at the end of the
+// page until the first PDF: then the library runs on the page and the worker starts as a blob worker (the CSP allows
+// inline and blob scripts and nothing from the network; on file:// a browser can refuse the blob worker, and pdf.js
+// then runs it on the page). One worker serves every PDF after that; fonts are never loaded.
+let pdfWorker = null;
 async function isPdf(f) { try { const u8 = new Uint8Array(await f.slice(0, 5).arrayBuffer()); return u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46; } catch (e) { return false; } }
+function pdfLib() {
+  if (typeof pdfjsLib === 'undefined') { const lib = document.getElementById('tallyPdfLib'); if (!lib || !lib.textContent.trim()) throw new Error('PDF reading is not in this copy of Tally');
+    const el = document.createElement('script'); el.textContent = lib.textContent; document.head.appendChild(el);
+    if (typeof pdfjsLib === 'undefined') throw new Error('PDF reading could not start in this browser'); }
+  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) { const w = document.getElementById('tallyPdfWorker'); pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([w ? w.textContent : ''], { type: 'text/javascript' })); }
+  return pdfjsLib;
+}
 async function pdfTextPages(buf) {
-  if (typeof pdfjsLib === 'undefined') throw new Error('PDF reading is not in this copy of Tally');
-  if (!pdfWorkerUrl) { const src = document.getElementById('pdfjsWorker'); pdfWorkerUrl = URL.createObjectURL(new Blob([src ? src.textContent : ''], { type: 'text/javascript' })); pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl; }
-  const doc = await pdfjsLib.getDocument({ data: buf, isEvalSupported: false, disableFontFace: true, useSystemFonts: false, stopAtErrors: false }).promise;
+  const lib = pdfLib(); if (!pdfWorker || pdfWorker.destroyed) pdfWorker = new lib.PDFWorker();
+  const task = lib.getDocument({ data: buf, worker: pdfWorker, isEvalSupported: false, disableFontFace: true, useSystemFonts: false, stopAtErrors: false });
+  let doc; try { doc = await task.promise; } catch (e) { try { await task.destroy(); } catch (x) {} if (!['InvalidPDFException', 'PasswordException', 'MissingPDFException'].includes(e && e.name)) { try { pdfWorker.destroy(); } catch (x) {} pdfWorker = null; } throw e; }   // a bad file leaves the worker fine; anything else starts a fresh one next time
   const pages = [];
   try { for (let n = 1; n <= doc.numPages; n++) { const pg = await doc.getPage(n); const tc = await pg.getTextContent(); pages.push(tc.items.filter(i => typeof i.str === 'string').map(i => ({ s: i.str, x: i.transform[4], y: i.transform[5], w: i.width, h: i.height }))); pg.cleanup(); } }
   finally { await doc.destroy(); }
@@ -2380,7 +2394,7 @@ function openSettings(key) {
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     const wi = defaultWorkingIn(); noteWorkingIn(wi); save(); close(); render(); toast('Saved' + wi.map(x => `<br>${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join(''), false, wi.length ? 9000 : undefined);
   };
-  $('#forget').onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Everything Tally holds for it goes: IXL data, gradebook, kept quarters, roster, notes, conference text, seating. ${unsavedAnywhere() ? 'A Full save downloads first, so you can get it back.' : syncHolds() ? 'Sync still has it.' : 'Your last Full save still has it.'}`, 'Remove the class')) return; if (unsavedAnywhere()) saveFull(); delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
+  $('#forget').onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Everything Tally holds for it goes: IXL data, gradebook, kept quarters, roster, notes, family contacts and the contact log, weekly reports and signed-report ticks, IXL practice, conference text, seating. ${unsavedAnywhere() ? 'A Full save downloads first, so you can get it back.' : syncHolds() ? 'Sync still has it.' : 'Your last Full save still has it.'}`, 'Remove the class')) return; if (unsavedAnywhere()) saveFull(); delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; view = { mode: 'units', unit: null }; save(); close(); render(); };
   $('#wipe').onclick = async () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
     if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? ${unsavedAnywhere() ? 'A Full save downloads first, so you can get it back.' : syncHolds() ? 'Sync still has it.' : 'Your last Full save still has it.'}`, 'Clear everything')) return; if (unsavedAnywhere()) saveFull();
@@ -2551,7 +2565,7 @@ let dragDepth = 0;
 document.addEventListener('dragenter', e => { e.preventDefault(); if (document.body.classList.contains('lbMode')) return; dragDepth++; document.body.classList.add('dragging'); });
 document.addEventListener('dragleave', e => { e.preventDefault(); if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
 document.addEventListener('dragover', e => e.preventDefault());
-document.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (document.body.classList.contains('lbMode') || document.body.classList.contains('showMode')) return; const fs = [...e.dataTransfer.files].filter(f => /\.(xlsx|csv|xls|txt|tsv|html?|json)$/i.test(f.name)); if (fs.length) importFiles(fs); else toast('Drop an IXL Score Grid, a Focus gradebook export (.xlsx, .csv, .xls) or a Seating Chart backup (.json).', true); });
+document.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (document.body.classList.contains('lbMode') || document.body.classList.contains('showMode')) return; const fs = [...e.dataTransfer.files].filter(f => /\.(xlsx|csv|xls|txt|tsv|html?|json|pdf)$/i.test(f.name)); if (fs.length) importFiles(fs); else toast('Drop an IXL Score Grid, a Focus gradebook export (.xlsx, .csv, .xls), a Seating Chart backup (.json), or a FAST score report or IXL Quickview (.pdf).', true); });
 // Every dialog goes through #modal, so one observer gives them all the same manners: focus moves into the panel on
 // open (to the panel itself — never an input, which would raise the tablet's keyboard), Tab stays inside, the dialog is
 // named by its own heading, and focus goes back to whatever opened it on close.
@@ -2575,7 +2589,7 @@ document.addEventListener('keydown', e => {
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
 /*__SYNC__*/
-window.__tally = { gbUnitFor, openQuarters, closedEarly, quarterDue, openSettings, gradeSummary, syncBusyHere, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { gbUnitFor, openQuarters, closedEarly, quarterDue, openSettings, gradeSummary, syncBusyHere, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.

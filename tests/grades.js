@@ -102,10 +102,13 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const teach=await popB.evaluate(()=>({ n:document.querySelectorAll('section.teach').length, rows:document.querySelectorAll('section.teach tbody tr').length, boxes:document.querySelectorAll('section.teach .box').length, text:document.querySelector('section.teach').innerText.replace(/\s+/g,' ').slice(0,400) }));
   check(teach.n===1 && teach.rows===cdf && teach.boxes===cdf*2 && /Reports out and back/i.test(teach.text) && /Back, signed/i.test(teach.text),'a batch ends with the teacher\'s page: every student in it, a box for handed out and one for back signed: '+JSON.stringify({n:teach.n,rows:teach.rows,boxes:teach.boxes,cdf})); await popB.close();
   check(msgs.length===1 && /the IXL export is from .*\d+ days ago\. A weekly report wants today's numbers\. Print anyway\?/.test(msgs[0]) && !/Focus gradebook/.test(msgs[0]),'before printing, Tally says the IXL export is not today\'s (the gradebook came in today): "'+msgs[0]+'"');
-  await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date(Date.now()-864e5).toISOString(); T.save(); });
+  await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date(Date.now()-864e5).toISOString(); s.grades.exportedAt=s.grades.importedAt; T.save(); });
   const why=await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; return T.staleExports(s,[0]); });
   check(why.length===2 && /Focus gradebook in Tally is from yesterday/.test(why[0]),'a gradebook from yesterday is named too (Croix: a Monday morning print should have a Monday morning grade): '+why.join('; '));
-  await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date().toISOString(); T.save(); });
+  // audit (25 Oct): the file's own date counts, not the import's: Friday's export brought in on Monday is Friday's numbers
+  const fri=await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date().toISOString(); s.grades.exportedAt=new Date(Date.now()-3*864e5).toISOString(); return T.staleExports(s,[0]).join('; '); });
+  check(/Focus gradebook in Tally is from .*3 days ago/.test(fri),'a gradebook imported today from a file written three days ago is named as three days old: '+fri);
+  await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date().toISOString(); s.grades.exportedAt=s.grades.importedAt; T.save(); });
   // hidden names mask the overview and the card
   await p.click('#btnHide'); await p.waitForTimeout(400);
   check(!(await p.textContent('.gstu')).includes(first),'Names off masks the students table');

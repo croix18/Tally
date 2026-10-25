@@ -318,7 +318,7 @@ table{border-collapse:collapse;width:100%}td,th{padding:1.5px 6px;text-align:lef
 .wk .panel{border:1.5px solid #000;border-radius:6px;overflow:hidden;margin:8px 0 0;break-inside:avoid}.wk .ph{background:#6b6b6b;color:#fff;font-weight:900;font-size:9.5pt;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px}.wk .ph .hs{text-transform:none;letter-spacing:0;font-weight:normal;color:#eee;font-size:8.5pt}.wk .panel.dark .ph{background:#222}.wk .panel.alert{border-width:2.5px}.wk .panel.alert .ph{background:#000}.wk .panel.alert .lead{margin:3px 0}.wk .pbody{padding:4px 8px 6px}.wk .pbody>p:first-child,.wk .pbody>.lead:first-child{margin-top:2px}
 .wk .two{gap:0 8px;align-items:start}.wk .two>.panel{margin-top:8px}.wk .col .panel:first-child{margin-top:8px}.wk .rt{margin:4px -8px -6px;padding:4px 8px;background:#eee;border-top:1px solid #aaa}.wk .todo{margin:2px 0 6px}
 .wk .pledge{margin-top:8px;border:1.5px solid #000;border-radius:6px;padding:0;display:grid;grid-template-columns:1.6fr 1fr;gap:0;overflow:hidden}.wk .pl{padding:7px 10px 8px}.wk .pl b{margin-bottom:4px}.wk .pl.last{background:#eee;border-left:1.5px solid #000}.wk .lines{display:block}.wk .lines i{height:19px}.wk .pledgeWrap{break-inside:avoid;page-break-inside:avoid}.wk .ticks{margin-top:6px}
-.teach .ret{margin-top:10px}.teach .ret th{font-size:8pt;padding:3px 6px;border-bottom:1.5px solid #000}.teach .ret td{padding:4px 6px;font-size:9.5pt;border-bottom:1px solid #bbb;height:20px}.teach .ret td.c,.teach .ret th.c{text-align:center;width:70px}.teach .ret td:nth-child(2){white-space:nowrap}.teach .ret td.w{min-width:80px}.teach .ret td:last-child{width:120px}.teach .ret .box{margin:0;width:13px;height:13px}\n.wk .sig{margin-top:6px;border:1.5px solid #000;border-radius:6px;padding:8px 10px;display:flex;gap:14px}.wk .sig span.d{flex:.5}.bar{position:fixed;bottom:14px;right:14px;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25)}.bar button{font:inherit;padding:8px 18px}@media print{.bar{display:none}}`;
+.teach .ret{margin-top:10px}.teach .ret th{font-size:8pt;padding:3px 6px;border-bottom:1.5px solid #000}.teach .ret td{padding:4px 6px;font-size:9.5pt;border-bottom:1px solid #bbb;height:20px}.teach .ret td.c,.teach .ret th.c{text-align:center;width:70px}.teach .ret td:nth-child(2){white-space:nowrap}.teach .ret td.w{min-width:80px}.teach .ret td:last-child{width:120px}.teach .ret .box{margin:0;width:13px;height:13px}\n.wk .sig{margin-top:6px;border:1.5px solid #000;border-radius:6px;padding:8px 10px;display:flex;gap:14px}.wk .sig span.d{flex:.5}.bar{position:fixed;bottom:14px;right:14px;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px}.bar button{font:inherit;padding:8px 18px}.bar .hint{font-size:9pt;color:#333;padding-left:6px}@media print{.bar{display:none}}`;
 // What one next assessment of `mx` points can do for student i — only what is computed: for each letter above the
 // current grade (a D counts), the score that reaches it or the fact that none does; and the score that keeps the
 // current letter. The report, the student page and Show student all word their sentence from this.
@@ -331,7 +331,7 @@ function nextAssessment(s, i, mx) {
 function studentReportSection(s0, i, ixlRow) {
   const s = openSec(s0);   // a closed quarter's work can't move the grade any more, so the report is about the open one
   const gb = s.grades; const g = gradingFor(s.prep); const name = gb.students[i]; const r0 = computeGrade(s, i); const r = r0 && r0.rounded != null ? r0 : null;   // nothing graded yet → no grade line, no targets
-  const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing'); const allIn = {}; missing.forEach(a => allIn[a.name] = a.max);
+  const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing'); const allIn = {}; missing.filter(a => !/\bixl\b/i.test(a.name)).forEach(a => allIn[a.name] = a.max);
   const ixlCols = gb.assignments.filter(a => /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && (a.values[i] == null || a.values[i] < a.max));
   const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
   const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
@@ -345,8 +345,11 @@ function studentReportSection(s0, i, ixlRow) {
   const retakeable = () => tests.filter(a => a.status[i] === 'score' && a.values[i] < a.max).map(a => ({ a, g: computeGrade(s, i, { [a.name]: a.max }) })).filter(x => x.g && x.g.rounded != null && r && x.g.rounded > r.rounded).sort((x, y) => y.g.rounded - x.g.rounded);
   const better = rt && rt.ok ? retakeable() : [];
   // ---- since the last report: what moved (the log is written when a report prints) ----
-  const today = localDay(new Date().toISOString()); const q = liveQuarter(s0); const log = ((s0.reportLog || {})[norm(name)] || []).filter(e => e.date < today && (e.q == null || e.q === q)); const last = log[log.length - 1] || null;   // a report from an earlier quarter is not the one to move from
-  const stale = last ? [last.gb && last.gb === (localDayOf(gb.importedAt) || '') ? 'Focus' : '', last.ix && last.ix === (dataDate(s) || '') ? 'IXL' : ''].filter(Boolean) : [];
+  // A report is the week's (logReport keeps one per school week), so a reprint in the same week moves from the same
+  // report the first print did: last week's. A report from an earlier quarter is not the one to move from.
+  const thisWeek = weekOf(localDay(new Date().toISOString())); const q = liveQuarter(s0); const log = ((s0.reportLog || {})[norm(name)] || []).filter(e => weekOf(e.date) < thisWeek && (e.q == null || e.q === q)); const last = log[log.length - 1] || null;
+  const gbAt = gb.exportedAt || gb.importedAt || '';   // when Focus wrote the file (its date on disk), else when it came into Tally
+  const stale = last ? [(last.gbAt ? last.gbAt === gbAt : last.gb && last.gb === (localDayOf(gb.importedAt) || '')) ? 'Focus' : '', last.ix && last.ix === (dataDate(s) || '') ? 'IXL' : ''].filter(Boolean) : [];
   const ixlNow = ixlRow && ixlRow.ixl != null ? unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)).reduce((n, u) => n + points(s, u, ixlRow.ixl), 0) : null;
   const delta = (a, b, up) => a == null || b == null ? '' : b === a ? '<span class="same">same</span>' : `<span class="${(b > a) === up ? 'up' : 'down'}">${b > a ? '+' : '−'}${Math.abs(b - a)}</span>`;
   const since = last ? `<div class="since"><b>Since the last report</b> <small>${esc(fmtDate(last.date))}</small>
@@ -363,8 +366,17 @@ function studentReportSection(s0, i, ixlRow) {
   const steps = qp && !qp.top ? qp.plan.filter(x => x.kind !== 'copy').map(x => `<li><span class="box"></span><span class="st">${stepText(x)}</span><span class="aft">${x.kind === 'ixlreq' ? '' : `→ ${x.after}%`}</span></li>`) : [];
   const copies = qp && !qp.top ? qp.plan.filter(x => x.kind === 'copy') : [];   // the teacher's step, not a box for the student (audit, 24 Oct)
   const copyNote = copies.length ? `<p class="lead"><small>${copies.map(x => `Your ${esc(x.unit ? x.unit.short : x.a.name)} IXL points (${fmtN(x.to)}) go into Focus at the next grade update.`).join(' ')}</small></p>` : '';
-  const doThis = qp && qp.top ? `<p class="keep">An A already. This week: keep every assignment in on time and the current unit's IXL at goal.</p>`
-    : steps.length ? `<p class="lead">${qp.reached ? `These steps take the grade from ${qp.base.rounded}% to <b>${qp.result.rounded}% ${qp.result.letter}</b>.` : `Missing work, IXL and retakes reach ${qp.result.rounded}%: the next assessments are needed too.`}</p><ol class="todo">${steps.join('')}</ol>${copyNote}` : r ? (better.length ? `<p class="keep">Nothing missing. Retake ${esc(better[0].a.name)}: see the box above.</p>` : '<p class="keep">Nothing missing and every assessment at full marks: keep going.</p>') : '';
+  // With no step for the student, say only what is true (audit, 25 Oct 2026: "Nothing missing and every assessment at
+  // full marks" printed for a student with missing work whenever the IXL copy alone reached the next letter).
+  const missWork = missing.filter(a => !/\bixl\b/i.test(a.name)); const belowFull = tests.some(a => a.status[i] === 'score' && Number(a.values[i]) < a.max);
+  const stillMissing = () => `Still missing: ${missWork.slice(0, 3).map(a => `<b>${esc(a.name)}</b>`).join(', ')}${missWork.length > 3 ? ` and ${missWork.length - 3} more` : ''}. Turn ${missWork.length === 1 ? 'it' : 'them'} in this week.`;
+  const steady = () => missWork.length ? `<p class="keep">${stillMissing()}</p>`
+    : better.length ? `<p class="keep">Nothing missing. Retake ${esc(better[0].a.name)}: see the box above.</p>`
+    : `<p class="keep">Nothing missing${belowFull ? '' : ' and every assessment at full marks'}: keep going.</p>`;
+  const copyOnly = !!(qp && !qp.top && !steps.length && copies.length && qp.reached);
+  const doThis = qp && qp.top ? `<p class="keep">An A already. ${missWork.length ? stillMissing() : 'This week: keep every assignment in on time and the current unit\'s IXL at goal.'}</p>`
+    : steps.length ? `<p class="lead">${qp.reached ? `These steps take the grade from ${qp.base.rounded}% to <b>${qp.result.rounded}% ${qp.result.letter}</b>.` : `Missing work, IXL and retakes reach ${qp.result.rounded}%: the next assessments are needed too.`}</p><ol class="todo">${steps.join('')}</ol>${copyNote}`
+    : r ? `${copyOnly ? `<p class="lead">Your ${(u => u.length > 1 ? `${u.slice(0, -1).join(', ')} and ${u[u.length - 1]}` : u[0])(copies.map(x => esc(x.unit ? x.unit.short : x.a.name)))} IXL points go into Focus at the next grade update, and that takes the grade to <b>${qp.result.rounded}% ${qp.result.letter}</b>.</p>` : ''}${steady()}` : '';
   // ---- IXL by unit (the names a student can act on; the rest are counted) ----
   const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const t = s.threshold; let ixl = '';
   if (ixlRow && ixlRow.ixl != null) {
@@ -384,17 +396,17 @@ function studentReportSection(s0, i, ixlRow) {
   // ---- tests and quizzes so far ----
   const testsLine = tests.length ? tests.map(a => `${esc(a.name)} <b>${a.status[i] === 'missing' ? 'NHI' : `${fmtN(a.values[i])}/${fmtN(a.max)}`}</b>${a.status[i] === 'score' && a.max ? ` <small>${Math.round(a.values[i] / a.max * 100)}%</small>` : ''}`).join(' · ') : 'None graded yet.';
   // ---- what would move the grade ----
-  const moves = [
-    ...missing.slice(0, 3).map(a => `<tr><td class="nhi">${esc(a.name)} <small>${a.max} pts${a.due ? ' · due ' + esc(a.due) : ''}</small></td><td class="r">turned in ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
-    missing.length > 3 ? `<tr><td colspan="2"><i>and ${missing.length - 3} more missing</i></td></tr>` : '',
-    missing.length > 1 ? `<tr><td><b>All missing work turned in</b></td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
+  const moves = [   // an IXL column is finished, not turned in: it has its own row below (audit: an NHI IXL column was listed twice)
+    ...missWork.slice(0, 3).map(a => `<tr><td class="nhi">${esc(a.name)} <small>${a.max} pts${a.due ? ' · due ' + esc(a.due) : ''}</small></td><td class="r">turned in ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
+    missWork.length > 3 ? `<tr><td colspan="2"><i>and ${missWork.length - 3} more missing</i></td></tr>` : '',
+    missWork.length > 1 ? `<tr><td><b>All missing work turned in</b></td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
     ...ixlCols.map(a => `<tr><td>${esc(a.name)} <small>now ${a.status[i] === 'missing' ? 'NHI' : a.values[i] + '/' + a.max}</small></td><td class="r">at ${a.max}/${a.max} ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
-    (missing.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work turned in and IXL finished</b></td><td class="r"><b>${arrow(computeGrade(s, i, both))}</b></td></tr>`; })() : '',
+    (missWork.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work turned in and IXL finished</b></td><td class="r"><b>${arrow(computeGrade(s, i, both))}</b></td></tr>`; })() : '',
     nextLine ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${nextLine.charAt(0).toUpperCase() + nextLine.slice(1)}.</td></tr>` : ''].filter(Boolean).join('');
   const scoreboard = `<div class="board">
       <div><small>Missing</small><b>${missing.length}</b><span>${missing.length ? plural(missing.reduce((n, a) => n + (a.max || 0), 0), 'point') + ' waiting' : 'nothing'}</span></div>
       <div><small>IXL at goal</small><b>${ixlNow != null ? `${ixlNow} / ${units.reduce((n, u) => n + activeFor(s, u, ixlRow.ixl).length, 0)}` : '—'}</b><span>${ixlNow != null ? 'skills, assigned units' : 'not linked'}</span></div>
-      <div><small>Tests & quizzes</small><b>${(() => { const sc = tests.filter(a => a.status[i] === 'score'); const e = sc.reduce((n, a) => n + Number(a.values[i]), 0), p = sc.reduce((n, a) => n + a.max, 0); return p ? Math.round(e / p * 100) + '%' : '—'; })()}</b><span>${plural(tests.length, 'graded')}</span></div>
+      <div><small>Tests & quizzes</small><b>${(() => { const e = tests.reduce((n, a) => n + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), p = tests.reduce((n, a) => n + a.max, 0); return p ? Math.round(e / p * 100) + '%' : '—'; })()}</b><span>${tests.length} graded${tests.some(a => a.status[i] === 'missing') ? ' · NHI counts as 0' : ''}</span></div>
       <div class="${rt ? (rt.ok ? 'ok' : 'no') : ''}"><small>Retake</small><b>${rt ? (rt.ok ? 'Eligible' : 'Not yet') : '—'}</b><span>${rt ? (rt.ok ? 'nothing in the way' : esc(retakeWhy(rt))) : ''}</span></div></div>`;
   /* The page is a form (Croix, 24 Oct 2026, with a mock-up: "see how much the borders and boxes complement the data
      and make it easier to understand"): a title block, grey cards, each section a boxed panel with a dark header
@@ -406,12 +418,12 @@ function studentReportSection(s0, i, ixlRow) {
   const retakeNotice = better.length ? panel('Retake this week', `<p class="lead"><b>${esc(niceName(name).split(' ')[0] || 'You')}</b>, you are eligible to retake ${better.length === 1 ? `<b>${esc(better[0].a.name)}</b>` : `${better.length} assessments`}, and it would raise your grade${better.length === 1 ? ` <b>→ ${better[0].g.rounded}% ${better[0].g.letter}</b> at full marks` : ` (${esc(better[0].a.name)} alone <b>→ ${better[0].g.rounded}% ${better[0].g.letter}</b> at full marks)`}.</p>
       <p class="lead">Come to ${esc(teacher)}'s room during HOWL time on <b>Wednesday or Thursday</b>. Tell the teacher whose HOWL time you would be in that you are with ${esc(teacher)}, in person or by Focus message.</p>
       <p class="lead"><span class="box"></span> I told my HOWL teacher &nbsp; <span class="box"></span> I came Wednesday &nbsp; <span class="box"></span> I came Thursday</p>`, 'alert') : '';
-  return `<section class="rep wk"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Weekly progress report</div></div><div class="who"><h1>${esc(name)}</h1><div class="meta">${esc(new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))} <small>· Focus as of ${esc(fmtDate(localDayOf(gb.importedAt)))}${ixlRow && ixlRow.ixl != null && dataDate(s) ? ` · IXL as of ${esc(fmtDate(dataDate(s)))}` : ''}</small></div></div>${since}</div>
+  return `<section class="rep wk"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Weekly progress report</div></div><div class="who"><h1>${esc(name)}</h1><div class="meta">${esc(new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))} <small>· Focus as of ${esc(fmtDate(localDayOf(gbAt)))}${ixlRow && ixlRow.ixl != null && dataDate(s) ? ` · IXL as of ${esc(fmtDate(dataDate(s)))}` : ''}</small></div></div>${since}</div>
     <div class="top"><div class="gradeBox"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>${scoreboard}</div>
     ${retakeNotice}
-    ${panel(`Do this week${qp && !qp.top && qp.letter ? `: the quickest way to ${esc(anLetter(qp.letter))}` : ''}`, `${doThis}${rt ? `<p class="rt"><b>Retakes:</b> ${rt.ok ? `eligible: nothing missing${rt.unit && !rt.noIxl ? ` and ${esc(rt.unit.short)} IXL at goal` : ''}.` : `not yet. To retake: ${esc(retakeWhy(rt, true))}.`}</p>` : ''}`, 'dark')}
-    <div class="two">${panel('Tests &amp; quizzes', `<p class="tests">${testsLine}</p>`)}${panel('What would move the grade', moves ? `<table><tbody>${moves}</tbody></table>` : '<p>Nothing missing and every assessment at full marks: keep going.</p>')}</div>
+    ${panel(`Do this week${qp && !qp.top && qp.letter && (steps.length || copyOnly) ? `: the quickest way to ${esc(anLetter(qp.letter))}` : ''}`, `${doThis}${rt ? `<p class="rt"><b>Retakes:</b> ${rt.ok ? `eligible: ${esc(retakeOkWhy(rt))}.` : `not yet. To retake: ${esc(retakeWhy(rt, true))}.`}</p>` : ''}`, 'dark')}
+    <div class="two">${panel('Tests &amp; quizzes', `<p class="tests">${testsLine}</p>`)}${panel('What would move the grade', moves ? `<table><tbody>${moves}</tbody></table>` : `<p>${r ? `Nothing missing${belowFull ? '' : ' and every assessment at full marks'}.` : 'Nothing graded yet.'}</p>`)}</div>
     <div class="pledgeWrap"><div class="pledge"><div class="pl"><b>This week I will</b><div class="lines"><i></i><i></i><i></i></div></div><div class="pl last"><b>Last week's plan</b><div class="ticks"><span class="box"></span> done <span class="box"></span> partly <span class="box"></span> not yet</div></div></div>
     <div class="sig"><span>Student</span><span class="d">Date</span><span>Parent or guardian</span><span class="d">Date</span></div></div>
     ${ixl}
@@ -421,15 +433,28 @@ function studentReportSection(s0, i, ixlRow) {
 function logReport(s0, i, ixlRow) {
   const s = openSec(s0); const gb = s.grades; if (!gb) return; const name = gb.students[i]; const r = computeGrade(s, i);
   const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const ixl = ixlRow && ixlRow.ixl != null ? units.reduce((n, u) => n + points(s, u, ixlRow.ixl), 0) : null;
-  const entry = { date: localDay(new Date().toISOString()), q: liveQuarter(s0), gb: localDayOf(gb.importedAt) || '', ix: dataDate(s) || '', grade: r && r.rounded != null ? r.rounded : null, missing: gb.assignments.filter(a => a.status && a.status[i] === 'missing').length, ixl };
-  s0.reportLog = s0.reportLog || {}; const k = norm(name); const list = (s0.reportLog[k] || []).filter(e => e.date !== entry.date); list.push(entry); s0.reportLog[k] = list.slice(-12);
+  const gbAt = gb.exportedAt || gb.importedAt || '';
+  const entry = { date: localDay(new Date().toISOString()), q: liveQuarter(s0), gb: localDayOf(gb.importedAt) || '', ...(gbAt ? { gbAt } : {}), ix: dataDate(s) || '', grade: r && r.rounded != null ? r.rounded : null, missing: gb.assignments.filter(a => a.status && a.status[i] === 'missing').length, ixl };
+  // One entry per school week: a reprint or a second look the same week replaces that week's entry and keeps its
+  // "back, signed" tick (audit, 25 Oct 2026: reopening a report wiped the tick). A cleared list is not carried over:
+  // a report printed after Clear starts the new list.
+  s0.reportLog = s0.reportLog || {}; const k = norm(name); const wk = weekOf(entry.date); const old = s0.reportLog[k] || [];
+  const same = old.filter(e => weekOf(e.date) === wk); const back = same.map(e => e.back).filter(Boolean).pop(); if (back) entry.back = back;
+  const list = old.filter(e => weekOf(e.date) !== wk); list.push(entry); list.sort((a, b) => a.date.localeCompare(b.date)); s0.reportLog[k] = list.slice(-12);
 }
+// The report window's Print button. A batch says to print one-sided: two-sided would put the next student's page on
+// the back of a sheet that goes home with someone else.
+const printBar = n => `<div class="bar">${n > 1 ? '<span class="hint">Print one-sided so no sheet holds two students.</span>' : ''}<button onclick="window.print()">Print</button></div>`;
+// One student's section, or a plain line in its place: one student's odd data never blanks the whole batch.
+function safeSection(make, name, failed) { try { return make(); } catch (e) { console.error(e); failed.push(name); return `<section class="rep"><h1>${esc(name)}</h1><p>Tally could not make this report.</p></section>`; } }
 function printStudentReports(s, indices, title) {
-  const rows = gbRows(s);
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}</style></head><body><div class="bar"><button onclick="window.print()">Print</button></div>${indices.map(i => studentReportSection(s, i, rows[i])).join('')}${indices.length > 1 ? returnChecklist(s, indices) : ''}</body></html>`;
-  const go = () => { indices.forEach(i => logReport(s, i, rows[i])); save(); openPrint(html, (indices.length === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', indices.length === 1); };   // one student's report: a file name without the name; the log is written only for a report that opens
-  const why = [...staleExports(s, indices), ...(state.settings.hideNames ? [`names are hidden, but the ${indices.length === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen`] : [])];   // projected: say so first (audit)
-  if (why.length) { ask(`Before printing: ${why.join('; ')}. A weekly report wants today's numbers. Print anyway?`, 'Print anyway').then(ok => { if (ok) go(); }); return; }
+  const rows = gbRows(s); const failed = [];
+  const body = indices.map(i => safeSection(() => studentReportSection(s, i, rows[i]), s.grades.students[i], failed)).join('');
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}</style></head><body>${printBar(indices.length)}${body}${indices.length > 1 ? safeSection(() => returnChecklist(s, indices), 'Reports out and back', failed) : ''}</body></html>`;
+  const go = () => { indices.filter(i => !failed.includes(s.grades.students[i])).forEach(i => logReport(s, i, rows[i])); save(); openPrint(html, (indices.length === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', indices.length === 1);   // one student's report: a file name without the name; the log is written only for a report that opens
+    if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(n => shown(n)).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
+  const old = staleExports(s, indices); const why = [...old, ...(state.settings.hideNames ? [`names are hidden, but the ${indices.length === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen`] : [])];   // projected: say so first (audit)
+  if (why.length) { ask(`Before printing: ${why.join('; ')}.${old.length ? ' A weekly report wants today\'s numbers.' : ''} Print anyway?`, 'Print anyway').then(ok => { if (ok) go(); }); return; }
   go();
 }
 /* Croix (24 Oct 2026): "remind me to update if it's been too long before generating the weekly report", then "tighter.
@@ -438,7 +463,7 @@ function printStudentReports(s, indices, title) {
 function staleExports(s0, indices) {
   const s = openSec(s0); const gb = s.grades; const out = [];
   const when = d => { const n = ageDays(d); return n === 1 ? 'yesterday' : `${fmtDate(d)}, ${plural(n, 'day')} ago`; };
-  const gbDay = localDayOf(gb.importedAt) || '', ixDay = dataDate(s) || '';
+  const gbDay = localDayOf(gb.exportedAt || gb.importedAt) || '', ixDay = dataDate(s) || '';   // the day Focus wrote the file: Friday's export imported on Monday is Friday's numbers
   if (gbDay && ageDays(gbDay) > 0) out.push(`the Focus gradebook in Tally is from ${when(gbDay)}`);
   if (s.students.length && ixDay && ageDays(ixDay) > 0) out.push(`the IXL export is from ${when(ixDay)}`);
   return out;

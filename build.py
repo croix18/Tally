@@ -34,7 +34,7 @@ if not test:
 
 # pdf.js (vendor/, Apache-2.0) reads the FLDOE score report PDF; neither file may hold "</script", which would end its tag.
 pdfjs = (root / 'vendor' / 'pdf.min.js').read_text(); pdfworker = (root / 'vendor' / 'pdf.worker.min.js').read_text()
-assert '</script' not in pdfjs and '</script' not in pdfworker and '<!--' not in pdfworker and '<!--' not in pdfjs
+for v in (pdfjs, pdfworker): assert '</script' not in v.lower() and '<!--' not in v, 'a vendor file would end its <script> tag early'
 
 def build(src, out, **parts):
     html = (root / src).read_text()

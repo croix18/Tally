@@ -4,6 +4,9 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
 process.chdir(path.resolve(__dirname, '..'));
 const exe = fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium'
   : require('child_process').execSync('ls -d /opt/pw-browsers/chromium-*/chrome-linux*/chrome 2>/dev/null | head -1').toString().trim() || undefined;
+// A Focus gradebook is dated by the file's own time on disk (when Focus wrote it), so the fixtures are "written now":
+// a suite run on any day sees today's gradebook, as a teacher importing a fresh export does.
+{ const now = new Date(); for (const f of fs.readdirSync('fixtures')) { try { fs.utimesSync(path.join('fixtures', f), now, now); } catch (e) {} } }
 let fails = 0, passes = 0;
 const check = (c, msg) => { console.log((c ? 'PASS ' : 'FAIL ') + msg); if (c) passes++; else fails++; };
 const done = () => { console.log(fails ? `\n${fails} FAILED (${passes} passed)` : `\nALL PASS (${passes})`); process.exitCode = fails ? 1 : 0; };

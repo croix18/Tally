@@ -787,6 +787,46 @@ per-section-file era and many items in them are now done).
   with the answers in JSON; tests/fast-pdf.js. Not seen: the real PDF (Croix can't upload it); the parser tolerates
   split text items, "n/a", "<1", repeated headers and a table split across pages. If a real file fails, the fail toast
   says so and nothing changes.
+- **25 Oct 2026 — Audit of the day's work.** Croix: "Can you run an audit and debugging and hardening on everything
+  that we've done today. It's been a lot and might be messy." Three reviewers (weekly report and family; FAST report;
+  the PDFs) on snapshots, then my own pass; every finding fixed with a check that fails on the code before it
+  (`tests/audit-oct25.js`, 39 checks, plus quickview.js and grades.js). AUDIT_PLAN.md, "Third audit", lists them all.
+  What changes how Tally behaves:
+  - **The report log keeps one entry per school week** (`weekOf`: Monday; a weekend print belongs to the week ahead).
+    A reprint or a second look the same week replaces that week's entry and keeps its "back, signed" tick (opening a
+    report used to wipe it); a list cleared with Clear is not carried over. "Since the last report" moves from the
+    last report of an earlier week, so a reprint shows the same box as the first print.
+  - **Focus is dated by the file**: `gb.exportedAt` (the file's time on disk) before `importedAt`, in the report header,
+    the reminder before printing and "unchanged since then" (now compared by that time, `gbAt` on the log entry).
+    Friday's export brought in on Monday is Friday's numbers. The suites touch the fixtures' times at start.
+  - The weekly report never says "Nothing missing" over missing work: when the IXL copy alone reaches the next letter
+    it says so in one sentence and lists what is still missing. The tests tile counts an NHI as 0 (as the student
+    page does) and says "N graded"; an NHI IXL column is one row in "What would move the grade", not two.
+  - "Eligible … IXL at goal" names only the units the check looked at (those with an IXL column in the open
+    gradebook): `retakeStatus().checked` and `retakeOkWhy`, on the report, the Retake tile, Show student and the chip.
+    The conference strength "Every Unit N IXL skill finished" uses `unitDone` (all of the unit's skills at goal).
+  - A batch prints even if one student's record is bad: that page says Tally could not make it and a toast names
+    the student (weekly and FAST). A batch's Print bar says "Print one-sided so no sheet holds two students."
+  - Family: up to 20 contacts (an eleventh used to vanish at the next load); Add contact hides at the cap.
+  - IXL Quickview: rows are rebuilt from their pieces (a skill name or a time wrapped onto a second line in its cell,
+    the other cells centred between), anchored on the grade cell; a header that can't be read joins its rows to no one
+    and the toast counts them; the same student's header again on the next page continues the list; "Practiced Oct
+    3" and "2 weeks ago" read; accents in names are kept (the old ASCII filter turned "José" into "Jos").
+    Fixture `ixl_quickview_hard.pdf` (`make_ixl_quickview_pdf.py --hard`) draws all of that.
+  - Practice is stored as four numbers per skill (`{ ID: [questions, minutes, from, to] }`); a skill's name is kept
+    once per class under `practice['#names']`, and only for skills the class's export doesn't list. A save in the
+    first format loads. "Not practiced in a week" counts to the Quickview's date, not today.
+  - pdf.js is inert text until the first PDF (the library too, not just the worker), under the ids `tallyPdfLib` and
+    `tallyPdfWorker`; one worker serves every PDF of the session. A PDF dropped on the window is read; a PDF-only
+    import leaves the screen where it was and adds its line to the Overview's import lines.
+  - FAST: the state's split category tables keep their category on a page without a header; the FLEID survives a
+    Focus re-import; last year's PM3 from the Seating Chart stays beside this year's windows; a newest year holding
+    only PM3s is last year; the test grade is the newest window's; an accelerated grade-8 class stays on the
+    grade-8 table; a level pill ends one below the next level (239–253); close scores share one mark with a line
+    per window; "1 more point is needed"; the chart's gain label sits in the right margin and a skipped window
+    reads "missed"; the page still fits one sheet with every window and four topics.
+  Open for Croix: does he print two-sided (then every student's report should start on a fresh sheet, which costs a
+  blank page after each one-page report)? Should the FAST window dates (PM2 Dec 8, PM3 May) live in Settings?
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

@@ -102,75 +102,123 @@ function wireNotes(sec, name) {
    answered, time spent, the score they started at and where they are now, plus the student's totals and when they
    last practised (Croix, 25 Oct 2026: "I have pdfs with this data. Can you utilize it?"). What the Score Grid cannot
    say: effort (questions, minutes), recency, and practice outside the assigned units. Kept on the class as
-   sec.practice[norm(ixlName)] = { asOf, questions, minutes, last, mastered, proficient, skills: { ID: { q, min, from,
-   to, name, g } } }, matched by the IXL name (the Quickview shows "Hayden Sutter"; the Score Grid "HAYDEN SUTTER"). */
+   sec.practice[norm(ixlName)] = { asOf, questions, minutes, last, mastered, proficient, skills: { ID: [questions,
+   minutes, start score, current score] } }, matched by the IXL name (the Quickview shows "Hayden Sutter"; the Score
+   Grid "HAYDEN SUTTER"). The names of skills the class's own export doesn't list are kept once for the class, under
+   sec.practice['#names'] = { ID: [name, grade] } (audit, 25 Oct 2026: a name on every student's every skill took
+   most of the space). */
 const MONTHS3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const QV_NAMES = '#names';
 function parseMins(t) { const m = /(?:(\d+)\s*hr)?\s*(?:(\d+)\s*min)?/.exec(String(t || '')); if (/<\s*1\s*min/.test(t)) return 0; return (Number(m && m[1] || 0) * 60) + Number(m && m[2] || 0); }
+const QV_GRADE = /^(\d{1,2}(?:st|nd|rd|th)|Pre-K|K|Alg(?:ebra)?\s?[12]|Geo(?:metry)?)(?=[\s(]|$)/;
 function parseIxlQuickviewPdf(pages) {
+  const clean = t => String(t || '').replace(/[\u0000-\u001F\u007F-\u009F\u00A0\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, ' ').replace(/\s+/g, ' ').trim();   // odd spaces and controls only: a name keeps its accents
   const flat = pages.flat().map(i => i.s).join(' ').replace(/\s+/g, ' ');
   if (!/STUDENTS\s+QUICKVIEW/i.test(flat)) return null;
   const dr = /DATE RANGE:\s*(.*?):\s*([A-Za-z]{3})\w*\.? (\d{1,2})(?:,? (\d{4}))?\s*[-–]\s*([A-Za-z]{3})\w*\.? (\d{1,2})(?:,? (\d{4}))?/.exec(flat);
   let asOf = todayISO(), range = '';
   if (dr) { const mo = MONTHS3.indexOf(dr[5].toLowerCase()) + 1; const start = Number(quarters().ends[0].slice(0, 4)); const y = dr[7] ? Number(dr[7]) : (mo >= 7 ? start : start + 1); if (mo) asOf = `${y}-${String(mo).padStart(2, '0')}-${String(Number(dr[6])).padStart(2, '0')}`; range = `${dr[2]} ${dr[3]} to ${dr[5]} ${dr[6]}`; }
-  const students = []; let cur = null;
-  const HEAD = /^(.+?)\s+([\d,]+)\s+questions?\s+((?:\d+\s*hr\s*)?(?:<?\s*\d+\s*min)?)\s*Practiced\s+(today|yesterday|(\d+)\s+days?\s+ago)/i;
+  if (isNaN(new Date(asOf + 'T12:00:00'))) asOf = todayISO();
+  const course = clean((/STUDENTS:\s*(.+?)\s+SKILL GRADES/i.exec(flat) || [])[1] || '').slice(0, 60);
+  // "Practiced today / yesterday / 5 days ago / 2 weeks ago / Oct 3": days before the report's end date, or null
+  const dayN = t => { t = String(t || ''); let m; if (/\btoday\b/i.test(t)) return 0; if (/\byesterday\b/i.test(t)) return 1;
+    if ((m = /(\d+)\s+days?\s+ago/i.exec(t))) return Number(m[1]); if ((m = /(\d+|a|one)\s+weeks?\s+ago/i.exec(t))) return 7 * (Number(m[1]) || 1); if ((m = /(\d+|a|one)\s+months?\s+ago/i.exec(t))) return 30 * (Number(m[1]) || 1);
+    if ((m = /practiced\s+(?:on\s+)?([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?/i.exec(t))) { const mo = MONTHS3.indexOf(m[1].toLowerCase()) + 1; if (mo) { const a = new Date(asOf + 'T12:00:00'); const y = m[3] ? Number(m[3]) : (mo > a.getMonth() + 1 ? a.getFullYear() - 1 : a.getFullYear()); const d = new Date(y, mo - 1, Number(m[2]), 12); const n = Math.round((a - d) / 864e5); if (n >= 0 && n < 400) return n; } }
+    return null; };
+  const HEAD = /^(.*?[A-Za-z\u00C0-\u024F].*?)\s+([\d,]+)\s+questions?\b\s*(.*)$/i;
   /* A skill row, read from the left and the right rather than by one strict pattern (Croix, 25 Oct 2026: "the time
      spent is extremely hit or miss"): the grade token starts it; from the right, the current score, then the start
      score if there is one, then the time (which may be absent on a row), then the questions; what is left between the
      code and those numbers is the name with the three-character skill ID at its end. */
   const TIME = /^(?:<\s*1\s*min|\d+\s*hr(?:\s*\d+\s*min)?|\d+\s*min)$/;
-  const row = text => { const m = /^(\d(?:st|nd|rd|th))\s*(\([A-Z]+\.?\d*\))?\s+(.*)$/.exec(text); if (!m) return null;
+  const row = text => { const m = /^(Alg(?:ebra)?\s?[12]|\S+)\s*(\([A-Z]+\.?\d*\))?\s+(.*)$/.exec(text); if (!m || !QV_GRADE.test(m[1])) return null;
     const toks = m[3].split(' ').filter(Boolean); const nums = [];   /* peel integers off the right */
     while (toks.length && /^\d+$/.test(toks[toks.length - 1]) && nums.length < 2) nums.unshift(Number(toks.pop()));
     if (!nums.length) return null;
     let min = null; for (let w = 4; w >= 1; w--) { const t = toks.slice(-w).join(' '); if (toks.length >= w && TIME.test(t)) { min = parseMins(t); toks.splice(-w); break; } }
-    let q = null; if (toks.length && /^\d+$/.test(toks[toks.length - 1])) q = Number(toks.pop());
+    let q = null; if (toks.length && /^[\d,]+$/.test(toks[toks.length - 1])) q = Number(toks.pop().replace(/,/g, ''));
     if (toks.length < 2) return null; const id = toks[toks.length - 1]; if (!/^[A-Z0-9]{3}$/.test(id) || /^\d+$/.test(id)) return null;
     return { g: (m[1] + (m[2] ? ' ' + m[2] : '')).trim(), name: toks.slice(0, -1).join(' ').trim(), id, q: q == null ? 0 : q, min, from: nums.length === 2 ? nums[0] : 0, to: nums[nums.length - 1] }; };
-  pages.forEach(items => {
-    const its = items.filter(i => i.s && i.s.trim()).map(i => ({ ...i, s: i.s.trim() })).sort((a, b) => b.y - a.y || a.x - b.x);
-    const lines = []; its.forEach(i => { const ln = lines.find(l => Math.abs(l.y - i.y) <= 4); if (ln) ln.items.push(i); else lines.push({ y: i.y, items: [i] }); });
-    lines.forEach(ln => { ln.items.sort((a, b) => a.x - b.x); const text = ln.items.map(i => i.s).join(' ').replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ').trim();
-      const h = HEAD.exec(text); if (h) { cur = { name: h[1].trim(), questions: Number(h[2].replace(/,/g, '')), minutes: parseMins(h[3]), days: /today/i.test(h[4]) ? 0 : /yesterday/i.test(h[4]) ? 1 : Number(h[5]), mastered: 0, proficient: 0, rows: [] }; students.push(cur); return; }
-      if (!cur) return;
-      const mp = /(\d+)\s+Mastered\s+(\d+)\s+Proficient/i.exec(text); if (mp) { cur.mastered = Number(mp[1]); cur.proficient = Number(mp[2]); return; }
-      const r = row(text); if (r) cur.rows.push(r); });
+  /* A row's text from its pieces wherever they sit (audit, 25 Oct 2026, the likely cause of the "hit or miss" time):
+     a long name or a "1 hr 23 min" wraps onto a second line inside its cell, and the cells beside it sit centred
+     between the two. The pieces are grouped into columns by where they overlap left to right, each column read top
+     line first, the columns left to right. */
+  const lineUp = items => { const lines = []; items.slice().sort((a, b) => b.y - a.y || a.x - b.x).forEach(i => { const ln = lines.find(l => Math.abs(l.y - i.y) <= 3); if (ln) ln.items.push(i); else lines.push({ y: i.y, items: [i] }); }); lines.forEach(l => l.items.sort((a, b) => a.x - b.x)); return lines; };
+  const cellText = items => { const cells = []; items.slice().sort((a, b) => a.x - b.x).forEach(i => { const r = i.x + Math.max(0, Number(i.w) || 0); const c = cells[cells.length - 1]; if (c && i.x < c.r - 0.5) { c.r = Math.max(c.r, r); c.items.push(i); } else cells.push({ r, items: [i] }); });
+    return cells.map(c => lineUp(c.items).map(l => l.items.map(i => i.s).join(' ')).join(' ')).join(' ').replace(/\s+/g, ' ').trim(); };
+  const students = []; const byName = {}; let cur = null, last = null, bad = 0;
+  pages.forEach(raw => {
+    const its = raw.map(i => ({ ...i, s: clean(i.s) })).filter(i => i.s); const taken = new Set(); const events = [];
+    lineUp(its).forEach(ln => { const text = ln.items.map(i => i.s).join(' ');
+      if (QV_GRADE.test(ln.items[0].s) && !/\bquestions?\b/i.test(text)) return;   // a skill row: read below
+      const h = HEAD.exec(text); const sa = /See all\s+(\d+)\s+skills?/i.exec(text); const mp = /(\d+)\s+Mastered\b[^\d]*(\d+)\s+Proficient/i.exec(text);
+      if (h && !sa && !mp) { events.push({ y: ln.y, kind: 'head', h }); ln.items.forEach(i => taken.add(i)); }
+      else if (sa || mp) { events.push({ y: ln.y, kind: 'end', seeAll: sa ? Number(sa[1]) : null, mp }); ln.items.forEach(i => taken.add(i)); }
+      else if (/^Page \d+ of \d+|www\.ixl\.com/i.test(text)) ln.items.forEach(i => taken.add(i)); });
+    // each skill row is anchored on its grade cell; every other piece goes to the anchor nearest it, never across a
+    // student's header or the end of a student's list
+    const cands = its.filter(i => !taken.has(i) && QV_GRADE.test(i.s)); const gx = cands.length ? Math.min(...cands.map(i => i.x)) : 0;
+    const rows = cands.filter(i => i.x <= gx + 20).map(a => ({ y: a.y, kind: 'row', items: [a] })); const anchors = new Set(rows.map(r => r.items[0]));
+    const between = (a, b) => events.some(e => e.y < Math.max(a, b) - 1 && e.y > Math.min(a, b) + 1);
+    its.forEach(i => { if (taken.has(i) || anchors.has(i)) return; let best = null; rows.forEach(r => { const d = Math.abs(r.y - i.y); if (d <= 14 && !between(r.y, i.y) && (!best || d < best.d)) best = { r, d }; }); if (best) best.r.items.push(i); });
+    [...events, ...rows].sort((a, b) => b.y - a.y).forEach(e => {
+      if (e.kind === 'head') { const name = clean(e.h[1]); const k = norm(name); const rest = e.h[3] || ''; const tm = /((?:\d+\s*hr\s*)?(?:<\s*1\s*min|\d+\s*min)|\d+\s*hr)/i.exec(rest);
+        if (cur && norm(cur.name) === k) return;   // the same student's header again at the top of a page: the list goes on
+        cur = byName[k] || null; if (cur) return;   // the same student further on: one record
+        cur = byName[k] = { name, questions: Number(e.h[2].replace(/,/g, '')), minutes: tm ? parseMins(tm[1]) : 0, days: dayN(rest), mastered: 0, proficient: 0, seeAll: null, rows: [] }; students.push(cur); return; }
+      if (e.kind === 'end') { const b = cur || last; if (b) { if (e.seeAll != null) b.seeAll = e.seeAll; if (e.mp) { b.mastered = Number(e.mp[1]); b.proficient = Number(e.mp[2]); } } if (cur) { last = cur; cur = null; } return; }
+      const r = row(cellText(e.items)); if (!cur || !r) { bad++; return; } if (!cur.rows.some(x => x.id === r.id)) cur.rows.push(r); });
   });
-  return { asOf, range, students, kind: 'quickview' };
+  const short = students.filter(st => st.seeAll != null && st.rows.length < st.seeAll).length;
+  return { asOf, range, course, students, bad, short, kind: 'quickview' };
 }
-function cleanPractice(o) { const out = {}; const n = v => typeof v === 'number' && isFinite(v) ? v : (Number(v) || 0); const day = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? String(v) : '';
-  if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue; const skills = {};
-    Object.keys(v.skills || {}).slice(0, 300).forEach(id => { const x = v.skills[id]; if (!/^[A-Z0-9]{2,6}$/.test(id) || !x || typeof x !== 'object') return; skills[id] = { q: n(x.q), min: x.min == null ? null : n(x.min), from: n(x.from), to: n(x.to), name: typeof x.name === 'string' ? x.name.slice(0, 100) : '', g: typeof x.g === 'string' ? x.g.slice(0, 16) : '' }; });
-    out[k] = { asOf: day(v.asOf), questions: n(v.questions), minutes: n(v.minutes), last: day(v.last), mastered: n(v.mastered), proficient: n(v.proficient), skills }; }
+function cleanPractice(o) { const out = {}; const n = (v, hi) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? Math.max(0, Math.min(hi, x)) : 0; };
+  const day = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && !isNaN(new Date(v + 'T12:00:00')) ? String(v) : ''; const ID = /^[A-Z0-9]{2,6}$/; const str = (v, k) => typeof v === 'string' ? v.slice(0, k) : '';
+  const names = {}; const nm = o && typeof o === 'object' ? o[QV_NAMES] : null; if (nm && typeof nm === 'object') Object.keys(nm).forEach(id => { const x = nm[id]; if (ID.test(id) && Array.isArray(x)) names[id] = [str(x[0], 100), str(x[1], 16)]; });
+  const used = new Set();
+  if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (k === QV_NAMES || !SAFE_KEY(k) || !v || typeof v !== 'object') continue; const skills = {};
+    Object.keys(v.skills && typeof v.skills === 'object' ? v.skills : {}).slice(0, 400).forEach(id => { const x = v.skills[id]; if (!ID.test(id) || !x || typeof x !== 'object') return; used.add(id);
+      if (Array.isArray(x)) { skills[id] = [n(x[0], 1e6), x[1] == null ? null : n(x[1], 1e5), n(x[2], 100), n(x[3], 100)]; return; }
+      skills[id] = [n(x.q, 1e6), x.min == null ? null : n(x.min, 1e5), n(x.from, 100), n(x.to, 100)];   // the first format (25 Oct 2026) kept the name on each student
+      if (!names[id] && (x.name || x.g)) names[id] = [str(x.name, 100), str(x.g, 16)]; });
+    out[k] = { asOf: day(v.asOf), questions: n(v.questions, 1e7), minutes: n(v.minutes, 1e6), last: day(v.last), mastered: n(v.mastered, 1e4), proficient: n(v.proficient, 1e4), skills }; }
+  const keep = {}; Object.keys(names).filter(id => used.has(id)).forEach(id => keep[id] = names[id]); if (Object.keys(keep).length) out[QV_NAMES] = keep;
   return out; }
-const practiceOf = (sec, ixlName) => (sec.practice || {})[norm(ixlName)] || null;
-function importQuickview(fx, file) {
-  if (!fx.students.length) { toast(`${esc(file)}: no student blocks in this Quickview.`, true, 8000); return; }
+const practiceOf = (sec, ixlName) => { const p = (sec.practice || {})[norm(ixlName)]; return p && p.skills ? p : null; };
+const pSkill = (sec, id, a) => { if (!a) return null; const k = sec.skills.findIndex(sk => sk.id === id); const nm = ((sec.practice || {})[QV_NAMES] || {})[id]; return { q: a[0], min: a[1], from: a[2], to: a[3], name: k >= 0 ? sec.skills[k].name : nm ? nm[0] : id, g: nm ? nm[1] : '', k: k >= 0 ? k : null }; };
+const daysBetween = (a, b) => a && b ? Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 864e5) : null;
+// Not practiced for a week or more before the Quickview's own date (audit: counted from today, an old Quickview made everyone idle).
+const practiceIdle = p => { const n = p && p.last ? daysBetween(p.last, p.asOf || p.last) : null; return n != null && n >= 7; };
+function importQuickview(fx, file, collect) {
+  if (!fx.students.length) { const t = `${file}: no student blocks in this Quickview`; if (collect) collect.fails.push(t); else toast(esc(t) + '.', true, 8000); return; }
   const secs = state.order.map(k => state.sections[k]).filter(s => s && !s.board && !s.placeholder && s.students.length);
   const swap = nm => nm.split(/\s+/).length === 2 ? nm.split(/\s+/).reverse().join(' ') : nm;
   let matched = 0; const unmatched = []; const touched = new Set();
   fx.students.forEach(st => {
     const keys = [norm(st.name), norm(swap(st.name))]; let hit = false;
     secs.forEach(s => { const found = s.students.find(n => keys.includes(norm(n))); if (!found) return; hit = true; touched.add(s.key);
-      const skills = {}; st.rows.forEach(r => { skills[r.id] = { q: r.q, min: r.min, from: r.from, to: r.to, name: r.name, g: r.g }; });
-      const last = (() => { const d = new Date(fx.asOf + 'T12:00:00'); d.setDate(d.getDate() - (st.days || 0)); return localDayOf(d.toISOString()); })();
-      s.practice = s.practice || {}; s.practice[norm(found)] = { asOf: fx.asOf, questions: st.questions, minutes: st.minutes, last, mastered: st.mastered, proficient: st.proficient, skills }; });
+      s.practice = s.practice || {}; const names = s.practice[QV_NAMES] = s.practice[QV_NAMES] || {}; const known = new Set(s.skills.map(sk => sk.id).filter(Boolean));
+      const skills = {}; st.rows.forEach(r => { skills[r.id] = [r.q, r.min, r.from, r.to]; if (!known.has(r.id)) names[r.id] = [r.name, r.g]; });
+      const last = st.days == null ? '' : (() => { const d = new Date(fx.asOf + 'T12:00:00'); d.setDate(d.getDate() - st.days); return localDayOf(d.toISOString()); })();
+      s.practice[norm(found)] = { asOf: fx.asOf, questions: st.questions, minutes: st.minutes, last, mastered: st.mastered, proficient: st.proficient, skills }; });
     if (hit) matched++; else unmatched.push(st.name);
   });
+  touched.forEach(k => { const s = state.sections[k]; s.practice = cleanPractice(s.practice); });   // the numbers clamped and the names kept once, as a load would
   save();
-  toast(`IXL Quickview${fx.range ? ` (${esc(fx.range)})` : ''}: ${plural(matched, 'student')} matched by IXL name in ${plural(touched.size, 'class')}: questions, time and when they last practiced, by skill${unmatched.length ? ` · <b>${unmatched.length} not in your classes</b>: ${unmatched.slice(0, 3).map(esc).join('; ')}${unmatched.length > 3 ? '…' : ''}` : ''}.`, false, 10000);
-  render();
+  const lost = fx.bad ? ` · ${plural(fx.bad, 'skill row')} could not be read` : fx.short ? ` · for ${plural(fx.short, 'student')}, the PDF lists fewer skills than its "See all" count` : '';
+  toast(`IXL Quickview${fx.range ? ` (${esc(fx.range)})` : ''}: ${plural(matched, 'student')} matched by IXL name in ${plural(touched.size, 'class')}: questions, time and when they last practiced, by skill${unmatched.length ? ` · <b>${unmatched.length} not in your classes</b>: ${unmatched.slice(0, 3).map(n => esc(shown(n))).join('; ')}${unmatched.length > 3 ? '…' : ''}` : ''}${lost}.`, false, 10000);
+  if (collect) collect.lines.push({ label: `IXL Quickview${fx.course ? ' · ' + fx.course : ''}`, text: `${plural(matched, 'student')} matched in ${plural(touched.size, 'class')}${unmatched.length ? ` · ${unmatched.length} not in your classes` : ''}${lost}` });
+  else render();
 }
 // The practice a student has on an assigned skill (by its permanent ID), if the Quickview knew it.
-function skillPractice(sec, ixlName, k) { const pr = practiceOf(sec, ixlName); const id = sec.skills[k] && sec.skills[k].id; return pr && id && pr.skills[id] ? pr.skills[id] : null; }
+function skillPractice(sec, ixlName, k) { const pr = practiceOf(sec, ixlName); const id = sec.skills[k] && sec.skills[k].id; return pr && id ? pSkill(sec, id, pr.skills[id]) : null; }
 const minsWord = m => m == null ? '' : m < 1 ? '<1 min' : m >= 60 ? `${Math.floor(m / 60)} hr ${m % 60} min` : `${m} min`;
 function practiceSection(sec, name) {
   const f = findStudent(sec, name); const ixlName = f.ixl != null ? sec.students[f.ixl] : null; const pr = ixlName ? practiceOf(sec, ixlName) : null; if (!pr) return '';
-  const idOf = {}; sec.skills.forEach((sk, k) => { if (sk.id) idOf[sk.id] = k; });
-  const rows = Object.keys(pr.skills).map(id => ({ id, ...pr.skills[id], k: idOf[id] })).sort((a, b) => b.min - a.min || b.q - a.q);
-  const top = rows.slice(0, 12); const idle = ageDays(pr.last);
+  const rows = Object.keys(pr.skills).map(id => ({ id, ...pSkill(sec, id, pr.skills[id]) })).sort((a, b) => (b.min || 0) - (a.min || 0) || b.q - a.q);
+  const top = rows.slice(0, 12); const ago = pr.last ? ageDays(pr.last) : null;
   return `<section class="gsec" id="pPractice"><h3>IXL practice <small>this school year, as of ${esc(fmtDate(pr.asOf))}</small></h3>
-    <div class="gcards"><div class="gcard"><small>Answered</small><b>${pr.questions.toLocaleString()}</b><span>questions</span></div><div class="gcard"><small>Time on IXL</small><b>${esc(minsWord(pr.minutes))}</b><span>${pr.mastered || pr.proficient ? `${pr.mastered} mastered · ${pr.proficient} proficient` : 'learning'}</span></div><div class="gcard ${idle >= 7 ? 'warn' : ''}"><small>Last practiced</small><b>${esc(fmtDate(pr.last))}</b><span>${idle === 0 ? 'today' : idle === 1 ? 'yesterday' : plural(idle, 'day') + ' ago'}</span></div></div>
+    <div class="gcards"><div class="gcard"><small>Answered</small><b>${pr.questions.toLocaleString()}</b><span>questions</span></div><div class="gcard"><small>Time on IXL</small><b>${esc(minsWord(pr.minutes))}</b><span>${pr.mastered || pr.proficient ? `${pr.mastered} mastered · ${pr.proficient} proficient` : 'learning'}</span></div><div class="gcard ${practiceIdle(pr) ? 'warn' : ''}"><small>Last practiced</small><b>${pr.last ? esc(fmtDate(pr.last)) : '—'}</b><span>${ago == null ? 'not in the Quickview' : ago === 0 ? 'today' : ago === 1 ? 'yesterday' : plural(ago, 'day') + ' ago'}</span></div></div>
     ${top.length ? `<table class="ftab prac"><thead><tr><th>Skill</th><th class="num">Questions</th><th class="num">Time</th><th class="num">Score</th></tr></thead><tbody>${top.map(r => `<tr class="${r.k == null ? 'off' : ''}"><td>${esc(r.name)}${r.k == null ? ' <small>not in a unit</small>' : ''}</td><td class="num">${r.q}</td><td class="num">${esc(minsWord(r.min))}</td><td class="num">${r.from && r.from !== r.to ? `<small>${r.from} →</small> ` : ''}<b>${r.to}</b></td></tr>`).join('')}</tbody></table>${rows.length > top.length ? `<p class="ghint">and ${rows.length - top.length} more skills, less time on each</p>` : ''}` : '<p class="ghint">No skills practiced yet.</p>'}</section>`;
 }
 
@@ -183,9 +231,10 @@ function practiceSection(sec, name) {
    Sync. Whether a weekly report came back signed lives on that report's log entry (sec.reportLog[…].back). */
 var HOWS = ['Call', 'Email', 'Focus message', 'Text', 'In person', 'Note home'];
 var RELS = ['Mother', 'Father', 'Guardian', 'Grandparent', 'Stepmother', 'Stepfather', 'Other'];
+var FAMILY_MAX = 20;   // contacts kept per student; Add contact goes away at the cap (audit: an eleventh was dropped without a word at the next load)
 function cleanFamily(o) { const out = {}; const str = (v, n) => typeof v === 'string' ? v.trim().slice(0, n) : ''; const rid = () => Math.random().toString(36).slice(2, 10);
   if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue;
-    const contacts = (Array.isArray(v.contacts) ? v.contacts : []).map(c => c && typeof c === 'object' ? { id: str(c.id, 20) || rid(), name: str(c.name, 80), rel: str(c.rel, 40), phone: str(c.phone, 40), email: str(c.email, 120), note: str(c.note, 300) } : null).filter(c => c && (c.name || c.phone || c.email)).slice(0, 10);
+    const contacts = (Array.isArray(v.contacts) ? v.contacts : []).map(c => c && typeof c === 'object' ? { id: str(c.id, 20) || rid(), name: str(c.name, 80), rel: str(c.rel, 40), phone: str(c.phone, 40), email: str(c.email, 120), note: str(c.note, 300) } : null).filter(c => c && (c.name || c.phone || c.email)).slice(0, FAMILY_MAX);
     const log = (Array.isArray(v.log) ? v.log : []).map(e => e && typeof e === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(String(e.at)) ? { id: str(e.id, 20) || rid(), at: String(e.at), how: HOWS.includes(e.how) ? e.how : 'Note home', who: str(e.who, 80), text: str(e.text, 2000) } : null).filter(e => e && (e.text || e.who)).slice(-300);
     if (contacts.length || log.length) out[k] = { contacts, log }; }
   return out; }
@@ -203,7 +252,7 @@ function familySection(sec, name) {
   const repRows = reps.map(e => `<li><label><input type="checkbox" data-back="${esc(e.date)}" ${e.back ? 'checked' : ''}> <time>${esc(fmtDate(e.date))}</time> <span>${e.grade != null ? e.grade + '%' : ''}${e.missing ? ` · ${e.missing} missing` : ''}</span> <small>${e.back ? `back signed ${esc(fmtDate(e.back))}` : 'not back yet'}</small></label></li>`).join('');
   return `<section class="gsec" id="pFamily"><h3>Family${n ? ` <small>${n}</small>` : ''}</h3>
     <div class="fcards">${cards || '<p class="ghint">No contacts yet.</p>'}</div>
-    <div id="fformSlot"></div><button class="pill toggle small" id="fAdd">Add contact</button>
+    <div id="fformSlot"></div><button class="pill toggle small${n >= FAMILY_MAX ? ' hidden' : ''}" id="fAdd">Add contact</button>
     <h4 class="subh">Contact log${f.log.length ? ` <small>${f.log.length}</small>` : ''}</h4>
     <form class="lform" id="lform"><input type="date" name="at" value="${esc(todayISO())}" aria-label="Date"><select name="how" aria-label="How">${HOWS.map(h => `<option>${h}</option>`).join('')}</select><input name="who" list="whoList" placeholder="Who" value="${esc(who[0] || '')}" maxlength="80" aria-label="Who"><datalist id="whoList">${who.map(w => `<option value="${esc(w)}">`).join('')}</datalist><textarea name="text" rows="2" maxlength="2000" placeholder="What was said, what was agreed" aria-label="What was said"></textarea><button class="pill small" type="submit">Log it</button></form>
     ${logRows ? `<ul class="clog">${logRows}</ul>` : ''}
@@ -214,8 +263,9 @@ function wireFamily(sec, name) {
   const showForm = c => { const slot = $('#fformSlot'); if (!slot || state.settings.hideNames) return; slot.innerHTML = familyFormHtml(c); $('#fAdd').classList.add('hidden'); const fm = slot.querySelector('form'); fm.querySelector('[name=name]').focus();
     fm.onsubmit = e => { e.preventDefault(); const d = Object.fromEntries(new FormData(fm).entries()); const id = fm.dataset.cid; const next = { ...familyOf(sec, name) }; const c = { id: id || Date.now().toString(36), name: String(d.name || '').trim(), rel: String(d.rel || '').trim(), phone: String(d.phone || '').trim(), email: String(d.email || '').trim(), note: String(d.note || '').trim() };
       if (!c.name && !c.phone && !c.email) { toast('A contact needs at least a name, a phone or an email.', false, 3000); return; }
+      if (!id && next.contacts.length >= FAMILY_MAX) { toast(`${FAMILY_MAX} contacts is the most Tally keeps for one student.`, false, 3000); return; }
       next.contacts = id ? next.contacts.map(x => x.id === id ? c : x) : next.contacts.concat([c]); setFamily(sec, name, next); save(); render(); };
-    fm.querySelector('[data-fcancel]').onclick = () => { slot.innerHTML = ''; $('#fAdd').classList.remove('hidden'); }; };
+    fm.querySelector('[data-fcancel]').onclick = () => { slot.innerHTML = ''; $('#fAdd').classList.toggle('hidden', familyOf(sec, name).contacts.length >= FAMILY_MAX); }; };
   $('#fAdd').onclick = () => showForm({});
   root.querySelectorAll('[data-cedit]').forEach(b => b.onclick = () => showForm(f.contacts.find(c => c.id === b.dataset.cedit) || {}));
   root.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this contact?')) return; const next = { ...familyOf(sec, name) }; next.contacts = next.contacts.filter(c => c.id !== b.dataset.cdel); setFamily(sec, name, next); save(); render(); });
@@ -228,9 +278,9 @@ function familyFormHtml(c = {}) { return `<form class="fform" data-cid="${esc(c.
 // Class level (⋯ → Signed reports): who has the latest weekly report back, who doesn't, and how to reach home.
 // Croix, marking a print (25 Oct 2026): "Week of", not the print date; no instructions, just the count; a way to
 // clear the list; and the Home cell opens a card to add or edit the contact right there, or go to the student's page.
-const weekOf = d => { const x = new Date(d + 'T12:00:00'); const wd = x.getDay(); x.setDate(x.getDate() + (wd === 6 ? 2 : wd === 0 ? 1 : 1 - wd)); return localDayOf(x.toISOString()); };   // the school week's Monday; a weekend print belongs to the week ahead
+const weekOf = d => { const x = new Date(String(d).slice(0, 10) + 'T12:00:00'); if (isNaN(x)) return String(d || ''); const wd = x.getDay(); x.setDate(x.getDate() + (wd === 6 ? 2 : wd === 0 ? 1 : 1 - wd)); return localDayOf(x.toISOString()); };   // the school week's Monday; a weekend print belongs to the week ahead
 function openReturns(s, editing) {
-  const gb = s.grades; if (!gb) { toast('No gradebook yet, so no reports have been printed for this class.', true); return; }
+  const gb = s.grades; if (!gb) { toast(Object.keys(s.reportLog || {}).length ? 'This class has no Focus gradebook right now. Import it to see who has a report out.' : 'No gradebook yet, so no reports have been printed for this class.', true); return; }
   const all = gb.students.map(nm => { const l = reportsOf(s, nm); const last = l[l.length - 1] || null; return { nm, last, f: familyOf(s, nm) }; }).filter(r => r.last);
   if (!all.length) { toast('No weekly reports printed for this class yet.', false, 4000); return; }
   const rows = all.filter(r => !r.last.cleared); const out = rows.filter(r => !r.last.back); const H = state.settings.hideNames;
@@ -268,13 +318,21 @@ function retakeStatus(sec, name) {
   // "Caught up on everything" means everything Focus grades (Croix, 24 Oct 2026: "if I haven't graded unit 4 IXLs yet,
   // it shouldn't be required to be finished before a retake"): a unit's IXL counts only while the open gradebook has an
   // IXL column for it and that cell isn't already at full credit. The unit being worked in is listed first.
+  const checked = [];   // the units this check looked at, in gradebook order: the eligible line names these and no others (audit, 25 Oct 2026)
   if (!noIxl && gb) { const seen = new Set();
-    gb.assignments.forEach(a => { if (!/\bixl\b/i.test(a.name) || aClosed(a, gb)) return; const u = gbUnitFor(sec, a); if (!u || seen.has(u.name) || unitClosed(sec, u)) return; seen.add(u.name);
+    gb.assignments.forEach(a => { if (!/\bixl\b/i.test(a.name) || aClosed(a, gb)) return; const u = gbUnitFor(sec, a); if (!u || seen.has(u.name) || unitClosed(sec, u)) return; seen.add(u.name); checked.push(u);
       const full = a.max > 0 && a.status && a.status[f.gi] === 'score' && Number(a.values[f.gi]) >= a.max; if (full) return;
       const sh = shortIn(u); if (!sh.length) return; if (unit && u.name === unit.name) short = sh; else behind.push({ unit: u, short: sh, col: a.name }); }); }
   if (unit && !noIxl) nUnit = activeFor(sec, unit, f.ixl).length;
+  const unitDone = !!(unit && !noIxl && nUnit && !shortIn(unit).length);   // every skill in the unit being worked in at goal, whether or not Focus grades it yet
   const ok = !missing.length && !noIxl && !short.length && !behind.length;
-  return { ok, missing, short, unit, nUnit, noIxl, behind, hasGrades: !!(gb && gb.assignments.length) };
+  return { ok, missing, short, unit, nUnit, noIxl, behind, checked, unitDone, hasGrades: !!(gb && gb.assignments.length) };
+}
+// "nothing missing and Unit 3 IXL at goal": the words for an eligible student, naming only the units that were checked.
+function retakeOkWhy(r, forStudent) {
+  const u = r.noIxl ? [] : (r.checked || []).slice().sort((a, b) => (a.num || 0) - (b.num || 0)).map(x => x.short); const and = a => a.length > 2 ? `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}` : a.join(' and ');
+  const nums = u.map(x => (/^Unit (\S+)$/.exec(x) || [])[1]); const list = u.length > 1 && nums.every(Boolean) ? `Units ${and(nums)}` : and(u);   // "Units 2 and 3"
+  return (forStudent ? 'nothing is missing' : 'nothing missing') + (list ? ` and ${list} IXL ${forStudent ? 'is ' : ''}at goal` : '');
 }
 // "2 missing · 3 IXL skills in Unit 3", or "" when eligible — the same words on every screen.
 function retakeWhy(r, forStudent) {
@@ -285,7 +343,7 @@ function retakeWhy(r, forStudent) {
     units.forEach(x => parts.push(forStudent ? `finish ${plural(x.short.length, 'IXL skill')} in ${x.unit.short}` : `${plural(x.short.length, 'IXL skill')} in ${x.unit.short}`)); }
   return parts.join(forStudent ? ' and ' : ' · ');
 }
-const retakeChip = r => r.ok ? `<span class="rtag ok" title="Nothing missing, and every IXL skill in the unit is at goal">${ico('check', 'eligible')} retake</span>` : `<span class="rtag" title="To retake: ${esc(retakeWhy(r, true))}">${esc(retakeWhy(r))}</span>`;
+const retakeChip = r => r.ok ? `<span class="rtag ok" title="Eligible: ${esc(retakeOkWhy(r))}">${ico('check', 'eligible')} retake</span>` : `<span class="rtag" title="To retake: ${esc(retakeWhy(r, true))}">${esc(retakeWhy(r))}</span>`;
 
 /* ---------- Students directory ---------- */
 let stuSort = 'class', stuClass = '', stuL30 = false;
@@ -372,7 +430,7 @@ function renderProfile() {
     <div class="gcard"><small>Missing now</small><b>${openB ? sum.missing : '—'}${openB ? tileSpark(missHist, { color: 'var(--bad)', label: 'missing assignments at each Focus import' }) : ''}</b><span>${openB ? (sum.dMissing > 0 ? `+${sum.dMissing} since the last import` : sum.missing ? 'not handed in (counts as 0)' : 'nothing missing') : ''}</span></div>
     <div class="gcard"><small>IXL at goal</small><b>${ix && ix.pct != null ? Math.round(ix.pct) + '%' : '—'}${it ? tileSpark(it.mine, { ref: it.cls, label: 'IXL skills at goal at each export, with the class average dashed' }) : ''}</b><span>${ix && ix.poss ? `${ix.done} of ${ix.poss} skills${ix.basisClosed ? ' (closed units)' : ''}${itD != null ? ` · ${itD >= 0 ? '+' : '−'}${Math.abs(itD)} since the last export` : ''}${clsNow != null && !ix.basisClosed ? ` · class average ${fmtN(Math.round(clsNow * 10) / 10)} skills` : ''}` : f.ixl == null ? (f.noAccount ? 'no IXL account' : 'not matched to an IXL account') : 'no units assigned'}</span></div>
     <div class="gcard"><small>Tests &amp; quizzes</small><b>${assessNow != null ? Math.round(assessNow) + '%' : '—'}</b><span>${assessNow != null ? 'IXL columns left out' : ''}</span></div>
-    ${openB ? (() => { const rt = retakeStatus(sec, name); return `<div class="gcard ${rt.ok ? 'rtOk' : 'rtNo'}" id="pRetake"><small>Retake</small><b>${rt.ok ? `${ico('check', 'eligible')} Eligible` : 'Not yet'}</b><span>${rt.ok ? 'nothing missing' + (rt.unit ? ', ' + rt.unit.short + ' IXL at goal' : '') : esc(retakeWhy(rt))}</span></div>`; })() : ''}
+    ${openB ? (() => { const rt = retakeStatus(sec, name); return `<div class="gcard ${rt.ok ? 'rtOk' : 'rtNo'}" id="pRetake"><small>Retake</small><b>${rt.ok ? `${ico('check', 'eligible')} Eligible` : 'Not yet'}</b><span>${rt.ok ? esc(retakeOkWhy(rt)) : esc(retakeWhy(rt))}</span></div>`; })() : ''}
   </div>`;
 
   // trends
@@ -612,7 +670,7 @@ function openShow(sec, name) {
       <div class="shQuick">${quickestCard(plan, true)}</div>
       <div class="shTry">
         ${missing.length ? `<section><h3>Turn in missing work</h3>${missing.map(a => row('miss', a, 0, 0)).join('')}</section>` : ''}
-        ${retake.length ? (() => { const rt = retakeStatus(sec, name); return `<section><h3>Retake an assessment</h3>${rt.ok ? `<p class="shHint rtLine ok">${ico('check', 'eligible')} You can retake: nothing is missing${rt.unit ? ` and ${esc(rt.unit.short)} IXL is at goal` : ''}.</p>` : `<p class="shHint rtLine">To retake: ${esc(retakeWhy(rt, true))}.</p>`}${retake.map(a => row('re', a, a.values[i], a.values[i])).join('')}</section>`; })() : ''}
+        ${retake.length ? (() => { const rt = retakeStatus(sec, name); return `<section><h3>Retake an assessment</h3>${rt.ok ? `<p class="shHint rtLine ok">${ico('check', 'eligible')} You can retake: ${esc(retakeOkWhy(rt, true))}.</p>` : `<p class="shHint rtLine">To retake: ${esc(retakeWhy(rt, true))}.</p>`}${retake.map(a => row('re', a, a.values[i], a.values[i])).join('')}</section>`; })() : ''}
         ${ixlCols.length ? `<section><h3>Finish IXL</h3>${ixlCols.map(a => row('ix', a, st.ix[a.name], st.ix[a.name])).join('')}</section>` : ''}
         <section><h3>Your next assessment</h3><div class="shRow" data-k="next"><div class="shL"><b>Next test or quiz</b><small>out of <input type="number" id="shNextMax" value="${nx}" min="1" max="200"> points</small></div><label class="shSw"><input type="checkbox" class="shOn" id="shNextOn"><span>Count it</span></label>
           <div class="shS off"><input type="range" class="shPts" id="shNextPts" min="0" max="${nx}" step="0.5" value="${st.next.pts}" aria-label="Next assessment score"><output>${st.next.pts} / ${nx}</output></div></div>

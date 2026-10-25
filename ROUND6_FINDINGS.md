@@ -255,3 +255,11 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   added to tests/conference.js (only-PM3 student; Focus's level picks the table; marks above and targets below) and
   tests/grades.js (unchanged-exports note; another quarter's report ignored; no log when the hidden-names question is
   declined).
+
+- 25 Oct 2026: audit of the day's work (AUDIT_PLAN.md, "Third audit"; NOTES.md, "Audit of the day's work"). Three
+  reviewers plus a pass of my own over the weekly report, signed reports, family, the FAST report and the two PDF
+  imports: 28 findings fixed, each with a check that fails on the code before it. New suite `tests/audit-oct25.js`
+  (39 checks; an http-served page checks the real pdf.js worker), new fixture `fixtures/ixl_quickview_hard.pdf`
+  (`make_ixl_quickview_pdf.py --hard`: a browser-printed Quickview with wrapped cells, a repeated header, an accent,
+  a dated header and one unreadable header). 45 suites, 1440 checks. Open for Croix: two-sided printing; the FAST
+  window dates as a setting.
