@@ -45,7 +45,7 @@ const K = '1205050-7T1A';
   check(M.miss.length===who.missN[many] && M.miss.every(r=>r.box && /turned in → \d+% [A-F]/.test(r.t)) && pcts.every((v,k)=>!k||v<=pcts[k-1]) && new RegExp(who.missN[many]+' assignments · \\d+ points').test(M.missHead),'the back lists all '+who.missN[many]+' missing assignments, each with a box and what turning it in does, biggest first: '+M.missHead);
   check(M.moves.filter(t=>/Worksheet|Assignment \d/.test(t)).length===0 && M.moves.filter(t=>new RegExp('^All '+who.missN[many]+' missing assignments turned in').test(t)).length===1,'"What would move the grade" sums the missing work up in one line: '+M.moves.join(' | ').slice(0,200));
   const ord=M.order.join(' ');
-  check(/panel\.main.*two.*pledgeWrap.*panel\.miss.*panel\.ixl/.test(ord) && /^head since|^head/.test(ord),'the front: header, grade, "Do this week", tests and moves, the plan and signatures; then the missing assignments and the IXL still owed: '+ord);
+  check(/panel\.main.*two.*pledge.*sigs.*panel\.miss.*panel\.ixl/.test(ord) && /^head since|^head/.test(ord),'the front: header, grade, "Do this week", tests and moves, the plan and signatures; then the missing assignments and the IXL still owed: '+ord);
   check(M.ixlHead==='IXL still owed goal SmartScore 67','the IXL header no longer explains the parentheses: "'+M.ixlHead+'"');
   // 5. the last plan: none on a first report; "Last week's plan" after last week's report; a dated plan after an older one
   const lastFor=async (date)=>{ await p.evaluate(({K,i,date})=>{ const T=window.__tally; const s=T.state.sections[K]; s.reportLog=s.reportLog||{}; const k=T.norm(s.grades.students[i]); if (date) s.reportLog[k]=[{ date, q:null, gb:'', ix:'', grade:70, missing:1, ixl:null }]; else delete s.reportLog[k]; },{K,i:who.a,date}); return (await report(who.a)).last; };
@@ -63,9 +63,9 @@ const K = '1205050-7T1A';
   const pdf=await pop.pdf({format:'Letter', preferCSSPageSize:true}); await pop.close();
   const pages=await p.evaluate(async b64=>{ const T=window.__tally; const u8=Uint8Array.from(atob(b64),c=>c.charCodeAt(0)); return (await T.pdfTextPages(u8.buffer)).map(pg=>pg.map(i=>i.s).join(' ').replace(/\s+/g,' ').trim()); }, pdf.toString('base64'));
   check(pages.length>=2 && /^MISSING ASSIGNMENTS/.test(pages[1]) && !/IXL STILL OWED|turned in → \d+% [A-F] .*turned in →/.test(pages[0]) && /IXL STILL OWED/.test(pages.slice(1).join(' ')),'printed two-sided, the back (page 2) begins with the missing assignments and the IXL still owed follows; the front has neither list');
-  // one-sided: the same back, on page 2 by the browser's own break
+  // one-sided: the same back, on page 2
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.duplex=false; });
-  const [one]=await Promise.all([ctx.waitForEvent('page'), p.evaluate(({K,i})=>window.__tally.printStudentReports(window.__tally.state.sections[K],[i],'One'),{K,i:many})]); await one.waitForLoadState(); await one.waitForTimeout(500);
+  const [one]=await Promise.all([ctx.waitForEvent('page'), p.evaluate(({K,i})=>window.__tally.printStudentReports(window.__tally.state.sections[K],[i],'One'),{K,i:many})]); await one.waitForLoadState(); await one.waitForFunction(()=>document.body.getAttribute('data-paged')==='1');
   const pdf1=await one.pdf({format:'Letter', preferCSSPageSize:true}); await one.close();
   const pages1=await p.evaluate(async b64=>{ const T=window.__tally; const u8=Uint8Array.from(atob(b64),c=>c.charCodeAt(0)); return (await T.pdfTextPages(u8.buffer)).map(pg=>pg.map(i=>i.s).join(' ').replace(/\s+/g,' ').trim()); }, pdf1.toString('base64'));
   check(pages1.length>=2 && /^MISSING ASSIGNMENTS/.test(pages1[1]),'printed one-sided, the missing assignments still start page 2');

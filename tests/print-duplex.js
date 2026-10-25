@@ -76,7 +76,8 @@ const K1 = '1205050-7T1A', K2 = '1205050-7T2B';
   const lasts=await p.evaluate(K1=>window.__tally.state.sections[K1].grades.students.map(n=>n.split(',')[0].trim()),K1); const ltxt=PL.pages.map(pg=>pg.t).join(' ');
   check(lasts.length===23 && !lasts.some(n=>new RegExp('\\b'+n+'\\b').test(ltxt)),'the initials list prints no student\'s name');
   await lp.close();
-  // 6. one-sided: untick it and the browser's own page breaks come back, with the one-sided hint; the choice is kept
+  // 6. one-sided: untick it and the same pages print with no blank backs and the punch margin on the left of every
+  // page (25 Oct 2026: the layout runs one-sided too, so the signatures sit at the foot of the front); the choice is kept
   await p.evaluate(K1=>window.__tally.openPrintMenu(window.__tally.state.sections[K1]),K1); await p.waitForTimeout(300);
   await p.click('#rpDuplex'); await p.waitForTimeout(100);
   check(await p.evaluate(()=>window.__tally.state.settings.duplex===false),'unticking two-sided is kept in settings');
@@ -85,10 +86,11 @@ const K1 = '1205050-7T1A', K2 = '1205050-7T2B';
   await p.reload(); await p.waitForTimeout(800); await p.evaluate(K1=>{ const T=window.__tally; T.state.active=K1; T.render(); },K1); await p.waitForTimeout(300);
   check(await p.evaluate(()=>window.__tally.state.settings.duplex===false),'…and after Tally is opened again');
   await p.evaluate(K1=>window.__tally.openPrintMenu(window.__tally.state.sections[K1]),K1); await p.waitForTimeout(300);
-  const [os]=await Promise.all([ctx.waitForEvent('page'), p.click('#rpWeekly')]); await os.waitForLoadState(); await os.waitForTimeout(500);
-  const o=await os.evaluate(()=>({ paged:document.body.classList.contains('paged'), boxes:document.querySelectorAll('.page').length, hint:(document.querySelector('.bar .hint')||{}).textContent, script:[...document.scripts].some(s=>/__paged/.test(s.textContent)) }));
-  await os.emulateMedia({media:'print'}); const brk=await os.evaluate(()=>getComputedStyle(document.querySelector('section.rep')).breakAfter); const PO=await pdfOf(os);
-  check(!o.paged && !o.boxes && !o.script && o.hint==='Print one-sided so no sheet holds two students.' && brk==='page' && PO.pages.filter(pg=>!pg.t.trim()).length===0,'one-sided printing keeps the browser\'s page breaks and no blank pages ('+PO.n+' pages): '+JSON.stringify(o));
+  const [os]=await Promise.all([ctx.waitForEvent('page'), p.click('#rpWeekly')]); await paged(os);
+  const o=await os.evaluate(()=>({ paged:document.body.classList.contains('paged'), duplex:document.body.classList.contains('duplex'), blank:document.querySelectorAll('.page.blank').length, backs:document.querySelectorAll('.page.back').length, hint:(document.querySelector('.bar .hint')||{}).textContent, left:[...document.styleSheets].some(ss=>[...ss.cssRules].some(r=>/@page :left/.test(r.cssText))) }));
+  const LO=await layoutOf(os); const PO=await pdfOf(os); const headsO=PO.pages.map((pg,i)=>/WEEKLY PROGRESS REPORT/.test(pg.t)?i:-1).filter(i=>i>=0);
+  check(o.paged && !o.duplex && !o.blank && !o.backs && !o.left && o.hint==='Print one-sided so no sheet holds two students.' && LO.divs===PO.n && LO.over===0 && PO.pages.every(pg=>pg.t.trim() && pg.x>=70),'one-sided printing lays out the same pages with no blank backs and the punch margin on the left of every page ('+PO.n+' pages): '+JSON.stringify(o));
+  check(headsO.length===23 && LO.secs.filter(s=>!/teach/.test(s.cls)).length===23 && LO.secs.every(s=>!s.blank),'…each of the 23 reports starts a page of its own');
   await os.close();
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.duplex=true; T.save(); });
   console.log('errors:',errs); check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));

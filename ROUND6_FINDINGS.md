@@ -274,3 +274,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   "Do this week" panel with the retake inside it (target first, full score second, HOWL dates, another time), three
   tiles, light header bars, the plan box on full lines with the last plan's check only after a report, the since strip
   under the header, and the missing assignments and IXL still owed on the back. New suite `tests/weekly-layout.js`.
+
+- 25 Oct 2026: signatures and test dates (NOTES.md, "Signatures at the foot of the front; the next test on the front").
+  The weekly report's signatures leave the box for two rows of long lines set at the foot of the front by the page
+  layout (`data-bottom`), which now runs for one-sided printing too (no blank backs, punch margin on the left). Each
+  course's test dates (the 2026-27 lists from mrshaffer.org/a7 and /m7) live in `state.testDates`; the front names the
+  next test under "Tests & quizzes", with the unit's IXL standing when that unit is on the report; Settings → Course →
+  Test dates edits them. New suite `tests/test-dates.js` (33 checks).

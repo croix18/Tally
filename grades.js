@@ -319,8 +319,10 @@ table{border-collapse:collapse;width:100%}td,th{padding:1.5px 6px;text-align:lef
 .wk [data-newpage]{break-before:page;page-break-before:always}.wk .panel.miss td{padding:3px 6px;font-size:9.5pt}.wk .panel.miss .box{margin-right:4px}
 .wk .panel{border:1.5px solid #000;border-radius:6px;overflow:hidden;margin:8px 0 0;break-inside:avoid}.wk .ph{background:#e8e8e8;color:#000;border-bottom:1px solid #999;font-weight:900;font-size:9.5pt;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px}.wk .ph .hs{text-transform:none;letter-spacing:0;font-weight:normal;color:#333;font-size:8.5pt}.wk .panel.main{border-width:2.5px}.wk .panel.main .ph{background:#d9d9d9;border-bottom-color:#000}.wk .pbody{padding:4px 8px 6px}.wk .pbody>p:first-child,.wk .pbody>.lead:first-child{margin-top:2px}
 .wk .two{gap:0 8px;align-items:start}.wk .two>.panel{margin-top:8px}.wk .col .panel:first-child{margin-top:8px}.wk .rt{margin:4px -8px -6px;padding:4px 8px;background:#eee;border-top:1px solid #aaa}.wk .todo{margin:2px 0 6px}
-.wk .pledge{margin-top:8px;border:1.5px solid #000;border-radius:6px;padding:7px 10px 8px;display:block}.wk .pledge>b{display:block;margin-bottom:4px}.wk .lines{display:block}.wk .lines i{display:block;border-bottom:1px solid #000;height:19px}.wk .lastplan{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:9.5pt}.wk .lastplan b{margin-right:8px}.wk .lastplan .box{margin:0 2px 0 6px}.wk .pledgeWrap{break-inside:avoid;page-break-inside:avoid}
-.teach .ret{margin-top:10px}.teach .ret th{font-size:8pt;padding:3px 6px;border-bottom:1.5px solid #000}.teach .ret td{padding:4px 6px;font-size:9.5pt;border-bottom:1px solid #bbb;height:20px}.teach .ret td.c,.teach .ret th.c{text-align:center;width:70px}.teach .ret td:nth-child(2){white-space:nowrap}.teach .ret td.w{min-width:80px}.teach .ret td:last-child{width:120px}.teach .ret .box{margin:0;width:13px;height:13px}\n.wk .sig{margin-top:6px;border:1.5px solid #000;border-radius:6px;padding:8px 10px;display:flex;gap:14px}.wk .sig span.d{flex:.5}.bar{position:fixed;bottom:14px;right:14px;z-index:10;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px}.bar button{font:inherit;padding:8px 18px}.bar .hint{font-size:9pt;color:#333;padding-left:6px}@media print{.bar{display:none}}`;
+.wk .pledge{margin-top:8px;border:1.5px solid #000;border-radius:6px;padding:7px 10px 8px;display:block;break-inside:avoid;page-break-inside:avoid}.wk .pledge>b{display:block;margin-bottom:4px}.wk .lines{display:block}.wk .lines i{display:block;border-bottom:1px solid #000;height:19px}.wk .lastplan{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:9.5pt}.wk .lastplan b{margin-right:8px}.wk .lastplan .box{margin:0 2px 0 6px}
+.wk .sigs{padding-top:12px;break-inside:avoid;page-break-inside:avoid}.wk .sigs .sr{display:flex;gap:28px}.wk .sigs .sr+.sr{margin-top:14px}.wk .sigs .f{flex:1;min-width:0}.wk .sigs .f.d{flex:0 0 1.7in}.wk .sigs i{display:block;height:30px;border-bottom:1px solid #000}.wk .sigs small{display:block;font-size:8.5pt;color:#333;margin-top:2px}
+.wk .panel.next .ntd{font-size:12pt;font-weight:900;margin:2px 0 0}.wk .panel.next .ntu{margin:1px 0 0}.wk .panel.next .ntx{margin:4px 0 0;font-size:9pt}
+.teach .ret{margin-top:10px}.teach .ret th{font-size:8pt;padding:3px 6px;border-bottom:1.5px solid #000}.teach .ret td{padding:4px 6px;font-size:9.5pt;border-bottom:1px solid #bbb;height:20px}.teach .ret td.c,.teach .ret th.c{text-align:center;width:70px}.teach .ret td:nth-child(2){white-space:nowrap}.teach .ret td.w{min-width:80px}.teach .ret td:last-child{width:120px}.teach .ret .box{margin:0;width:13px;height:13px}\n.bar{position:fixed;bottom:14px;right:14px;z-index:10;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px}.bar button{font:inherit;padding:8px 18px}.bar .hint{font-size:9pt;color:#333;padding-left:6px}@media print{.bar{display:none}}`;
 // What one next assessment of `mx` points can do for student i — only what is computed: for each letter above the
 // current grade (a D counts), the score that reaches it or the fact that none does; and the score that keeps the
 // current letter. The report, the student page and Show student all word their sentence from this.
@@ -409,8 +411,8 @@ function studentReportSection(s0, i, ixlRow) {
       <div class="${rt ? (rt.ok ? 'ok' : 'no') : ''}"><small>Retake</small><b>${rt ? (rt.ok ? 'Eligible' : 'Not yet') : '—'}</b><span>${rt ? (rt.ok ? 'nothing in the way' : esc(retakeWhy(rt))) : ''}</span></div></div>`;
   /* The page is a form (Croix, 24 Oct 2026, with a mock-up: "see how much the borders and boxes complement the data
      and make it easier to understand"): a title block, grey cards, each section a boxed panel with a header bar, and
-     the plan and signatures as boxes of their own. The header bars are light grey (Croix, 25 Oct 2026: "the bars are
-     dark. We can reduce or eliminate the darkness"). */
+     the plan as a box of its own. The header bars are light grey (Croix, 25 Oct 2026: "the bars are dark. We can reduce
+     or eliminate the darkness"). */
   const panel = (title, body, cls, attrs) => `<div class="panel ${cls || ''}"${attrs || ''}><div class="ph">${title}</div><div class="pbody">${body}</div></div>`;
   /* Retakes, inside "Do this week" (25 Oct 2026: the separate "Retake this week" box said the same thing as the plan,
      with a different number). Croix's notice stays: eligible students come to HOWL on Wednesday or Thursday and tell
@@ -439,13 +441,26 @@ function studentReportSection(s0, i, ixlRow) {
   const priorRep = ((s0.reportLog || {})[norm(name)] || []).filter(e => weekOf(e.date) < thisWeek).pop() || null;
   const prevWeek = (() => { const d = new Date(thisWeek + 'T12:00:00'); d.setDate(d.getDate() - 7); return localDayOf(d.toISOString()); })();
   const lastPlan = priorRep ? `<div class="lastplan"><b>${weekOf(priorRep.date) === prevWeek ? 'Last week\'s plan' : `My plan from ${esc(fmtDate(priorRep.date))}`}</b><span class="box"></span> done <span class="box"></span> partly <span class="box"></span> not yet</div>` : '';
+  /* ---- the next test, under the tests and quizzes (Croix, 25 Oct 2026: "use the space on the front to add in a test
+     reminder of when the next scheduled test is"): the course's next test from Settings → Course → Test dates, and,
+     when its unit is on the IXL list, where the student stands on that unit's IXL (his pages: every skill in a unit
+     is due by the unit's test). A name left blank in the dates takes the IXL unit's. ---- */
+  const nt = nextTest(s0.prep, todayISO()); const ntNums = nt ? testUnitNums(nt.unit) : [];
+  const ntTitle = nt ? nt.title || (ntNums.length === 1 ? (unitsOf(s).find(u => u.num === ntNums[0]) || {}).title || '' : '') : '';
+  const ntUnits = nt && ixlRow && ixlRow.ixl != null ? units.filter(u => ntNums.includes(u.num)) : [];
+  const ntOf = ntUnits.reduce((n, u) => n + activeFor(s, u, ixlRow.ixl).length, 0), ntAt = ntUnits.reduce((n, u) => n + points(s, u, ixlRow.ixl), 0);
+  const nextPanel = nt ? panel('Next test', `<p class="ntd">${esc(testDays(nt))}</p><p class="ntu"><b>${esc(nt.unit)}</b>${ntTitle ? ` ${esc(ntTitle)}` : ''}</p>${ntOf ? `<p class="ntx">All ${esc(nt.unit)} IXL skills are due by the test. You have ${ntAt >= ntOf ? `all ${ntOf}` : `${ntAt} of ${ntOf}`} at goal.</p>` : ''}`, 'next') : '';
+  /* The signatures: two lines each, no box, at the foot of the front (Croix, 25 Oct 2026: "take the signatures out of
+     the box, move it to the bottom, and give more space"). data-bottom: the print layout sets it at the bottom of the
+     report's first page. */
+  const sigs = `<div class="sigs" data-bottom>${[['Student signature', 'Date'], ['Parent or guardian signature', 'Date']].map(([a, d]) => `<div class="sr"><div class="f"><i></i><small>${a}</small></div><div class="f d"><i></i><small>${d}</small></div></div>`).join('')}</div>`;
   return `<section class="rep wk"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Weekly progress report</div></div><div class="who"><h1>${esc(name)}</h1><div class="meta">${esc(new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))} <small>· Focus as of ${esc(fmtDate(localDayOf(gbAt)))}${ixlRow && ixlRow.ixl != null && dataDate(s) ? ` · IXL as of ${esc(fmtDate(dataDate(s)))}` : ''}</small></div></div></div>${since}
     <div class="top"><div class="gradeBox"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>${scoreboard}</div>
     ${panel(`Do this week${qp && !qp.top && qp.letter && (steps.length || copyOnly) ? `: the quickest way to ${esc(anLetter(qp.letter))}` : ''}`, `${doThis}${extra}${howl}${rtLine}`, 'main')}
-    <div class="two">${panel(`Tests &amp; quizzes${testPct != null ? ` <span class="hs">${testPct}% overall${tests.some(a => a.status[i] === 'missing') ? ' · NHI counts as 0' : ''}</span>` : ''}`, `<p class="tests">${testsLine}</p>`)}${panel('What would move the grade', moves ? `<table><tbody>${moves}</tbody></table>` : `<p>${r ? `Nothing missing${belowFull ? '' : ' and every assessment at full marks'}.` : 'Nothing graded yet.'}</p>`)}</div>
-    <div class="pledgeWrap"><div class="pledge"><b>This week I will</b><div class="lines"><i></i><i></i><i></i></div>${lastPlan}</div>
-    <div class="sig"><span>Student</span><span class="d">Date</span><span>Parent or guardian</span><span class="d">Date</span></div></div>
+    <div class="two"><div class="col">${panel(`Tests &amp; quizzes${testPct != null ? ` <span class="hs">${testPct}% overall${tests.some(a => a.status[i] === 'missing') ? ' · NHI counts as 0' : ''}</span>` : ''}`, `<p class="tests">${testsLine}</p>`)}${nextPanel}</div>${panel('What would move the grade', moves ? `<table><tbody>${moves}</tbody></table>` : `<p>${r ? `Nothing missing${belowFull ? '' : ' and every assessment at full marks'}.` : 'Nothing graded yet.'}</p>`)}</div>
+    <div class="pledge"><b>This week I will</b><div class="lines"><i></i><i></i><i></i></div>${lastPlan}</div>
+    ${sigs}
     ${missPanel}
     ${ixl}
 </section>`;
@@ -468,16 +483,18 @@ function logReport(s0, i, ixlRow) {
    between rows, its header carried over and marked "continued"), and a report that ends on a front gets a blank back,
    so the next student starts on a new sheet and no sheet goes home with two students on it. What is laid out is what
    prints: every box is shorter than the printable page. Backs mirror the margin, so the punch holes stay clear on both
-   sides. One-sided printing (the box in Print unticked) keeps the browser's own page breaks. */
+   sides. One-sided printing (the box in Print unticked) lays out the same pages, with no blank backs and the punch
+   margin on the left of every page: the signatures sit at the foot of the front either way (25 Oct 2026). */
 const PAGE_H = 940;   // px: a Letter page less its .45in top and bottom margins is 969.6 px tall; the rest is slack
 const duplexOn = () => state.settings.duplex !== false;
-const DUPLEX_CSS = `@page{size:letter;margin:.45in .45in .45in 1in}@page :left{margin:.45in 1in .45in .45in}
+const PAGED_CSS = `@page{size:letter;margin:.45in .45in .45in 1in}
 body.paged{margin:0!important}.paged [data-newpage]{break-before:auto!important;page-break-before:auto!important}.paged>section{padding:0!important;margin:0!important;break-after:auto!important;page-break-after:auto!important}
 .paged .page{box-sizing:content-box;width:676.8px;height:${PAGE_H}px;overflow:hidden;position:relative}
 .panel.ixl.cont>.ph .hs,.panel.ixl.cont .keyline{display:none}.panel.ixl.cont>.ph:after{content:" (continued)";text-transform:none;letter-spacing:0;font-weight:normal}.u.cont>.uh>span:first-child:after{content:" (continued)";font-weight:normal;color:#444}
-@media screen{body.paged{background:#d6d6d6;padding:10px 0 70px}.paged .page{background:#fff;margin:14px auto;padding:.45in .45in calc(.45in + ${(969.6 - PAGE_H).toFixed(1)}px) 1in;box-shadow:0 1px 5px rgba(0,0,0,.3)}.paged .page.back{padding-left:.45in;padding-right:1in}.paged .page.blank:after{content:"Back of the sheet: blank";position:absolute;top:46%;left:0;right:0;text-align:center;color:#aaa;font-size:10pt}}
+@media screen{body.paged{background:#d6d6d6;padding:10px 0 70px}.paged .page{background:#fff;margin:14px auto;padding:.45in .45in calc(.45in + ${(969.6 - PAGE_H).toFixed(1)}px) 1in;box-shadow:0 1px 5px rgba(0,0,0,.3)}.paged .page.blank:after{content:"Back of the sheet: blank";position:absolute;top:46%;left:0;right:0;text-align:center;color:#aaa;font-size:10pt}}
 @media print{.paged .page{break-after:page;page-break-after:always}.paged .page.last{break-after:auto;page-break-after:auto}}
 .paged:not([data-paged])>section{visibility:hidden}@media screen{.paged:not([data-paged]):before{content:"Laying out the pages…";position:fixed;top:40%;left:0;right:0;text-align:center;font-size:12pt;color:#555}}`;
+const DUPLEX_CSS = `@page :left{margin:.45in 1in .45in .45in}@media screen{.duplex .page.back{padding-left:.45in;padding-right:1in}}`;   // the back's mirrored punch margin
 const PAGER_JS = `(function(){
 var B=document.body,doPrint=window.print.bind(window),ready=null;
 window.print=function(){var go=function(){doPrint()};(ready||Promise.resolve()).then(go,go)};   /* Print waits for the layout */
@@ -492,26 +509,35 @@ var n=0;while(items(c).length){var it=items(c)[0],nx=it.nextSibling;cc.appendChi
 cc.removeChild(it);c.insertBefore(it,nx);if(box(it)){var r=split(it,cc,page);if(r){n++;if(!r.rest)c.removeChild(it)}}break}
 if(!n){parent.removeChild(cp);return null}
 if(items(c).length){el.classList.add('cont');return {rest:el}}return {rest:null}}
-function layout(sec){var bl=[].slice.call(sec.children),pages=[],p;bl.forEach(function(b){sec.removeChild(b)});
-function next(){p=mk('page');sec.appendChild(p);pages.push(p)}next();
-bl.forEach(function(b){if(b.hasAttribute('data-newpage')&&p.children.length)next();var rest=b,g=0;while(rest&&g++<500){p.appendChild(rest);if(!over(p)){rest=null;break}
+/* [data-bottom] (the signatures) sits at the foot of the section's first page: its height is kept free there while
+   the rest is laid out, then it goes in last and is pushed down to the bottom edge. [data-newpage] starts the back: a
+   new page, unless the front has already run onto one. */
+function layout(sec){var bl=[].slice.call(sec.children),pages=[],p,bot=null;bl.forEach(function(b){sec.removeChild(b)});
+bl=bl.filter(function(b){if(!bot&&b.hasAttribute('data-bottom')){bot=b;return false}return true});
+function next(){p=mk('page');sec.appendChild(p);pages.push(p)}next();var first=p;
+if(bot){first.appendChild(bot);var bh=Math.ceil(bot.getBoundingClientRect().height);first.removeChild(bot);first.style.height=Math.max(0,${PAGE_H}-bh)+'px'}
+bl.forEach(function(b){if(b.hasAttribute('data-newpage')&&p.children.length&&pages.length<2)next();var rest=b,g=0;while(rest&&g++<500){p.appendChild(rest);if(!over(p)){rest=null;break}
 p.removeChild(rest);var r=split(rest,p,p);if(r){rest=r.rest;if(rest)next();continue}
-if(!p.children.length){p.appendChild(rest);rest=null;break}next()}});return pages}
+if(!p.children.length){p.appendChild(rest);rest=null;break}next()}});
+if(bot){first.style.height='';first.appendChild(bot);if(over(first)){first.removeChild(bot);if(pages.length<2)next();pages[1].insertBefore(bot,pages[1].firstChild)}
+else{var gap=Math.floor(first.getBoundingClientRect().top+(parseFloat(getComputedStyle(first).paddingTop)||0)+${PAGE_H}-bot.getBoundingClientRect().bottom)-2;
+if(gap>0){bot.style.position='relative';bot.style.top=gap+'px';if(over(first)){bot.style.position='';bot.style.top=''}}}}
+return pages}
 function run(){if(B.getAttribute('data-paged'))return;
-var secs=[].slice.call(document.querySelectorAll('body>section')),keep=secs.map(function(s){return s.cloneNode(true)});
-try{secs.forEach(function(s,i){var pg=layout(s);if(B.classList.contains('duplex')&&pg.length%2&&i<secs.length-1)s.appendChild(mk('page blank'))});
-var all=document.querySelectorAll('.page');[].forEach.call(all,function(x,k){if(k%2)x.classList.add('back')});if(all.length)all[all.length-1].classList.add('last')}
-catch(e){secs.forEach(function(s,i){s.parentNode.replaceChild(keep[i],s)});B.classList.remove('paged','duplex');var h=document.querySelector('.bar .hint');if(h)h.textContent='Print one-sided so no sheet holds two students.';if(window.console)console.error(e)}   /* the browser's own page breaks, rather than a half-laid page */
+var secs=[].slice.call(document.querySelectorAll('body>section')),keep=secs.map(function(s){return s.cloneNode(true)}),dup=B.classList.contains('duplex');
+try{secs.forEach(function(s,i){var pg=layout(s);if(dup&&pg.length%2&&i<secs.length-1)s.appendChild(mk('page blank'))});
+var all=document.querySelectorAll('.page');[].forEach.call(all,function(x,k){if(dup&&k%2)x.classList.add('back')});if(all.length)all[all.length-1].classList.add('last')}
+catch(e){secs.forEach(function(s,i){s.parentNode.replaceChild(keep[i],s)});B.classList.remove('paged','duplex');var h=document.querySelector('.bar .hint');if(h)h.textContent=/class/.test(h.textContent)?'Print one-sided so no sheet holds two classes.':'Print one-sided so no sheet holds two students.';if(window.console)console.error(e)}   /* the browser's own page breaks, rather than a half-laid page */
 B.setAttribute('data-paged','1')}
 ready=window.__paged=(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(run,run);
 })();`;
 // The report window's Print button, with the one thing to set in the print dialog for a batch: two-sided when the
 // pages were laid out for it, one-sided otherwise (two-sided would put the next student on the back of a sheet).
 const printBar = (n, what = 'student') => `<div class="bar">${n > 1 ? `<span class="hint">${duplexOn() ? `Print two-sided: each ${what} starts on a new sheet.` : `Print one-sided so no sheet holds two ${what === 'class' ? 'classes' : 'students'}.`}</span>` : ''}<button onclick="window.print()">Print</button></div>`;
-// A whole print page: its styles, the Print bar and, for two-sided printing, the layout script.
+// A whole print page: its styles, the Print bar and the layout script; two-sided adds the blank backs and mirrored margins.
 function printDoc(title, css, body, n, what) {
   const dup = duplexOn();
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${css}${dup ? DUPLEX_CSS : ''}</style></head><body${dup ? ' class="paged duplex"' : ''}>${printBar(n, what)}${body}${dup ? `<script>${PAGER_JS}<\/script>` : ''}</body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${css}${PAGED_CSS}${dup ? DUPLEX_CSS : ''}</style></head><body class="paged${dup ? ' duplex' : ''}">${printBar(n, what)}${body}<script>${PAGER_JS}<\/script></body></html>`;
 }
 // One student's section, or a plain line in its place: one student's odd data never blanks the whole batch.
 function safeSection(make, name, failed) { try { return make(); } catch (e) { console.error(e); failed.push(name); return `<section class="rep"><h1>${esc(name)}</h1><p>Tally could not make this report.</p></section>`; } }

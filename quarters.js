@@ -167,6 +167,38 @@ function reopenQuarter(n) { delete quarters().closed[n]; state.order.map(k => st
 // A closed quarter whose end date hasn't come yet: its work is hidden as finished while the class is still doing it
 // (Croix, 23 Oct: an accidental close made the conference forms wrong). The latest one, or null.
 function todayISO() { const t = new Date(); return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`; }
+/* ---------- Test dates: each course's unit tests ----------
+   Croix, 25 Oct 2026, with the "All test dates" lists from mrshaffer.org/a7 and /m7: "Can you use the space on the
+   front to add in a test reminder of when the next scheduled test is. Give me an option in settings to update them."
+   state.testDates[prep] is a list of { unit: 'Unit 4', title, from, to } (to: the last day of a test given over more
+   than one day, else ''). A new Tally starts from the 2026-27 lists below; Settings → Course → Test dates edits them. */
+const TEST_DATES = {
+  acc: [['Unit 3', 'Exponents and Scientific Notation', '2026-10-15'], ['Unit 4', 'Solving Problems with Rational Numbers', '2026-10-26'], ['Unit 5', 'Multi-Step Proportional Relationships', '2026-11-05'], ['Unit 6', 'Relationships in Triangles', '2026-11-17'],
+    ['Unit 11', '', '2026-12-11'], ['Unit 7', '', '2027-01-14'], ['Unit 10', '', '2027-01-28'], ['Unit 12', '', '2027-02-09'], ['Units 8–9', '', '2027-02-18'], ['Unit 13', '', '2027-03-01'], ['Unit 14', '', '2027-03-11'], ['Units 15–16', '', '2027-04-12'], ['Unit 17', '', '2027-04-15']],
+  on: [['Unit 3', 'Operations with Rational Numbers', '2026-09-24', '2026-09-25'], ['Unit 4', 'Area', '2026-10-19', '2026-10-20'], ['Unit 9', 'Algebraic Expressions', '2026-11-02', '2026-11-03'], ['Unit 10', 'Equations and Inequalities', '2026-11-19', '2026-11-20'],
+    ['Unit 8', 'Evaluating Numeric Expressions', '2026-12-10', '2026-12-11'], ['Unit 5', 'Scaling With Proportional Relationships', '2027-01-21', '2027-01-22'], ['Unit 7', 'Solving Percentage Problems With Proportional Relationships', '2027-02-09', '2027-02-10'],
+    ['Unit 11', 'Representing Proportional Relationships', '2027-02-25', '2027-02-26'], ['Unit 6', 'Solving Multi-Step Problems With Proportional Relationships', '2027-03-18', '2027-03-19'], ['Unit 12', 'Surface Area and Volume', '2027-04-08', '2027-04-09'], ['Unit 13', 'Numerical and Categorical Data', '2027-04-27', '2027-04-28']]
+};
+// A row as stored: text trimmed and capped, days as YYYY-MM-DD that are real days (a last day only when it is after
+// the first).
+const isDay = d => { if (typeof d !== 'string' || !ISO_RE.test(d)) return false; const [y, m, dd] = d.split('-').map(Number); const t = new Date(y, m - 1, dd); return t.getFullYear() === y && t.getMonth() === m - 1 && t.getDate() === dd; };
+const testRow = x => { const from = isDay(x.from) ? x.from : ''; return { unit: str(x.unit, 40).trim(), title: str(x.title, 120).trim(), from, to: isDay(x.to) && from && x.to > from ? x.to : '' }; };
+// From storage or a save: each course's list, or the 2026-27 list for a course that has none yet. An emptied list stays empty.
+function cleanTestDates(t) {
+  const out = {}; ['acc', 'on'].forEach(p => { const l = t && typeof t === 'object' ? t[p] : null;
+    out[p] = Array.isArray(l) ? l.filter(x => x && typeof x === 'object').slice(0, 80).map(testRow).filter(x => x.unit || x.from) : TEST_DATES[p].map(([unit, title, from, to]) => ({ unit, title, from, to: to || '' })); });
+  return out;
+}
+const testDatesOf = prep => { const t = state.testDates && state.testDates[prep === 'acc' ? 'acc' : 'on']; return Array.isArray(t) ? t : []; };
+const byTestDay = (a, b) => (a.from || '9999').localeCompare(b.from || '9999');
+// The course's next test: the first whose last day is `day` or later (a two-day test still counts on its first day).
+function nextTest(prep, day) { day = day || todayISO(); return testDatesOf(prep).filter(x => x.unit && x.from).sort(byTestDay).find(x => (x.to || x.from) >= day) || null; }
+// "Monday, Oct 26"; a test over two days in a row, "Monday, Nov 2 and Tuesday, Nov 3".
+function testDays(x) { const at = d => new Date(d + 'T12:00:00'); const f = d => at(d).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  if (!x.to) return f(x.from); const n = at(x.from); n.setDate(n.getDate() + 1); return f(x.from) + (`${n.getFullYear()}-${pad2(n.getMonth() + 1)}-${pad2(n.getDate())}` === x.to ? ' and ' : ' to ') + f(x.to); }
+// The units a test covers: "Unit 4" → [4]; "Units 8–9" → [8, 9]; "Units 8 and 9" → [8, 9].
+function testUnitNums(label) { const s = String(label || ''); const r = s.match(/(\d+)\s*(?:[-–—]|to|through)\s*(\d+)/i);
+  if (r && +r[2] > +r[1] && +r[2] - +r[1] <= 6) { const o = []; for (let k = +r[1]; k <= +r[2]; k++) o.push(k); return o; } return (s.match(/\d+/g) || []).map(Number); }
 function closedEarly() { const n = [4, 3, 2, 1].find(qClosed); return n && todayISO() <= quarters().ends[n - 1] ? n : null; }
 // A quarter whose end date has passed and isn't closed yet (the Overview offers to close it).
 function quarterDue() { const n = currentQuarter(); const end = quarters().ends[n - 1]; const today = new Date(); const iso = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`; return !qClosed(n) && iso > end ? n : null; }
@@ -228,4 +260,43 @@ function openQuarters(keep) {
     const un = $('#qUndo'); if (un) un.onclick = () => { const b = JSON.parse(before); q.units = b.units; q.closed = b.closed; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); render(); toast(`${esc(QN)} is open again.`, false, 2500); };
   };
   const ro = $('#qReopen'); if (ro) ro.onclick = () => { const N = Q_NAMES[lastClosed - 1]; reopenQuarter(lastClosed); save(); openQuarters({}); toast(`<b>${esc(N)} is open again.</b> Its missing work and Focus checks are back. Close it again whenever you're ready.`, false, 6000); };
+}
+/* Settings → Course → Test dates: the course's tests, a row each, kept as they are changed (like the quarter dates).
+   The list sorts by day when it opens; past tests are grey and the one the weekly report prints is marked. */
+const testNextLine = p => { const nt = nextTest(p); return nt ? `Next: <b>${esc(nt.unit)}</b>, ${esc(testDays(nt))}. The weekly report prints it on the front.` : testDatesOf(p).length ? 'No test after today.' : 'No tests yet.'; };
+function openTestDates(prep, back) {
+  prep = prep === 'acc' ? 'acc' : 'on';
+  if (!state.testDates || typeof state.testDates !== 'object') state.testDates = cleanTestDates(null);
+  const list = Array.isArray(state.testDates[prep]) ? state.testDates[prep] : (state.testDates[prep] = []);
+  list.sort(byTestDay);
+  const today = todayISO();
+  const day = (f, x, i, cap) => `<label class="tdd"><small>${cap}</small><input type="date" data-f="${f}" data-i="${i}" value="${esc(x[f])}" aria-label="${cap}${x.unit ? ', ' + esc(x.unit) : ''}"></label>`;
+  const row = (x, i) => `<div class="tdrow" data-row="${i}"><input type="text" data-f="unit" data-i="${i}" value="${esc(x.unit)}" placeholder="Unit 5" maxlength="40" aria-label="Unit"><input type="text" data-f="title" data-i="${i}" value="${esc(x.title)}" placeholder="Name (optional)" maxlength="120" aria-label="Name${x.unit ? ', ' + esc(x.unit) : ''}">${day('from', x, i, 'Day')}${day('to', x, i, 'Last day')}<button class="tdx" data-del="${i}" aria-label="Remove ${esc(x.unit || 'this test')}">×</button></div>`;
+  const m = $('#modal'); m.classList.remove('hidden');
+  m.innerHTML = `<div class="panel tdates"><header><h2>Test dates</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one">
+      <div class="seg small" id="tdCourse">${[['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-tdc="${k}" class="${k === prep ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <p class="tdnext" id="tdNext"></p>
+      <div class="tdhead" aria-hidden="true"><span>Unit</span><span>Name</span><span>Day</span><span>Last day</span><span></span></div>
+      <div id="tdRows">${list.map(row).join('') || '<p class="ghint">None yet.</p>'}</div>
+      <div class="rp-actions"><button class="pill pale small" id="tdAdd">Add a test</button></div>
+      <p class="ghint">A test given over more than one day has a last day.</p>
+    </div>
+    <footer><div class="spacer"></div><button class="pill" id="tdDone">Done</button></footer></div>`;
+  // which row is past and which one prints, and the line that says so, after every change
+  const mark = () => { const nx = nextTest(prep, today); $('#tdNext').innerHTML = testNextLine(prep);
+    m.querySelectorAll('.tdrow').forEach(r => { const x = list[Number(r.dataset.row)]; r.classList.toggle('past', !!(x && x.from && (x.to || x.from) < today)); r.classList.toggle('next', !!x && x === nx); r.classList.toggle('bad', !!x && !!(x.unit || x.title || x.to) && !x.from); }); };
+  mark();
+  // what is in the boxes now (a change not yet confirmed by leaving the box included); empty rows go when the list
+  // closes or shows the other course
+  const pull = () => m.querySelectorAll('#tdRows input').forEach(inp => { const i = Number(inp.dataset.i), f = inp.dataset.f; if (list[i] && list[i][f] !== inp.value) list[i] = testRow({ ...list[i], [f]: inp.value }); });
+  const tidy = () => { pull(); state.testDates[prep] = list.map(testRow).filter(x => x.unit || x.from); save(); };
+  const close = () => { tidy(); m.classList.add('hidden'); m.innerHTML = ''; if (back) back(); else render(); };
+  m._cancel = close; $('#mClose').onclick = close; $('#tdDone').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  m.querySelectorAll('[data-tdc]').forEach(b => b.onclick = () => { if (b.dataset.tdc === prep) return; tidy(); openTestDates(b.dataset.tdc, back); });
+  m.querySelectorAll('#tdRows input').forEach(inp => inp.onchange = () => { const i = Number(inp.dataset.i), f = inp.dataset.f; if (!list[i]) return;
+    list[i] = testRow({ ...list[i], [f]: inp.value }); if (f === 'from' || f === 'to') inp.closest('.tdrow').querySelector('[data-f="to"]').value = list[i].to; save(); mark(); });   // a last day not after the day is cleared
+  m.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { pull(); const i = Number(b.dataset.del); const x = list[i]; if (!x) return; list.splice(i, 1); save(); openTestDates(prep, back);
+    if (x.unit || x.from) { toast(`${esc(x.unit || 'The test')} is off the list. <button class="tundo" id="tdUndo">Undo</button>`, false, 5000); const un = $('#tdUndo'); if (un) un.onclick = () => { testDatesOf(prep).push(x); save(); if ($('#tdRows')) openTestDates(prep, back); toast('Back on the list.', false, 2000); }; } });
+  $('#tdAdd').onclick = () => { pull(); list.push({ unit: '', title: '', from: '', to: '' }); openTestDates(prep, back); const f = m.querySelector(`.tdrow[data-row="${list.length - 1}"] [data-f="unit"]`); if (f) f.focus(); };
 }

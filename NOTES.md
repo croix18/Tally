@@ -872,6 +872,37 @@ per-section-file era and many items in them are now done).
     caption about the parentheses gone). The front's "What would move the grade" sums the missing work in one line.
     Two-sided: the page layout starts the back on a new box (`data-newpage`); one-sided: CSS breaks before it.
   `tests/weekly-layout.js` (14 checks, all failing on the build before).
+- **25 Oct 2026 — Signatures at the foot of the front; the next test on the front.** Croix: "Can you take the
+  signatures out of the box, move it to the bottom, and give more space." Then, with the "All test dates" lists from
+  mrshaffer.org/a7 and /m7: "Can you use the space on the front to add in a test reminder of when the next scheduled
+  test is. Give me an option in settings to update them if I need to later." Built:
+  - **Signatures:** no box; two rows, "Student signature ___ Date ___" and "Parent or guardian signature ___ Date ___",
+    labels under 30 px lines (each signature line about 5 in wide; the four used to share one boxed row). Their own
+    block after the plan box, marked `data-bottom`: the page layout keeps their height free on the report's first page
+    while the rest is laid out, then sets them at its foot (moved down with `position: relative`, so nothing else
+    moves). A front too full for everything sends what doesn't fit to page 2 and keeps the signatures on the front;
+    `data-newpage` (the back) now starts a new page only from the first page, so that overflow and the back share
+    page 2 rather than leaving a page with one panel on it.
+  - **One-sided printing is laid out too** (it kept the browser's own breaks before): the same page boxes, with no blank
+    backs and the punch margin on the left of every page (`PAGED_CSS` always; `DUPLEX_CSS` is now only `@page :left`
+    and the mirrored preview). So the signatures sit at the foot in both modes, and what the window shows is what prints.
+  - **Test dates:** `state.testDates[prep]`, a list of `{ unit, title, from, to }` (`to` only for a test over more than
+    one day; on-level tests are two days). A new Tally, or a save from before, starts from the 2026-27 lists he sent
+    (`TEST_DATES` in quarters.js: A7 13 tests from Unit 3 on Oct 15 to Unit 17 on Apr 15, "Units 8–9" and "Units 15–16"
+    as one test each; M7 11 tests from Unit 3 on Sep 24–25 to Unit 13 on Apr 27–28). An emptied list stays empty.
+    Cleaned on load: days must be real days, a last day only after the first, empty rows dropped.
+  - **On the report:** a "Next test" panel under "Tests & quizzes" (the left column had room beside "What would move
+    the grade"): the day ("Monday, Oct 26"; "Monday, Nov 2 and Tuesday, Nov 3" for two days), the unit and its name (a
+    blank name takes the IXL unit's: A7's Units 7 to 17 have none on his page), and, when that unit is on the report's
+    IXL list, "All Unit 4 IXL skills are due by the test. You have 3 of 6 at goal." (his pages: every skill in a unit is
+    due by the unit's test; the count is the back's). The next test is the first whose last day is today or later, so a
+    report printed on Sunday for Monday names Monday's test. No test ahead: no panel.
+  - **Settings → Course → Test dates:** the next test in a line, and a Test dates list for each course (Accelerated |
+    On-level): unit, name, day, last day, a × per row with Undo, "Add a test". Changes are kept as they are made, like
+    the quarter dates; Done goes back to Settings. Past tests are grey; the one the report prints is marked.
+  - The tests move when his plan moves (the plan engine pushes tests to the next allowed day): these dates are Tally's
+    own copy, changed by hand. Reading them from the plan where Tally is opened from mrshaffer.org is a later option.
+  `tests/test-dates.js` (33 checks); `print-duplex.js` and `weekly-layout.js` updated for one-sided layout.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
