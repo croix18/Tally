@@ -750,6 +750,11 @@ per-section-file era and many items in them are now done).
   The explanation, in his final words: "Hayden scored a 247 (Level 4) on the 25/26 Math Grade 6 FAST. A learning gain
   in 26/27 means scoring a 263 (Level 5) or higher on the Math Grade 8 FAST. On the PM1, Hayden scored a 229 (Low
   Level 2) and 34 more points are needed for a gain."
+  A 244 then and a 244 now: the card keeps "(+0)" (he prefers it to "same"). "Scale the chart for the grade 8 test
+  (grade 7 for the on level students) but don't include the fast level labels. Put pm3 from last year on the chart
+  where it would lie on the 8th grade test … the 244 would remain level": `fastLineChart`'s y axis is this year's
+  test's scale score; last year's PM3 sits at its own number; the level floors (Level 2 to 5) are dotted lines marked
+  only by their scores; the gain target stays dashed. The bars above keep their lined-up levels.
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab

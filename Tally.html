@@ -4012,19 +4012,20 @@ const fastTestName = g => `Math Grade ${g} FAST`;   // the cards carry every win
 // where they stand in their own test's levels; the gain target is a dashed line.
 function fastLineChart(t) {
   const syNow = syShort(t.thisYear) || 'this year', syLast = syShort(t.prior && t.prior.year) || (t.thisYear ? syShort(prevSchoolYear(t.thisYear)) : '') || 'last year';
-  const W = [1 / 15, 1 / 15, 1 / 15, 1 / 10, 1 / 10, 1 / 5, 1 / 5, 1 / 5];   // each level an equal height, so the climb from level to level reads evenly
-  const priorGrade = t.prior ? t.prior.grade : t.gradeLevel - 1;
-  const pts = [{ lab: 'PM3', sub: 'last year', g: priorGrade, v: t.prior ? t.prior.scale : null }, ...['PM1', 'PM2', 'PM3'].map(pm => { const h = t.now.find(x => x.pm === pm); return { lab: pm, sub: 'this year', g: t.gradeNow, v: h ? h.scale : null }; })];
-  const w = 330, h = 168, L = 46, R = 10, T = 10, B = 30; const iw = w - L - R, ih = h - T - B;
-  const X = i => L + iw * (i + .5) / pts.length, Y = p => T + ih * (1 - p);
-  let cum = 0; const bandY = W.map(x => { const a = cum; cum += x; return [a, cum]; });
-  const lvs = [[1, 0, 3], [2, 3, 5], [3, 5, 6], [4, 6, 7], [5, 7, 8]];   // level, first band, band after
-  const got = pts.map((p, i) => p.v == null ? null : { i, x: X(i), y: Y(fastPos(p.g, p.v, W)), v: p.v });
+  /* The y axis is this year's test's scale score, last year's PM3 plotted at its own number on it, so a 244 then and a
+     244 now sit level (Croix, 25 Oct 2026: "Scale the chart for the grade 8 test … don't include the FAST level
+     labels. Put pm3 from last year on the chart where it would lie on the 8th grade test"). The level floors of this
+     year's test are dotted lines, marked only by their scores. */
+  const c = FAST_MATH[t.gradeNow]; const floors = [c[3], c[5], c[6], c[7]];
+  const pts = [{ lab: 'PM3', v: t.prior ? t.prior.scale : null }, ...['PM1', 'PM2', 'PM3'].map(pm => { const h = t.now.find(x => x.pm === pm); return { lab: pm, v: h ? h.scale : null }; })];
+  const vals = pts.map(p => p.v).filter(v => v != null); const lo = Math.min(...vals, t.gain ? t.gain.score : Infinity, c[5]) - 8, hi = Math.max(...vals, t.gain ? t.gain.score : -Infinity, c[7]) + 6;
+  const w = 330, h = 168, L = 30, R = 10, T = 10, B = 30; const iw = w - L - R, ih = h - T - B;
+  const X = i => L + iw * (i + .5) / pts.length, Y = v => T + ih * (1 - (v - lo) / (hi - lo));
+  const got = pts.map((p, i) => p.v == null ? null : { i, x: X(i), y: Y(p.v), v: p.v });
   const line = got.filter(Boolean); const path = line.map((p, j) => `${j ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const gy = t.gain ? Y(fastPos(t.gradeNow, t.gain.score, W)) : null;
-  return `<svg class="fline" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="FAST scores by window">
-    <line x1="${L}" x2="${L + iw}" y1="${Y(1).toFixed(1)}" y2="${Y(1).toFixed(1)}" stroke="#999" stroke-width=".8" stroke-dasharray="1.5 2.5"/>
-    ${lvs.map(([lv, i, j]) => { const y0 = Y(bandY[i][0]), y1 = Y(bandY[j - 1][1]); return `<line x1="${L}" x2="${L + iw}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="#999" stroke-width=".8" stroke-dasharray="1.5 2.5"/><text x="${L - 5}" y="${((y0 + y1) / 2 + 3).toFixed(1)}" text-anchor="end" font-size="8" font-weight="700">Level ${lv}</text>`; }).join('')}
+  const gy = t.gain ? Y(t.gain.score) : null;
+  return `<svg class="fline" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="FAST scale scores by window">
+    ${floors.filter(v => v > lo && v < hi && !(t.gain && v === t.gain.score)).map(v => `<line x1="${L}" x2="${L + iw}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#999" stroke-width=".8" stroke-dasharray="1.5 2.5"/><text x="${L - 4}" y="${(Y(v) + 3).toFixed(1)}" text-anchor="end" font-size="7.5" fill="#555">${v}</text>`).join('')}
     ${gy != null ? `<line x1="${L}" x2="${L + iw}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#000" stroke-width="1" stroke-dasharray="4 3"/><text x="${L + iw - 2}" y="${(gy - 3).toFixed(1)}" text-anchor="end" font-size="8" font-weight="700">gain ${t.gain.score}</text>` : ''}
     ${path ? `<path d="${path}" fill="none" stroke="#000" stroke-width="2"/>` : ''}
     ${line.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#000" stroke="#fff" stroke-width="1.5"/><text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="900">${p.v}</text>`).join('')}
@@ -4041,7 +4042,7 @@ function fastReportSection(sec, name) {
     return `<span class="lv l${bk.level}"><i style="width:${pc}%"></i><em>${esc(bk.label)}</em><small>${lo}–${hi}</small></span>`; };
   const l3 = fastLevelFloor(t.gradeNow, 3); const gainIsL3 = !!t.gain && t.gain.score === l3;
   const nowName = fastTestName(t.gradeNow), priorGrade = t.prior ? t.prior.grade : t.gradeLevel - 1, priorName = fastTestName(priorGrade);
-  const diff = h => t.prior && t.prior.scale != null ? ` <small class="chg">(${h.scale === t.prior.scale ? 'same' : (h.scale > t.prior.scale ? '+' : '−') + Math.abs(h.scale - t.prior.scale)})</small>` : '';
+  const diff = h => t.prior && t.prior.scale != null ? ` <small class="chg">(${h.scale >= t.prior.scale ? '+' : '−'}${Math.abs(h.scale - t.prior.scale)})</small>` : '';
   const cards = [
     t.prior ? `<div><small>${esc(priorName)} PM3</small><b>${t.prior.scale}</b>${lvl(priorGrade, t.prior.scale)}<span>${t.prior.pct != null ? esc(pctWord(t.prior.pct)) : ''}</span></div>` : `<div><small>${esc(priorName)} PM3</small><b>—</b><span>no score on file</span></div>`,
     t.now.length ? t.now.map(h => `<div><small>${esc(nowName)} ${esc(h.pm)}</small><b>${h.scale}${diff(h)}</b>${lvl(t.gradeNow, h.scale)}<span>${h.pct != null ? esc(pctWord(h.pct)) : ''}</span></div>`).join('') : `<div><small>${esc(nowName)}</small><b>—</b><span>no window scored yet</span></div>`,
