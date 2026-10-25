@@ -401,9 +401,9 @@ function fastReportSection(sec, name) {
   const lvOf = (g, v) => { const bk = fastBucket(g, v); return bk ? ` (${esc(bk.label)})` : ''; };
   const gainLv = t.gain ? (fastBucket(t.gradeNow, t.gain.score) || { label: t.gain.label }).label : '';
   const said = [
-    t.prior ? `${esc(first)} scored a <b>${t.prior.scale}</b>${lvOf(priorGrade, t.prior.scale)} on the ${esc(yLast || syLast)} ${esc(priorName)}.` : `There is no PM3 score from last year on file, so there is no learning-gain target yet; the level targets below still apply.`,
-    t.gain ? `A learning gain in ${esc(yNow || syNow)} means scoring a <b>${t.gain.score} (${esc(gainLv)}) or higher</b> on the ${esc(nowName)}.` : '',
-    t.latest ? `On the ${esc(t.latest.pm)}, the score was a <b>${t.latest.scale}</b>${lvOf(t.gradeNow, t.latest.scale)}${t.gain ? (t.latest.scale >= t.gain.score ? (t.latest.pm === 'PM3' ? ', a gain.' : ', already a gain. PM3 is the one that counts, so hold it there.') : `, so <b>${t.gain.score - t.latest.scale} more points</b> are needed for a gain.`) : '.'}` : ''];   /* the name once (Croix, 25 Oct 2026: "I might've put Hayden's name in that text too many times") */
+    t.prior ? `${esc(first)} scored a <b>${t.prior.scale}</b>${lvOf(priorGrade, t.prior.scale)} on the ${esc(syLast)} ${esc(priorName)}.` : `There is no PM3 score from last year on file, so there is no learning-gain target yet; the level targets below still apply.`,
+    t.gain ? `A learning gain in ${esc(syNow)} means scoring a <b>${t.gain.score} (${esc(gainLv)}) or higher</b> on the ${esc(nowName)}.` : '',
+    t.latest ? `On the ${esc(t.latest.pm)}, ${esc(first)} scored a <b>${t.latest.scale}</b>${lvOf(t.gradeNow, t.latest.scale)}${t.gain ? (t.latest.scale >= t.gain.score ? (t.latest.pm === 'PM3' ? ', a gain.' : ', already a gain. PM3 is the one that counts, so hold it there.') : ` and <b>${t.gain.score - t.latest.scale} more points</b> are needed for a gain.`) : '.'}` : ''];   /* the name once (Croix, 25 Oct 2026: "I might've put Hayden's name in that text too many times") */
   const gainWords = said.filter(Boolean).join(' ');
   const rows = t.rows.map(r => `<tr class="${r.met ? 'met' : ''}"><td><span class="box"></span>${esc(r.what)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ''}</td><td class="r"><b>${r.score}</b></td><td>${r.met ? `✓ reached on ${esc(t.latest.pm)}` : r.gap != null ? `${r.gap} more than ${esc(t.latest.pm)}` : ''}</td></tr>`).join('');
   const W = fastBandWidths([priorGrade, t.gradeNow].filter((g, i, a) => FAST_MATH[g] && a.indexOf(g) === i));

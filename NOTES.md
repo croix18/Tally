@@ -747,6 +747,9 @@ per-section-file era and many items in them are now done).
   word), and the sentence says "on the 2025/26 Math Grade 6 FAST", "a learning gain in 2026/27".
   "Remove the shading from the line chart. Leave it dotted maybe … remove the shading around the dot indicating topic
   level": the chart's level bands are dotted lines on white, and the By topic dots sit on white.
+  The explanation, in his final words: "Hayden scored a 247 (Level 4) on the 25/26 Math Grade 6 FAST. A learning gain
+  in 26/27 means scoring a 263 (Level 5) or higher on the Math Grade 8 FAST. On the PM1, Hayden scored a 229 (Low
+  Level 2) and 34 more points are needed for a gain."
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab
