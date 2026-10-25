@@ -305,8 +305,9 @@ function fastTargets(sec, name) {
   const b = s => fastBucket(gradeNow, s); const c = FAST_MATH[gradeNow];
   const gain = prior ? fastGainFloor(gradeNow, prior) : null;
   const rows = [];
-  if (gain) rows.push({ k: 'gain', what: 'Learning gain', sub: gain.score === fastLevelFloor(gradeNow, 3) ? 'Level 3, on grade level' : gain.label, score: gain.score, why: 'counts for the school grade' });
-  if (c) [[2, 'Level 2'], [3, 'Level 3'], [4, 'Level 4'], [5, 'Level 5']].forEach(([lv, lab]) => { const sc = fastLevelFloor(gradeNow, lv); if (!rows.some(r => r.score === sc)) rows.push({ k: 'l' + lv, what: lab, sub: lv === 3 ? 'on grade level' : '', score: sc }); });
+  if (gain) rows.push({ k: 'gain', what: gain.label.replace(/ again$/, ''), sub: gain.score === fastLevelFloor(gradeNow, 3) ? 'learning gain, on grade level' : 'learning gain', score: gain.score, why: 'counts for the school grade' });   // the level first, "learning gain" beside it, like Level 3's "on grade level" (Croix, 25 Oct 2026)
+  const floorLv = prior && prior.grade ? Math.min(3, (fastBucket(prior.grade, prior.scale) || { level: 1 }).level) : 1;   /* Croix (25 Oct 2026), of a Level 4 student's "Level 2" row: "This should not be a target because it's less than his PM3 level" */
+  if (c) [[2, 'Level 2'], [3, 'Level 3'], [4, 'Level 4'], [5, 'Level 5']].filter(([lv]) => lv >= floorLv).forEach(([lv, lab]) => { const sc = fastLevelFloor(gradeNow, lv); if (!rows.some(r => r.score === sc)) rows.push({ k: 'l' + lv, what: lab, sub: lv === 3 ? 'on grade level' : '', score: sc }); });
   rows.sort((x, y) => x.score - y.score);
   rows.forEach(r => { r.met = latest && latest.scale != null && latest.scale >= r.score; r.gap = latest && latest.scale != null ? r.score - latest.scale : null; });
   return { gradeNow, gradeLevel, thisYear, prior, priorBucket: prior ? fastBucket(prior.grade, prior.scale) : null, latest, latestBucket: latest ? b(latest.scale) : null, now, rows, gain };
@@ -325,9 +326,14 @@ function fastTargetsHtml(t) {
 /* ---------- the FAST report: one printed page per student for a data talk ----------
    Last year's PM3 and this year's windows in their buckets, each on a scale drawn from the state cut scores, the
    targets for PM2 and PM3 (gain, each level, on grade level), the history, and a box for the student's own goals. */
-function fastScaleHtml(grade, marks) {
+/* Two grades' tables have different cut scores, so drawn to scale their levels never line up (Croix, 25 Oct 2026: "it's
+   just tough to compare the two, being at two different levels"). With `W` (eight band widths shared by both bars)
+   each level sits at the same place on both, and a score is placed by how far it is through its own level. */
+function fastBandWidths(grades) { const W = Array(8).fill(0); grades.forEach(g => { const c = FAST_MATH[g]; for (let i = 0; i < 8; i++) W[i] += (c[i + 1] - c[i]) / (c[8] - c[0]) / grades.length; }); return W; }
+function fastPos(grade, v, W) { const c = FAST_MATH[grade]; if (!c || v == null) return null; v = Math.max(c[0], Math.min(c[8], v)); let i = 0; for (let k = 1; k < 8; k++) if (v >= c[k]) i = k; let at = 0; for (let k = 0; k < i; k++) at += W[k]; return at + W[i] * (v - c[i]) / Math.max(1, c[i + 1] - c[i]); }
+function fastScaleHtml(grade, marks, W) {
   const c = FAST_MATH[grade]; if (!c) return '';
-  const lo = c[0], hi = c[8]; const X = v => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
+  const lo = c[0], hi = c[8]; const X = W ? v => fastPos(grade, v, W) * 100 : v => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
   const bands = [[c[0], c[1], 'Low 1', 'l1'], [c[1], c[2], 'Mid 1', 'l1'], [c[2], c[3], 'High 1', 'l1'], [c[3], c[4], 'Low 2', 'l2'], [c[4], c[5], 'High 2', 'l2'], [c[5], c[6], 'Level 3', 'l3'], [c[6], c[7], 'Level 4', 'l4'], [c[7], c[8], 'Level 5', 'l5']];
   /* Scores sit above the bands and targets below, so a PM1 next to its target never overlaps it; marks at the same
      score share one label, and marks within a few points of each other take turns standing taller (audit, 24 Oct). */
@@ -342,29 +348,57 @@ const fastTestName = g => `Math Grade ${g} FAST`;   // the cards carry every win
 /* The page is the student's: nothing on it that only the teacher needs (Croix, 24 Oct 2026: "get rid of the tests
    above grade pill, the mention of tally … a gain counts for school grade, basically anything and everything that
    students don't know or need to worry about"). Tests are named the way the student hears them: Math Grade 8 FAST. */
+// Every window on one chart: the y axis is the levels (lined up as above), so a grade-6 score and a grade-8 score sit
+// where they stand in their own test's levels; the gain target is a dashed line.
+function fastLineChart(t) {
+  const W = [1 / 15, 1 / 15, 1 / 15, 1 / 10, 1 / 10, 1 / 5, 1 / 5, 1 / 5];   // each level an equal height, so the climb from level to level reads evenly
+  const priorGrade = t.prior ? t.prior.grade : t.gradeLevel - 1;
+  const pts = [{ lab: 'PM3', sub: 'last year', g: priorGrade, v: t.prior ? t.prior.scale : null }, ...['PM1', 'PM2', 'PM3'].map(pm => { const h = t.now.find(x => x.pm === pm); return { lab: pm, sub: 'this year', g: t.gradeNow, v: h ? h.scale : null }; })];
+  const w = 330, h = 168, L = 46, R = 10, T = 10, B = 30; const iw = w - L - R, ih = h - T - B;
+  const X = i => L + iw * (i + .5) / pts.length, Y = p => T + ih * (1 - p);
+  let cum = 0; const bandY = W.map(x => { const a = cum; cum += x; return [a, cum]; });
+  const shade = ['#f4f4f4', '#f4f4f4', '#f4f4f4', '#e4e4e4', '#e4e4e4', '#d2d2d2', '#c0c0c0', '#adadad'];
+  const lvs = [[1, 0, 3], [2, 3, 5], [3, 5, 6], [4, 6, 7], [5, 7, 8]];   // level, first band, band after
+  const got = pts.map((p, i) => p.v == null ? null : { i, x: X(i), y: Y(fastPos(p.g, p.v, W)), v: p.v });
+  const line = got.filter(Boolean); const path = line.map((p, j) => `${j ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const gy = t.gain ? Y(fastPos(t.gradeNow, t.gain.score, W)) : null;
+  return `<svg class="fline" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="FAST scores by window">
+    ${bandY.map(([a, b], i) => `<rect x="${L}" y="${Y(b).toFixed(1)}" width="${iw}" height="${(Y(a) - Y(b)).toFixed(1)}" fill="${shade[i]}"/>`).join('')}
+    ${lvs.map(([lv, i, j]) => { const y0 = Y(bandY[i][0]), y1 = Y(bandY[j - 1][1]); return `<line x1="${L}" x2="${L + iw}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="#fff" stroke-width="2"/><text x="${L - 5}" y="${((y0 + y1) / 2 + 3).toFixed(1)}" text-anchor="end" font-size="8" font-weight="700">Level ${lv}</text>`; }).join('')}
+    ${gy != null ? `<line x1="${L}" x2="${L + iw}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#000" stroke-width="1" stroke-dasharray="4 3"/><text x="${L + iw - 2}" y="${(gy - 3).toFixed(1)}" text-anchor="end" font-size="8" font-weight="700">gain ${t.gain.score}</text>` : ''}
+    ${path ? `<path d="${path}" fill="none" stroke="#000" stroke-width="2"/>` : ''}
+    ${line.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#000" stroke="#fff" stroke-width="1.5"/><text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="900">${p.v}</text>`).join('')}
+    ${pts.map((p, i) => `<text x="${X(i).toFixed(1)}" y="${h - 16}" text-anchor="middle" font-size="8.5" font-weight="700">${p.lab}</text><text x="${X(i).toFixed(1)}" y="${h - 6}" text-anchor="middle" font-size="7" fill="#444">${i === 0 ? 'grade ' + p.g : p.v == null ? 'to come' : 'grade ' + p.g}</text>`).join('')}
+  </svg>`;
+}
 function fastReportSection(sec, name) {
   const t = fastTargets(sec, name);
   const first = niceName(name).split(' ')[0]; const today = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
   if (!t) return `<section class="rep fast"><h1>${esc(niceName(name))}</h1><div class="meta">${esc(sec.label)} · ${esc(today)}</div><p>No FAST scores on file yet.</p></section>`;
-  const lvl = bk => bk ? `<span class="lv l${bk.level}">${esc(bk.label)}</span>` : '';
+  /* The level pill shows where the score sits inside its level, filled like the scale below (Croix, 25 Oct 2026: "Maybe
+     it could fill in their level within their current level. Like the graph below"). */
+  const lvl = (g, sc) => { const bk = fastBucket(g, sc); const c = FAST_MATH[g]; if (!bk || !c) return ''; const lo = c[bk.idx], hi = c[bk.idx + 1]; const pc = Math.max(4, Math.min(100, Math.round((sc - lo) / Math.max(1, hi - lo) * 100)));
+    return `<span class="lv l${bk.level}"><i style="width:${pc}%"></i><em>${esc(bk.label)}</em><small>${lo}–${hi}</small></span>`; };
   const l3 = fastLevelFloor(t.gradeNow, 3); const gainIsL3 = !!t.gain && t.gain.score === l3;
   const nowName = fastTestName(t.gradeNow), priorGrade = t.prior ? t.prior.grade : t.gradeLevel - 1, priorName = fastTestName(priorGrade);
-  const diff = h => t.prior && t.prior.scale != null ? ` · ${Math.abs(h.scale - t.prior.scale)} ${h.scale - t.prior.scale >= 0 ? 'higher' : 'lower'} than last year` : '';
+  const diff = h => t.prior && t.prior.scale != null ? ` <small class="chg">(${h.scale - t.prior.scale >= 0 ? '+' : '−'}${Math.abs(h.scale - t.prior.scale)})</small>` : '';
   const cards = [
-    t.prior ? `<div><small>Last year · PM3</small><b>${t.prior.scale}</b>${lvl(t.priorBucket)}<span>${esc(priorName)}${t.prior.pct != null ? ' · ' + esc(pctWord(t.prior.pct)) : ''}</span></div>` : `<div><small>Last year · PM3</small><b>—</b><span>no score on file</span></div>`,
-    t.now.length ? t.now.map(h => `<div><small>This year · ${esc(h.pm)}</small><b>${h.scale}</b>${lvl(fastBucket(t.gradeNow, h.scale))}<span>${esc(nowName)}${h.pct != null ? ' · ' + esc(pctWord(h.pct)) : ''}${diff(h)}</span></div>`).join('') : `<div><small>This year</small><b>—</b><span>no window scored yet</span></div>`,
+    t.prior ? `<div><small>${esc(priorName)} PM3</small><b>${t.prior.scale}</b>${lvl(priorGrade, t.prior.scale)}<span>${t.prior.pct != null ? esc(pctWord(t.prior.pct)) : ''}</span></div>` : `<div><small>${esc(priorName)} PM3</small><b>—</b><span>no score on file</span></div>`,
+    t.now.length ? t.now.map(h => `<div><small>${esc(nowName)} ${esc(h.pm)}</small><b>${h.scale}${diff(h)}</b>${lvl(t.gradeNow, h.scale)}<span>${h.pct != null ? esc(pctWord(h.pct)) : ''}</span></div>`).join('') : `<div><small>${esc(nowName)}</small><b>—</b><span>no window scored yet</span></div>`,
     t.gain ? `<div class="goal"><small>Your target · a gain</small><b>${t.gain.score}+</b><span>${gainIsL3 ? 'Level 3, on grade level' : esc(t.gain.label)}</span></div>` : ''].join('');   /* no "On grade level" card: Level 3 is a row in the targets and a mark on the scale (Croix, 25 Oct 2026: "Not needed") */
   const gainWords = t.gain && t.priorBucket
-    ? `${esc(first)} was <b>${esc(t.priorBucket.label)}</b> on last year's ${esc(priorName)}. A learning gain this year means <b>${esc(t.gain.label)} or higher: ${t.gain.score} or more</b> on the ${esc(nowName)}.${t.latest ? (t.latest.scale >= t.gain.score ? ` ${esc(t.latest.pm)} already got there${t.latest.pm === 'PM3' ? '.' : '. PM3 is the one that counts, so hold it.'}` : ` ${esc(t.latest.pm)} was ${t.latest.scale}, so that is ${t.gain.score - t.latest.scale} more points.`) : ''}`
+    ? `${esc(first)} was <b>${esc(t.priorBucket.label)}</b> on last year's ${esc(priorName)}. A learning gain this year means <b>${esc(t.gain.label)}${/Level 5/.test(t.gain.label) ? '' : ' or higher'}: ${t.gain.score} or more</b> on the ${esc(nowName)}.${t.latest ? (t.latest.scale >= t.gain.score ? ` ${esc(t.latest.pm)} already got there${t.latest.pm === 'PM3' ? '.' : '. PM3 is the one that counts, so hold it.'}` : ` ${esc(t.latest.pm)} was ${t.latest.scale}, so that is ${t.gain.score - t.latest.scale} more points.`) : ''}`
     : `There is no PM3 score from last year on file, so there is no learning-gain target yet. The level targets below still apply.`;
   const rows = t.rows.map(r => `<tr class="${r.met ? 'met' : ''}"><td><span class="box"></span>${esc(r.what)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ''}</td><td class="r"><b>${r.score}</b></td><td>${r.met ? `✓ reached on ${esc(t.latest.pm)}` : r.gap != null ? `${r.gap} more than ${esc(t.latest.pm)}` : ''}</td></tr>`).join('');
+  const W = fastBandWidths([priorGrade, t.gradeNow].filter((g, i, a) => FAST_MATH[g] && a.indexOf(g) === i));
   const thisYearMarks = [...t.now.map(h => ({ v: h.scale, label: h.pm, cls: 'now' })), ...(t.gain && !gainIsL3 ? [{ v: t.gain.score, label: 'Gain', cls: 'tg' }] : []), { v: l3, label: gainIsL3 ? 'Gain · grade level' : 'Grade level', cls: 'tg' }];
   return `<section class="rep fast"><div class="head"><div><h1>${esc(niceName(name))}</h1><div class="meta">${esc(sec.label)} · ${esc(nowName)} · ${esc(today)}</div></div></div>
     <div class="cards">${cards}</div>
-    <h2>Last year <span class="hs">${esc(priorName)}</span></h2>${fastScaleHtml(priorGrade, t.prior ? [{ v: t.prior.scale, label: 'PM3', cls: 'now' }] : [])}
-    <h2>This year <span class="hs">${esc(nowName)}</span></h2>${fastScaleHtml(t.gradeNow, thisYearMarks)}
+    <h2>Last year and this year <span class="hs">levels lined up, so the two tests compare</span></h2>
+    <div class="slab">Last year · ${esc(priorName)}</div>${fastScaleHtml(priorGrade, t.prior ? [{ v: t.prior.scale, label: 'PM3', cls: 'now' }] : [], W)}
+    <div class="slab">This year · ${esc(nowName)}</div>${fastScaleHtml(t.gradeNow, thisYearMarks, W)}
     <p class="gain">${gainWords}</p>
-    <h2>Your targets for PM2 and PM3</h2><table class="targets"><tbody>${rows}</tbody></table>
+    <div class="two tl"><div><h2>Your targets for PM2 and PM3</h2><table class="targets"><tbody>${rows}</tbody></table></div><div><h2>Every window</h2>${fastLineChart(t)}</div></div>
     ${(() => { const h = t.now.slice().reverse().find(x => x.cats) || null; const cs = catList(h);
       const topics = cs.length ? `<div><h2>By topic <span class="hs">${esc(h.pm)}</span></h2><table class="topics"><thead><tr><th></th><th class="c">Below</th><th class="c">At/near</th><th class="c">Above</th></tr></thead><tbody>${cs.map(c => `<tr><td>${esc(c.name)}</td>${['below', 'near', 'above'].map(v => `<td class="c ${c.v === v ? 'on' : ''}">${c.v === v ? '●' : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '';
       return topics; })()}
@@ -372,11 +406,11 @@ function fastReportSection(sec, name) {
 }
 const FAST_REPORT_CSS = `
 .rep.fast h2{margin:8px 0 3px}.rep.fast .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:8px 0 2px}.rep.fast .cards>div{border:1px solid #bbb;border-radius:6px;padding:7px 10px}.rep.fast .cards small{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:#333}.rep.fast .cards b{font-size:19pt;font-weight:900;line-height:1.1;display:block}.rep.fast .cards span{display:block;font-size:8pt;color:#444}.rep.fast .cards .goal{border:1.5px solid #000}
-.rep.fast .lv{display:inline-block;border:1px solid #000;border-radius:8px;padding:0 6px;font-size:8pt;font-weight:bold;margin:2px 0}
+.rep.fast .cards .lv{position:relative;display:flex;justify-content:space-between;align-items:center;border:1px solid #000;border-radius:8px;padding:0 7px;height:15px;font-size:8pt;margin:3px 0 2px;overflow:hidden;background:#fff}.rep.fast .lv i{position:absolute;left:0;top:0;bottom:0;background:#c9c9c9}.rep.fast .lv em,.rep.fast .lv small{position:relative;font-style:normal}.rep.fast .lv em{font-weight:bold}.rep.fast .lv small{font-size:6.5pt;color:#333;text-transform:none;letter-spacing:0;display:inline}.rep.fast .cards b .chg{display:inline;font-size:11pt;font-weight:bold;text-transform:none;letter-spacing:0;color:#000;margin-left:4px}
 .scale{margin:3px 0 8px}.bands{position:relative;height:26px;border:1px solid #000;border-radius:4px;overflow:hidden}.bands>div{position:absolute;top:0;bottom:0;border-left:1px solid #000;font-size:7.5pt;padding:2px 0 0 3px;overflow:hidden;white-space:nowrap}.bands>div:first-child{border-left:none}.bands span{display:block;font-weight:bold}.bands small{display:block;font-size:7pt;color:#333}
 .bands .l1{background:#f0f0f0}.bands .l2{background:#dcdcdc}.bands .l3{background:#c4c4c4}.bands .l4{background:#a8a8a8}.bands .l5{background:#8c8c8c}.bands .l4,.bands .l5{color:#fff}.bands .l4 small,.bands .l5 small{color:#eee}
 .marks{position:relative;height:34px}.marks.tiered{height:56px}.mk{position:absolute;bottom:0;transform:translateX(-50%);text-align:center;font-size:7.5pt;line-height:1.05;display:flex;flex-direction:column;align-items:center;white-space:nowrap}.mk b{font-size:8.5pt}.mk i{display:block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #000}.marks .mk.tall i{border:none;border-left:1px solid #000;height:30px}.marks.under{height:30px}.marks.under .mk{bottom:auto;top:0}.marks.under .mk i{border-top:none;border-bottom:8px solid #555}.marks.under .mk b{color:#333;font-size:7.5pt}.marks.under.tiered{height:52px}.marks.under .mk.tall i{border:none;border-left:1px solid #555;height:30px}
-.rep.fast .gain{margin:4px 0 8px;font-size:10pt;line-height:1.4}
+.rep.fast .gain{margin:4px 0 8px;font-size:10pt;line-height:1.4}.rep.fast .slab{font-size:8pt;font-weight:bold;margin:2px 0 -2px}.rep.fast .two.tl{display:grid;grid-template-columns:1fr 330px;gap:0 16px;align-items:start}.rep.fast .fline{display:block;margin-top:4px}.rep.fast .two.tl .targets td{font-size:9.5pt;padding:3px 4px}
 .rep.fast .topics th{text-align:center;font-size:8pt}.rep.fast .topics th:first-child{text-align:left}.rep.fast .topics td{font-size:9pt;padding:2px 6px}.rep.fast .topics td.c{text-align:center;width:60px;color:#000;font-size:11pt;line-height:1}.rep.fast .topics th.c{width:60px}.rep.fast .topics td.c.on{background:#e8e8e8}
 .rep.fast .targets td{padding:3px 6px;font-size:10pt}.rep.fast .targets tr.met td{color:#0F766E}.rep.fast .hist td,.rep.fast .hist th{font-size:8.5pt;white-space:nowrap;padding:2px 5px}
 .rep.fast .pledge{grid-template-columns:1fr 1fr;gap:8px 24px;padding:8px 12px 10px;margin-top:10px}.rep.fast .pledge .wide{grid-column:1/-1}.rep.fast .pledge b{display:block;margin-bottom:3px}.rep.fast .pledge i{display:block;border-bottom:1px solid #000;height:20px}.rep.fast .pledge .sig{margin-top:6px}`;

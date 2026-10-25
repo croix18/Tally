@@ -716,6 +716,23 @@ per-section-file era and many items in them are now done).
   belongs to the week ahead). "Link to student's contact section or a card that I can quick edit": the Home cell is a
   button ("Add a contact" when there is none) that opens a contact card in the list, saved straight to the student,
   with "Open <first name>'s page" to jump to the Family section.
+- **25 Oct 2026 — FAST report cards and targets, from a marked print.** The card header names the test and window
+  ("Math Grade 6 FAST PM3", "Math Grade 8 FAST PM1"); this year's score carries its change in brackets ("231 (−16)")
+  and the "higher than last year" words are gone; the bottom line is the percentile alone. "What is the purpose of
+  this? Maybe it could fill in their level within their current level. Like the graph below": the level pill is a
+  small bar from that level's floor to the next cut, filled to the score, with the range at its right. "There is
+  nothing higher than 5": the gain sentence drops "or higher" for Level 5. "This should not be a target because it's
+  less than his PM3 level" (Level 2 for a Level 4 student) while Level 3, 4 and the gain are "good": target rows start
+  at the lower of last year's level and Level 3, so Level 3 (on grade level) always stays.
+  Then: "Switch learning gain and level 5 on the targets list": the gain row names the level first and "learning
+  gain" beside it ("Level 5 learning gain", "Mid Level 1 learning gain"), like "Level 3 on grade level". "I really
+  like the two bars … it's just tough to compare the two, being at two different levels … a line chart would be
+  cool": the two scales share band widths (`fastBandWidths`, the average of the two tables' proportions) so each
+  level sits at the same place on both bars and a score is placed by how far it is through its own level
+  (`fastPos`); "Every window" (`fastLineChart`) plots last year's PM3 and this year's PM1, PM2, PM3 on a level axis
+  (every level an equal height, Level 1 and 2 split into their subcategories), the gain target dashed, windows not
+  yet taken marked "to come". It sits beside the targets; the page still fits one sheet (he said more pages are fine
+  if they help).
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab
