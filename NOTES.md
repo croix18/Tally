@@ -846,6 +846,32 @@ per-section-file era and many items in them are now done).
   Before printing every class, old exports are named once each with their classes ("… (every class)", "… (2nd
   Period)"). The buttons count students ("46 students, 2 classes"), not pages. 138 reports lay out in under 3 s.
   `tests/print-duplex.js`.
+- **25 Oct 2026 — The weekly report after a second review.** Croix had another agent review a printed report and asked
+  what I thought; I agreed with five points and disagreed with the rest (its ">100% A" was the arrow in "→ 100% A";
+  the grade math it wanted audited is how Tally already works, checked against Focus's Grade column). His answers:
+  "79.5 rounds to 80 a B" (Tally's assumption, confirmed) and "They can retake multiple" (so a retake is offered while
+  it can still raise the grade). Then: "Implement all of the things you say it got right. I agree the bars are dark …
+  the last week's plan box … is taking up way too much space. Also, can you move missing assignments and ixls on the
+  back page. Remove the your smartscore in parentheses line." Built:
+  - **One panel for what to do.** The separate "Retake this week" box is gone; the retake is part of "Do this week".
+    When the plan's way to the next letter is a retake, its step gives the score to aim for and a full score second
+    ("score at least 22 / 30 · a full score: 100% A"); "once everything above is done" only when something is above
+    it. When a retake isn't needed for the next letter but would still raise the grade (an A already, or the IXL copy
+    reaches the letter), one line says what it would do ("Retake X: 26/30 or better takes your grade to 95% A; a full
+    score, 98% A"). Eligible students get the HOWL lines under it with the dates of the coming Wednesday and Thursday
+    (next week's once Wednesday has passed), "Need another time? Tell Mr. Shaffer", and four boxes: told my HOWL
+    teacher, came Wednesday, came Thursday, need another time. Not yet eligible: "Retakes: not yet. To retake: …".
+  - **Three tiles:** Missing assignments, IXL at goal, Retake. The tests-and-quizzes figure heads its own panel
+    ("78% overall · NHI counts as 0").
+  - **Light header bars** (#e8e8e8, black text; "Do this week" #d9d9d9 with a heavier border) and an outlined title.
+  - **The plan box:** "This week I will" on full-width lines; "Last week's plan ☐ done ☐ partly ☐ not yet" on one line,
+    only when the student had a report the week before ("My plan from Oct 10" when the last one was older).
+  - **The since strip** sits under the header, so the student's name keeps one line.
+  - **The back (page 2):** every missing assignment with a box, its points and due date and what turning it in does
+    (biggest first; an NHI IXL column says "do the IXL skills"), then the IXL still owed ("goal SmartScore 67", the
+    caption about the parentheses gone). The front's "What would move the grade" sums the missing work in one line.
+    Two-sided: the page layout starts the back on a new box (`data-newpage`); one-sided: CSS breaks before it.
+  `tests/weekly-layout.js` (14 checks, all failing on the build before).
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

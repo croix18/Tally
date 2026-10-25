@@ -1447,7 +1447,7 @@ const REPORT_CSS = `@page{margin:.45in .45in .45in 1in}   /* a left margin for a
 .rep{padding:18px 24px 24px;break-after:page;page-break-after:always}.rep:last-child{break-after:auto;page-break-after:auto}@media print{.rep{padding:0}}
 h1{font-size:17pt;margin:0;font-weight:900}h2{font-size:9.5pt;font-weight:900;margin:10px 0 3px;border-bottom:1.5px solid #000;padding-bottom:2px;text-transform:uppercase;letter-spacing:.06em}h2 .hs{text-transform:none;letter-spacing:0;font-weight:normal;color:#333}
 .head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.meta{font-size:9pt;color:#333;margin:2px 0 8px}
-.since{border:1.5px solid #000;border-radius:6px;padding:6px 10px;font-size:9pt;display:grid;gap:1px 14px;grid-template-columns:auto auto;align-items:baseline;white-space:nowrap}.since>b{grid-column:1/-1}.since small{color:#555;font-weight:normal}.since .stale{grid-column:1/-1;color:#B8321F}.since .up{color:#0F766E;font-weight:bold}.since .down{color:#B8321F;font-weight:bold}.since .same{color:#555}
+.since{border:1.5px solid #000;border-radius:6px;padding:4px 10px;font-size:9pt;display:flex;flex-wrap:wrap;gap:2px 16px;align-items:baseline;margin:8px 0 0}.since small{color:#555;font-weight:normal}.since .stale{color:#B8321F}.since .up{color:#0F766E;font-weight:bold}.since .down{color:#B8321F;font-weight:bold}.since .same{color:#555}
 .top{display:flex;gap:18px;align-items:flex-start}.gradeBox{flex:none;min-width:200px}.big{font-size:30pt;font-weight:900;line-height:1;margin:2px 0 4px;white-space:nowrap}.big small{font-size:14pt;margin-left:6px}
 .board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1}.board>div{border:1px solid #bbb;border-radius:6px;padding:5px 8px}.board small{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:#333}.board b{font-size:15pt;font-weight:900;line-height:1.15}.board span{display:block;font-size:8pt;color:#444}.board .ok b{color:#0F766E}.board .no b{color:#B8321F}
 table{border-collapse:collapse;width:100%}td,th{padding:1.5px 6px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd;font-size:9pt}td small{color:#444}th{font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;color:#333}
@@ -1459,11 +1459,13 @@ table{border-collapse:collapse;width:100%}td,th{padding:1.5px 6px;text-align:lef
 .tests{margin:3px 0 6px}.rt{margin:4px 0 2px}
 .pledge{margin-top:10px;border:1.5px solid #000;border-radius:6px;padding:8px 10px;display:grid;grid-template-columns:1.4fr 1fr;gap:6px 16px;font-size:9.5pt}.pl b{display:block;margin-bottom:2px}.pl i{display:block;border-bottom:1px solid #000;height:15px}.sig{grid-column:1/-1;display:flex;gap:18px;margin-top:6px;font-size:9pt}.sig span{display:flex;align-items:flex-end;gap:6px;flex:1;white-space:nowrap}.sig span::after{content:'';flex:1;border-bottom:1px solid #000;min-width:40px}.sig span:last-child{flex:.6}
 .foot{font-size:7.5pt;color:#444;margin-top:8px;border-top:1px solid #999;padding-top:5px}
-.wk .head{align-items:flex-start;gap:14px}.wk .title{flex:none}.wk .course{font-size:9pt;font-weight:bold;margin-bottom:3px}.wk .badge{background:#222;color:#fff;font-weight:900;font-size:12pt;letter-spacing:.04em;text-transform:uppercase;padding:5px 12px;border-radius:5px;white-space:nowrap}.wk .who{flex:1;min-width:0}.wk .who h1{font-size:16pt;line-height:1.1}.wk .meta{margin:2px 0 0}
-.wk .top{margin:10px 0 8px}.wk .board>div{background:#eee;border:1px solid #777;border-radius:5px}
-.wk .panel{border:1.5px solid #000;border-radius:6px;overflow:hidden;margin:8px 0 0;break-inside:avoid}.wk .ph{background:#6b6b6b;color:#fff;font-weight:900;font-size:9.5pt;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px}.wk .ph .hs{text-transform:none;letter-spacing:0;font-weight:normal;color:#eee;font-size:8.5pt}.wk .panel.dark .ph{background:#222}.wk .panel.alert{border-width:2.5px}.wk .panel.alert .ph{background:#000}.wk .panel.alert .lead{margin:3px 0}.wk .pbody{padding:4px 8px 6px}.wk .pbody>p:first-child,.wk .pbody>.lead:first-child{margin-top:2px}
+.wk .head{align-items:flex-start;gap:14px}.wk .title{flex:none}.wk .course{font-size:9pt;font-weight:bold;margin-bottom:3px}.wk .badge{background:#fff;color:#000;border:2px solid #000;font-weight:900;font-size:12pt;letter-spacing:.04em;text-transform:uppercase;padding:5px 12px;border-radius:5px;white-space:nowrap}.wk .who{flex:1;min-width:0}.wk .who h1{font-size:16pt;line-height:1.1}.wk .meta{margin:2px 0 0}
+.wk .top{margin:10px 0 8px}.wk .board{grid-template-columns:repeat(3,1fr)}.wk .board>div{background:#eee;border:1px solid #777;border-radius:5px}
+.wk .howl{margin:6px -8px -6px;padding:5px 8px 6px;border-top:1px solid #aaa;background:#f2f2f2}.wk .howl p{margin:2px 0}.wk .howl .ticks{display:flex;flex-wrap:wrap;gap:3px 18px;font-size:9pt;margin-top:5px}.wk .howl .ticks>span{display:inline-flex;align-items:center;gap:5px}.wk .howl .box{margin:0}
+.wk [data-newpage]{break-before:page;page-break-before:always}.wk .panel.miss td{padding:3px 6px;font-size:9.5pt}.wk .panel.miss .box{margin-right:4px}
+.wk .panel{border:1.5px solid #000;border-radius:6px;overflow:hidden;margin:8px 0 0;break-inside:avoid}.wk .ph{background:#e8e8e8;color:#000;border-bottom:1px solid #999;font-weight:900;font-size:9.5pt;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px}.wk .ph .hs{text-transform:none;letter-spacing:0;font-weight:normal;color:#333;font-size:8.5pt}.wk .panel.main{border-width:2.5px}.wk .panel.main .ph{background:#d9d9d9;border-bottom-color:#000}.wk .pbody{padding:4px 8px 6px}.wk .pbody>p:first-child,.wk .pbody>.lead:first-child{margin-top:2px}
 .wk .two{gap:0 8px;align-items:start}.wk .two>.panel{margin-top:8px}.wk .col .panel:first-child{margin-top:8px}.wk .rt{margin:4px -8px -6px;padding:4px 8px;background:#eee;border-top:1px solid #aaa}.wk .todo{margin:2px 0 6px}
-.wk .pledge{margin-top:8px;border:1.5px solid #000;border-radius:6px;padding:0;display:grid;grid-template-columns:1.6fr 1fr;gap:0;overflow:hidden}.wk .pl{padding:7px 10px 8px}.wk .pl b{margin-bottom:4px}.wk .pl.last{background:#eee;border-left:1.5px solid #000}.wk .lines{display:block}.wk .lines i{height:19px}.wk .pledgeWrap{break-inside:avoid;page-break-inside:avoid}.wk .ticks{margin-top:6px}
+.wk .pledge{margin-top:8px;border:1.5px solid #000;border-radius:6px;padding:7px 10px 8px;display:block}.wk .pledge>b{display:block;margin-bottom:4px}.wk .lines{display:block}.wk .lines i{display:block;border-bottom:1px solid #000;height:19px}.wk .lastplan{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:9.5pt}.wk .lastplan b{margin-right:8px}.wk .lastplan .box{margin:0 2px 0 6px}.wk .pledgeWrap{break-inside:avoid;page-break-inside:avoid}
 .teach .ret{margin-top:10px}.teach .ret th{font-size:8pt;padding:3px 6px;border-bottom:1.5px solid #000}.teach .ret td{padding:4px 6px;font-size:9.5pt;border-bottom:1px solid #bbb;height:20px}.teach .ret td.c,.teach .ret th.c{text-align:center;width:70px}.teach .ret td:nth-child(2){white-space:nowrap}.teach .ret td.w{min-width:80px}.teach .ret td:last-child{width:120px}.teach .ret .box{margin:0;width:13px;height:13px}\n.wk .sig{margin-top:6px;border:1.5px solid #000;border-radius:6px;padding:8px 10px;display:flex;gap:14px}.wk .sig span.d{flex:.5}.bar{position:fixed;bottom:14px;right:14px;z-index:10;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px}.bar button{font:inherit;padding:8px 18px}.bar .hint{font-size:9pt;color:#333;padding-left:6px}@media print{.bar{display:none}}`;
 // What one next assessment of `mx` points can do for student i — only what is computed: for each letter above the
 // current grade (a D counts), the score that reaches it or the fact that none does; and the score that keeps the
@@ -1498,7 +1500,7 @@ function studentReportSection(s0, i, ixlRow) {
   const stale = last ? [(last.gbAt ? last.gbAt === gbAt : last.gb && last.gb === (localDayOf(gb.importedAt) || '')) ? 'Focus' : '', last.ix && last.ix === (dataDate(s) || '') ? 'IXL' : ''].filter(Boolean) : [];
   const ixlNow = ixlRow && ixlRow.ixl != null ? unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)).reduce((n, u) => n + points(s, u, ixlRow.ixl), 0) : null;
   const delta = (a, b, up) => a == null || b == null ? '' : b === a ? '<span class="same">same</span>' : `<span class="${(b > a) === up ? 'up' : 'down'}">${b > a ? '+' : '−'}${Math.abs(b - a)}</span>`;
-  const since = last ? `<div class="since"><b>Since the last report</b> <small>${esc(fmtDate(last.date))}</small>
+  const since = last ? `<div class="since"><b>Since the last report <small>${esc(fmtDate(last.date))}</small></b>
       <span>Grade <b>${last.grade != null ? last.grade + '%' : '—'}</b> → <b>${r ? r.rounded + '%' : '—'}</b> ${delta(last.grade, r ? r.rounded : null, true)}</span>
       <span>Missing <b>${last.missing}</b> → <b>${missing.length}</b> ${delta(last.missing, missing.length, false)}</span>
       ${ixlNow != null && last.ixl != null ? `<span>IXL skills <b>${last.ixl}</b> → <b>${ixlNow}</b> ${delta(last.ixl, ixlNow, true)}</span>` : ''}${stale.length ? `<small class="stale">${stale.join(' and ')} export${stale.length > 1 ? 's' : ''} unchanged since then</small>` : ''}</div>` : '';   /* a first report has nothing to move from, so it carries no box (Croix, 25 Oct 2026) */
@@ -1508,8 +1510,8 @@ function studentReportSection(s0, i, ixlRow) {
     : x.kind === 'ixl' ? `Pass <b>${plural(x.n, 'more IXL skill')}${x.unit ? ' in ' + esc(x.unit.short) : ''}</b>${x.skills.length ? ` <small>${esc(x.skills.slice(0, 2).map(k => k.name).join(' · '))}${x.skills.length > 2 ? ` and ${x.skills.length - 2} more` : ''}</small>` : ''}`
     : x.kind === 'copy' ? `Your <b>${esc(x.unit ? x.unit.short : x.a.name)} IXL</b> goes into Focus <small>already earned: ${fmtN(x.to)}</small>`
     : x.kind === 'ixlreq' ? `Finish <b>${plural(x.n, 'IXL skill')} in ${esc(x.unit.short)}</b> <small>needed before a retake</small>`
-    : `Retake <b>${esc(x.a.name)}</b> <small>score at least ${fmtN(x.to)} / ${x.a.max}, once everything above is done</small>`;
-  const steps = qp && !qp.top ? qp.plan.filter(x => x.kind !== 'copy').map(x => `<li><span class="box"></span><span class="st">${stepText(x)}</span><span class="aft">${x.kind === 'ixlreq' ? '' : `→ ${x.after}%`}</span></li>`) : [];
+    : (() => { const full = computeGrade(s, i, { ...qp.over, [x.a.name]: x.a.max }); return `Retake <b>${esc(x.a.name)}</b> <small>score at least ${fmtN(x.to)} / ${x.a.max}${x.first ? '' : ', once everything above is done'}${full && full.rounded != null && full.rounded > x.after ? ` · a full score: ${full.rounded}% ${full.letter}` : ''}</small>`; })();
+  const steps = qp && !qp.top ? qp.plan.filter(x => x.kind !== 'copy').map((x, k) => `<li><span class="box"></span><span class="st">${stepText({ ...x, first: k === 0 })}</span><span class="aft">${x.kind === 'ixlreq' ? '' : `→ ${x.after}%`}</span></li>`) : [];
   const copies = qp && !qp.top ? qp.plan.filter(x => x.kind === 'copy') : [];   // the teacher's step, not a box for the student (audit, 24 Oct)
   const copyNote = copies.length ? `<p class="lead"><small>${copies.map(x => `Your ${esc(x.unit ? x.unit.short : x.a.name)} IXL points (${fmtN(x.to)}) go into Focus at the next grade update.`).join(' ')}</small></p>` : '';
   // With no step for the student, say only what is true (audit, 25 Oct 2026: "Nothing missing and every assessment at
@@ -1517,7 +1519,7 @@ function studentReportSection(s0, i, ixlRow) {
   const missWork = missing.filter(a => !/\bixl\b/i.test(a.name)); const belowFull = tests.some(a => a.status[i] === 'score' && Number(a.values[i]) < a.max);
   const stillMissing = () => `Still missing: ${missWork.slice(0, 3).map(a => `<b>${esc(a.name)}</b>`).join(', ')}${missWork.length > 3 ? ` and ${missWork.length - 3} more` : ''}. Turn ${missWork.length === 1 ? 'it' : 'them'} in this week.`;
   const steady = () => missWork.length ? `<p class="keep">${stillMissing()}</p>`
-    : better.length ? `<p class="keep">Nothing missing. Retake ${esc(better[0].a.name)}: see the box above.</p>`
+    : better.length ? '<p class="keep">Nothing missing.</p>'
     : `<p class="keep">Nothing missing${belowFull ? '' : ' and every assessment at full marks'}: keep going.</p>`;
   const copyOnly = !!(qp && !qp.top && !steps.length && copies.length && qp.reached);
   const doThis = qp && qp.top ? `<p class="keep">An A already. ${missWork.length ? stillMissing() : 'This week: keep every assignment in on time and the current unit\'s IXL at goal.'}</p>`
@@ -1536,42 +1538,61 @@ function studentReportSection(s0, i, ixlRow) {
       const atPct = Math.round(p / n * 100), stPct = Math.round(started.length / n * 100);
       return `<div class="u${owed.length > 14 ? ' long' : ''}"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}${u.current ? ' <em>now</em>' : ''}</span><span class="pb"><i class="at" style="width:${atPct}%"></i><i class="st" style="width:${stPct}%"></i></span><b>${p} / ${own.length}</b></div>
         ${owed.length ? `<div class="sks" data-items>${owed.map(k => { const v = eff(s, k, ixlRow.ixl); return `<div class="sk"><span class="box"></span><span class="nm">${esc(s.skills[k].name)}</span> <b class="${v == null ? 'zero' : ''}">(${v == null ? 0 : v})</b></div>`; }).join('')}</div>` : `<div class="l"><span class="done">All ${own.length} skills at goal</span></div>`}</div>`; }).join('');
-    ixl = `<div class="panel ixl"><div class="ph">IXL still owed <span class="hs">goal SmartScore ${t} · your SmartScore in parentheses</span></div><div class="pbody" data-items><div class="keyline" data-keep><i class="key at"></i> at goal <i class="key st"></i> started <i class="key no"></i> not yet</div>${per || '<p>No units assigned yet.</p>'}</div></div>`;
+    ixl = `<div class="panel ixl"><div class="ph">IXL still owed <span class="hs">goal SmartScore ${t}</span></div><div class="pbody" data-items><div class="keyline" data-keep><i class="key at"></i> at goal <i class="key st"></i> started <i class="key no"></i> not yet</div>${per || '<p>No units assigned yet.</p>'}</div></div>`;
   } else if (s.students.length) ixl = `<div class="panel"><div class="ph">IXL still owed</div><div class="pbody"><p>${ixlRow && ixlRow.status === 'noAccount' ? 'No IXL account.' : 'IXL is not linked to this report yet.'}</p></div></div>`;
   else ixl = '';
   // ---- tests and quizzes so far ----
   const testsLine = tests.length ? tests.map(a => `${esc(a.name)} <b>${a.status[i] === 'missing' ? 'NHI' : `${fmtN(a.values[i])}/${fmtN(a.max)}`}</b>${a.status[i] === 'score' && a.max ? ` <small>${Math.round(a.values[i] / a.max * 100)}%</small>` : ''}`).join(' · ') : 'None graded yet.';
   // ---- what would move the grade ----
-  const moves = [   // an IXL column is finished, not turned in: it has its own row below (audit: an NHI IXL column was listed twice)
-    ...missWork.slice(0, 3).map(a => `<tr><td class="nhi">${esc(a.name)} <small>${a.max} pts${a.due ? ' · due ' + esc(a.due) : ''}</small></td><td class="r">turned in ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
-    missWork.length > 3 ? `<tr><td colspan="2"><i>and ${missWork.length - 3} more missing</i></td></tr>` : '',
-    missWork.length > 1 ? `<tr><td><b>All missing work turned in</b></td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
+  const moves = [   // the missing work in one line: each assignment is listed on the back. An IXL column is finished, not turned in: it has its own row (audit: an NHI IXL column was listed twice)
+    missWork.length ? `<tr><td class="nhi">${missWork.length === 1 ? `${esc(missWork[0].name)} turned in` : `All ${missWork.length} missing assignments turned in`}</td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
     ...ixlCols.map(a => `<tr><td>${esc(a.name)} <small>now ${a.status[i] === 'missing' ? 'NHI' : a.values[i] + '/' + a.max}</small></td><td class="r">at ${a.max}/${a.max} ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
     (missWork.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work turned in and IXL finished</b></td><td class="r"><b>${arrow(computeGrade(s, i, both))}</b></td></tr>`; })() : '',
     nextLine ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${nextLine.charAt(0).toUpperCase() + nextLine.slice(1)}.</td></tr>` : ''].filter(Boolean).join('');
   const scoreboard = `<div class="board">
-      <div><small>Missing</small><b>${missing.length}</b><span>${missing.length ? plural(missing.reduce((n, a) => n + (a.max || 0), 0), 'point') + ' waiting' : 'nothing'}</span></div>
+      <div><small>Missing assignments</small><b>${missing.length}</b><span>${missing.length ? plural(missing.reduce((n, a) => n + (a.max || 0), 0), 'point') + ' waiting' : 'nothing'}</span></div>
       <div><small>IXL at goal</small><b>${ixlNow != null ? `${ixlNow} / ${units.reduce((n, u) => n + activeFor(s, u, ixlRow.ixl).length, 0)}` : '—'}</b><span>${ixlNow != null ? 'skills, assigned units' : 'not linked'}</span></div>
-      <div><small>Tests & quizzes</small><b>${(() => { const e = tests.reduce((n, a) => n + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), p = tests.reduce((n, a) => n + a.max, 0); return p ? Math.round(e / p * 100) + '%' : '—'; })()}</b><span>${tests.length} graded${tests.some(a => a.status[i] === 'missing') ? ' · NHI counts as 0' : ''}</span></div>
       <div class="${rt ? (rt.ok ? 'ok' : 'no') : ''}"><small>Retake</small><b>${rt ? (rt.ok ? 'Eligible' : 'Not yet') : '—'}</b><span>${rt ? (rt.ok ? 'nothing in the way' : esc(retakeWhy(rt))) : ''}</span></div></div>`;
   /* The page is a form (Croix, 24 Oct 2026, with a mock-up: "see how much the borders and boxes complement the data
-     and make it easier to understand"): a title block, grey cards, each section a boxed panel with a dark header
-     bar, and the pledge and signatures as boxes of their own. */
-  const panel = (title, body, cls) => `<div class="panel ${cls || ''}"><div class="ph">${title}</div><div class="pbody">${body}</div></div>`;
-  /* Croix (25 Oct 2026): "a notice to trigger if a student is eligible for retake and could improve their grade",
-     telling them to come to HOWL time on Wednesday or Thursday and to let the teacher they would be with know. */
+     and make it easier to understand"): a title block, grey cards, each section a boxed panel with a header bar, and
+     the plan and signatures as boxes of their own. The header bars are light grey (Croix, 25 Oct 2026: "the bars are
+     dark. We can reduce or eliminate the darkness"). */
+  const panel = (title, body, cls, attrs) => `<div class="panel ${cls || ''}"${attrs || ''}><div class="ph">${title}</div><div class="pbody">${body}</div></div>`;
+  /* Retakes, inside "Do this week" (25 Oct 2026: the separate "Retake this week" box said the same thing as the plan,
+     with a different number). Croix's notice stays: eligible students come to HOWL on Wednesday or Thursday and tell
+     the teacher they would be with; the days now carry their dates, there is a way to ask for another time, and the
+     score to aim for comes first, a full score second. Retakes may be taken more than once, and a 79.5 is an 80, a B
+     (Croix, 25 Oct 2026), so a retake is offered while it can still raise the grade. */
   const teacher = state.settings.teacherName || 'your math teacher';
-  const retakeNotice = better.length ? panel('Retake this week', `<p class="lead"><b>${esc(niceName(name).split(' ')[0] || 'You')}</b>, you are eligible to retake ${better.length === 1 ? `<b>${esc(better[0].a.name)}</b>` : `${better.length} assessments`}, and it would raise your grade${better.length === 1 ? ` <b>→ ${better[0].g.rounded}% ${better[0].g.letter}</b> at full marks` : ` (${esc(better[0].a.name)} alone <b>→ ${better[0].g.rounded}% ${better[0].g.letter}</b> at full marks)`}.</p>
-      <p class="lead">Come to ${esc(teacher)}'s room during HOWL time on <b>Wednesday or Thursday</b>. Tell the teacher whose HOWL time you would be in that you are with ${esc(teacher)}, in person or by Focus message.</p>
-      <p class="lead"><span class="box"></span> I told my HOWL teacher &nbsp; <span class="box"></span> I came Wednesday &nbsp; <span class="box"></span> I came Thursday</p>`, 'alert') : '';
-  return `<section class="rep wk"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Weekly progress report</div></div><div class="who"><h1>${esc(name)}</h1><div class="meta">${esc(new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))} <small>· Focus as of ${esc(fmtDate(localDayOf(gbAt)))}${ixlRow && ixlRow.ixl != null && dataDate(s) ? ` · IXL as of ${esc(fmtDate(dataDate(s)))}` : ''}</small></div></div>${since}</div>
+  const retakeStep = qp && !qp.top ? qp.plan.find(x => x.kind === 'retake') : null;
+  const nextUp = r ? NEXT_UP.find(([tt]) => r.rounded < tt) : null;
+  const aimFor = a => { let at = null; if (nextUp) for (let v = Math.ceil((Number(a.values[i]) || 0) * 2) / 2; v <= a.max; v += 0.5) { const gg = computeGrade(s, i, { [a.name]: v }); if (gg && gg.rounded >= nextUp[0]) { at = { v, g: gg }; break; } } return { at, full: computeGrade(s, i, { [a.name]: a.max }) }; };
+  const extra = !retakeStep && better.length ? (() => { const a = better[0].a; const m = aimFor(a);
+    return `<p class="lead">Retake <b>${esc(a.name)}</b>: ${m.at ? `${fmtN(m.at.v)}/${a.max} or better takes your grade to <b>${m.at.g.rounded}% ${m.at.g.letter}</b>; a full score, ${m.full.rounded}% ${m.full.letter}` : `a full score takes your grade to <b>${m.full.rounded}% ${m.full.letter}</b>`}.${better.length > 1 ? ` <small>${plural(better.length - 1, 'more assessment')} can be retaken too.</small>` : ''}</p>`; })() : '';
+  const howlDays = (() => { const mon = new Date(weekOf(localDay(new Date().toISOString())) + 'T12:00:00'); const now = new Date(); now.setHours(12, 0, 0, 0); if (mon.getTime() + 2 * 864e5 < now.getTime()) mon.setDate(mon.getDate() + 7);   // Wednesday gone: next week's
+    return [2, 3].map(d => new Date(mon.getTime() + d * 864e5).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })); })();
+  const howl = rt && rt.ok && (retakeStep || better.length) ? `<div class="howl"><p><b>Retakes:</b> you are eligible (${esc(retakeOkWhy(rt))}). Come to ${esc(teacher)}'s room during HOWL on <b>${esc(howlDays[0])}</b> or <b>${esc(howlDays[1])}</b>. Tell the teacher whose HOWL you would be in that you are with ${esc(teacher)}, in person or by Focus message. Need another time? Tell ${esc(teacher)}.</p>
+      <p class="ticks"><span><span class="box"></span> I told my HOWL teacher</span><span><span class="box"></span> I came Wednesday</span><span><span class="box"></span> I came Thursday</span><span><span class="box"></span> I need another time</span></p></div>` : '';
+  const rtLine = rt && !howl ? `<p class="rt"><b>Retakes:</b> ${rt.ok ? `eligible: ${esc(retakeOkWhy(rt))}.` : `not yet. To retake: ${esc(retakeWhy(rt, true))}.`}</p>` : '';
+  // ---- tests and quizzes: the overall figure in the header, each one listed ----
+  const testPct = (() => { const e = tests.reduce((n, a) => n + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), p = tests.reduce((n, a) => n + a.max, 0); return p ? Math.round(e / p * 100) : null; })();
+  // ---- the back: every missing assignment, then the IXL still owed (Croix, 25 Oct 2026: "move missing assignments and
+  // ixls on the back page"). Each assignment has a box and what turning it in does, the biggest first. ----
+  const missRows = missing.map(a => { const isIxl = /\bixl\b/i.test(a.name); return { a, isIxl, res: isIxl ? null : computeGrade(s, i, { [a.name]: a.max }) }; }).sort((x, y) => (y.res ? y.res.pct : -1) - (x.res ? x.res.pct : -1));
+  const missPanel = panel(`Missing assignments${missing.length ? ` <span class="hs">${plural(missing.length, 'assignment')} · ${plural(missing.reduce((n, a) => n + (a.max || 0), 0), 'point')}</span>` : ''}`,
+    missing.length ? `<table><tbody data-items>${missRows.map(m => `<tr><td><span class="box"></span> <b>${esc(m.a.name)}</b> <small>${m.a.max} pts${m.a.due ? ' · was due ' + esc(m.a.due) : ''}</small></td><td class="r">${m.isIxl ? 'do the IXL skills' : `turned in ${arrow(m.res)}`}</td></tr>`).join('')}</tbody></table>` : '<p>None. Every assignment is turned in.</p>', 'miss', ' data-newpage');
+  // ---- the plan box: "This week I will" on full lines; the last plan's check only when there was a report before ----
+  const priorRep = ((s0.reportLog || {})[norm(name)] || []).filter(e => weekOf(e.date) < thisWeek).pop() || null;
+  const prevWeek = (() => { const d = new Date(thisWeek + 'T12:00:00'); d.setDate(d.getDate() - 7); return localDayOf(d.toISOString()); })();
+  const lastPlan = priorRep ? `<div class="lastplan"><b>${weekOf(priorRep.date) === prevWeek ? 'Last week\'s plan' : `My plan from ${esc(fmtDate(priorRep.date))}`}</b><span class="box"></span> done <span class="box"></span> partly <span class="box"></span> not yet</div>` : '';
+  return `<section class="rep wk"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Weekly progress report</div></div><div class="who"><h1>${esc(name)}</h1><div class="meta">${esc(new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))} <small>· Focus as of ${esc(fmtDate(localDayOf(gbAt)))}${ixlRow && ixlRow.ixl != null && dataDate(s) ? ` · IXL as of ${esc(fmtDate(dataDate(s)))}` : ''}</small></div></div></div>${since}
     <div class="top"><div class="gradeBox"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>${scoreboard}</div>
-    ${retakeNotice}
-    ${panel(`Do this week${qp && !qp.top && qp.letter && (steps.length || copyOnly) ? `: the quickest way to ${esc(anLetter(qp.letter))}` : ''}`, `${doThis}${rt ? `<p class="rt"><b>Retakes:</b> ${rt.ok ? `eligible: ${esc(retakeOkWhy(rt))}.` : `not yet. To retake: ${esc(retakeWhy(rt, true))}.`}</p>` : ''}`, 'dark')}
-    <div class="two">${panel('Tests &amp; quizzes', `<p class="tests">${testsLine}</p>`)}${panel('What would move the grade', moves ? `<table><tbody>${moves}</tbody></table>` : `<p>${r ? `Nothing missing${belowFull ? '' : ' and every assessment at full marks'}.` : 'Nothing graded yet.'}</p>`)}</div>
-    <div class="pledgeWrap"><div class="pledge"><div class="pl"><b>This week I will</b><div class="lines"><i></i><i></i><i></i></div></div><div class="pl last"><b>Last week's plan</b><div class="ticks"><span class="box"></span> done <span class="box"></span> partly <span class="box"></span> not yet</div></div></div>
+    ${panel(`Do this week${qp && !qp.top && qp.letter && (steps.length || copyOnly) ? `: the quickest way to ${esc(anLetter(qp.letter))}` : ''}`, `${doThis}${extra}${howl}${rtLine}`, 'main')}
+    <div class="two">${panel(`Tests &amp; quizzes${testPct != null ? ` <span class="hs">${testPct}% overall${tests.some(a => a.status[i] === 'missing') ? ' · NHI counts as 0' : ''}</span>` : ''}`, `<p class="tests">${testsLine}</p>`)}${panel('What would move the grade', moves ? `<table><tbody>${moves}</tbody></table>` : `<p>${r ? `Nothing missing${belowFull ? '' : ' and every assessment at full marks'}.` : 'Nothing graded yet.'}</p>`)}</div>
+    <div class="pledgeWrap"><div class="pledge"><b>This week I will</b><div class="lines"><i></i><i></i><i></i></div>${lastPlan}</div>
     <div class="sig"><span>Student</span><span class="d">Date</span><span>Parent or guardian</span><span class="d">Date</span></div></div>
+    ${missPanel}
     ${ixl}
 </section>`;
 }
@@ -1597,7 +1618,7 @@ function logReport(s0, i, ixlRow) {
 const PAGE_H = 940;   // px: a Letter page less its .45in top and bottom margins is 969.6 px tall; the rest is slack
 const duplexOn = () => state.settings.duplex !== false;
 const DUPLEX_CSS = `@page{size:letter;margin:.45in .45in .45in 1in}@page :left{margin:.45in 1in .45in .45in}
-body.paged{margin:0!important}.paged>section{padding:0!important;margin:0!important;break-after:auto!important;page-break-after:auto!important}
+body.paged{margin:0!important}.paged [data-newpage]{break-before:auto!important;page-break-before:auto!important}.paged>section{padding:0!important;margin:0!important;break-after:auto!important;page-break-after:auto!important}
 .paged .page{box-sizing:content-box;width:676.8px;height:${PAGE_H}px;overflow:hidden;position:relative}
 .panel.ixl.cont>.ph .hs,.panel.ixl.cont .keyline{display:none}.panel.ixl.cont>.ph:after{content:" (continued)";text-transform:none;letter-spacing:0;font-weight:normal}.u.cont>.uh>span:first-child:after{content:" (continued)";font-weight:normal;color:#444}
 @media screen{body.paged{background:#d6d6d6;padding:10px 0 70px}.paged .page{background:#fff;margin:14px auto;padding:.45in .45in calc(.45in + ${(969.6 - PAGE_H).toFixed(1)}px) 1in;box-shadow:0 1px 5px rgba(0,0,0,.3)}.paged .page.back{padding-left:.45in;padding-right:1in}.paged .page.blank:after{content:"Back of the sheet: blank";position:absolute;top:46%;left:0;right:0;text-align:center;color:#aaa;font-size:10pt}}
@@ -1619,7 +1640,7 @@ if(!n){parent.removeChild(cp);return null}
 if(items(c).length){el.classList.add('cont');return {rest:el}}return {rest:null}}
 function layout(sec){var bl=[].slice.call(sec.children),pages=[],p;bl.forEach(function(b){sec.removeChild(b)});
 function next(){p=mk('page');sec.appendChild(p);pages.push(p)}next();
-bl.forEach(function(b){var rest=b,g=0;while(rest&&g++<500){p.appendChild(rest);if(!over(p)){rest=null;break}
+bl.forEach(function(b){if(b.hasAttribute('data-newpage')&&p.children.length)next();var rest=b,g=0;while(rest&&g++<500){p.appendChild(rest);if(!over(p)){rest=null;break}
 p.removeChild(rest);var r=split(rest,p,p);if(r){rest=r.rest;if(rest)next();continue}
 if(!p.children.length){p.appendChild(rest);rest=null;break}next()}});return pages}
 function run(){if(B.getAttribute('data-paged'))return;

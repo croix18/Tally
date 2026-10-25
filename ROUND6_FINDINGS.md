@@ -269,3 +269,8 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   page-sized boxes and gives a report that ends on a front a blank back; backs mirror the punch margin. Print has
   "This class | All classes" and a Two-sided printing box (on by default, kept in settings). New suite
   `tests/print-duplex.js` (21 checks, against the PDF Chrome prints). 46 suites, 1461 checks.
+
+- 25 Oct 2026: the weekly report after a second review (NOTES.md, "The weekly report after a second review"): one
+  "Do this week" panel with the retake inside it (target first, full score second, HOWL dates, another time), three
+  tiles, light header bars, the plan box on full lines with the last plan's check only after a report, the since strip
+  under the header, and the missing assignments and IXL still owed on the back. New suite `tests/weekly-layout.js`.

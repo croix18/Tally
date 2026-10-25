@@ -37,14 +37,15 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
     return null; },K);
   const a1t=a1?a1.txt:'';
   check(a1 && /Still missing: 2\.03 Worksheet\. Turn it in this week\./.test(a1t) && !/Nothing missing/.test(a1t) && /Your Unit 2 IXL points go into Focus at the next grade update, and that takes the grade to \d+% [A-D]\./.test(a1t),'a plan the IXL copy alone completes still names the missing work: '+(a1t.match(/DO THIS WEEK.{0,260}/i)||[''])[0]);
-  // A2 + A7: the tests-and-quizzes tile counts an NHI as 0, as the student page does, and says "N graded"
+  // A2: the tests-and-quizzes figure counts an NHI as 0, as the student page does (since 25 Oct it heads the Tests &
+  // quizzes panel; the tile that said "5 gradeds" is gone, so A7 went with it)
   const a2=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s); const quiz=gb.assignments.find(a=>a.name==='Squares and Cubes Quiz'); const i=quiz.status.indexOf('missing');
     const tests=gb.assignments.filter(a=>T.catOf(s.prep,a.name)==='Assessments' && !/\bixl\b/i.test(a.name) && a.max>0 && (a.status[i]==='score'||a.status[i]==='missing'));
     const want=Math.round(tests.reduce((n,a)=>n+(a.status[i]==='score'?Number(a.values[i])||0:0),0)/tests.reduce((n,a)=>n+a.max,0)*100);
-    const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,rows[i]); const tile=[...d.querySelectorAll('.board > div')].find(x=>/Tests/.test(x.textContent)).textContent.replace(/\s+/g,' ');
-    return { i, want, n:tests.length, tile }; },K);
-  check(a2.tile.includes(a2.want+'%') && /NHI counts as 0/.test(a2.tile),'the tests-and-quizzes tile counts the quiz not handed in as 0 ('+a2.want+'%): '+a2.tile);
-  check(a2.tile.includes(a2.n+' graded') && !/gradeds/.test(a2.tile),'the tile says "'+a2.n+' graded", not "gradeds"');
+    const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,rows[i]); const head=[...d.querySelectorAll('.panel .ph')].find(x=>/Tests/.test(x.textContent)).textContent.replace(/\s+/g,' ');
+    return { i, want, n:tests.length, head, tiles:[...d.querySelectorAll('.board > div small')].map(x=>x.textContent) }; },K);
+  check(a2.head.includes(a2.want+'% overall') && /NHI counts as 0/.test(a2.head),'the tests-and-quizzes figure counts the quiz not handed in as 0 ('+a2.want+'%): '+a2.head);
+  check(a2.tiles.join('|')==='Missing assignments|IXL at goal|Retake','three tiles: missing assignments, IXL at goal, retake ('+a2.tiles.join(', ')+')');
   // A9: an IXL column marked NHI is listed once, as IXL to finish, not also as work to turn in
   const a9=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s); const col=gb.assignments.find(a=>a.name==='Unit 1 IXL'); const i=0; const keep=[col.values[i],col.status[i]];
     col.values[i]=null; col.status[i]='missing'; const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,rows[i]); col.values[i]=keep[0]; col.status[i]=keep[1];
