@@ -708,6 +708,14 @@ per-section-file era and many items in them are now done).
   than last year"; the table is gone and By topic follows the targets. Then "get rid of the on grade level card at the
   top. Not needed": the cards are last year, each window this year, and the gain target; Level 3 stays a targets row
   and a mark on the scale.
+- **25 Oct 2026 — Signed reports, from his marked-up screenshot.** "Refresh button or clear": Clear the list (asks
+  first) marks each student's latest report `cleared`; the list then reads "Cleared" until the next print; every
+  report and its signed-back date stay on the student's page. "Not needed verbiage": the instructions are gone; the
+  head reads "Week of Oct 26" and, in coral, "N reports still out". "Make this a week of, not a date printed": the
+  Printed column is gone and the week is in the head (`weekOf`: that week's Monday; a Saturday or Sunday print
+  belongs to the week ahead). "Link to student's contact section or a card that I can quick edit": the Home cell is a
+  button ("Add a contact" when there is none) that opens a contact card in the list, saved straight to the student,
+  with "Open <first name>'s page" to jump to the Family section.
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab

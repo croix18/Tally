@@ -44,10 +44,21 @@ const { chromium, fs, path, exe, check, done, APP, pick, tmp } = require('./lib'
   await p.click('#pFamily [data-back]'); await p.waitForTimeout(400);
   check(/back signed/.test(await p.textContent('#pFamily .reps')) && await p.evaluate(({K,n})=>{ const T=window.__tally; const l=T.reportsOf(T.state.sections[K],n); return /^\d{4}-\d{2}-\d{2}$/.test(l[l.length-1].back); },{K,n:S[1]}),'ticking it records the day it came back');
   await p.click('#back'); await p.waitForTimeout(300); await p.click('#btnHome'); await p.waitForTimeout(300); await p.click('.hcard'); await p.waitForTimeout(300); await p.click('#moreBtn'); await p.waitForTimeout(200); await p.click('#mReturns'); await p.waitForTimeout(400);
-  const ret=await p.evaluate(()=>({ rows:document.querySelectorAll('.rettab tbody tr').length, back:document.querySelectorAll('.rettab tr.back').count, backN:document.querySelectorAll('.rettab tr.back').length, lead:document.querySelector('#modal .ghint').textContent, home:[...document.querySelectorAll('.rettab td.who')].map(t=>t.textContent).filter(t=>/Calder/.test(t)).length }));
-  check(ret.rows===S.length && ret.backN===1 && /22 reports still out/.test(ret.lead) && ret.home===1,'Signed reports lists every student with the latest report, who is back, and the first contact for home: '+JSON.stringify(ret));
+  const ret=await p.evaluate(()=>({ rows:document.querySelectorAll('.rettab tbody tr').length, back:document.querySelectorAll('.rettab tr.back').count, backN:document.querySelectorAll('.rettab tr.back').length, lead:document.querySelector('#modal .retHead').textContent, home:[...document.querySelectorAll('.rettab td.who')].map(t=>t.textContent).filter(t=>/Calder/.test(t)).length }));
+  check(ret.rows===S.length && ret.backN===1 && /^Week of \w{3} \d+/.test(ret.lead) && /22 reports still out/.test(ret.lead) && ret.home===1 && !/Tick a report/.test(await p.textContent('#modal')),'Signed reports lists every student with the latest report, who is back, and the first contact for home: '+JSON.stringify(ret));
   await p.click('.rettab tbody tr:first-child [data-rback]'); await p.waitForTimeout(400);
-  check(await p.locator('.rettab tr.back').count()===2 && /21 reports still out/.test(await p.textContent('#modal .ghint')),'a tick in the list counts too');
+  check(await p.locator('.rettab tr.back').count()===2 && /21 reports still out/.test(await p.textContent('#modal .retHead')),'a tick in the list counts too');
+  // Croix, marking the list (25 Oct): the Home cell opens a card to add the contact right there, or go to the page
+  const nm2=S[3]; await p.click(`[data-home="${nm2}"]`); await p.waitForTimeout(300);
+  check(await p.locator('.rettab tr.qedit form').count()===1 && await p.locator('[data-goto]').count()===1,'tapping Home opens a contact card in the list');
+  await p.fill('.qedit [name=name]','Ray Easton'); await p.fill('.qedit [name=rel]','Father'); await p.fill('.qedit [name=phone]','352-555-0177'); await p.click('.qedit [type=submit]'); await p.waitForTimeout(400);
+  check(await p.locator('.rettab tr.qedit').count()===0 && /Ray Easton \(Father\) · 352-555-0177/.test(await p.textContent(`[data-home="${nm2}"]`)) && await p.evaluate(({K,n})=>window.__tally.familyOf(window.__tally.state.sections[K],n).contacts.length===1,{K,n:nm2}),'saving it adds the contact to the student and shows it in the list');
+  await p.click(`[data-home="${nm2}"]`); await p.waitForTimeout(300); await p.click('[data-goto]'); await p.waitForTimeout(500);
+  check(await p.locator('#modal.hidden').count()===1 && await p.locator('#pFamily .fcard').count()===1 && /Ray Easton/.test(await p.textContent('#pFamily')),'"Open … page" goes to that student\'s page, at Family');
+  await p.click('#back'); await p.waitForTimeout(300); await p.click('#btnHome'); await p.waitForTimeout(300); await p.click('.hcard'); await p.waitForTimeout(300); await p.click('#moreBtn'); await p.waitForTimeout(200); await p.click('#mReturns'); await p.waitForTimeout(400);
+  await p.click('#retClear'); await p.waitForTimeout(400);
+  check(/Cleared/.test(await p.textContent('#modal')) && await p.locator('.rettab').count()===0 && await p.evaluate(({K,n})=>{ const T=window.__tally; const l=T.reportsOf(T.state.sections[K],n); return !!l[l.length-1].back; },{K,n:S[1]}),'Clear the list empties it; each report (and its signed-back date) stays on the student');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   // 4. a full save carries contacts, log and the back dates; a reload keeps them
   const fam=await p.evaluate(({K})=>JSON.stringify(window.__tally.state.sections[K].family),{K});
