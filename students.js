@@ -114,21 +114,33 @@ function parseIxlQuickviewPdf(pages) {
   if (dr) { const mo = MONTHS3.indexOf(dr[5].toLowerCase()) + 1; const start = Number(quarters().ends[0].slice(0, 4)); const y = dr[7] ? Number(dr[7]) : (mo >= 7 ? start : start + 1); if (mo) asOf = `${y}-${String(mo).padStart(2, '0')}-${String(Number(dr[6])).padStart(2, '0')}`; range = `${dr[2]} ${dr[3]} to ${dr[5]} ${dr[6]}`; }
   const students = []; let cur = null;
   const HEAD = /^(.+?)\s+([\d,]+)\s+questions?\s+((?:\d+\s*hr\s*)?(?:<?\s*\d+\s*min)?)\s*Practiced\s+(today|yesterday|(\d+)\s+days?\s+ago)/i;
-  const ROW = /^(\d(?:st|nd|rd|th))\s*(\([A-Z]+\.?\d*\))?\s+(.+?)\s+([A-Z0-9]{3})\s+(\d+)\s+(<\s*1\s*min|\d+\s*hr(?:\s*\d+\s*min)?|\d+\s*min)\s+(\d+)\s+(\d+)$/;
+  /* A skill row, read from the left and the right rather than by one strict pattern (Croix, 25 Oct 2026: "the time
+     spent is extremely hit or miss"): the grade token starts it; from the right, the current score, then the start
+     score if there is one, then the time (which may be absent on a row), then the questions; what is left between the
+     code and those numbers is the name with the three-character skill ID at its end. */
+  const TIME = /^(?:<\s*1\s*min|\d+\s*hr(?:\s*\d+\s*min)?|\d+\s*min)$/;
+  const row = text => { const m = /^(\d(?:st|nd|rd|th))\s*(\([A-Z]+\.?\d*\))?\s+(.*)$/.exec(text); if (!m) return null;
+    const toks = m[3].split(' ').filter(Boolean); const nums = [];   /* peel integers off the right */
+    while (toks.length && /^\d+$/.test(toks[toks.length - 1]) && nums.length < 2) nums.unshift(Number(toks.pop()));
+    if (!nums.length) return null;
+    let min = null; for (let w = 4; w >= 1; w--) { const t = toks.slice(-w).join(' '); if (toks.length >= w && TIME.test(t)) { min = parseMins(t); toks.splice(-w); break; } }
+    let q = null; if (toks.length && /^\d+$/.test(toks[toks.length - 1])) q = Number(toks.pop());
+    if (toks.length < 2) return null; const id = toks[toks.length - 1]; if (!/^[A-Z0-9]{3}$/.test(id) || /^\d+$/.test(id)) return null;
+    return { g: (m[1] + (m[2] ? ' ' + m[2] : '')).trim(), name: toks.slice(0, -1).join(' ').trim(), id, q: q == null ? 0 : q, min, from: nums.length === 2 ? nums[0] : 0, to: nums[nums.length - 1] }; };
   pages.forEach(items => {
     const its = items.filter(i => i.s && i.s.trim()).map(i => ({ ...i, s: i.s.trim() })).sort((a, b) => b.y - a.y || a.x - b.x);
-    const lines = []; its.forEach(i => { const ln = lines.find(l => Math.abs(l.y - i.y) <= 2.5); if (ln) ln.items.push(i); else lines.push({ y: i.y, items: [i] }); });
+    const lines = []; its.forEach(i => { const ln = lines.find(l => Math.abs(l.y - i.y) <= 4); if (ln) ln.items.push(i); else lines.push({ y: i.y, items: [i] }); });
     lines.forEach(ln => { ln.items.sort((a, b) => a.x - b.x); const text = ln.items.map(i => i.s).join(' ').replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ').trim();
       const h = HEAD.exec(text); if (h) { cur = { name: h[1].trim(), questions: Number(h[2].replace(/,/g, '')), minutes: parseMins(h[3]), days: /today/i.test(h[4]) ? 0 : /yesterday/i.test(h[4]) ? 1 : Number(h[5]), mastered: 0, proficient: 0, rows: [] }; students.push(cur); return; }
       if (!cur) return;
       const mp = /(\d+)\s+Mastered\s+(\d+)\s+Proficient/i.exec(text); if (mp) { cur.mastered = Number(mp[1]); cur.proficient = Number(mp[2]); return; }
-      const r = ROW.exec(text); if (r) cur.rows.push({ g: (r[1] + (r[2] ? ' ' + r[2] : '')).trim(), name: r[3].trim(), id: r[4], q: Number(r[5]), min: parseMins(r[6]), from: Number(r[7]), to: Number(r[8]) }); });
+      const r = row(text); if (r) cur.rows.push(r); });
   });
   return { asOf, range, students, kind: 'quickview' };
 }
 function cleanPractice(o) { const out = {}; const n = v => typeof v === 'number' && isFinite(v) ? v : (Number(v) || 0); const day = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? String(v) : '';
   if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue; const skills = {};
-    Object.keys(v.skills || {}).slice(0, 300).forEach(id => { const x = v.skills[id]; if (!/^[A-Z0-9]{2,6}$/.test(id) || !x || typeof x !== 'object') return; skills[id] = { q: n(x.q), min: n(x.min), from: n(x.from), to: n(x.to), name: typeof x.name === 'string' ? x.name.slice(0, 100) : '', g: typeof x.g === 'string' ? x.g.slice(0, 16) : '' }; });
+    Object.keys(v.skills || {}).slice(0, 300).forEach(id => { const x = v.skills[id]; if (!/^[A-Z0-9]{2,6}$/.test(id) || !x || typeof x !== 'object') return; skills[id] = { q: n(x.q), min: x.min == null ? null : n(x.min), from: n(x.from), to: n(x.to), name: typeof x.name === 'string' ? x.name.slice(0, 100) : '', g: typeof x.g === 'string' ? x.g.slice(0, 16) : '' }; });
     out[k] = { asOf: day(v.asOf), questions: n(v.questions), minutes: n(v.minutes), last: day(v.last), mastered: n(v.mastered), proficient: n(v.proficient), skills }; }
   return out; }
 const practiceOf = (sec, ixlName) => (sec.practice || {})[norm(ixlName)] || null;

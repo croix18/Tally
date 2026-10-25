@@ -677,6 +677,11 @@ per-section-file era and many items in them are now done).
   the assessment (or how many) and the grade it reaches, the HOWL time line with the teacher's name from Settings
   ("your math teacher" when blank), and three boxes: told my HOWL teacher, came Wednesday, came Thursday. The
   Do this week fallback no longer says "every assessment at full marks" when a retake is on the table.
+- **25 Oct 2026 — Weekly report, three fixes from the printer.** Croix: "make the this week I will full lines, not
+  split, also there are several occasions of it splitting that box across two pages, also that first report pill."
+  The plan lines run the full width (three of them); the pledge box and the signature box travel together
+  (`.pledgeWrap`, break-inside avoid) and now sit above the IXL list, so page 1 is the page that gets signed and the
+  owed list is the back page; a first report carries no since-box at all (there is nothing to move from).
 - **25 Oct 2026 — IXL Students Quickview PDF.** Croix: "it's gonna be big. I have pdfs with this data. Can you
   utilize it?" (Analytics → Students Quickview, printed: 79 pages for a class). What it adds over the Score Grid:
   effort (questions, minutes) and recency per student, and per skill the questions, time, start and current score,
@@ -690,6 +695,11 @@ per-section-file era and many items in them are now done).
   stuck, not idle), and an Overview item for students idle a week or more. Fixture:
   fixtures/make_ixl_quickview_pdf.py; tests/quickview.js. Not seen: the real PDF; the parser ignores non-ASCII glyphs
   (stars, arrows) and tolerates "8th" without a code, "<1 min", "1 hr 12 min" and blocks split across pages.
+  Croix, after a real import: "The time spent is extremely hit or miss." Without the file, the row parser was
+  loosened: it reads from the right (current score, start score if any, the time if any, the questions) and takes
+  the three-character ID off the end of what is left, lines cluster within 4 units (the small grey ID can sit on its
+  own baseline), and a row with no time keeps min null; the weekly report then shows the questions instead. A
+  scrubbed text sample of one student's block from the real PDF is the next step.
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab
