@@ -13,6 +13,10 @@ function gradeSummary(sec0) {
     if (prevIdx && prevIdx.has(name)) { const j = prevIdx.get(name); const d = r && r.rounded != null && prev.grade[j] != null ? r.rounded - prev.grade[j] : null; if ((d != null && d <= -3) || miss > (prev.missing[j] || 0)) sliding++; } });
   return { avg, prevAvg, prevDate: prev ? prev.date : null, letters, missing: sec.grades.assignments.reduce((a, x) => a + x.missing, 0), missingStudents, sliding, fit: sec === sec0 ? fitCategories(sec) : null, date: localDayOf(sec.grades.importedAt), qFinal };
 }
+// Reminders dismissed by hand: key → the day (the newest 100 kept).
+function cleanDismissed(d) { const out = {}; if (d && typeof d === 'object' && !Array.isArray(d)) Object.keys(d).filter(k => SAFE_KEY(k) && k.length <= 200 && typeof d[k] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d[k])).sort((a, b) => d[b].localeCompare(d[a])).slice(0, 100).forEach(k => out[k] = d[k]); return out; }
+// A short fingerprint of a text (the students a dismissed reminder was about), so no name is kept in the key.
+const hashStr = t => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
 // Everything a class could need a look at, one line each, in priority order.
 function attentionItems(sec) {
   if (attCache.has(sec.key)) return attCache.get(sec.key);
@@ -24,15 +28,23 @@ function attentionItems(sec) {
   const ro = rows.filter(r => r.status === 'rosterOnly').length, am = rows.filter(r => r.status === 'ambiguous').length, io = rows.filter(r => r.status === 'ixlOnly').length;
   if ((ro || am || io) && !(sec.pool && sec.awaitingPool)) out.push({ level: 'warn', text: [ro ? `${ro} on the roster not in IXL` : '', am ? `${am} with two IXL matches` : '', io ? `${io} in IXL not on the roster` : ''].filter(Boolean).join(' · '), go: 'grid' });
   if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings' });
+  /* IXL practice from the Quickview: who hasn't practiced in a week, by name up to three, and one student's line opens
+     their page. Nothing in Tally fixes it, so it can be dismissed; it comes back when a newer Quickview finds someone
+     idle (Croix, 25 Oct 2026: "I can't make these notifications go away"; the line named no one and led to the grid). */
   { const idle = sec.students.filter(n => practiceIdle(practiceOf(sec, n))); const asOf = sec.students.map(n => (practiceOf(sec, n) || {}).asOf).filter(Boolean).sort().pop();
-    if (idle.length) out.push({ level: 'info', text: `${plural(idle.length, 'student')} ${idle.length === 1 ? 'has' : 'have'} not practiced IXL in a week or more (Quickview of ${fmtDate(asOf)})`, go: 'grid' }); }
+    const dkey = idle.length ? `practice|${sec.key}|${asOf}|${hashStr(idle.map(norm).sort().join('|'))}` : '';
+    if (idle.length && !(state.dismissed || {})[dkey]) {
+      const H = state.settings.hideNames; const ws = idle.map(n => { const k = sec.students.indexOf(n); const r = rows.find(x => x.ixl === k && x.status !== 'ixlOnly'); const d = r ? r.display : ixlDisplay(n); return { d, says: H ? mask(d) : niceName(d) }; });
+      const names = ws.length > 3 ? '' : ws.length === 1 ? ws[0].says : ws.slice(0, -1).map(w => w.says).join(', ') + ' and ' + ws[ws.length - 1].says;
+      const one = idle.length === 1 ? practiceOf(sec, idle[0]) : null;
+      out.push({ level: 'info', text: one ? `${names} has not practiced IXL since ${fmtDate(one.last)} (Quickview of ${fmtDate(asOf)})` : `${names || plural(idle.length, 'student')} have not practiced IXL in a week or more (Quickview of ${fmtDate(asOf)})`, go: one ? 'student' : 'grid', stu: one ? ws[0].d : null, dkey }); } }
   if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally: ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid', shared: off.every(c => !c.maxOK) });
     const stale = off.length ? [] : checks.filter(c => c.counts.stale > 0); if (stale.length) out.push({ level: 'info', text: 'moved up since you copied: ' + stale.map(c => `${c.unit.short}: ${plural(c.counts.stale, 'student')}`).join(' · ') + ': copy again', go: 'grid' });
     const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; const disN = fit ? Object.values(fit.disagree || {}).filter(Boolean).length : 0;
     if (disN) out.push({ level: 'warn', text: `${disN} ${disN === 1 ? 'category' : 'categories'} you set ${disN === 1 ? 'disagrees' : 'disagree'} with Focus's grades`, go: 'grades', shared: true });
     else if (fit && !fit.exact) out.push({ level: 'warn', text: `grades don't all match Focus (off by ${fit.err} across ${fit.n}): check categories`, go: 'grades' });
     if (hasOpenGrades(sec)) { const g = gradingFor(sec.prep); const odd = g.cats.some(c => c.name === 'Assessments') ? openSec(sec).grades.assignments.filter(a => g.how[a.name] === 'user' && looksLikeTest(a.name) && g.map[a.name] !== 'Assessments') : [];
-      if (odd.length) out.push({ level: 'info', text: odd.length === 1 ? `"${odd[0].name}" is in ${g.map[odd[0].name]}, not Assessments` : `${odd.length} tests or quizzes are not in Assessments`, go: 'grades', shared: true }); } if (!sec.grades.overall && hasOpenGrades(sec)) out.push({ level: 'info', text: 'gradebook has no Grade column: categories are guesses', go: 'grades' }); }
+      if (odd.length) out.push({ level: 'info', text: odd.length === 1 ? `"${odd[0].name}" is in ${g.map[odd[0].name]}, not Assessments` : `${odd.length} tests or quizzes are not in Assessments`, go: 'grades', shared: true }); } if (!sec.grades.overall && hasOpenGrades(sec)) { const n = catGuesses(sec).length; if (n) out.push({ level: 'info', text: `check ${n === 1 ? '1 category' : n + ' categories'}: the gradebook has no Grade column`, go: 'grades', shared: true }); } }   // only while a guess is unchecked (Croix, 25 Oct 2026: it stayed after he set them)
   // No "Working in" unit (it is set by the first import, so this is a plan that has numbered units but lost its pick): nothing counts until one is chosen.
   if (!sec.placeholder && sec.students.length && !(state.settings.currentUnit || {})[sec.prep] && sec.skills.some(sk => /^Unit\s+\d+/i.test(sk.unit))) out.push({ level: 'info', text: 'pick the unit you\'re working in: no unit counts until you do', go: 'grid', shared: true });
   const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid' });
@@ -43,7 +55,7 @@ function attentionItems(sec) {
 }
 // One line per cause: the same line from several classes is said once ("Every class", "Accelerated", or the periods), warnings first.
 function attentionGroups(secs) {
-  const groups = []; secs.forEach(s => attentionItems(s).forEach(a => { const k = a.level + '|' + a.go + '|' + a.text; let g = groups.find(x => x.k === k); if (!g) groups.push(g = { k, level: a.level, go: a.go, text: a.text, shared: !!a.shared, secs: [] }); g.secs.push(s); }));
+  const groups = []; secs.forEach(s => attentionItems(s).forEach(a => { const k = a.level + '|' + a.go + '|' + a.text; let g = groups.find(x => x.k === k); if (!g) groups.push(g = { k, level: a.level, go: a.go, text: a.text, shared: !!a.shared, secs: [], stu: a.stu || null, dkeys: [] }); g.secs.push(s); if (a.dkey) g.dkeys.push(a.dkey); }));
   const short = s => String(s.label).split(' · ')[0];
   groups.forEach(g => { const n = g.secs.length; const prep = ['acc', 'on'].find(p => { const all = secs.filter(s => s.prep === p); return all.length > 1 && all.length === n && g.secs.every(s => s.prep === p); });
     g.who = n === 1 ? g.secs[0].label : n === secs.length ? 'Every class' : prep ? (prep === 'acc' ? 'Accelerated' : 'On-level') : g.secs.map(short).join(', ');
@@ -76,8 +88,9 @@ function renderHome() {
   // What to do comes first, but not at the cost of the cards: things to fix are listed; things to know (an old export,
   // a backup due) share one line that opens — so the list is two or three rows and the class cards stay on the first screen.
   const groups = attentionGroups(secs); const day = iso => localDay(iso);
-  const row = g => g.each ? `<li class="${g.level} each"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div></li>`
-    : `<li class="${g.level}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"><i></i><span><b>${esc(g.who)}</b>: ${esc(g.text)}</span><em>›</em></button></li>`;
+  const dis = g => g.dkeys && g.dkeys.length ? `<button class="hdis" data-dismiss="${esc(g.dkeys.join(' '))}" title="Dismiss until a newer Quickview" aria-label="Dismiss: ${esc(g.text)}">${ico('x', 'Dismiss')}</button>` : '';
+  const row = g => g.each ? `<li class="${g.level} each${dis(g) ? ' dis' : ''}"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div>${dis(g)}</li>`
+    : `<li class="${g.level}${dis(g) ? ' dis' : ''}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"${g.stu ? ` data-stu="${esc(g.stu)}"` : ''}><i></i><span><b>${esc(g.who)}</b>: ${esc(g.text)}</span><em>›</em></button>${dis(g)}</li>`;
   const qdLine = qd ? `<li class="warn"><button id="qdGo"><i></i><span><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))}: close it so its missing work and Focus checks stop coming up</span><em>›</em></button></li>` : '';
   const ce = closedEarly(); const ceLine = ce ? `<div class="notice qce"><span>${ico('warn')}</span><span><b>${esc(Q_NAMES[ce - 1])} was closed early</b> on ${esc(fmtDate((quarters().closed[ce].at || '').slice(0, 10)))}. It runs until ${esc(fmtDate(quarters().ends[ce - 1]))}, so its missing work isn't showing on student pages or conference forms.</span><button class="pill small" id="ceReopen">Reopen ${esc(Q_NAMES[ce - 1])}</button></div>` : '';
   const lb = state.lastBackup; const bkDue = backupBehind();
@@ -125,8 +138,13 @@ function renderHome() {
   const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };
   const hq = $('#homeQuarters'); if (hq) hq.onclick = openQuarters; const qg = $('#qdGo'); if (qg) qg.onclick = openQuarters;
   const cr = $('#ceReopen'); if (cr) cr.onclick = () => { const n = closedEarly(); if (!n) return; reopenQuarter(n); save(); render(); toast(`<b>${esc(Q_NAMES[n - 1])} is open again.</b> Its missing work and Focus checks are back.`, false, 5000); };
+  $('#gridwrap').querySelectorAll('[data-dismiss]').forEach(b => b.onclick = e => { e.stopPropagation(); const ks = b.dataset.dismiss.split(' ').filter(Boolean); const day = todayISO();
+    state.dismissed = state.dismissed || {}; ks.forEach(k => state.dismissed[k] = day); save(); render();
+    toast('Dismissed until a newer Quickview. <button class="tundo" id="disUndo">Undo</button>', false, 5000); const u = $('#disUndo'); if (u) u.onclick = () => { ks.forEach(k => delete state.dismissed[k]); save(); render(); toast('Back on the list.', false, 1500); }; });
   $('#gridwrap').querySelectorAll('[data-digest]').forEach(b => b.onclick = e => { e.stopPropagation(); openDigest(state.sections[b.dataset.digest]); });
-  $('#gridwrap').querySelectorAll('[data-go]').forEach(b => b.onclick = e => { e.stopPropagation(); const where = b.dataset.where || 'grid'; state.active = b.dataset.go;
+  $('#gridwrap').querySelectorAll('[data-go]').forEach(b => b.onclick = e => { e.stopPropagation(); const where = b.dataset.where || 'grid';
+    if (where === 'student' && b.dataset.stu) { openProfile(b.dataset.go, b.dataset.stu); return; }
+    state.active = b.dataset.go;
     if (where === 'import') { $('#file').click(); return; }
     view = where === 'grades' && state.sections[state.active].grades ? { mode: 'grades', unit: null } : { mode: 'units', unit: null }; save(); render(); if (where === 'settings') openSettings(); });
 }

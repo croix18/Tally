@@ -28,6 +28,15 @@ function catFromFile(a, cats) { const c = a && a.categoryFromFile && a.category 
 function catOf(prep, name, a) { const g = gradingFor(prep); return g.map[name] || catFromFile(a, g.cats) || catGuess(name, g.cats); }
 // The category an assignment had in the class as seen: a closed quarter keeps the map it was closed with.
 const catIn = (s, a) => (s._map && s._map[a.name]) || catOf(s.prep, a.name, a);
+// Where an assignment's category stands: 'fit' (proved by Focus's Grade column), 'user' (set by hand), 'ok' (Tally's
+// guess, checked by the teacher: unlike 'user' it stays free, so a later export with a Grade column can still prove or
+// move it), 'file' (the export's own category row) or 'guess' (from the name, not looked at yet).
+const catHow = (g, a) => g.how[a.name] || (g.map[a.name] ? 'user' : catFromFile(a, g.cats) ? 'file' : 'guess');
+// The open quarter's assignments whose category is still an unchecked guess: the only ones that need the teacher's eye
+// when the export has no Grade column (Croix, 25 Oct 2026: the reminder stayed after he had set them).
+function catGuesses(sec) { const og = openSec(sec); if (!og || !og.grades) return []; const g = gradingFor(sec.prep); return og.grades.assignments.filter(a => catHow(g, a) === 'guess'); }
+// "These are right": each unchecked guess is kept at the category it has now, as checked.
+function catCheck(prep, list) { const g = gradingFor(prep); list.forEach(a => { if (catHow(g, a) !== 'guess') return; g.map[a.name] = catOf(prep, a.name, a); g.how[a.name] = 'ok'; }); }
 
 // The course grade for student i. `over` optionally replaces cells: { [assignmentName]: points } (null = leave out).
 // NHI counts as 0 over the full possible; excused/blank cells are left out; empty categories re-weight the rest.
@@ -245,15 +254,16 @@ function renderGrades(s0) {
   rows.sort((a, b) => (b.sliding - a.sliding) || ((a.r.rounded ?? 101) - (b.r.rounded ?? 101)) || a.name.localeCompare(b.name));
   const sliding = rows.filter(r => r.sliding).length;
   // assignments
-  const asg = gb.assignments.map(a => { const v = a.values.filter(x => x != null); const cat = catIn(s, a); const how = g.how[a.name] || (g.map[a.name] ? 'user' : 'guess');
+  const asg = gb.assignments.map(a => { const v = a.values.filter(x => x != null); const cat = catIn(s, a); const how = catHow(g, a);
     return { a, cat, how, avg: v.length && a.max ? v.reduce((x, y) => x + y, 0) / v.length / a.max * 100 : null, cost: avg != null ? avg - classAverage(s, null, a.name) : null, disagree: fit && fit.disagree && fit.disagree[a.name] }; })
     .sort((x, y) => dueKey(y.a.due).localeCompare(dueKey(x.a.due)) || x.a.name.localeCompare(y.a.name));
   const catRows = (s._cats || g.cats).map(c => { const list = asg.filter(x => x.cat === c.name); const gs = grades.map(r => r.cats[c.name] && r.cats[c.name].pct).filter(v => v != null); return { c, n: list.length, avg: gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null }; });
   const pts = ixl.filter(x => x.ixl != null && x.tests != null).map(x => ({ ...x, label: H ? mask(x.name) : x.name })); const rr = pts.length >= 8 ? pearson(pts.map(x => x.ixl), pts.map(x => x.tests)) : null;
   // No direction claim below |r| = 0.3, and a small class is a hint, not a finding.
   const rWord = rr == null ? '' : (Math.abs(rr) < 0.3 ? 'no clear relationship between IXL work and assessment scores here' : (Math.abs(rr) < 0.5 ? 'a weak tendency for ' : Math.abs(rr) < 0.7 ? 'a moderate tendency for ' : 'a strong tendency for ') + (rr > 0 ? 'students doing more IXL to score higher on assessments' : 'students doing more IXL to score lower on assessments')) + (pts.length < 20 ? ` (${pts.length} students: treat as a hint, not proof)` : '');
+  const guessN = closedQ ? 0 : catGuesses(s0).length;   // unchecked guesses (the banner shows them only for an export with no Grade column)
   const hist = (s.gradeHistory || []).filter(h => snapQ(h) === n); const trend = hist.length >= 2 ? hist.map(h => { const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) : null;
-  const unverified = closedQ && s._closed ? `<div class="notice soft"><span>${ico('check')}</span><span><b>${esc(Q_NAMES[n - 1])} is closed.</b> This is the copy Tally kept on ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))}: every score and the final grades. Nothing here raises an alert.</span></div>` : closedQ ? `<div class="notice info"><span>${ico('info')}</span><span><b>${esc(Q_NAMES[n - 1])} isn't closed yet.</b> A newer export started the next quarter, so Tally kept this copy of ${esc(Q_NAMES[n - 1])} before it was replaced. Close it under <b>Quarters</b> when grades are final.</span></div>` : s._partial ? '' : !gb.overall ? `<div class="notice info"><span>${ico('info')}</span><span>This export has no Grade column, so assignment categories are name-based guesses: check them under <b>Categories</b>.</span></div>` : (fit && !fit.exact ? `<div class="notice"><span>${ico('warn')}</span><span><b>Tally's grades don't all match Focus</b> (off by ${fit.err} points in total across ${fit.n} students). A category or weight is probably wrong: open <b>Categories</b>.</span></div>` : '');
+  const unverified = closedQ && s._closed ? `<div class="notice soft"><span>${ico('check')}</span><span><b>${esc(Q_NAMES[n - 1])} is closed.</b> This is the copy Tally kept on ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))}: every score and the final grades. Nothing here raises an alert.</span></div>` : closedQ ? `<div class="notice info"><span>${ico('info')}</span><span><b>${esc(Q_NAMES[n - 1])} isn't closed yet.</b> A newer export started the next quarter, so Tally kept this copy of ${esc(Q_NAMES[n - 1])} before it was replaced. Close it under <b>Quarters</b> when grades are final.</span></div>` : s._partial ? '' : !gb.overall ? (guessN ? `<div class="notice info catcheck"><span>${ico('info')}</span><span><b>${guessN === 1 ? '1 category is Tally\'s guess' : `${guessN} categories are Tally's guesses`}</b> from ${guessN === 1 ? 'its name' : 'their names'}: this export has no Grade column to check ${guessN === 1 ? 'it' : 'them'} against. Change any that are wrong under <b>Assignments</b>.</span><button class="pill small" id="catKeep">${guessN === 1 ? 'It\'s right' : 'These are right'}</button></div>` : '') : (fit && !fit.exact ? `<div class="notice"><span>${ico('warn')}</span><span><b>Tally's grades don't all match Focus</b> (off by ${fit.err} points in total across ${fit.n} students). A category or weight is probably wrong: open <b>Categories</b>.</span></div>` : '');
   const cell = (v, cls) => `<td class="${cls || ''}">${v}</td>`;
   // Fixing a category mistake: Focus's own grades say which rows are wrong, so the fix is one button, and anything set by
   // hand goes back to Tally in one more. A kept quarter is read-only; it says how to change it.
@@ -277,7 +287,7 @@ function renderGrades(s0) {
       <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 && rr != null ? scatterSVG(pts, 420, 260, classColor(s0)) + `<p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)}: ${rWord}.</p>` : `<p class="ghint">${pts.length >= 8 ? 'The scores are all the same on one side, so there is nothing to compare yet.' : `Needs at least 8 students matched to IXL with an assessment on record (${pts.length} so far).`}</p>`}</section>
     </div>
     <section class="gsec" id="gAsg"><h3>Assignments</h3>${catBar}<table class="checkTable gasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th>Points</th><th title="Average of the scores turned in: work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th><th>Missing</th><th>Excused</th><th title="Class average now minus the class average without this assignment: negative means it pulls grades down">Effect</th></tr></thead><tbody>
-      ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}" ${closedQ ? 'disabled' : ''}>${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small class="catsrc src-${x.how}${x.disagree ? ' off' : ''}">${x.how === 'fit' ? `<span title="Proved by the Focus Grade column">${ico('check', 'confirmed')}</span>` : x.how === 'user' ? 'Set by you' : x.how === 'file' ? 'From the file' : 'Tally\'s guess'}${x.disagree ? ' · Focus disagrees' : ''}</small>${x.how === 'user' && !closedQ ? ` <button class="linkbtn inl" data-back="${esc(x.a.name)}" title="Forget your choice; Focus's grades decide">Let Tally decide</button>` : ''}</td><td>${esc(x.a.due || '')}</td><td>${x.a.max != null ? esc(fmtN(x.a.max)) : '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>
+      ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}" ${closedQ ? 'disabled' : ''}>${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small class="catsrc src-${x.how}${x.disagree ? ' off' : ''}">${x.how === 'fit' ? `<span title="Proved by the Focus Grade column">${ico('check', 'confirmed')}</span>` : x.how === 'user' ? 'Set by you' : x.how === 'ok' ? 'Checked by you' : x.how === 'file' ? 'From the file' : 'Tally\'s guess'}${x.disagree ? ' · Focus disagrees' : ''}</small>${x.how === 'user' && !closedQ ? ` <button class="linkbtn inl" data-back="${esc(x.a.name)}" title="Forget your choice; Focus's grades decide">Let Tally decide</button>` : ''}</td><td>${esc(x.a.due || '')}</td><td>${x.a.max != null ? esc(fmtN(x.a.max)) : '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>
     <section class="gsec"><h3>Students</h3><table class="checkTable gstu"><thead><tr><th>Student</th><th>Grade</th><th>Since ${prev ? esc(fmtDate(prev.date)) : 'last import'}</th><th>Missing</th><th>Weakest category</th><th>IXL at goal</th></tr></thead><tbody>
       ${rows.map(x => { const ix = ixlBy.get(x.i); return `<tr class="${x.sliding ? 'sliding' : ''}" data-stu="${x.i}"><td><button class="nm nmbtn">${nm(x.name)}</button>${x.sliding ? ' <span class="gtag">sliding</span>' : ''}</td><td>${gradeChip(x.r)}</td><td class="${x.d != null && x.d < 0 ? 'down' : x.d > 0 ? 'up' : ''}">${x.d == null ? '' : signedPts(x.d)}</td><td>${x.missing || ''}${x.dMissing > 0 ? ` <small>(+${x.dMissing})</small>` : ''}</td><td>${x.weakest ? `${esc(x.weakest)} <small>${pct1(x.r.cats[x.weakest].pct)}</small>` : ''}</td><td>${ix && ix.ixl != null ? pct1(ix.ixl) : '<small>not matched</small>'}</td></tr>`; }).join('')}</tbody></table></section>
   </div>`;
@@ -286,6 +296,7 @@ function renderGrades(s0) {
     catUndoToast(s0.prep, snap, `<b>${esc(nm0)}</b> is ${esc(sel.value)} in every ${course} class.`); });
   wrap.querySelectorAll('[data-back]').forEach(b => b.onclick = () => { const snap = catSnap(s0.prep); const nm0 = b.dataset.back; catLetTally(s0.prep, [nm0]); save(); render(); catUndoToast(s0.prep, snap, `<b>${esc(nm0)}</b> is back to Tally: ${esc(gradingFor(s0.prep).map[nm0] || '')}.`); });
   const ab = $('#catAllBack'); if (ab) ab.onclick = () => { const snap = catSnap(s0.prep); catLetTally(s0.prep, userSet); save(); render(); catUndoToast(s0.prep, snap, `${userSet.length} ${catWord(userSet.length)} back to Tally.${fitCategories(s0) && fitCategories(s0).exact ? ' Grades match Focus.' : ''}`); };
+  const ck = $('#catKeep'); if (ck) ck.onclick = () => { const snap = catSnap(s0.prep); const list = catGuesses(s0); catCheck(s0.prep, list); catRefresh(s0.prep); save(); render(); catUndoToast(s0.prep, snap, `${list.length === 1 ? `<b>${esc(list[0].name)}</b> stays ${esc(gradingFor(s0.prep).map[list[0].name])}` : `${list.length} categories stay as they are`} in every ${course} class.`); };
   const uf = $('#catUseFocus'); if (uf) uf.onclick = () => { const snap = catSnap(s0.prep); dis.forEach(nm0 => { g.map[nm0] = fit.focusMap[nm0]; g.how[nm0] = 'fit'; }); catRefresh(s0.prep); save(); render(); catUndoToast(s0.prep, snap, `Using Focus's ${catWord(dis.length)} for ${dis.length === 1 ? esc(dis[0]) : dis.length + ' assignments'}.`); };
   wrap.querySelectorAll('[data-stu]').forEach(tr => tr.onclick = () => openProfile(s0.key, gb.students[Number(tr.dataset.stu)]));
 }
@@ -645,8 +656,9 @@ function openPrintMenu(s) {
 const openStudentReports = openPrintMenu;
 
 // Asked at import for new assignments the Focus fit couldn't prove. One dropdown per assignment, already on Tally's
-// guess; only a row you change becomes yours (the rest stay guesses, so a later Focus export can still prove them).
-// Round 7 (Croix, 23 Oct): rows of pills took stray taps, and Apply locked every row at once.
+// guess; only a row you change becomes yours (locked); the rest are checked ('ok'), still free for a later Focus export
+// to prove. "Decide later" leaves them unchecked. Round 7 (Croix, 23 Oct): rows of pills took stray taps, and Apply
+// locked every row at once.
 function askCategories(sec, names, fit) {
   const g = gradingFor(sec.prep); const course = courseWord(sec.prep);
   return new Promise(resolve => {
@@ -663,7 +675,8 @@ function askCategories(sec, names, fit) {
     const mark = () => { m.querySelectorAll('[data-row]').forEach(tr => tr.classList.remove('changed')); const ch = changed(); ch.forEach(sel => sel.closest('tr').classList.add('changed'));
       $('#askSum').textContent = ch.length ? `${ch.length} changed. Saving changes ${ch.length === 1 ? 'it' : 'them'} in every ${course} class.` : `Every ${course} class uses these.`; $('#askApply').textContent = ch.length ? `Save ${ch.length} ${ch.length === 1 ? 'change' : 'changes'}` : 'Looks right'; };
     m.querySelectorAll('[data-ask]').forEach(sel => sel.onchange = mark); mark();
-    $('#askApply').onclick = () => { changed().forEach(sel => { const n = names[Number(sel.dataset.ask)]; g.map[n] = sel.value; g.how[n] = 'user'; }); done(); };
+    $('#askApply').onclick = () => { const ch = new Set(changed().map(sel => { const n = names[Number(sel.dataset.ask)]; g.map[n] = sel.value; g.how[n] = 'user'; return n; }));
+      names.forEach(n => { if (!ch.has(n) && g.map[n] && (!g.how[n] || g.how[n] === 'guess')) g.how[n] = 'ok'; }); done(); };
   });
 }
 

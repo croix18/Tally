@@ -144,8 +144,10 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   check(await p2.locator('.askcat tr.changed').count()===1 && /Save 1 change/.test(await p2.textContent('#askApply')),'the changed row is marked and the button says how many');
   await p2.click('#askApply'); await p2.waitForTimeout(400);
   const ng=await p2.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const g=T.gradingFor(s.prep); const other=s.grades.assignments.map(a=>a.name).filter(n=>n!=='Whiteboard Practice Week 9/21'); return {wb:g.map['Whiteboard Practice Week 9/21'], how:g.how['Whiteboard Practice Week 9/21'], ov:s.grades.overall, rest:other.filter(n=>g.how[n]==='user').length}; });
-  check(ng.wb==='Classwork' && ng.how==='user' && ng.ov===null && ng.rest===0,'only the row changed becomes yours; the rest stay guesses; no overall column');
-  await p2.click('#openGrades'); await p2.waitForTimeout(400); check(/categories are name-based guesses/.test(await p2.textContent('#gridwrap')),'overview says categories are guesses');
+  const okN=await p2.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const g=T.gradingFor(s.prep); return s.grades.assignments.filter(a=>g.how[a.name]==='ok').length; });
+  check(ng.wb==='Classwork' && ng.how==='user' && ng.ov===null && ng.rest===0 && okN===12,'only the row changed becomes yours; the other 12 are checked, still free for a Focus Grade column to prove ('+okN+'); no overall column');
+  await p2.click('#openGrades'); await p2.waitForTimeout(400); const gtxt=await p2.textContent('#gridwrap');
+  check(!/Tally's guess/.test(gtxt) && /Checked by you/.test(gtxt) && /Set by you/.test(gtxt),'with the question answered, Grades has nothing left to check (25 Oct 2026: the notice stayed after the categories were set)');
   await p2.close();
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();

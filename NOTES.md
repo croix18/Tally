@@ -911,6 +911,25 @@ per-section-file era and many items in them are now done).
   0". The main panel's title is "Do this week" (": the quickest way to a B" is gone; the line under it still says
   "These steps take the grade from 76% to 93% A"). The student page and Show student keep their "Quickest way to"
   heading. The Next test panel is the day and the unit. Checks in `weekly-layout.js` and `test-dates.js`.
+- **25 Oct 2026 — Reminders that clear.** Croix, with two Overview screenshots: "I can't make these notifications go
+  away about the no grade column. I've set the assignments. So I don't know what else it wants from me. Same with the
+  one student has not practiced ixl notification." Both lines had nothing that could end them:
+  - **"Gradebook has no Grade column: categories are guesses"** showed whenever the export had no Grade column, however
+    the categories had been set (his Q2 exports have none). Now a category has a fifth standing, `how: 'ok'`: Tally's
+    guess, checked by the teacher. Unlike `user` it stays free, so a later export with a Grade column can still prove
+    or move it (`fitCategories` locks only `user`; checked in `tests/reminders-clear.js`). The import's question marks
+    what it showed as checked on "Looks right" / "Save n changes" (a changed row is still `user`); "Decide later"
+    leaves them guesses. `catGuesses(sec)` lists the open quarter's unchecked guesses; only those raise anything: the
+    Overview says "check 2 categories: the gradebook has no Grade column" (one line per course), and the Grades page
+    says "2 categories are Tally's guesses from their names: this export has no Grade column to check them against.
+    Change any that are wrong under Assignments." with **These are right** (checks them, with Undo). The Assignments
+    list says "Checked by you". A new assignment in a later export is a new guess, so the line comes back for that one.
+  - **"1 student has not practiced IXL in a week or more"** named no one and led to the class grid, which doesn't show
+    practice. It names the students now, up to three ("Logan Easton has not practiced IXL since Oct 12 (Quickview of
+    Oct 24)"; initials when names are hidden), one student's line opens their page at IXL practice, and an × dismisses
+    it until a newer Quickview finds someone idle (`state.dismissed`, keyed by class, Quickview day and a hash of who,
+    so no name is stored; the newest 100 kept). Undo in the toast.
+  `tests/reminders-clear.js` (20 checks); `grades.js` updated (the import's answered question leaves nothing to check).
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
