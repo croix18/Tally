@@ -741,7 +741,8 @@ per-section-file era and many items in them are now done).
   229 (Low Level 2), so 34 more points are needed for a gain."). "Change last year and this year to 25/26 School Year
   and 26/27 School Year" (`syShort`): the bar titles, the sentence ("on the 25/26 Math Grade 6 FAST", "a learning gain
   in 26/27") and the chart's window labels. A mock-up with a dashed grade-7 bar between the two (an accelerated
-  student's PM1 placed on the test they skipped) was sent for him to judge; not built in.
+  student's PM1 placed on the test they skipped) was sent for him to judge; he declined it: "7th grade math is behind
+  them they need to focus on moving forward." Not built.
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab
