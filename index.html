@@ -3980,12 +3980,12 @@ function fastScaleHtml(grade, marks) {
   return `<div class="scale">${row(marks.filter(m => m.cls !== 'tg'), 'marks')}
     <div class="bands">${bands.map(([a, b, lab, cls]) => `<div class="${cls}" style="left:${X(a)}%;width:${X(b) - X(a)}%"><span>${lab}</span><small>${a}</small></div>`).join('')}</div>${row(marks.filter(m => m.cls === 'tg'), 'marks under')}</div>`;
 }
-const fastTestName = g => `Math Grade ${g} FAST`;
+const fastTestName = g => `Math Grade ${g} FAST`;   // the cards carry every window with its test, level and percentile; the old "Every FAST so far" table repeated them and is gone (Croix, 25 Oct 2026)
 /* The page is the student's: nothing on it that only the teacher needs (Croix, 24 Oct 2026: "get rid of the tests
    above grade pill, the mention of tally … a gain counts for school grade, basically anything and everything that
    students don't know or need to worry about"). Tests are named the way the student hears them: Math Grade 8 FAST. */
 function fastReportSection(sec, name) {
-  const t = fastTargets(sec, name); const hist = testHistory(sec, name).filter(h => /FAST/i.test(h.test));
+  const t = fastTargets(sec, name);
   const first = niceName(name).split(' ')[0]; const today = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
   if (!t) return `<section class="rep fast"><h1>${esc(niceName(name))}</h1><div class="meta">${esc(sec.label)} · ${esc(today)}</div><p>No FAST scores on file yet.</p></section>`;
   const lvl = bk => bk ? `<span class="lv l${bk.level}">${esc(bk.label)}</span>` : '';
@@ -3994,15 +3994,13 @@ function fastReportSection(sec, name) {
   const diff = h => t.prior && t.prior.scale != null ? ` · ${Math.abs(h.scale - t.prior.scale)} ${h.scale - t.prior.scale >= 0 ? 'higher' : 'lower'} than last year` : '';
   const cards = [
     t.prior ? `<div><small>Last year · PM3</small><b>${t.prior.scale}</b>${lvl(t.priorBucket)}<span>${esc(priorName)}${t.prior.pct != null ? ' · ' + esc(pctWord(t.prior.pct)) : ''}</span></div>` : `<div><small>Last year · PM3</small><b>—</b><span>no score on file</span></div>`,
-    t.now.length ? t.now.map(h => `<div><small>This year · ${esc(h.pm)}</small><b>${h.scale}</b>${lvl(fastBucket(t.gradeNow, h.scale))}<span>${esc(nowName)}${diff(h)}</span></div>`).join('') : `<div><small>This year</small><b>—</b><span>no window scored yet</span></div>`,
+    t.now.length ? t.now.map(h => `<div><small>This year · ${esc(h.pm)}</small><b>${h.scale}</b>${lvl(fastBucket(t.gradeNow, h.scale))}<span>${esc(nowName)}${h.pct != null ? ' · ' + esc(pctWord(h.pct)) : ''}${diff(h)}</span></div>`).join('') : `<div><small>This year</small><b>—</b><span>no window scored yet</span></div>`,
     gainIsL3 ? `<div class="goal"><small>Your target · a gain</small><b>${l3}+</b><span>Level 3, on grade level</span></div>`
       : `${t.gain ? `<div class="goal"><small>Your target · a gain</small><b>${t.gain.score}+</b><span>${esc(t.gain.label)}</span></div>` : ''}<div class="goal"><small>On grade level</small><b>${l3}+</b><span>Level 3</span></div>`].join('');
   const gainWords = t.gain && t.priorBucket
     ? `${esc(first)} was <b>${esc(t.priorBucket.label)}</b> on last year's ${esc(priorName)}. A learning gain this year means <b>${esc(t.gain.label)} or higher: ${t.gain.score} or more</b> on the ${esc(nowName)}.${t.latest ? (t.latest.scale >= t.gain.score ? ` ${esc(t.latest.pm)} already got there${t.latest.pm === 'PM3' ? '.' : '. PM3 is the one that counts, so hold it.'}` : ` ${esc(t.latest.pm)} was ${t.latest.scale}, so that is ${t.gain.score - t.latest.scale} more points.`) : ''}`
     : `There is no PM3 score from last year on file, so there is no learning-gain target yet. The level targets below still apply.`;
   const rows = t.rows.map(r => `<tr class="${r.met ? 'met' : ''}"><td><span class="box"></span>${esc(r.what)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ''}</td><td class="r"><b>${r.score}</b></td><td>${r.met ? `✓ reached on ${esc(t.latest.pm)}` : r.gap != null ? `${r.gap} more than ${esc(t.latest.pm)}` : ''}</td></tr>`).join('');
-  const histRows = hist.slice().sort((a, b) => (a.year + a.pm).localeCompare(b.year + b.pm)).map(h => { const g = h.year === t.thisYear ? t.gradeNow : (h.grade || priorGrade); const bk = h.scale != null ? fastBucket(g, h.scale) : null;
-    return `<tr><td>${esc(fastTestName(g))}</td><td>${esc([h.pm, h.year].filter(Boolean).join(' '))}</td><td class="r">${h.scale != null ? h.scale : ''}</td><td>${bk ? esc(bk.label) : h.level != null ? 'Level ' + h.level : ''}</td><td>${h.pct != null ? esc(pctWord(h.pct)) : ''}</td></tr>`; }).join('');
   const thisYearMarks = [...t.now.map(h => ({ v: h.scale, label: h.pm, cls: 'now' })), ...(t.gain && !gainIsL3 ? [{ v: t.gain.score, label: 'Gain', cls: 'tg' }] : []), { v: l3, label: gainIsL3 ? 'Gain · grade level' : 'Grade level', cls: 'tg' }];
   return `<section class="rep fast"><div class="head"><div><h1>${esc(niceName(name))}</h1><div class="meta">${esc(sec.label)} · ${esc(nowName)} · ${esc(today)}</div></div></div>
     <div class="cards">${cards}</div>
@@ -4012,8 +4010,7 @@ function fastReportSection(sec, name) {
     <h2>Your targets for PM2 and PM3</h2><table class="targets"><tbody>${rows}</tbody></table>
     ${(() => { const h = t.now.slice().reverse().find(x => x.cats) || null; const cs = catList(h);
       const topics = cs.length ? `<div><h2>By topic <span class="hs">${esc(h.pm)}</span></h2><table class="topics"><thead><tr><th></th><th class="c">Below</th><th class="c">At/near</th><th class="c">Above</th></tr></thead><tbody>${cs.map(c => `<tr><td>${esc(c.name)}</td>${['below', 'near', 'above'].map(v => `<td class="c ${c.v === v ? 'on' : ''}">${c.v === v ? '●' : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '';
-      const history = `<div><h2>Every FAST so far</h2><table class="hist"><thead><tr><th>Test</th><th>Window</th><th class="r">Score</th><th>Level</th><th>Percentile</th></tr></thead><tbody>${histRows}</tbody></table></div>`;
-      return history + topics; })()}
+      return topics; })()}
     <div class="pledge"><div><b>My goal for PM2</b><i></i></div><div><b>My goal for PM3</b><i></i></div><div class="wide"><b>How I'll get there</b><i></i><i></i><i></i></div><div class="sig"><span>Student</span><span>Teacher</span><span>Date</span></div></div></section>`;
 }
 const FAST_REPORT_CSS = `
