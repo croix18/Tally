@@ -93,9 +93,9 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const K2='period-2'; await p.click('[data-k="period-2"]'); await p.waitForTimeout(300); await p.click('#btnPrint'); await p.waitForTimeout(300);
   check(await p.locator('[data-who="all"]').count()===1 && await p.locator('[data-who="owes"]').count()===1 && await p.locator('[data-who="letters"]').count()===1,'Print: everyone / owe work / by grade');
   const [rep]=await Promise.all([ctx.waitForEvent('page'), p.click('#rpWeekly')]); await rep.waitForLoadState(); await rep.waitForTimeout(400);
-  const rn=await rep.locator('section.rep').count(); const rtxt=await rep.evaluate(()=>document.body.innerText);
-  const gbN=await p.evaluate(K=>window.__tally.state.sections[K].grades.students.length, K2); check(rtxt.indexOf('Below goal')>=0 || rtxt.indexOf('Not started')>=0,'IXL owed lists skills');
-  check(rn===gbN && /What would move the grade/i.test(rtxt) && /IXL still owed/i.test(rtxt) && /weighted Assessments 70%/.test(rtxt),'one report section per gradebook student with grade, levers, IXL owed and the formula: '+rn);
+  const rn=await rep.locator('section.rep:not(.teach)').count(); const rtxt=await rep.evaluate(()=>document.body.innerText);
+  const gbN=await p.evaluate(K=>window.__tally.state.sections[K].grades.students.length, K2); check(/\(\d+\)/.test(rtxt) && /your SmartScore in parentheses/.test(rtxt),'IXL owed lists each skill with the student\'s SmartScore');
+  check(rn===gbN && /What would move the grade/i.test(rtxt) && /IXL still owed/i.test(rtxt) && /goal SmartScore/.test(rtxt),'one report section per gradebook student with grade, levers, IXL owed and the formula: '+rn);
   check(await rep.evaluate(()=>getComputedStyle(document.querySelectorAll('section.rep')[0]).breakAfter==='page'),'each report breaks to its own page');
   const firstName=await p.evaluate(K=>window.__tally.state.sections[K].grades.students[0], K2); const sec0=await rep.locator('section.rep').first().innerText();
   check(sec0.includes(firstName) && !(await p.evaluate(K=>window.__tally.state.sections[K].grades.students.slice(1), K2)).some(n=>sec0.includes(n)),'a student\'s page names only that student');

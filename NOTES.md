@@ -647,6 +647,36 @@ per-section-file era and many items in them are now done).
     FAST so far" with one Level column (the subcategory); the goal box has taller lines, three for "How I'll get
     there", and room before the signatures. The weekly report's "check the roster in Tally" line is now "IXL is not
     linked to this report yet".
+- **24 Oct 2026 — The weekly report, calmer.** Croix, of a print: "Super busy looking!" (the IXL skill lists) and
+  "Get rid of the course grade lines at the bottom." IXL still owed is now one line per unit (bar, at goal, "1 below
+  goal · 11 not started · nearest: <skill>"), the names stay in IXL where the student works down the unit; the
+  checklist names two skills then "and N more"; the formula footnote is gone; the header is one line with the date
+  and, small, the Focus and IXL export dates; the move table shows three missing assignments then "and N more".
+  Then, with a mock-up: "see how much the borders and boxes complement the data and make it easier to understand",
+  so the page is a form: a dark "Weekly progress report" badge under the class line, the name beside it, grey cards,
+  every section a boxed panel with a dark header bar (Do this week darkest, with the retake line as its grey foot),
+  the pledge box with the grey "Last week's plan" cell, and a signature box (student, date, parent or guardian,
+  date). The on-screen Print button sits bottom-right now; it was covering the since-strip's corner on his tablet.
+  Then: "listing out each ixl still owed is messy and needs a better solution … list them all out more neatly and put
+  what the student currently has on it in parentheses next to the unit. If a student has zero put zero next to each
+  one … you are not limited to one page per student." So IXL still owed is a full-width panel below the two columns:
+  per unit a three-shade bar (at goal · started · not started, keyed once) and the count, then every owed skill in
+  IXL's order, two columns, each with a box and the SmartScore in parentheses, (0) when not begun; skills at goal are
+  not listed. A long unit may run onto a second page (`.u.long`); print colours are forced (`print-color-adjust`), or
+  the dark bars printed blank. And: "a checklist … as a separate page at the end of the print so that I can hold them
+  responsible for getting their progress report signed by parent and turned back in": a batch (two or more
+  students) ends with `returnChecklist`, "Reports out and back": every student in the batch with grade, missing
+  count, a box for handed out, a box for back signed, a date and a note column. One student's print has no such page.
+  "Also give me some space to three whole punch the printed pages" (25 Oct): both reports print with a 1-inch left
+  margin (`@page{margin:.45in .45in .45in 1in}`); the FAST page's "By topic" table sits under the history, full
+  width, so it still fits one page at the narrower width.
+  "A notice to trigger if a student is eligible for retake and could improve their grade … come into my howl time
+  during Wednesday or Thursday and to notify the teacher they are supposed to be in that they are with me either
+  verbally in person with that teacher or via focus message" (25 Oct): a black-headed "Retake this week" panel above
+  Do this week when `retakeStatus` is ok and some assessment at full marks would raise the rounded grade; it names
+  the assessment (or how many) and the grade it reaches, the HOWL time line with the teacher's name from Settings
+  ("your math teacher" when blank), and three boxes: told my HOWL teacher, came Wednesday, came Thursday. The
+  Do this week fallback no longer says "every assessment at full marks" when a retake is on the table.
 - **24 Oct 2026 — The state's score report PDF.** Croix: "I want to upload this report of their pm 1 data because it
   will fill in their percentiles as well as give more in depth detail of the standard sections broken down. I can
   only get it as a pdf, so I'd need tally to be able to get it and match it to the students names." The report is

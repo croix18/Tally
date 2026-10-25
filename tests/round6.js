@@ -112,7 +112,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   const [rep]=await Promise.all([ctx2.waitForEvent('page'), q.click('#pPrint')]); await rep.waitForLoadState(); await rep.waitForTimeout(500);
   const pages=buf=>(buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g)||[]).length;
   const one=pages(await rep.pdf({format:'Letter'})); const rtxt=await rep.evaluate(()=>document.body.innerText);
-  check(one===1 && await rep.evaluate(()=>document.fonts.check('900 16px "DM Sans"') && /DM Sans/.test(getComputedStyle(document.body).fontFamily)),'the report for the student furthest behind prints on one page, in DM Sans ('+one+' page)');
+  check(one>=1 && one<=2 && await rep.evaluate(()=>document.fonts.check('900 16px "DM Sans"') && /DM Sans/.test(getComputedStyle(document.body).fontFamily)),'the report for the student furthest behind prints on one or two pages (every owed skill is listed; Croix, 24 Oct: "you are not limited to one page"), in DM Sans ('+one+' page)');
   check(!/isn't reachable on one assessment/.test(rtxt) && !/won't change the letter/.test(rtxt),'the next-assessment line no longer says "isn\'t reachable" three times, nor that the letter can\'t change');
   const truth=await q.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const rows=T.gbRows(s); const bad=[]; let dReach=0, keeps=0;
     s.grades.students.forEach((name,i)=>{ const html=T.studentReportSection(s,i,rows[i]); const m=html.match(/Next assessment \(out of (\d+)\)<\/td><td colspan="2">([^<]*)</); if (!m) return; const mx=Number(m[1]), line=m[2]; const na=T.nextAssessment(T.openSec(s),i,mx);
@@ -121,12 +121,13 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
       if (na.keep) { keeps++; if (!/keeps the [A-D]/.test(line)) bad.push(name+': keep clause dropped'); } });
     return { bad, dReach, keeps, n:s.grades.students.length }; },RK);
   check(truth.bad.length===0 && truth.keeps>0,'every student\'s next-assessment line matches what is computed: reachable letters (a D included) are named, "won\'t reach" only when none is, and what keeps the current letter stays ('+truth.n+' students, '+truth.keeps+' keep clauses, '+truth.dReach+' can reach a D)'+(truth.bad.length?': '+truth.bad.slice(0,3).join(' | '):''));
-  check(/Not started \(\d+\):/.test(rtxt) && /and \d+ more, in order, under Unit \d+ in IXL/.test(rtxt) && /Below goal \(\d+\):/.test(rtxt),'IXL still owed names every below-goal skill and the next few not started, and counts the rest');
+  const owed=await rep.evaluate(()=>{ const T=window.opener && window.opener.__tally; return [...document.querySelectorAll('section.rep')].slice(0,1).map(sec=>({ sk:sec.querySelectorAll('.sk').length, zero:sec.querySelectorAll('.sk b.zero').length, scored:[...sec.querySelectorAll('.sk b:not(.zero)')].map(b=>b.textContent) }))[0]; });
+  check(owed && owed.sk>0 && owed.zero>0 && owed.scored.every(t=>/^\(\d+\)$/.test(t)) && !/Not started \(\d+\):/.test(rtxt),'IXL still owed lists every owed skill with a box and the SmartScore in parentheses, 0 when not begun (Croix, 24 Oct): '+JSON.stringify(owed));
   await rep.close();
   await q.click('#back'); await q.waitForTimeout(300); await q.click(`[data-k="${RK}"]`); await q.waitForTimeout(300); await q.click('#btnPrint'); await q.waitForTimeout(300);
   const [all]=await Promise.all([ctx2.waitForEvent('page'), q.click('#rpWeekly')]); await all.waitForLoadState(); await all.waitForTimeout(600);
   const secs=await all.evaluate(()=>document.querySelectorAll('.rep').length); const pp=pages(await all.pdf({format:'Letter'}));
-  check(secs>=20 && pp===secs,'the whole class prints one page per student ('+secs+' students, '+pp+' pages)'); await all.close();
+  check(secs>=20 && pp>=secs && pp<=secs*2,'the whole class prints one or two pages per student, each starting a new page ('+secs+' students, '+pp+' pages)'); await all.close();
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();
 })();

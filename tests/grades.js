@@ -57,8 +57,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   check(/missing work were turned in/i.test(card) && /retaken/i.test(card) && /next assessment scored/i.test(card) && /→ \d+/.test(card),'page has missing, retakes, next-assessment what-ifs');
   await p.fill('.wiMax','50'); await p.waitForTimeout(150); check((await p.getAttribute('.wiPts','max'))==='50','next-assessment slider follows points possible');
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop.waitForLoadState(); await pop.waitForTimeout(300); const ptxt=await pop.evaluate(()=>document.body.innerText);
-  check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /What would move the grade/i.test(ptxt) && /weighted Assessments 70%/.test(ptxt),'print page: one student, formula stated');
-  check(/Do this week/i.test(ptxt) && /This week I will/.test(ptxt) && /Last week's plan/.test(ptxt) && /First report/.test(ptxt) && await pop.locator('.todo li .box').count()>=1,'the weekly report has the checklist, the plan box and signature lines; a first report says so'); await pop.close();
+  check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /What would move the grade/i.test(ptxt) && !/weighted Assessments/.test(ptxt),'print page: one student, no formula footnote (the page is the student\'s)');
+  check(/Do this week/i.test(ptxt) && /This week I will/.test(ptxt) && /Last week's plan/.test(ptxt) && /First report/.test(ptxt) && await pop.locator('.todo li .box').count()>=1 && await pop.locator('section.teach').count()===0,'the weekly report has the checklist, the plan box and signature lines; a first report says so; one student\'s print has no teacher page'); await pop.close();
   const logged=await p.evaluate(()=>{ const s=Object.values(window.__tally.state.sections)[0]; const L=s.reportLog||{}; const k=Object.keys(L)[0]; return k && L[k].length===1 && L[k][0].grade!=null && typeof L[k][0].missing==='number'; });
   check(logged,'printing a report logs the grade, missing count and IXL skills for the next report\'s "since" strip');
   await p.evaluate(()=>{ const s=Object.values(window.__tally.state.sections)[0]; const L=s.reportLog; const k=Object.keys(L)[0]; L[k]=[{ date:'2026-10-10', grade:L[k][0].grade-5, missing:L[k][0].missing+2, ixl:L[k][0].ixl }]; window.__tally.save(); });
@@ -76,6 +76,15 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   p.removeAllListeners('dialog'); p.once('dialog',d=>d.dismiss()); await p.click('#pPrint'); await p.waitForTimeout(400); p.on('dialog',d=>d.accept());
   check(await p.evaluate(()=>Object.keys(Object.values(window.__tally.state.sections)[0].reportLog||{}).length===0),'with names hidden, saying no to the question opens nothing and logs nothing');
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.hideNames=false; T.save(); T.render(); }); await p.waitForTimeout(300);
+  // Croix (25 Oct): a retake notice when the student is eligible and a retake would raise the grade
+  const elig=await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const gb=s.grades; T.state.settings.teacherName='Mr. Shaffer';
+    const i=gb.students.findIndex(n=>T.findStudent(s,n).ixl!=null); const f=T.findStudent(s,gb.students[i]);
+    gb.assignments.forEach(a=>{ if (a.status[i]==='missing') { a.status[i]='score'; a.values[i]=a.max; } }); T.unitsOf(s).forEach(u=>T.activeFor(s,u,f.ixl).forEach(k=>{ s.scores[k][f.ixl]=100; })); s.best=null;
+    const t=gb.assignments.find(a=>/assessment/i.test(a.name)); t.status[i]='score'; t.values[i]=Math.round(t.max*0.5); T.save(); T.openProfile(Object.keys(T.state.sections)[0], gb.students[i]); return { name:gb.students[i], test:t.name }; });
+  await p.waitForTimeout(400);
+  const [popE]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await popE.waitForLoadState(); await popE.waitForTimeout(400);
+  const al=await popE.evaluate(()=>{ const a=document.querySelector('.panel.alert'); return a?a.innerText.replace(/\s+/g,' '):''; });
+  check(/RETAKE THIS WEEK/i.test(al) && /eligible to retake/.test(al) && /→ \d+% [A-D]/.test(al) && /Mr\. Shaffer's room during HOWL time on Wednesday or Thursday/.test(al) && /Tell the teacher whose HOWL time you would be in/.test(al) && /Focus message/.test(al) && await popE.locator('.panel.alert .box').count()===3,'an eligible student whose retake would raise the grade gets the HOWL-time notice with the grade it reaches and the boxes to tick: '+al.slice(0,100)); await popE.close();
   await p.click('#back'); await p.waitForTimeout(300);
   check(await p.locator('.gstu').count()===1,'back returns to Grades');
   // Croix (24 Oct): batches by class and by letter grade; a reminder when the exports are old
@@ -89,7 +98,9 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const msgs=[]; p.removeAllListeners('dialog'); p.on('dialog',d=>{ msgs.push(d.message()); d.accept(); });
   const [popB]=await Promise.all([ctx.waitForEvent('page'), p.click('#rpWeekly')]); await popB.waitForLoadState(); await popB.waitForTimeout(300);
   const printedLetters=await popB.$$eval('section.rep .big',es=>es.map(e=>e.textContent.replace(/^\d+%/,'')));
-  check(printedLetters.length===cdf && printedLetters.every(l=>/^[CDF]$/.test(l)),'the batch holds exactly the C, D and F students: '+printedLetters.join('')); await popB.close();
+  check(printedLetters.length===cdf && printedLetters.every(l=>/^[CDF]$/.test(l)),'the batch holds exactly the C, D and F students: '+printedLetters.join(''));
+  const teach=await popB.evaluate(()=>({ n:document.querySelectorAll('section.teach').length, rows:document.querySelectorAll('section.teach tbody tr').length, boxes:document.querySelectorAll('section.teach .box').length, text:document.querySelector('section.teach').innerText.replace(/\s+/g,' ').slice(0,400) }));
+  check(teach.n===1 && teach.rows===cdf && teach.boxes===cdf*2 && /Reports out and back/i.test(teach.text) && /Back, signed/i.test(teach.text),'a batch ends with the teacher\'s page: every student in it, a box for handed out and one for back signed: '+JSON.stringify({n:teach.n,rows:teach.rows,boxes:teach.boxes,cdf})); await popB.close();
   check(msgs.length===1 && /the IXL export is from .*\d+ days ago\. A weekly report wants today's numbers\. Print anyway\?/.test(msgs[0]) && !/Focus gradebook/.test(msgs[0]),'before printing, Tally says the IXL export is not today\'s (the gradebook came in today): "'+msgs[0]+'"');
   await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date(Date.now()-864e5).toISOString(); T.save(); });
   const why=await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; return T.staleExports(s,[0]); });
