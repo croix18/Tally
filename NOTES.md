@@ -699,7 +699,9 @@ per-section-file era and many items in them are now done).
   loosened: it reads from the right (current score, start score if any, the time if any, the questions) and takes
   the three-character ID off the end of what is left, lines cluster within 4 units (the small grey ID can sit on its
   own baseline), and a row with no time keeps min null; the weekly report then shows the questions instead. A
-  scrubbed text sample of one student's block from the real PDF is the next step.
+  scrubbed text sample of one student's block from the real PDF is the next step. Then: "Don't worry about putting
+  time in the progress report": the weekly report carries no Quickview data at all; it stays on the student page and
+  the Overview's idle-a-week item.
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab

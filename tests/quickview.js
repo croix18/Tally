@@ -31,7 +31,7 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   check(/IXL practice/i.test(sec) && /375 questions/.test(sec) && /7 hr 3 min/.test(sec) && /Last practiced/i.test(sec) && await p.locator('#pPractice .prac tbody tr').count()===Math.min(12,a0.rows.length),'the student page has an IXL practice section: totals, last practiced, the skills by time: '+sec.slice(0,120));
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop.waitForLoadState(); await pop.waitForTimeout(500);
   const line=await pop.evaluate(()=>document.querySelector('.prac')?.innerText.replace(/\s+/g,' '));
-  check(/This school year on IXL: 375 questions · 7 hr 3 min · last practiced/.test(line||'') && await pop.locator('.sk .pt').count()>0,'the weekly report says the year\'s questions, time and last practice, and the time spent beside owed skills: '+line); await pop.close();
+  check(!line && await pop.locator('.sk .pt').count()===0 && !/questions · \d+ hr|min\b/.test(await pop.evaluate(()=>document.querySelector('.panel.ixl')?.innerText||'')),'the weekly report carries no IXL time (Croix, 25 Oct: "Don\'t worry about putting time in the progress report")'); await pop.close();
   await p.click('#btnHome'); await p.waitForTimeout(400);
   const att=await p.evaluate(()=>[...document.querySelectorAll('.hatt li')].map(l=>l.textContent.replace(/\s+/g,' ')).join(' | '));
   const idleWant=ans.students.filter(s=>{ const x=new Date(ans.asOf+'T12:00:00'); x.setDate(x.getDate()-s.days); return (Date.now()-x.getTime())/864e5>=7; }).length;
