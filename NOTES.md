@@ -825,8 +825,27 @@ per-section-file era and many items in them are now done).
     grade-8 table; a level pill ends one below the next level (239–253); close scores share one mark with a line
     per window; "1 more point is needed"; the chart's gain label sits in the right margin and a skipped window
     reads "missed"; the page still fits one sheet with every window and four topics.
-  Open for Croix: does he print two-sided (then every student's report should start on a fresh sheet, which costs a
-  blank page after each one-page report)? Should the FAST window dates (PM2 Dec 8, PM3 May) live in Settings?
+  Open for Croix: should the FAST window dates (PM2 Dec 8, PM3 May) live in Settings? (He prints two-sided: built,
+  see the next entry.)
+- **25 Oct 2026 — Two-sided printing, and every class in one print.** Croix: "I do print 2 sided. Id also like a way
+  to print all classes in one go." Two-sided printing put the next student's report on the back of a one-page report,
+  so a sheet went home with two students on it. Chrome ignores `break-before: right` (tested: it adds no blank page),
+  so a print page set for two-sided lays itself out when it opens (`PAGER_JS`, `DUPLEX_CSS` in grades.js): each
+  `body > section` (a report, a checklist, a slip, a class list) is poured into page-sized boxes (940 px of the 969.6
+  a Letter page holds inside its .45in margins); a long IXL list splits between units and then between skills
+  (`data-items` marks what may split, `data-keep` what stays in the frame), its header carried over with
+  "(continued)"; the checklist splits between rows with its header repeated; a section that ends on a front gets a
+  blank back unless it is the last. Every box is shorter than the page, so the boxes are exactly the printed pages
+  (checked against the PDF). `@page :left` mirrors the margin, so the punch holes stay clear on the backs (PDF: front
+  text at 72 pt, back at 39 pt). Print waits for the layout (the page's `print()` is wrapped), and a layout error falls
+  back to the browser's own page breaks. Two-sided is on unless unticked in Print (`settings.duplex`); one-sided keeps
+  the browser's page breaks and says to print one-sided. The Print bar says which: "Print two-sided: each student
+  starts on a new sheet." The print menu has "This class | All classes": weekly reports for every class (each class's
+  reports, then its own "Reports out and back" page), FAST reports for every class, slips for every student (each with
+  its class and export date at the top, since a slip no longer sits under a class heading) and a list per class.
+  Before printing every class, old exports are named once each with their classes ("… (every class)", "… (2nd
+  Period)"). The buttons count students ("46 students, 2 classes"), not pages. 138 reports lay out in under 3 s.
+  `tests/print-duplex.js`.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

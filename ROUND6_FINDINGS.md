@@ -263,3 +263,9 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   (`make_ixl_quickview_pdf.py --hard`: a browser-printed Quickview with wrapped cells, a repeated header, an accent,
   a dated header and one unreadable header). 45 suites, 1440 checks. Open for Croix: two-sided printing; the FAST
   window dates as a setting.
+
+- 25 Oct 2026: two-sided printing and every class in one print (Croix: "I do print 2 sided. Id also like a way to
+  print all classes in one go"). Chrome ignores `break-before: right`, so a two-sided print page lays itself out in
+  page-sized boxes and gives a report that ends on a front a blank back; backs mirror the punch margin. Print has
+  "This class | All classes" and a Two-sided printing box (on by default, kept in settings). New suite
+  `tests/print-duplex.js` (21 checks, against the PDF Chrome prints). 46 suites, 1461 checks.

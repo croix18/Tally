@@ -318,7 +318,7 @@ table{border-collapse:collapse;width:100%}td,th{padding:1.5px 6px;text-align:lef
 .wk .panel{border:1.5px solid #000;border-radius:6px;overflow:hidden;margin:8px 0 0;break-inside:avoid}.wk .ph{background:#6b6b6b;color:#fff;font-weight:900;font-size:9.5pt;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px}.wk .ph .hs{text-transform:none;letter-spacing:0;font-weight:normal;color:#eee;font-size:8.5pt}.wk .panel.dark .ph{background:#222}.wk .panel.alert{border-width:2.5px}.wk .panel.alert .ph{background:#000}.wk .panel.alert .lead{margin:3px 0}.wk .pbody{padding:4px 8px 6px}.wk .pbody>p:first-child,.wk .pbody>.lead:first-child{margin-top:2px}
 .wk .two{gap:0 8px;align-items:start}.wk .two>.panel{margin-top:8px}.wk .col .panel:first-child{margin-top:8px}.wk .rt{margin:4px -8px -6px;padding:4px 8px;background:#eee;border-top:1px solid #aaa}.wk .todo{margin:2px 0 6px}
 .wk .pledge{margin-top:8px;border:1.5px solid #000;border-radius:6px;padding:0;display:grid;grid-template-columns:1.6fr 1fr;gap:0;overflow:hidden}.wk .pl{padding:7px 10px 8px}.wk .pl b{margin-bottom:4px}.wk .pl.last{background:#eee;border-left:1.5px solid #000}.wk .lines{display:block}.wk .lines i{height:19px}.wk .pledgeWrap{break-inside:avoid;page-break-inside:avoid}.wk .ticks{margin-top:6px}
-.teach .ret{margin-top:10px}.teach .ret th{font-size:8pt;padding:3px 6px;border-bottom:1.5px solid #000}.teach .ret td{padding:4px 6px;font-size:9.5pt;border-bottom:1px solid #bbb;height:20px}.teach .ret td.c,.teach .ret th.c{text-align:center;width:70px}.teach .ret td:nth-child(2){white-space:nowrap}.teach .ret td.w{min-width:80px}.teach .ret td:last-child{width:120px}.teach .ret .box{margin:0;width:13px;height:13px}\n.wk .sig{margin-top:6px;border:1.5px solid #000;border-radius:6px;padding:8px 10px;display:flex;gap:14px}.wk .sig span.d{flex:.5}.bar{position:fixed;bottom:14px;right:14px;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px}.bar button{font:inherit;padding:8px 18px}.bar .hint{font-size:9pt;color:#333;padding-left:6px}@media print{.bar{display:none}}`;
+.teach .ret{margin-top:10px}.teach .ret th{font-size:8pt;padding:3px 6px;border-bottom:1.5px solid #000}.teach .ret td{padding:4px 6px;font-size:9.5pt;border-bottom:1px solid #bbb;height:20px}.teach .ret td.c,.teach .ret th.c{text-align:center;width:70px}.teach .ret td:nth-child(2){white-space:nowrap}.teach .ret td.w{min-width:80px}.teach .ret td:last-child{width:120px}.teach .ret .box{margin:0;width:13px;height:13px}\n.wk .sig{margin-top:6px;border:1.5px solid #000;border-radius:6px;padding:8px 10px;display:flex;gap:14px}.wk .sig span.d{flex:.5}.bar{position:fixed;bottom:14px;right:14px;z-index:10;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px}.bar button{font:inherit;padding:8px 18px}.bar .hint{font-size:9pt;color:#333;padding-left:6px}@media print{.bar{display:none}}`;
 // What one next assessment of `mx` points can do for student i — only what is computed: for each letter above the
 // current grade (a D counts), the score that reaches it or the fact that none does; and the score that keeps the
 // current letter. The report, the student page and Show student all word their sentence from this.
@@ -389,8 +389,8 @@ function studentReportSection(s0, i, ixlRow) {
       const owed = own.filter(k => { const v = eff(s, k, ixlRow.ixl); return v == null || v < t; }); const started = owed.filter(k => eff(s, k, ixlRow.ixl) != null);
       const atPct = Math.round(p / n * 100), stPct = Math.round(started.length / n * 100);
       return `<div class="u${owed.length > 14 ? ' long' : ''}"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}${u.current ? ' <em>now</em>' : ''}</span><span class="pb"><i class="at" style="width:${atPct}%"></i><i class="st" style="width:${stPct}%"></i></span><b>${p} / ${own.length}</b></div>
-        ${owed.length ? `<div class="sks">${owed.map(k => { const v = eff(s, k, ixlRow.ixl); return `<div class="sk"><span class="box"></span><span class="nm">${esc(s.skills[k].name)}</span> <b class="${v == null ? 'zero' : ''}">(${v == null ? 0 : v})</b></div>`; }).join('')}</div>` : `<div class="l"><span class="done">All ${own.length} skills at goal</span></div>`}</div>`; }).join('');
-    ixl = `<div class="panel ixl"><div class="ph">IXL still owed <span class="hs">goal SmartScore ${t} · your SmartScore in parentheses</span></div><div class="pbody"><div class="keyline"><i class="key at"></i> at goal <i class="key st"></i> started <i class="key no"></i> not yet</div>${per || '<p>No units assigned yet.</p>'}</div></div>`;
+        ${owed.length ? `<div class="sks" data-items>${owed.map(k => { const v = eff(s, k, ixlRow.ixl); return `<div class="sk"><span class="box"></span><span class="nm">${esc(s.skills[k].name)}</span> <b class="${v == null ? 'zero' : ''}">(${v == null ? 0 : v})</b></div>`; }).join('')}</div>` : `<div class="l"><span class="done">All ${own.length} skills at goal</span></div>`}</div>`; }).join('');
+    ixl = `<div class="panel ixl"><div class="ph">IXL still owed <span class="hs">goal SmartScore ${t} · your SmartScore in parentheses</span></div><div class="pbody" data-items><div class="keyline" data-keep><i class="key at"></i> at goal <i class="key st"></i> started <i class="key no"></i> not yet</div>${per || '<p>No units assigned yet.</p>'}</div></div>`;
   } else if (s.students.length) ixl = `<div class="panel"><div class="ph">IXL still owed</div><div class="pbody"><p>${ixlRow && ixlRow.status === 'noAccount' ? 'No IXL account.' : 'IXL is not linked to this report yet.'}</p></div></div>`;
   else ixl = '';
   // ---- tests and quizzes so far ----
@@ -442,20 +442,79 @@ function logReport(s0, i, ixlRow) {
   const same = old.filter(e => weekOf(e.date) === wk); const back = same.map(e => e.back).filter(Boolean).pop(); if (back) entry.back = back;
   const list = old.filter(e => weekOf(e.date) !== wk); list.push(entry); list.sort((a, b) => a.date.localeCompare(b.date)); s0.reportLog[k] = list.slice(-12);
 }
-// The report window's Print button. A batch says to print one-sided: two-sided would put the next student's page on
-// the back of a sheet that goes home with someone else.
-const printBar = n => `<div class="bar">${n > 1 ? '<span class="hint">Print one-sided so no sheet holds two students.</span>' : ''}<button onclick="window.print()">Print</button></div>`;
+/* Two-sided printing (Croix, 25 Oct 2026: "I do print 2 sided"). Chrome ignores `break-before: right`, so a print page
+   lays itself out when it opens: each report's blocks go into page-sized boxes (a long IXL list or checklist splits
+   between rows, its header carried over and marked "continued"), and a report that ends on a front gets a blank back,
+   so the next student starts on a new sheet and no sheet goes home with two students on it. What is laid out is what
+   prints: every box is shorter than the printable page. Backs mirror the margin, so the punch holes stay clear on both
+   sides. One-sided printing (the box in Print unticked) keeps the browser's own page breaks. */
+const PAGE_H = 940;   // px: a Letter page less its .45in top and bottom margins is 969.6 px tall; the rest is slack
+const duplexOn = () => state.settings.duplex !== false;
+const DUPLEX_CSS = `@page{size:letter;margin:.45in .45in .45in 1in}@page :left{margin:.45in 1in .45in .45in}
+body.paged{margin:0!important}.paged>section{padding:0!important;margin:0!important;break-after:auto!important;page-break-after:auto!important}
+.paged .page{box-sizing:content-box;width:676.8px;height:${PAGE_H}px;overflow:hidden;position:relative}
+.panel.ixl.cont>.ph .hs,.panel.ixl.cont .keyline{display:none}.panel.ixl.cont>.ph:after{content:" (continued)";text-transform:none;letter-spacing:0;font-weight:normal}.u.cont>.uh>span:first-child:after{content:" (continued)";font-weight:normal;color:#444}
+@media screen{body.paged{background:#d6d6d6;padding:10px 0 70px}.paged .page{background:#fff;margin:14px auto;padding:.45in .45in calc(.45in + ${(969.6 - PAGE_H).toFixed(1)}px) 1in;box-shadow:0 1px 5px rgba(0,0,0,.3)}.paged .page.back{padding-left:.45in;padding-right:1in}.paged .page.blank:after{content:"Back of the sheet: blank";position:absolute;top:46%;left:0;right:0;text-align:center;color:#aaa;font-size:10pt}}
+@media print{.paged .page{break-after:page;page-break-after:always}.paged .page.last{break-after:auto;page-break-after:auto}}
+.paged:not([data-paged])>section{visibility:hidden}@media screen{.paged:not([data-paged]):before{content:"Laying out the pages…";position:fixed;top:40%;left:0;right:0;text-align:center;font-size:12pt;color:#555}}`;
+const PAGER_JS = `(function(){
+var B=document.body,doPrint=window.print.bind(window),ready=null;
+window.print=function(){var go=function(){doPrint()};(ready||Promise.resolve()).then(go,go)};   /* Print waits for the layout */
+function mk(c){var d=document.createElement('div');d.className=c;return d}
+function over(p){return p.scrollHeight>p.clientHeight+1}
+function box(e){return e.nodeType!==1?null:e.hasAttribute('data-items')?e:e.querySelector('[data-items]')}
+function items(c){return [].filter.call(c.children,function(x){return !x.hasAttribute('data-keep')})}
+function split(el,parent,page){var c=box(el);if(!c||!items(c).length)return null;
+var cp=el.cloneNode(true),cc=box(cp);items(cc).forEach(function(x){cc.removeChild(x)});
+parent.appendChild(cp);if(over(page)){parent.removeChild(cp);return null}
+var n=0;while(items(c).length){var it=items(c)[0],nx=it.nextSibling;cc.appendChild(it);if(!over(page)){n++;continue}
+cc.removeChild(it);c.insertBefore(it,nx);if(box(it)){var r=split(it,cc,page);if(r){n++;if(!r.rest)c.removeChild(it)}}break}
+if(!n){parent.removeChild(cp);return null}
+if(items(c).length){el.classList.add('cont');return {rest:el}}return {rest:null}}
+function layout(sec){var bl=[].slice.call(sec.children),pages=[],p;bl.forEach(function(b){sec.removeChild(b)});
+function next(){p=mk('page');sec.appendChild(p);pages.push(p)}next();
+bl.forEach(function(b){var rest=b,g=0;while(rest&&g++<500){p.appendChild(rest);if(!over(p)){rest=null;break}
+p.removeChild(rest);var r=split(rest,p,p);if(r){rest=r.rest;if(rest)next();continue}
+if(!p.children.length){p.appendChild(rest);rest=null;break}next()}});return pages}
+function run(){if(B.getAttribute('data-paged'))return;
+var secs=[].slice.call(document.querySelectorAll('body>section')),keep=secs.map(function(s){return s.cloneNode(true)});
+try{secs.forEach(function(s,i){var pg=layout(s);if(B.classList.contains('duplex')&&pg.length%2&&i<secs.length-1)s.appendChild(mk('page blank'))});
+var all=document.querySelectorAll('.page');[].forEach.call(all,function(x,k){if(k%2)x.classList.add('back')});if(all.length)all[all.length-1].classList.add('last')}
+catch(e){secs.forEach(function(s,i){s.parentNode.replaceChild(keep[i],s)});B.classList.remove('paged','duplex');var h=document.querySelector('.bar .hint');if(h)h.textContent='Print one-sided so no sheet holds two students.';if(window.console)console.error(e)}   /* the browser's own page breaks, rather than a half-laid page */
+B.setAttribute('data-paged','1')}
+ready=window.__paged=(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(run,run);
+})();`;
+// The report window's Print button, with the one thing to set in the print dialog for a batch: two-sided when the
+// pages were laid out for it, one-sided otherwise (two-sided would put the next student on the back of a sheet).
+const printBar = (n, what = 'student') => `<div class="bar">${n > 1 ? `<span class="hint">${duplexOn() ? `Print two-sided: each ${what} starts on a new sheet.` : `Print one-sided so no sheet holds two ${what === 'class' ? 'classes' : 'students'}.`}</span>` : ''}<button onclick="window.print()">Print</button></div>`;
+// A whole print page: its styles, the Print bar and, for two-sided printing, the layout script.
+function printDoc(title, css, body, n, what) {
+  const dup = duplexOn();
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${css}${dup ? DUPLEX_CSS : ''}</style></head><body${dup ? ' class="paged duplex"' : ''}>${printBar(n, what)}${body}${dup ? `<script>${PAGER_JS}<\/script>` : ''}</body></html>`;
+}
 // One student's section, or a plain line in its place: one student's odd data never blanks the whole batch.
 function safeSection(make, name, failed) { try { return make(); } catch (e) { console.error(e); failed.push(name); return `<section class="rep"><h1>${esc(name)}</h1><p>Tally could not make this report.</p></section>`; } }
-function printStudentReports(s, indices, title) {
-  const rows = gbRows(s); const failed = [];
-  const body = indices.map(i => safeSection(() => studentReportSection(s, i, rows[i]), s.grades.students[i], failed)).join('');
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}</style></head><body>${printBar(indices.length)}${body}${indices.length > 1 ? safeSection(() => returnChecklist(s, indices), 'Reports out and back', failed) : ''}</body></html>`;
-  const go = () => { indices.filter(i => !failed.includes(s.grades.students[i])).forEach(i => logReport(s, i, rows[i])); save(); openPrint(html, (indices.length === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', indices.length === 1);   // one student's report: a file name without the name; the log is written only for a report that opens
-    if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(n => shown(n)).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
-  const old = staleExports(s, indices); const why = [...old, ...(state.settings.hideNames ? [`names are hidden, but the ${indices.length === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen`] : [])];   // projected: say so first (audit)
+function printStudentReports(s, indices, title) { printWeekly([{ s, indices }], title); }
+/* A batch is one or more classes, each its students then its "Reports out and back" page (Croix, 25 Oct 2026: "a way
+   to print all classes in one go"). Every class's exports are checked before printing. */
+function printWeekly(groups, title) {
+  groups = groups.filter(g => g.s && g.s.grades && g.indices.length); const n = groups.reduce((a, g) => a + g.indices.length, 0); if (!n) return;
+  const failed = [], made = [];
+  const body = groups.map(g => { const rows = gbRows(g.s);
+    return g.indices.map(i => { const k = failed.length; const h = safeSection(() => studentReportSection(g.s, i, rows[i]), g.s.grades.students[i], failed); if (failed.length === k) made.push([g.s, i, rows[i]]); return h; }).join('')
+      + (n > 1 ? safeSection(() => returnChecklist(g.s, g.indices), 'Reports out and back', failed) : ''); }).join('');
+  const html = printDoc(title, REPORT_CSS, body, n);
+  const go = () => { made.forEach(([s, i, row]) => logReport(s, i, row)); save(); openPrint(html, (n === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', n === 1);   // one student's report: a file name without the name; the log is written only for a report that opens
+    if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(x => shown(x)).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
+  const old = groups.length === 1 ? staleExports(groups[0].s, groups[0].indices) : staleAcross(groups);
+  const why = [...old, ...(state.settings.hideNames ? [`names are hidden, but the ${n === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen`] : [])];   // projected: say so first (audit)
   if (why.length) { ask(`Before printing: ${why.join('; ')}.${old.length ? ' A weekly report wants today\'s numbers.' : ''} Print anyway?`, 'Print anyway').then(ok => { if (ok) go(); }); return; }
   go();
+}
+// Several classes' old exports, said once each: "the IXL export is from Oct 20, 5 days ago (every class)".
+function staleAcross(groups) {
+  const by = new Map(); groups.forEach(g => staleExports(g.s, g.indices).forEach(m => { if (!by.has(m)) by.set(m, []); by.get(m).push(g.s.label); }));
+  return [...by].map(([m, labels]) => `${m} (${labels.length === groups.length ? 'every class' : labels.join(', ')})`);
 }
 /* Croix (24 Oct 2026): "remind me to update if it's been too long before generating the weekly report", then "tighter.
    Like Monday morning print should have a Monday morning grade and ixl updates": a weekly report wants today's Focus
@@ -476,49 +535,63 @@ function returnChecklist(s0, indices) {
   const rows = indices.map((i, n) => { const r = computeGrade(s, i); const miss = gb.assignments.filter(a => a.status && a.status[i] === 'missing').length;
     return `<tr><td class="r">${n + 1}</td><td>${esc(gb.students[i])}</td><td class="r">${r && r.rounded != null ? `${r.rounded}% ${r.letter}` : '—'}</td><td class="r">${miss || ''}</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td><td class="w"></td><td class="w"></td></tr>`; }).join('');
   return `<section class="rep wk teach"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Reports out and back</div></div><div class="who"><h1>${plural(indices.length, 'report')} handed out ${esc(today)}</h1><div class="meta">Tick when each report goes home and again when it comes back signed. Keep this page.</div></div></div>
-    <table class="ret"><thead><tr><th></th><th>Student</th><th class="r">Grade</th><th class="r">Missing</th><th class="c">Handed out</th><th class="c">Back, signed</th><th>Date back</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table></section>`;
+    <table class="ret"><thead><tr><th></th><th>Student</th><th class="r">Grade</th><th class="r">Missing</th><th class="c">Handed out</th><th class="c">Back, signed</th><th>Date back</th><th>Note</th></tr></thead><tbody data-items>${rows}</tbody></table></section>`;
 }
 function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.students[i]}: report`); }
 /* Everything a class prints, in one place (Croix, 24 Oct 2026: batches "by class … as well as by class average, so if
    I only wanted to print reports for my c, d, and f students"; then "take a critical look at the way to pull up
    reports"): the Print button on the class bar opens it. One page per student (pick who, then weekly or FAST), and
-   the IXL still-owed slips and lists. The student page prints one student's report on its own. */
-var reportWho = { mode: 'all', letters: ['C', 'D', 'F'] };
+   the IXL still-owed slips and lists. The student page prints one student's report on its own. Croix, 25 Oct 2026:
+   "I do print 2 sided. I'd also like a way to print all classes in one go": the menu covers this class or every
+   class (each class's reports, then its checklist), and remembers two-sided printing (on unless he unticks it). */
+var reportWho = { mode: 'all', letters: ['C', 'D', 'F'], scope: 'class' };
+const printClasses = () => state.order.map(k => state.sections[k]).filter(x => x && !x.board && !x.placeholder);
 function openPrintMenu(s) {
-  const gb = s.grades; const haveGrades = !!gb && hasOpenGrades(s);
-  const rows = haveGrades ? gbRows(s) : []; const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const og = openSec(s); const ogb = og.grades;
-  const owes = haveGrades ? gb.students.map((_, i) => { const miss = ogb.assignments.some(a => a.status && a.status[i] === 'missing'); const r = rows[i]; const ixl = r && r.ixl != null && units.some(u => points(s, u, r.ixl) < totalFor(s, u, r.ixl)); return miss || ixl; }) : [];
-  const letterOf = haveGrades ? gb.students.map((_, i) => { const r = computeGrade(og, i); return r && r.rounded != null ? r.letter : '—'; }) : [];
-  const hasFast = haveGrades ? gb.students.map(nm => testHistory(s, nm).some(h => /FAST/i.test(h.test) && h.scale != null)) : [];
+  const classes = printClasses(); const many = classes.length > 1; if (!many) reportWho.scope = 'class';
+  const allMode = reportWho.scope === 'all'; const secs = allMode ? classes : [s];
+  const open = sec => unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u));
+  const info = secs.map(sec => { const gb = sec.grades; if (!gb || !hasOpenGrades(sec)) return { sec, have: false };
+    const rows = gbRows(sec); const og = openSec(sec); const ogb = og.grades; const us = open(sec);
+    return { sec, have: true, n: gb.students.length,
+      owes: gb.students.map((_, i) => ogb.assignments.some(a => a.status && a.status[i] === 'missing') || !!(rows[i] && rows[i].ixl != null && us.some(u => points(sec, u, rows[i].ixl) < totalFor(sec, u, rows[i].ixl)))),
+      letterOf: gb.students.map((_, i) => { const r = computeGrade(og, i); return r && r.rounded != null ? r.letter : '—'; }),
+      hasFast: gb.students.map(nm => testHistory(sec, nm).some(h => /FAST/i.test(h.test) && h.scale != null)) }; });
+  const graded = info.filter(x => x.have); const sum = f => graded.reduce((n, x) => n + f(x), 0);
   const LETTERS = ['A', 'B', 'C', 'D', 'F', '—'];
-  const chosen = () => haveGrades ? gb.students.map((_, i) => i).filter(i => reportWho.mode === 'all' || (reportWho.mode === 'owes' ? owes[i] : reportWho.letters.includes(letterOf[i]))) : [];
+  const pick = x => x.letterOf.map((_, i) => i).filter(i => reportWho.mode === 'all' || (reportWho.mode === 'owes' ? x.owes[i] : reportWho.letters.includes(x.letterOf[i])));
   const q = Q_NAMES[currentQuarter() - 1];
-  const perStudent = haveGrades ? `<div class="field"><div class="seg" id="rpWho"><button data-who="all" aria-pressed="${reportWho.mode === 'all'}">Everyone <small>${gb.students.length}</small></button><button data-who="owes" aria-pressed="${reportWho.mode === 'owes'}">Owe work <small>${owes.filter(Boolean).length}</small></button><button data-who="letters" aria-pressed="${reportWho.mode === 'letters'}">By grade</button></div>
-      <div class="rpLetters ${reportWho.mode === 'letters' ? '' : 'hidden'}">${LETTERS.map(L => `<button class="chip ${reportWho.letters.includes(L) ? 'on' : ''}" data-letter="${L}" aria-pressed="${reportWho.letters.includes(L)}">${L === '—' ? 'No grade yet' : L} <small>${letterOf.filter(x => x === L).length}</small></button>`).join('')}</div></div>
-      <div class="rp-actions col"><button class="pill" id="rpWeekly">Weekly report <small></small></button><button class="pill pale" id="rpFast">FAST report <small></small></button></div>`
-    : `<p class="ghint">${gb ? `No ${esc(q)} grades in Tally yet: weekly and FAST reports start with the first ${esc(q)} gradebook.` : 'Import this class\'s Focus gradebook first: the weekly and FAST reports need the grade.'}</p>`;
-  const owed = s.students.length ? `<div class="rp-actions col">
+  const scope = many ? `<div class="seg rpScope" id="rpScope"><button data-scope="class" aria-pressed="${!allMode}">${esc(s.label)}</button><button data-scope="all" aria-pressed="${allMode}">All classes <small>${classes.length}</small></button></div>` : '';
+  const perStudent = graded.length ? `<div class="field"><div class="seg" id="rpWho"><button data-who="all" aria-pressed="${reportWho.mode === 'all'}">Everyone <small>${sum(x => x.n)}</small></button><button data-who="owes" aria-pressed="${reportWho.mode === 'owes'}">Owe work <small>${sum(x => x.owes.filter(Boolean).length)}</small></button><button data-who="letters" aria-pressed="${reportWho.mode === 'letters'}">By grade</button></div>
+      <div class="rpLetters ${reportWho.mode === 'letters' ? '' : 'hidden'}">${LETTERS.map(L => `<button class="chip ${reportWho.letters.includes(L) ? 'on' : ''}" data-letter="${L}" aria-pressed="${reportWho.letters.includes(L)}">${L === '—' ? 'No grade yet' : L} <small>${sum(x => x.letterOf.filter(y => y === L).length)}</small></button>`).join('')}</div></div>
+      <div class="rp-actions col"><button class="pill" id="rpWeekly">Weekly report <small></small></button><button class="pill pale" id="rpFast">FAST report <small></small></button></div>${allMode && graded.length < secs.length ? `<p class="ghint">${plural(secs.length - graded.length, 'class')} without ${esc(q)} grades in Tally ${secs.length - graded.length === 1 ? 'is' : 'are'} left out.</p>` : ''}`
+    : `<p class="ghint">${allMode ? `No class has ${esc(q)} grades in Tally yet.` : s.grades ? `No ${esc(q)} grades in Tally yet: weekly and FAST reports start with the first ${esc(q)} gradebook.` : 'Import this class\'s Focus gradebook first: the weekly and FAST reports need the grade.'}</p>`;
+  const owedSecs = secs.filter(x => x.students && x.students.length);
+  const owed = owedSecs.length ? `<div class="rp-actions col">
         <button class="pill pale" data-owed="slips">Slips to hand out <small>one page per student · full names</small></button>
-        <button class="pill pale" data-owed="initials">One list, initials <small>safe to post or project</small></button>
-        <button class="pill pale" data-owed="names">One list, full names <small>for you or a co-teacher</small></button></div>` : '<p class="ghint">No IXL export for this class yet.</p>';
+        <button class="pill pale" data-owed="initials">${allMode ? 'A list per class' : 'One list'}, initials <small>safe to post or project</small></button>
+        <button class="pill pale" data-owed="names">${allMode ? 'A list per class' : 'One list'}, full names <small>for you or a co-teacher</small></button></div>` : `<p class="ghint">${allMode ? 'No IXL exports yet.' : 'No IXL export for this class yet.'}</p>`;
   const m = $('#modal'); m.classList.remove('hidden');
-  m.innerHTML = `<div class="panel narrow"><header><h2>Print · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one">
+  m.innerHTML = `<div class="panel narrow"><header><h2>Print · ${allMode ? 'All classes' : esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one">${scope}
       <h3 class="subh">One page per student</h3>${perStudent}
-      <h3 class="subh">IXL still owed</h3>${owed}</div></div>`;
+      <h3 class="subh">IXL still owed</h3>${owed}
+      <label class="rpDuplex"><input type="checkbox" id="rpDuplex" ${duplexOn() ? 'checked' : ''}> Two-sided printing</label></div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  m.querySelectorAll('[data-owed]').forEach(b => b.onclick = () => { const mode = b.dataset.owed; close(); printStillOwed(s, mode); });
-  if (!haveGrades) return;
-  const refresh = () => { const idx = chosen(); const f = idx.filter(i => hasFast[i]).length;
+  m.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { if (reportWho.scope === b.dataset.scope) return; reportWho.scope = b.dataset.scope; openPrintMenu(s); });
+  $('#rpDuplex').onchange = e => { state.settings.duplex = e.target.checked; save(); };
+  m.querySelectorAll('[data-owed]').forEach(b => b.onclick = () => { const mode = b.dataset.owed; close(); printStillOwed(owedSecs, mode); });
+  if (!graded.length) return;
+  const where = allMode ? 'All classes' : s.label;
+  const refresh = () => { const n = sum(x => pick(x).length), f = sum(x => pick(x).filter(i => x.hasFast[i]).length);
     $('#rpWho').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.who === reportWho.mode))); $('.rpLetters').classList.toggle('hidden', reportWho.mode !== 'letters');
     m.querySelectorAll('[data-letter]').forEach(b => { const on = reportWho.letters.includes(b.dataset.letter); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
-    $('#rpWeekly').disabled = !idx.length; $('#rpWeekly small').textContent = `${plural(idx.length, 'page')} · grade, what moved, this week's list, pledge`; $('#rpFast').disabled = !f; $('#rpFast small').textContent = f ? `${plural(f, 'page')}${f < idx.length ? ', students with FAST results' : ''} · levels, targets, goal box` : 'no FAST results among them'; };
+    $('#rpWeekly').disabled = !n; $('#rpWeekly small').textContent = `${plural(n, 'student')}${allMode ? `, ${plural(graded.filter(x => pick(x).length).length, 'class')}` : ''} · grade, what moved, this week's list, pledge`; $('#rpFast').disabled = !f; $('#rpFast small').textContent = f ? `${plural(f, 'student')}${f < n ? ' with FAST results' : ''} · levels, targets, goal box` : 'no FAST results among them'; };
   $('#rpWho').querySelectorAll('button').forEach(b => b.onclick = () => { reportWho.mode = b.dataset.who; refresh(); });
   m.querySelectorAll('[data-letter]').forEach(b => b.onclick = () => { const L = b.dataset.letter; reportWho.letters = reportWho.letters.includes(L) ? reportWho.letters.filter(x => x !== L) : [...reportWho.letters, L]; refresh(); });
   const whoWord = () => reportWho.mode === 'all' ? '' : reportWho.mode === 'owes' ? ' (owe work)' : ` (${reportWho.letters.filter(L => L !== '—').join(', ')})`;
-  $('#rpWeekly').onclick = () => { const idx = chosen(); close(); printStudentReports(s, idx, `Student reports: ${s.label}${whoWord()}`); };
-  $('#rpFast').onclick = () => { const names = chosen().filter(i => hasFast[i]).map(i => gb.students[i]); close(); printFastReports(s, names, `FAST reports: ${s.label}${whoWord()}`); };
+  $('#rpWeekly').onclick = () => { const groups = graded.map(x => ({ s: x.sec, indices: pick(x) })); close(); printWeekly(groups, `Student reports: ${where}${whoWord()}`); };
+  $('#rpFast').onclick = () => { const groups = graded.map(x => ({ sec: x.sec, names: pick(x).filter(i => x.hasFast[i]).map(i => x.sec.grades.students[i]) })); close(); printFast(groups, `FAST reports: ${where}${whoWord()}`); };
   refresh();
 }
 const openStudentReports = openPrintMenu;

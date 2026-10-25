@@ -443,12 +443,15 @@ const FAST_REPORT_CSS = `
 .rep.fast .topics th{text-align:center;font-size:8pt}.rep.fast .topics th:first-child{text-align:left}.rep.fast .topics td{font-size:9pt;padding:1px 6px}.rep.fast .topics td.c{text-align:center;width:60px;color:#000;font-size:11pt;line-height:1}.rep.fast .topics th.c{width:60px}
 .rep.fast .targets td{padding:3px 6px;font-size:10pt}.rep.fast .targets tr.met td{color:#0F766E}.rep.fast .hist td,.rep.fast .hist th{font-size:8.5pt;white-space:nowrap;padding:2px 5px}
 .rep.fast .pledge{break-inside:avoid;page-break-inside:avoid;grid-template-columns:1fr 1fr;gap:6px 24px;padding:7px 12px 8px;margin-top:8px}.rep.fast .pledge .wide{grid-column:1/-1}.rep.fast .pledge b{display:block;margin-bottom:3px}.rep.fast .pledge i{display:block;border-bottom:1px solid #000;height:18px}.rep.fast .pledge .sig{margin-top:6px}`;
-function printFastReports(sec, names, title) {
-  const failed = []; const body = names.map(n => safeSection(() => fastReportSection(sec, n), n, failed)).join('');
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${printFontCss()}</style><style>${REPORT_CSS}${FAST_REPORT_CSS}</style></head><body>${printBar(names.length)}${body}</body></html>`;
-  const go = () => { openPrint(html, names.length === 1 ? 'FAST-report.html' : `FAST-reports-${sec.label.replace(/[^\w-]+/g, '_')}.html`, names.length === 1);
-    if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(n => shown(n)).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
-  if (state.settings.hideNames) { ask(`Names are hidden, but the ${names.length === 1 ? 'report opens with the student\'s full name and scores' : 'reports open with every student\'s full name and scores'} on screen. Open ${names.length === 1 ? 'it' : 'them'}?`, 'Open').then(ok => { if (ok) go(); }); return; }
+function printFastReports(sec, names, title) { printFast([{ sec, names }], title); }
+// One class or several (Croix, 25 Oct 2026: "a way to print all classes in one go"), each student's page on its own.
+function printFast(groups, title) {
+  groups = groups.filter(g => g.names.length); const n = groups.reduce((a, g) => a + g.names.length, 0); if (!n) return;
+  const failed = []; const body = groups.map(g => g.names.map(nm => safeSection(() => fastReportSection(g.sec, nm), nm, failed)).join('')).join('');
+  const html = printDoc(title, REPORT_CSS + FAST_REPORT_CSS, body, n);
+  const go = () => { openPrint(html, n === 1 ? 'FAST-report.html' : `${title.replace(/[^\w-]+/g, '_')}.html`, n === 1);
+    if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(x => shown(x)).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
+  if (state.settings.hideNames) { ask(`Names are hidden, but the ${n === 1 ? 'report opens with the student\'s full name and scores' : 'reports open with every student\'s full name and scores'} on screen. Open ${n === 1 ? 'it' : 'them'}?`, 'Open').then(ok => { if (ok) go(); }); return; }
   go();
 }
 // The student page's FAST section: newest first, with the change in scale score from one window to the next.

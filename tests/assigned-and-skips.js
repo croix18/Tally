@@ -51,7 +51,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   const txt=await pop.textContent('body');
   check(/Still owed/.test(txt) && /Below goal \(67\)/.test(txt) && /A\. N\./.test(txt) && !/Nguyen/.test(txt),'still-owed page: initials, below-goal lists');
   check(/Not matched to an IXL account/.test(txt) || !/not matched/.test(txt),'unmatched roster students are listed, not dropped');
-  const bw=await pop.evaluate(()=>{const cs=getComputedStyle(document.body); return cs.color+'|'+cs.backgroundColor;}); check(bw==='rgb(0, 0, 0)|rgb(255, 255, 255)','black on white');
+  await pop.emulateMedia({media:'print'}); const bw=await pop.evaluate(()=>{const cs=getComputedStyle(document.body); return cs.color+'|'+cs.backgroundColor;}); await pop.emulateMedia({media:'screen'}); check(bw==='rgb(0, 0, 0)|rgb(255, 255, 255)','black on white (as printed; the two-sided preview shows its sheets on grey)');
   await pop.screenshot({path:path.join(tmp,'shot20.png'), fullPage:false}); await pop.close();
   await p.click('#btnPrint'); await p.waitForTimeout(200); const [pop2]=await Promise.all([ctx.waitForEvent('page'), p.click('[data-owed="slips"]')]); await pop2.waitForLoadState(); await pop2.waitForTimeout(300);
   check(/Nguyen, Ava/.test(await pop2.textContent('body')) && await pop2.evaluate(()=>getComputedStyle(document.querySelectorAll('.stu')[1]).breakBefore==='page'),'slips: full names, one page per student'); await pop2.close();

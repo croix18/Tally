@@ -74,7 +74,7 @@ function hydrate(s) {
 function adopt(s) { const keep = state; state = s; try { migrate(); } catch (e) { state = keep; throw e; } return state; }
 function migrate() {
   const st = state.settings || {};
-  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : st.labPrep === 'both' ? 'both' : 'acc', labPick: { acc: st.labPick && typeof st.labPick.acc === 'string' ? st.labPick.acc.slice(0, 200) : '', on: st.labPick && typeof st.labPick.on === 'string' ? st.labPick.on.slice(0, 200) : '' }, labRows: st.labRows === 'class' ? 'class' : 'course', labPairs: st.labPairs && typeof st.labPairs === 'object' ? Object.fromEntries(Object.entries(st.labPairs).filter(([k, v]) => SAFE_KEY(k) && typeof v === 'string').slice(0, 200)) : {}, labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
+  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, duplex: st.duplex !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : st.labPrep === 'both' ? 'both' : 'acc', labPick: { acc: st.labPick && typeof st.labPick.acc === 'string' ? st.labPick.acc.slice(0, 200) : '', on: st.labPick && typeof st.labPick.on === 'string' ? st.labPick.on.slice(0, 200) : '' }, labRows: st.labRows === 'class' ? 'class' : 'course', labPairs: st.labPairs && typeof st.labPairs === 'object' ? Object.fromEntries(Object.entries(st.labPairs).filter(([k, v]) => SAFE_KEY(k) && typeof v === 'string').slice(0, 200)) : {}, labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
     skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line', 'avg'].includes(st.labKind) ? st.labKind : 'box', labAvg: !!st.labAvg, labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null },
     curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) },
@@ -1604,7 +1604,7 @@ function renderBar() {
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
       <label class="curUnit" title="The unit this course is working in: every unit up to it counts; later units are gathered under Ahead">Working in <select id="curUnit">${units.some(u => u.current) ? '' : '<option value="">— pick —</option>'}${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
-      <button class="pill toggle soft" id="btnPrint" aria-pressed="true" title="Reports and lists for this class, on paper">Print</button><div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mReturns">Signed reports</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>`;
+      <button class="pill toggle soft" id="btnPrint" aria-pressed="true" title="Reports and lists on paper, for this class or every class">Print</button><div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mReturns">Signed reports</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
   } else if (view.mode === 'seating') {
@@ -1904,32 +1904,43 @@ function openStillOwed(sec) {
   m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-owed]').forEach(b => b.onclick = () => { const mode = b.dataset.owed; close(); printStillOwed(sec, mode); });
 }
-function printStillOwed(sec, mode) {
-  const initials = mode === 'initials', slips = mode === 'slips';
-  const all = buildRows(sec).filter(r => r.status !== 'ixlOnly'); const rows = all.filter(r => r.status === 'ok' && r.ixl != null);
-  const units = unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u)); const t = sec.threshold;   // a closed quarter's units aren't owed any more
-  const nm = r => initials ? mask(r.display) : r.display;
-  const block = r => {
-    if (r.ixl == null) return `<section class="stu"><h2>${esc(nm(r))}</h2><div class="l">${r.status === 'noAccount' ? 'No IXL account.' : `Not matched to an IXL account: check the roster in Tally (${r.status === 'ambiguous' ? 'two IXL names fit' : 'no IXL name fits'}).`}</div></section>`;
-    const per = units.map(u => {
-      const own = activeFor(sec, u, r.ixl); const p = points(sec, u, r.ixl);
-      const below = own.filter(k => { const v = eff(sec, k, r.ixl); return v != null && v < t; }).map(k => `${sec.skills[k].name} (${eff(sec, k, r.ixl)})`);
-      const notStarted = own.filter(k => eff(sec, k, r.ixl) == null).map(k => sec.skills[k].name);
-      return `<div class="u"><div class="uh"><b>${esc(u.short)}</b> ${esc(u.title)} <span class="pts">${p} / ${own.length}</span></div>
-        ${below.length ? `<div class="l"><span>Below goal (${t}):</span> ${esc(below.join(' · '))}</div>` : ''}
-        ${notStarted.length ? `<div class="l"><span>Not started:</span> ${esc(notStarted.join(' · '))}</div>` : ''}
-        ${!below.length && !notStarted.length ? `<div class="l done">All ${own.length} skills at goal</div>` : ''}</div>`;
-    }).join('');
-    return `<section class="stu"><h2>${esc(nm(r))}</h2>${per || '<div class="l">No units assigned yet.</div>'}</section>`;
-  };
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Still owed: ${esc(sec.label)}</title>
-<style>${printFontCss()}</style>
-<style>
-@page{margin:.6in}
+/* One class or every class at once (Croix, 25 Oct 2026: "a way to print all classes in one go"). Slips are a page per
+   student, each with its class and export date at the top; a list is a page (or more) per class. For two-sided
+   printing every slip and every class list starts on its own sheet. */
+function printStillOwed(secOrList, mode) {
+  const secs = (Array.isArray(secOrList) ? secOrList : [secOrList]).filter(Boolean);
+  const initials = mode === 'initials', slips = mode === 'slips'; let count = 0;
+  const parts = secs.map(sec => {
+    const all = buildRows(sec).filter(r => r.status !== 'ixlOnly'); const rows = all.filter(r => r.status === 'ok' && r.ixl != null);
+    const units = unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u)); const t = sec.threshold;   // a closed quarter's units aren't owed any more
+    const nm = r => initials ? mask(r.display) : r.display;
+    const meta = `IXL export of ${fmtDate(sec.date) || '?'} · goal SmartScore ${t} · one point per skill`;
+    const block = r => {
+      const head = slips ? `<p class="meta">${esc(sec.label)} · ${meta}</p>` : '';
+      if (r.ixl == null) return `<section class="stu">${head}<h2>${esc(nm(r))}</h2><div class="l">${r.status === 'noAccount' ? 'No IXL account.' : `Not matched to an IXL account: check the roster in Tally (${r.status === 'ambiguous' ? 'two IXL names fit' : 'no IXL name fits'}).`}</div></section>`;
+      const per = units.map(u => {
+        const own = activeFor(sec, u, r.ixl); const p = points(sec, u, r.ixl);
+        const below = own.filter(k => { const v = eff(sec, k, r.ixl); return v != null && v < t; }).map(k => `${sec.skills[k].name} (${eff(sec, k, r.ixl)})`);
+        const notStarted = own.filter(k => eff(sec, k, r.ixl) == null).map(k => sec.skills[k].name);
+        return `<div class="u"><div class="uh"><b>${esc(u.short)}</b> ${esc(u.title)} <span class="pts">${p} / ${own.length}</span></div>
+          ${below.length ? `<div class="l"><span>Below goal (${t}):</span> ${esc(below.join(' · '))}</div>` : ''}
+          ${notStarted.length ? `<div class="l"><span>Not started:</span> ${esc(notStarted.join(' · '))}</div>` : ''}
+          ${!below.length && !notStarted.length ? `<div class="l done">All ${own.length} skills at goal</div>` : ''}</div>`;
+      }).join('');
+      return `<section class="stu">${head}<h2>${esc(nm(r))}</h2>${per || '<div class="l">No units assigned yet.</div>'}</section>`;
+    };
+    count += all.length;
+    if (slips) return all.map(block).join('');
+    // a list: the class heading, then every student (each block kept whole on a page)
+    return `<section class="cls"><h1>Still owed · ${esc(sec.label)}</h1><p class="meta">${meta} · ${plural(rows.length, 'student')}${all.length > rows.length ? ` (${all.length - rows.length} not matched to IXL)` : ''} · ${units.length ? 'assigned: ' + esc(units.map(u => u.short).join(', ')) : 'no units assigned'}${initials ? ' · initials' : ''}</p>${all.map(block).join('').replace(/<section class="stu">/g, '<div class="stu">').replace(/<\/section>/g, '</div>')}</section>`;
+  });
+  const css = `@page{margin:.6in}
 body{font-family:'DM Sans',Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:24px;font-size:11pt;line-height:1.35}
 h1{font-size:16pt;margin:0 0 2px}
 .meta{font-size:9.5pt;margin:0 0 14px}
-.stu{border-top:1.5px solid #000;padding:6px 0 8px;break-inside:avoid;page-break-inside:avoid}${slips ? '.stu{break-before:page;page-break-before:always;border-top:none;padding-top:0}.stu:first-of-type{break-before:auto;page-break-before:auto}' : ''}
+.stu{border-top:1.5px solid #000;padding:6px 0 8px;break-inside:avoid;page-break-inside:avoid}
+section.stu{break-before:page;page-break-before:always;border-top:none;padding-top:0}section.stu:first-of-type{break-before:auto;page-break-before:auto}section.stu .meta{margin:0 0 6px}
+section.cls+section.cls{break-before:page;page-break-before:always}
 .stu h2{font-size:13pt;margin:0 0 4px}
 .u{margin:2px 0 4px 10px}
 .uh{font-size:10.5pt}
@@ -1937,16 +1948,11 @@ h1{font-size:16pt;margin:0 0 2px}
 .l{margin:1px 0 0 14px;font-size:10.5pt}
 .l span{font-weight:bold}
 .l.done{font-style:italic}
-.bar{position:fixed;top:0;right:0;padding:8px;background:#fff}
-.bar button{font:inherit;padding:6px 14px}
-@media print{.bar{display:none}}
-</style></head><body>
-<div class="bar"><button onclick="window.print()">Print</button></div>
-<h1>Still owed · ${esc(sec.label)}</h1>
-<p class="meta">IXL export of ${fmtDate(sec.date) || '?'} · goal SmartScore ${t} · one point per skill · ${plural(rows.length, 'student')}${all.length > rows.length ? ` (${all.length - rows.length} not matched to IXL)` : ''} · ${units.length ? 'assigned: ' + esc(units.map(u => u.short).join(', ')) : 'no units assigned'}${initials ? ' · initials' : ''}${slips ? ' · one page per student' : ''}</p>
-${all.map(block).join('')}
-</body></html>`;
-  openPrint(html, `Still-owed_${sec.label.replace(/[^\w-]+/g, '_')}.html`);
+.bar{position:fixed;bottom:14px;right:14px;z-index:10;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px}
+.bar button{font:inherit;padding:6px 14px}.bar .hint{font-size:9pt;color:#333;padding-left:6px}
+@media print{.bar{display:none}}`;
+  const label = secs.length === 1 ? secs[0].label : 'All classes';
+  openPrint(printDoc(`Still owed: ${label}`, css, parts.join(''), slips ? count : secs.length, slips ? 'student' : 'class'), `Still-owed_${label.replace(/[^\w-]+/g, '_')}.html`);
 }
 
 /* ---------- Guide: one printable page for you and the co-teacher ---------- */
@@ -2023,7 +2029,7 @@ li{margin:3px 0}
 <p><b>Students</b>: every student of every class. Tap one for their page: grades by quarter, missing work, IXL still owed, and the quickest way to the next letter. <b>Show student</b> turns the screen toward them; hold the exit button to leave.</p>
 <p><b>Quarters</b>: when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. An assignment belongs to the quarter its Focus due date falls in. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it any time under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
 <p><b>Seating</b>: draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
-<p><b>Still owed</b>: a printable list of what each student is missing, by unit.</p>
+<p><b>Print</b> (on the class bar): weekly reports, FAST reports and the IXL still owed, for one class or every class at once. With Two-sided printing ticked, every student starts on a new sheet.</p>
 <p><b>Retake</b>: a student may retake an assessment when nothing is missing and every IXL skill in the unit the course is working in is at goal. The Students list, the student's page, the what-ifs and Show student all say "eligible" or what stands in the way.</p>
 <p><b>Conference form</b>: on a student's page. Tally fills in the school's parent conference form (grades, FAST, missing work, assessments under 70%, retakes) and drafts Strengths and Concerns. Edit anything, then Print. Your edits to a student's form are kept.</p>
 <p><b>Notes and Family</b>: on a student's page: dated notes, parent contacts, a contact log, and a box per weekly report to tick when it comes back signed (⋯ → Signed reports lists who is still out). Only for you: hidden when names are hidden, never on the Board.</p>
@@ -2521,11 +2527,11 @@ function openPrint(html, file, autoPrint) {
   if (!w) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = file; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Pop-ups are blocked here, so it downloaded as a file instead. Open it and print.', false, 6000); return null; }
   try { w.document.open(); w.document.write(html); w.document.close(); }
   catch (e) {   // a sandboxed page (a Google Site) may not write into its own pop-up: send the pop-up to the page as a file instead
-    const url = URL.createObjectURL(new Blob([autoPrint ? html.replace(/<\/body>/i, '<script>addEventListener("load",function(){setTimeout(function(){try{print()}catch(e){}},300)})<\/script></body>') : html], { type: 'text/html' }));
+    const url = URL.createObjectURL(new Blob([autoPrint ? html.replace(/<\/body>/i, '<script>addEventListener("load",function(){(window.__paged||Promise.resolve()).then(function(){setTimeout(function(){try{print()}catch(e){}},300)})})<\/script></body>') : html], { type: 'text/html' }));
     try { w.location.href = url; } catch (x) { try { w.close(); } catch (y) {} const a = document.createElement('a'); a.href = url; a.download = file; a.click(); toast('This page could not open the print window, so it downloaded as a file instead. Open it and print.', false, 6000); }
     setTimeout(() => URL.revokeObjectURL(url), 60000); return null;
   }
-  if (autoPrint) setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 400);
+  if (autoPrint) setTimeout(() => { const go = () => { try { w.focus(); w.print(); } catch (e) {} }; let pg = null; try { pg = w.__paged; } catch (e) {} if (pg && pg.then) pg.then(go, go); else go(); }, 400);   // a two-sided page lays itself out first
   return w;
 }
 function toast(html, err, ms, fromLb) { if (document.body.classList.contains('lbMode') && !fromLb) return; if (!err && Date.now() - lastSaveFail < 1500) return; /* the save just failed: leave that message up */ const t = $('#toast'); t.innerHTML = html; t.classList.toggle('err', !!err); t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || (err ? 6000 : 3200)); }
@@ -2589,7 +2595,7 @@ document.addEventListener('keydown', e => {
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
 /*__SYNC__*/
-window.__tally = { gbUnitFor, openQuarters, closedEarly, quarterDue, openSettings, gradeSummary, syncBusyHere, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { gbUnitFor, openQuarters, closedEarly, quarterDue, openSettings, gradeSummary, syncBusyHere, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.

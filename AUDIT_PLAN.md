@@ -233,8 +233,8 @@ the fix: `tests/audit-oct25.js` (39 checks), with more in `tests/quickview.js` a
     read "null days ago".
 
 ### For Croix
-- Does he print two-sided? If so, each student's report should start on a fresh sheet; that costs a blank page after
-  every one-page report, so it would be a setting rather than the default.
+- Does he print two-sided? Yes (25 Oct): two-sided printing is built and on by default (Print → Two-sided printing):
+  every student starts on a new sheet, with a blank back where a report ends on a front. NOTES.md has the details.
 - The FAST window dates (PM2 on Dec 8, PM3 in May) are written into the code; they could be a setting he updates each year.
 - A short text sample of one Quickview block (names removed) would confirm the wrapped-cell cause of the time misses;
   the parser now handles every layout the fixture draws.

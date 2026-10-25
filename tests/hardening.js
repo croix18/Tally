@@ -96,7 +96,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const rn=await rep.locator('section.rep:not(.teach)').count(); const rtxt=await rep.evaluate(()=>document.body.innerText);
   const gbN=await p.evaluate(K=>window.__tally.state.sections[K].grades.students.length, K2); check(/\(\d+\)/.test(rtxt) && /your SmartScore in parentheses/.test(rtxt),'IXL owed lists each skill with the student\'s SmartScore');
   check(rn===gbN && /What would move the grade/i.test(rtxt) && /IXL still owed/i.test(rtxt) && /goal SmartScore/.test(rtxt),'one report section per gradebook student with grade, levers, IXL owed and the formula: '+rn);
-  check(await rep.evaluate(()=>getComputedStyle(document.querySelectorAll('section.rep')[0]).breakAfter==='page'),'each report breaks to its own page');
+  await rep.emulateMedia({media:'print'}); check(await rep.evaluate(()=>getComputedStyle(document.body.classList.contains('paged') ? document.querySelector('section.rep .page') : document.querySelectorAll('section.rep')[0]).breakAfter==='page'),'each report breaks to its own page (as printed: laid out in pages for two-sided printing)'); await rep.emulateMedia({media:'screen'});
   const firstName=await p.evaluate(K=>window.__tally.state.sections[K].grades.students[0], K2); const sec0=await rep.locator('section.rep').first().innerText();
   check(sec0.includes(firstName) && !(await p.evaluate(K=>window.__tally.state.sections[K].grades.students.slice(1), K2)).some(n=>sec0.includes(n)),'a student\'s page names only that student');
   await rep.close();

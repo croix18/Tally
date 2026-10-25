@@ -92,7 +92,7 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
   const hint=await popB.evaluate(()=>(document.querySelector('.bar .hint')||{}).textContent||''); const hintPrint=await popB.evaluate(()=>{ const b=document.querySelector('.bar'); return b ? getComputedStyle(b).display : ''; }); await popB.close();
   const [popO]=await Promise.all([ctx.waitForEvent('page'), p.evaluate(K=>{ const T=window.__tally; T.printStudentReports(T.state.sections[K],[0],'One'); },K)]); await popO.waitForLoadState();
   const hint1=await popO.evaluate(()=>!!document.querySelector('.bar .hint')); await popO.close();
-  check(hint==='Print one-sided so no sheet holds two students.' && !hint1 && hintPrint==='flex','a batch\'s Print bar says to print one-sided (two-sided puts the next student on the back); one report does not: "'+hint+'"');
+  check(hint==='Print two-sided: each student starts on a new sheet.' && !hint1 && hintPrint==='flex','a batch\'s Print bar says how to print it (two-sided, laid out so each student starts on a new sheet); one report does not: "'+hint+'"');
   // batch hardening: one student's bad record leaves a line in place of that report, the rest print, and the teacher is told
   const bad=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const nm=s.grades.students[2]; T.logReport(s,2,T.gbRows(s)[2]); const key=Object.keys(s.reportLog).find(k=>s.reportLog[k]===T.reportsOf(s,nm)); s._bad=key; s.reportLog[key]='junk'; return nm; },K);
   const popX=await Promise.all([timeoutPop(ctx,4000), p.evaluate(K=>{ const T=window.__tally; try { T.printStudentReports(T.state.sections[K],[0,1,2,3],'Batch'); } catch (e) { return String(e); } },K)]).then(r=>r[0]);
@@ -210,7 +210,7 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
   const popF=await Promise.all([timeoutPop(ctx,4000), p.evaluate(({K,fb})=>{ try { window.__tally.printFastReports(window.__tally.state.sections[K],[fb[0],fb[1]],'FAST batch'); } catch (e) { return String(e); } },{K,fb})]).then(r=>r[0]);
   const fbx=popF ? await popF.evaluate(()=>({ fast:document.querySelectorAll('section.rep.fast').length, fail:[...document.querySelectorAll('section.rep')].filter(x=>/could not make this report/.test(x.textContent)).length, hint:(document.querySelector('.bar .hint')||{}).textContent||'' })) : null; if (popF) await popF.close();
   await p.evaluate(fb=>{ const T=window.__tally; T.state.tests[fb[2]]=T.state._keepT; delete T.state._keepT; T.save(); },fb);
-  check(fbx && fbx.fast===1 && fbx.fail===1 && /one-sided/.test(fbx.hint),'a FAST batch with one unreadable record prints the other report and a line in its place: '+JSON.stringify(fbx));
+  check(fbx && fbx.fast===1 && fbx.fail===1 && /two-sided/.test(fbx.hint),'a FAST batch with one unreadable record prints the other report and a line in its place: '+JSON.stringify(fbx));
 
   console.log('errors:',errs); check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();
