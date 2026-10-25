@@ -705,7 +705,9 @@ per-section-file era and many items in them are now done).
 - **25 Oct 2026 — FAST report: the percentile on this year's card, no history table.** Croix marked a print: "Show
   percentile" on the PM1 card, and "Repeated / Redundant" on "Every FAST so far" (the cards already carry each
   window's test, score, level and now percentile). The card reads "Math Grade 8 FAST · 53rd percentile · 2 higher
-  than last year"; the table is gone and By topic follows the targets.
+  than last year"; the table is gone and By topic follows the targets. Then "get rid of the on grade level card at the
+  top. Not needed": the cards are last year, each window this year, and the gain target; Level 3 stays a targets row
+  and a mark on the scale.
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab
