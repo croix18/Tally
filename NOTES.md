@@ -892,17 +892,25 @@ per-section-file era and many items in them are now done).
     as one test each; M7 11 tests from Unit 3 on Sep 24–25 to Unit 13 on Apr 27–28). An emptied list stays empty.
     Cleaned on load: days must be real days, a last day only after the first, empty rows dropped.
   - **On the report:** a "Next test" panel under "Tests & quizzes" (the left column had room beside "What would move
-    the grade"): the day ("Monday, Oct 26"; "Monday, Nov 2 and Tuesday, Nov 3" for two days), the unit and its name (a
-    blank name takes the IXL unit's: A7's Units 7 to 17 have none on his page), and, when that unit is on the report's
-    IXL list, "All Unit 4 IXL skills are due by the test. You have 3 of 6 at goal." (his pages: every skill in a unit is
-    due by the unit's test; the count is the back's). The next test is the first whose last day is today or later, so a
-    report printed on Sunday for Monday names Monday's test. No test ahead: no panel.
+    the grade"): the day ("Monday, Oct 26"; "Monday, Nov 2 and Tuesday, Nov 3" for two days) and the unit with its name
+    (a blank name takes the IXL unit's: A7's Units 7 to 17 have none on his page). The next test is the first whose
+    last day is today or later, so a report printed on Sunday for Monday names Monday's test. No test ahead: no panel.
+    A line under it on the unit's IXL ("All Unit 4 IXL skills are due by the test. You have 3 of 6 at goal.") shipped
+    and went the same evening: "Get rid of the all ixl skills line in the next test box."
   - **Settings → Course → Test dates:** the next test in a line, and a Test dates list for each course (Accelerated |
     On-level): unit, name, day, last day, a × per row with Undo, "Add a test". Changes are kept as they are made, like
     the quarter dates; Done goes back to Settings. Past tests are grey; the one the report prints is marked.
   - The tests move when his plan moves (the plan engine pushes tests to the next allowed day): these dates are Tally's
     own copy, changed by hand. Reading them from the plan where Tally is opened from mrshaffer.org is a later option.
   `tests/test-dates.js` (33 checks); `print-duplex.js` and `weekly-layout.js` updated for one-sided layout.
+- **25 Oct 2026 — The tests box in rows; "Do this week" alone.** Croix, looking at the front: "Get rid of the all ixl
+  skills line in the next test box. Can you make the test assessment box more organized. Get rid of the quickest way
+  to a b title." "Tests & quizzes" was one run-on line ("Unit 1 Assessment 10/21 48% · Unit 1 Notebook Check …"); it is
+  a table now, one row per assessment in Focus's order (newest first): the name, the score, the percent, the numbers
+  right-aligned in their own columns, a quiz not handed in "NHI, 0%". The header keeps "51% overall · NHI counts as
+  0". The main panel's title is "Do this week" (": the quickest way to a B" is gone; the line under it still says
+  "These steps take the grade from 76% to 93% A"). The student page and Show student keep their "Quickest way to"
+  heading. The Next test panel is the day and the unit. Checks in `weekly-layout.js` and `test-dates.js`.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

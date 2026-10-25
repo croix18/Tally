@@ -281,3 +281,6 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   course's test dates (the 2026-27 lists from mrshaffer.org/a7 and /m7) live in `state.testDates`; the front names the
   next test under "Tests & quizzes", with the unit's IXL standing when that unit is on the report; Settings → Course →
   Test dates edits them. New suite `tests/test-dates.js` (33 checks).
+
+- 25 Oct 2026: the weekly front tidied at Croix's word: "Tests & quizzes" is a table (name, score, percent); the main
+  panel is titled "Do this week" alone; the Next test panel lost its IXL line.

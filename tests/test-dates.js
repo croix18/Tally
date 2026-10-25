@@ -46,8 +46,8 @@ const K = '1205050-7T1A';
   // 3. with Unit 4 on the IXL list, where the student stands on it, the same count as the back
   await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; T.state.assigned.acc[T.unitsOf(s).find(u=>u.num===4).name]=true; T.save(); },K);
   const A2=await report(who.a); const [at,of]=(A2.back.match(/(\d+) \/ (\d+)/)||[]).slice(1).map(Number);
-  check(of>0 && A2.ixl===`All Unit 4 IXL skills are due by the test. You have ${at>=of?'all '+of:at+' of '+of} at goal.`,'with Unit 4 assigned, the panel says its IXL is due by the test and where the student stands, as the back does ('+A2.back+'): '+A2.ixl);
-  if (who.unlinked>=0) { const U=await report(who.unlinked); check(U.when && !U.ixl,'a student with no IXL link gets the date and no IXL line: '+U.next); }
+  check(of>0 && !A2.ixl && !/IXL|at goal/.test(A2.next) && A2.unit==='Unit 4 Solving Problems with Rational Numbers','the panel is the day and the unit only, with no line on the unit\'s IXL even when Unit 4 is on the list (Croix: "Get rid of the all ixl skills line in the next test box"): '+A2.next);
+  if (who.unlinked>=0) { const U=await report(who.unlinked); check(U.when && !U.ixl,'a student with no IXL link gets the same panel: '+U.next); }
   // 4. a test over two days, and a name given in the dates over the IXL unit's
   await p.evaluate(({K,who})=>{ const T=window.__tally; T.state.testDates.acc[1]={ unit:'Unit 4', title:'Rational Numbers', from:who.d1, to:who.d2 }; },{K,who});
   const A3=await report(who.a); const two=await p.evaluate(who=>window.__tally.testDays({ from:who.d1, to:who.d2 }),who);

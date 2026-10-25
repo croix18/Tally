@@ -1467,7 +1467,8 @@ table{border-collapse:collapse;width:100%}td,th{padding:1.5px 6px;text-align:lef
 .wk .two{gap:0 8px;align-items:start}.wk .two>.panel{margin-top:8px}.wk .col .panel:first-child{margin-top:8px}.wk .rt{margin:4px -8px -6px;padding:4px 8px;background:#eee;border-top:1px solid #aaa}.wk .todo{margin:2px 0 6px}
 .wk .pledge{margin-top:8px;border:1.5px solid #000;border-radius:6px;padding:7px 10px 8px;display:block;break-inside:avoid;page-break-inside:avoid}.wk .pledge>b{display:block;margin-bottom:4px}.wk .lines{display:block}.wk .lines i{display:block;border-bottom:1px solid #000;height:19px}.wk .lastplan{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:9.5pt}.wk .lastplan b{margin-right:8px}.wk .lastplan .box{margin:0 2px 0 6px}
 .wk .sigs{padding-top:12px;break-inside:avoid;page-break-inside:avoid}.wk .sigs .sr{display:flex;gap:28px}.wk .sigs .sr+.sr{margin-top:14px}.wk .sigs .f{flex:1;min-width:0}.wk .sigs .f.d{flex:0 0 1.7in}.wk .sigs i{display:block;height:30px;border-bottom:1px solid #000}.wk .sigs small{display:block;font-size:8.5pt;color:#333;margin-top:2px}
-.wk .panel.next .ntd{font-size:12pt;font-weight:900;margin:2px 0 0}.wk .panel.next .ntu{margin:1px 0 0}.wk .panel.next .ntx{margin:4px 0 0;font-size:9pt}
+.wk .panel.next .ntd{font-size:12pt;font-weight:900;margin:2px 0 0}.wk .panel.next .ntu{margin:1px 0 1px}
+.wk .tq{margin:0 0 1px}.wk .tq td{padding:2.5px 0;font-size:9pt;border-bottom:1px solid #ddd;vertical-align:baseline}.wk .tq tr:last-child td{border-bottom:none}.wk .tq td.sc,.wk .tq td.pc{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.wk .tq td.sc{padding-left:10px}.wk .tq td.pc{width:3.4em}
 .teach .ret{margin-top:10px}.teach .ret th{font-size:8pt;padding:3px 6px;border-bottom:1.5px solid #000}.teach .ret td{padding:4px 6px;font-size:9.5pt;border-bottom:1px solid #bbb;height:20px}.teach .ret td.c,.teach .ret th.c{text-align:center;width:70px}.teach .ret td:nth-child(2){white-space:nowrap}.teach .ret td.w{min-width:80px}.teach .ret td:last-child{width:120px}.teach .ret .box{margin:0;width:13px;height:13px}\n.bar{position:fixed;bottom:14px;right:14px;z-index:10;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px}.bar button{font:inherit;padding:8px 18px}.bar .hint{font-size:9pt;color:#333;padding-left:6px}@media print{.bar{display:none}}`;
 // What one next assessment of `mx` points can do for student i — only what is computed: for each letter above the
 // current grade (a D counts), the score that reaches it or the fact that none does; and the score that keeps the
@@ -1543,8 +1544,10 @@ function studentReportSection(s0, i, ixlRow) {
     ixl = `<div class="panel ixl"><div class="ph">IXL still owed <span class="hs">goal SmartScore ${t}</span></div><div class="pbody" data-items><div class="keyline" data-keep><i class="key at"></i> at goal <i class="key st"></i> started <i class="key no"></i> not yet</div>${per || '<p>No units assigned yet.</p>'}</div></div>`;
   } else if (s.students.length) ixl = `<div class="panel"><div class="ph">IXL still owed</div><div class="pbody"><p>${ixlRow && ixlRow.status === 'noAccount' ? 'No IXL account.' : 'IXL is not linked to this report yet.'}</p></div></div>`;
   else ixl = '';
-  // ---- tests and quizzes so far ----
-  const testsLine = tests.length ? tests.map(a => `${esc(a.name)} <b>${a.status[i] === 'missing' ? 'NHI' : `${fmtN(a.values[i])}/${fmtN(a.max)}`}</b>${a.status[i] === 'score' && a.max ? ` <small>${Math.round(a.values[i] / a.max * 100)}%</small>` : ''}`).join(' · ') : 'None graded yet.';
+  // ---- tests and quizzes so far: one row each, the score and its percent in columns (Croix, 25 Oct 2026: "make the
+  // test assessment box more organized"; it was one run-on line). Focus's order, newest first; not handed in: NHI, 0%.
+  const testsTable = tests.length ? `<table class="tq"><tbody>${tests.map(a => { const nhi = a.status[i] === 'missing';
+    return `<tr><td>${esc(a.name)}</td><td class="sc">${nhi ? '<b>NHI</b>' : `${fmtN(a.values[i])}/${fmtN(a.max)}`}</td><td class="pc">${nhi ? '0%' : `${Math.round(a.values[i] / a.max * 100)}%`}</td></tr>`; }).join('')}</tbody></table>` : '<p class="tests">None graded yet.</p>';
   // ---- what would move the grade ----
   const moves = [   // the missing work in one line: each assignment is listed on the back. An IXL column is finished, not turned in: it has its own row (audit: an NHI IXL column was listed twice)
     missWork.length ? `<tr><td class="nhi">${missWork.length === 1 ? `${esc(missWork[0].name)} turned in` : `All ${missWork.length} missing assignments turned in`}</td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
@@ -1588,14 +1591,12 @@ function studentReportSection(s0, i, ixlRow) {
   const prevWeek = (() => { const d = new Date(thisWeek + 'T12:00:00'); d.setDate(d.getDate() - 7); return localDayOf(d.toISOString()); })();
   const lastPlan = priorRep ? `<div class="lastplan"><b>${weekOf(priorRep.date) === prevWeek ? 'Last week\'s plan' : `My plan from ${esc(fmtDate(priorRep.date))}`}</b><span class="box"></span> done <span class="box"></span> partly <span class="box"></span> not yet</div>` : '';
   /* ---- the next test, under the tests and quizzes (Croix, 25 Oct 2026: "use the space on the front to add in a test
-     reminder of when the next scheduled test is"): the course's next test from Settings → Course → Test dates, and,
-     when its unit is on the IXL list, where the student stands on that unit's IXL (his pages: every skill in a unit
-     is due by the unit's test). A name left blank in the dates takes the IXL unit's. ---- */
+     reminder of when the next scheduled test is"): the course's next test from Settings → Course → Test dates, its
+     day and its unit. A name left blank in the dates takes the IXL unit's. (The line on the unit's IXL that sat under
+     it went the same day, at his word.) ---- */
   const nt = nextTest(s0.prep, todayISO()); const ntNums = nt ? testUnitNums(nt.unit) : [];
   const ntTitle = nt ? nt.title || (ntNums.length === 1 ? (unitsOf(s).find(u => u.num === ntNums[0]) || {}).title || '' : '') : '';
-  const ntUnits = nt && ixlRow && ixlRow.ixl != null ? units.filter(u => ntNums.includes(u.num)) : [];
-  const ntOf = ntUnits.reduce((n, u) => n + activeFor(s, u, ixlRow.ixl).length, 0), ntAt = ntUnits.reduce((n, u) => n + points(s, u, ixlRow.ixl), 0);
-  const nextPanel = nt ? panel('Next test', `<p class="ntd">${esc(testDays(nt))}</p><p class="ntu"><b>${esc(nt.unit)}</b>${ntTitle ? ` ${esc(ntTitle)}` : ''}</p>${ntOf ? `<p class="ntx">All ${esc(nt.unit)} IXL skills are due by the test. You have ${ntAt >= ntOf ? `all ${ntOf}` : `${ntAt} of ${ntOf}`} at goal.</p>` : ''}`, 'next') : '';
+  const nextPanel = nt ? panel('Next test', `<p class="ntd">${esc(testDays(nt))}</p><p class="ntu"><b>${esc(nt.unit)}</b>${ntTitle ? ` ${esc(ntTitle)}` : ''}</p>`, 'next') : '';
   /* The signatures: two lines each, no box, at the foot of the front (Croix, 25 Oct 2026: "take the signatures out of
      the box, move it to the bottom, and give more space"). data-bottom: the print layout sets it at the bottom of the
      report's first page. */
@@ -1603,8 +1604,8 @@ function studentReportSection(s0, i, ixlRow) {
   return `<section class="rep wk"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Weekly progress report</div></div><div class="who"><h1>${esc(name)}</h1><div class="meta">${esc(new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))} <small>· Focus as of ${esc(fmtDate(localDayOf(gbAt)))}${ixlRow && ixlRow.ixl != null && dataDate(s) ? ` · IXL as of ${esc(fmtDate(dataDate(s)))}` : ''}</small></div></div></div>${since}
     <div class="top"><div class="gradeBox"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>${scoreboard}</div>
-    ${panel(`Do this week${qp && !qp.top && qp.letter && (steps.length || copyOnly) ? `: the quickest way to ${esc(anLetter(qp.letter))}` : ''}`, `${doThis}${extra}${howl}${rtLine}`, 'main')}
-    <div class="two"><div class="col">${panel(`Tests &amp; quizzes${testPct != null ? ` <span class="hs">${testPct}% overall${tests.some(a => a.status[i] === 'missing') ? ' · NHI counts as 0' : ''}</span>` : ''}`, `<p class="tests">${testsLine}</p>`)}${nextPanel}</div>${panel('What would move the grade', moves ? `<table><tbody>${moves}</tbody></table>` : `<p>${r ? `Nothing missing${belowFull ? '' : ' and every assessment at full marks'}.` : 'Nothing graded yet.'}</p>`)}</div>
+    ${panel('Do this week', `${doThis}${extra}${howl}${rtLine}`, 'main')}
+    <div class="two"><div class="col">${panel(`Tests &amp; quizzes${testPct != null ? ` <span class="hs">${testPct}% overall${tests.some(a => a.status[i] === 'missing') ? ' · NHI counts as 0' : ''}</span>` : ''}`, testsTable)}${nextPanel}</div>${panel('What would move the grade', moves ? `<table><tbody>${moves}</tbody></table>` : `<p>${r ? `Nothing missing${belowFull ? '' : ' and every assessment at full marks'}.` : 'Nothing graded yet.'}</p>`)}</div>
     <div class="pledge"><b>This week I will</b><div class="lines"><i></i><i></i><i></i></div>${lastPlan}</div>
     ${sigs}
     ${missPanel}

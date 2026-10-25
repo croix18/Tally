@@ -26,13 +26,23 @@ const K = '1205050-7T1A';
     const out={ main:txt(main), howl:txt(d.querySelector('.howl')), boxes:d.querySelectorAll('.howl .box').length, alert:d.querySelectorAll('.panel.alert').length, retakePanels:[...d.querySelectorAll('.panel .ph')].filter(x=>/retake/i.test(x.textContent)).length,
       moves:[...([...d.querySelectorAll('.panel')].find(x=>/What would move/i.test(txt(x.querySelector('.ph'))))||d).querySelectorAll('tr')].map(txt),
       miss:[...((d.querySelector('.panel.miss')||d).querySelectorAll('tbody tr'))].map(tr=>({ t:txt(tr), box:!!tr.querySelector('.box') })), missHead:txt(d.querySelector('.panel.miss .ph')),
-      order:[...d.querySelectorAll('section.rep > *')].map(x=>x.className.replace(/\s+/g,'.')||x.tagName), ixlHead:txt(d.querySelector('.panel.ixl .ph')), last:txt(d.querySelector('.lastplan')) };
+      order:[...d.querySelectorAll('section.rep > *')].map(x=>x.className.replace(/\s+/g,'.')||x.tagName), ixlHead:txt(d.querySelector('.panel.ixl .ph')), last:txt(d.querySelector('.lastplan')),
+      mainHead:txt(d.querySelector('.panel.main .ph')), tq:[...d.querySelectorAll('.two .col > .panel:first-child table.tq tr')].map(tr=>[...tr.children].map(txt)), tqPara:!!d.querySelector('.two p.tests') };
     d.remove(); return out; },{K,i});
   // 1. A: one panel says what to do, the retake inside it: the score to aim for, a full score second, the HOWL days with dates
   const A=await report(who.a);
   const days=await p.evaluate(()=>{ const T=window.__tally; const mon=new Date(T.weekOf(T.todayISO())+'T12:00:00'); const now=new Date(); now.setHours(12,0,0,0); if (mon.getTime()+2*864e5<now.getTime()) mon.setDate(mon.getDate()+7); return [2,3].map(d=>new Date(mon.getTime()+d*864e5).toLocaleDateString(undefined,{ weekday:'long', month:'short', day:'numeric' })); });
   check(!A.alert && !A.retakePanels && /Retake Squares and Cubes Quiz score at least [\d.]+ \/ 27 · a full score: \d+% [A-D]/.test(A.main) && !/once everything above is done/.test(A.main),'the retake is a step in "Do this week" (no second box), the score to aim for first and a full score second, with no "once everything above is done" when nothing is above it: '+A.main.slice(0,200));
   check(A.howl.includes(`HOWL on ${days[0]} or ${days[1]}`) && /you are eligible \(nothing missing and Units 1 and 2 IXL at goal\)/.test(A.howl) && /Need another time\? Tell Mr\. Shaffer\./.test(A.howl) && /I need another time/.test(A.howl) && A.boxes===4,'the HOWL days carry their dates ('+days.join(', ')+'), and a student can ask for another time: '+A.howl.slice(0,240));
+  // the panel is "Do this week", nothing after it (Croix, 25 Oct 2026: "Get rid of the quickest way to a b title")
+  check(A.mainHead==='Do this week' && /These steps take the grade from \d+% to \d+% [A-D]/.test(A.main),'the panel\'s title is "Do this week" alone; the line under it still says where the steps take the grade: "'+A.mainHead+'"');
+  // the tests and quizzes in rows: name, score, percent ("make the test assessment box more organized")
+  const tests=await p.evaluate(({K,i})=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; return gb.assignments.filter(a=>T.catOf(s.prep,a.name)==='Assessments' && !/\bixl\b/i.test(a.name) && a.max>0 && (a.status[i]==='score'||a.status[i]==='missing')).map(a=>[a.name, a.status[i]==='missing'?'NHI':(Number.isInteger(a.values[i])?String(a.values[i]):a.values[i].toFixed(1))+'/'+a.max, a.status[i]==='missing'?'0%':Math.round(a.values[i]/a.max*100)+'%']); },{K,i:who.c});
+  const Ct=await report(who.c);
+  check(Ct.tq.length===tests.length && tests.length>=3 && Ct.tq.every((r,k)=>r.length===3 && r[0]===tests[k][0] && r[1]===tests[k][1] && r[2]===tests[k][2]) && !Ct.tqPara,'"Tests & quizzes" is a table: one row per assessment, its score and its percent in their own columns, in Focus\'s order: '+Ct.tq.map(r=>r.join(' ')).join(' | '));
+  const nhiAt=await p.evaluate(K=>{ const T=window.__tally; const gb=T.state.sections[K].grades; const q=gb.assignments.find(a=>a.name==='Squares and Cubes Quiz'); return q.status.indexOf('missing'); },K);
+  const nhiRow=nhiAt>=0 ? (await report(nhiAt)).tq.find(r=>r[0]==='Squares and Cubes Quiz') : null;
+  check(nhiRow && nhiRow[1]==='NHI' && nhiRow[2]==='0%','an assessment not handed in reads NHI, 0%: '+JSON.stringify(nhiRow));
   // 2. B: an A already, and a retake would still raise it
   const B=await report(who.b);
   check(/An A already/.test(B.main) && /Retake Unit 1 Vocabulary Quiz: a full score takes your grade to 100% A\./.test(B.main) && B.boxes===4 && !/see the box above/.test(B.main),'with an A already, the retake that still raises it is one line with the HOWL days under it: '+B.main.slice(0,200));
