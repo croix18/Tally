@@ -4041,7 +4041,7 @@ function fastReportSection(sec, name) {
     return `<span class="lv l${bk.level}"><i style="width:${pc}%"></i><em>${esc(bk.label)}</em><small>${lo}–${hi}</small></span>`; };
   const l3 = fastLevelFloor(t.gradeNow, 3); const gainIsL3 = !!t.gain && t.gain.score === l3;
   const nowName = fastTestName(t.gradeNow), priorGrade = t.prior ? t.prior.grade : t.gradeLevel - 1, priorName = fastTestName(priorGrade);
-  const diff = h => t.prior && t.prior.scale != null ? ` <small class="chg">(${h.scale - t.prior.scale >= 0 ? '+' : '−'}${Math.abs(h.scale - t.prior.scale)})</small>` : '';
+  const diff = h => t.prior && t.prior.scale != null ? ` <small class="chg">(${h.scale === t.prior.scale ? 'same' : (h.scale > t.prior.scale ? '+' : '−') + Math.abs(h.scale - t.prior.scale)})</small>` : '';
   const cards = [
     t.prior ? `<div><small>${esc(priorName)} PM3</small><b>${t.prior.scale}</b>${lvl(priorGrade, t.prior.scale)}<span>${t.prior.pct != null ? esc(pctWord(t.prior.pct)) : ''}</span></div>` : `<div><small>${esc(priorName)} PM3</small><b>—</b><span>no score on file</span></div>`,
     t.now.length ? t.now.map(h => `<div><small>${esc(nowName)} ${esc(h.pm)}</small><b>${h.scale}${diff(h)}</b>${lvl(t.gradeNow, h.scale)}<span>${h.pct != null ? esc(pctWord(h.pct)) : ''}</span></div>`).join('') : `<div><small>${esc(nowName)}</small><b>—</b><span>no window scored yet</span></div>`,
