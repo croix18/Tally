@@ -362,14 +362,13 @@ function fastLineChart(t) {
   const w = 330, h = 168, L = 46, R = 10, T = 10, B = 30; const iw = w - L - R, ih = h - T - B;
   const X = i => L + iw * (i + .5) / pts.length, Y = p => T + ih * (1 - p);
   let cum = 0; const bandY = W.map(x => { const a = cum; cum += x; return [a, cum]; });
-  const shade = ['#f4f4f4', '#f4f4f4', '#f4f4f4', '#e4e4e4', '#e4e4e4', '#d2d2d2', '#c0c0c0', '#adadad'];
   const lvs = [[1, 0, 3], [2, 3, 5], [3, 5, 6], [4, 6, 7], [5, 7, 8]];   // level, first band, band after
   const got = pts.map((p, i) => p.v == null ? null : { i, x: X(i), y: Y(fastPos(p.g, p.v, W)), v: p.v });
   const line = got.filter(Boolean); const path = line.map((p, j) => `${j ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const gy = t.gain ? Y(fastPos(t.gradeNow, t.gain.score, W)) : null;
   return `<svg class="fline" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="FAST scores by window">
-    ${bandY.map(([a, b], i) => `<rect x="${L}" y="${Y(b).toFixed(1)}" width="${iw}" height="${(Y(a) - Y(b)).toFixed(1)}" fill="${shade[i]}"/>`).join('')}
-    ${lvs.map(([lv, i, j]) => { const y0 = Y(bandY[i][0]), y1 = Y(bandY[j - 1][1]); return `<line x1="${L}" x2="${L + iw}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="#fff" stroke-width="2"/><text x="${L - 5}" y="${((y0 + y1) / 2 + 3).toFixed(1)}" text-anchor="end" font-size="8" font-weight="700">Level ${lv}</text>`; }).join('')}
+    <line x1="${L}" x2="${L + iw}" y1="${Y(1).toFixed(1)}" y2="${Y(1).toFixed(1)}" stroke="#999" stroke-width=".8" stroke-dasharray="1.5 2.5"/>
+    ${lvs.map(([lv, i, j]) => { const y0 = Y(bandY[i][0]), y1 = Y(bandY[j - 1][1]); return `<line x1="${L}" x2="${L + iw}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="#999" stroke-width=".8" stroke-dasharray="1.5 2.5"/><text x="${L - 5}" y="${((y0 + y1) / 2 + 3).toFixed(1)}" text-anchor="end" font-size="8" font-weight="700">Level ${lv}</text>`; }).join('')}
     ${gy != null ? `<line x1="${L}" x2="${L + iw}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#000" stroke-width="1" stroke-dasharray="4 3"/><text x="${L + iw - 2}" y="${(gy - 3).toFixed(1)}" text-anchor="end" font-size="8" font-weight="700">gain ${t.gain.score}</text>` : ''}
     ${path ? `<path d="${path}" fill="none" stroke="#000" stroke-width="2"/>` : ''}
     ${line.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#000" stroke="#fff" stroke-width="1.5"/><text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="900">${p.v}</text>`).join('')}
@@ -427,7 +426,7 @@ const FAST_REPORT_CSS = `
 .bands .l1{background:#f0f0f0}.bands .l2{background:#dcdcdc}.bands .l3{background:#c4c4c4}.bands .l4{background:#a8a8a8}.bands .l5{background:#8c8c8c}.bands .l4,.bands .l5{color:#fff}.bands .l4 small,.bands .l5 small{color:#eee}
 .marks{position:relative;height:34px}.marks.tiered{height:56px}.mk{position:absolute;bottom:0;transform:translateX(-50%);text-align:center;font-size:7.5pt;line-height:1.05;display:flex;flex-direction:column;align-items:center;white-space:nowrap}.mk b{font-size:8.5pt}.mk i{display:block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #000}.marks .mk.tall i{border:none;border-left:1px solid #000;height:30px}.marks.under{height:30px}.marks.under .mk{bottom:auto;top:0}.marks.under .mk i{border-top:none;border-bottom:8px solid #555}.marks.under .mk b{color:#333;font-size:7.5pt}.marks.under.tiered{height:52px}.marks.under .mk.tall i{border:none;border-left:1px solid #555;height:30px}
 .rep.fast .gain{margin:4px 0 8px;font-size:10pt;line-height:1.4}.rep.fast .slab{font-size:8.5pt;font-weight:bold;margin:2px 0 -2px}.rep.fast .slab.first{margin-top:12px}.rep.fast .two.tl{display:grid;grid-template-columns:1fr 330px;gap:0 16px;align-items:start}.rep.fast .fline{display:block;margin-top:4px}.rep.fast .two.tl .targets td{font-size:9.5pt;padding:3px 4px}
-.rep.fast .topics th{text-align:center;font-size:8pt}.rep.fast .topics th:first-child{text-align:left}.rep.fast .topics td{font-size:9pt;padding:2px 6px}.rep.fast .topics td.c{text-align:center;width:60px;color:#000;font-size:11pt;line-height:1}.rep.fast .topics th.c{width:60px}.rep.fast .topics td.c.on{background:#e8e8e8}
+.rep.fast .topics th{text-align:center;font-size:8pt}.rep.fast .topics th:first-child{text-align:left}.rep.fast .topics td{font-size:9pt;padding:2px 6px}.rep.fast .topics td.c{text-align:center;width:60px;color:#000;font-size:11pt;line-height:1}.rep.fast .topics th.c{width:60px}
 .rep.fast .targets td{padding:3px 6px;font-size:10pt}.rep.fast .targets tr.met td{color:#0F766E}.rep.fast .hist td,.rep.fast .hist th{font-size:8.5pt;white-space:nowrap;padding:2px 5px}
 .rep.fast .pledge{grid-template-columns:1fr 1fr;gap:8px 24px;padding:8px 12px 10px;margin-top:10px}.rep.fast .pledge .wide{grid-column:1/-1}.rep.fast .pledge b{display:block;margin-bottom:3px}.rep.fast .pledge i{display:block;border-bottom:1px solid #000;height:20px}.rep.fast .pledge .sig{margin-top:6px}`;
 function printFastReports(sec, names, title) {
