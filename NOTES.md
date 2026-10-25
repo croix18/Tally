@@ -732,7 +732,11 @@ per-section-file era and many items in them are now done).
   (`fastPos`); "Every window" (`fastLineChart`) plots last year's PM3 and this year's PM1, PM2, PM3 on a level axis
   (every level an equal height, Level 1 and 2 split into their subcategories), the gain target dashed, windows not
   yet taken marked "to come". It sits beside the targets; the page still fits one sheet (he said more pages are fine
-  if they help).
+  if they help). Then (25 Oct): "Instead of to come, put the date of the fast: pm2 is December 8, pm3 is in May"
+  (`FAST_WHEN`); "Every window" became "Your FAST scores"; the "Last year and this year …" heading is gone (the two
+  bar titles say which is which); the explanation follows his wording: "Hayden scored a 247 (Level 4) on last year's
+  Math Grade 6 FAST. A learning gain this year means scoring a 263 (Level 5) or higher on the Math Grade 8 FAST.
+  Hayden scored a 229 (Low Level 2) on the PM1. Hayden must increase by 34 points to achieve a gain."
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab
