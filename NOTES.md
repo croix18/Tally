@@ -737,6 +737,11 @@ per-section-file era and many items in them are now done).
   bar titles say which is which); the explanation follows his wording: "Hayden scored a 247 (Level 4) on last year's
   Math Grade 6 FAST. A learning gain this year means scoring a 263 (Level 5) or higher on the Math Grade 8 FAST.
   Hayden scored a 229 (Low Level 2) on the PM1. Hayden must increase by 34 points to achieve a gain."
+  Then "I might've put Hayden's name in that text too many times": the name appears once ("On the PM1, the score was a
+  229 (Low Level 2), so 34 more points are needed for a gain."). "Change last year and this year to 25/26 School Year
+  and 26/27 School Year" (`syShort`): the bar titles, the sentence ("on the 25/26 Math Grade 6 FAST", "a learning gain
+  in 26/27") and the chart's window labels. A mock-up with a dashed grade-7 bar between the two (an accelerated
+  student's PM1 placed on the test they skipped) was sent for him to judge; not built in.
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab

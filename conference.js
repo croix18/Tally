@@ -267,6 +267,8 @@ function testHistory(sec, name) {
    subcategory up or a higher level; from Level 3 or 4, the level above; from Level 5, Level 5 again.
    Accelerated classes sit the grade-8 test, so their scores this year sit on the grade-8 table while last year's PM3
    stays on the grade-6 one. */
+// "2026-27" → "26/27" (Croix, 25 Oct 2026: "change last year and this year to 25/26 School Year and 26/27 School Year").
+const syShort = y => { const m = /^(\d{4})-(\d{2,4})$/.exec(y || ''); return m ? `${m[1].slice(2)}/${m[2].slice(-2)}` : ''; };
 // When the windows not yet taken happen (Croix, 25 Oct 2026: "pm2 is December 8 pm3 is in May"), for the chart.
 const FAST_WHEN = { PM1: 'Sept', PM2: 'Dec 8', PM3: 'May' };
 const FAST_MATH = { 3: [140, 155, 169, 183, 191, 198, 209, 225, 260], 4: [155, 170, 185, 200, 206, 211, 221, 238, 273], 5: [158, 175, 191, 207, 215, 222, 234, 246, 285],
@@ -353,6 +355,7 @@ const fastTestName = g => `Math Grade ${g} FAST`;   // the cards carry every win
 // Every window on one chart: the y axis is the levels (lined up as above), so a grade-6 score and a grade-8 score sit
 // where they stand in their own test's levels; the gain target is a dashed line.
 function fastLineChart(t) {
+  const syNow = syShort(t.thisYear) || 'this year', syLast = syShort(t.prior && t.prior.year) || (t.thisYear ? syShort(prevSchoolYear(t.thisYear)) : '') || 'last year';
   const W = [1 / 15, 1 / 15, 1 / 15, 1 / 10, 1 / 10, 1 / 5, 1 / 5, 1 / 5];   // each level an equal height, so the climb from level to level reads evenly
   const priorGrade = t.prior ? t.prior.grade : t.gradeLevel - 1;
   const pts = [{ lab: 'PM3', sub: 'last year', g: priorGrade, v: t.prior ? t.prior.scale : null }, ...['PM1', 'PM2', 'PM3'].map(pm => { const h = t.now.find(x => x.pm === pm); return { lab: pm, sub: 'this year', g: t.gradeNow, v: h ? h.scale : null }; })];
@@ -370,7 +373,7 @@ function fastLineChart(t) {
     ${gy != null ? `<line x1="${L}" x2="${L + iw}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#000" stroke-width="1" stroke-dasharray="4 3"/><text x="${L + iw - 2}" y="${(gy - 3).toFixed(1)}" text-anchor="end" font-size="8" font-weight="700">gain ${t.gain.score}</text>` : ''}
     ${path ? `<path d="${path}" fill="none" stroke="#000" stroke-width="2"/>` : ''}
     ${line.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#000" stroke="#fff" stroke-width="1.5"/><text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="900">${p.v}</text>`).join('')}
-    ${pts.map((p, i) => `<text x="${X(i).toFixed(1)}" y="${h - 16}" text-anchor="middle" font-size="8.5" font-weight="700">${p.lab}</text><text x="${X(i).toFixed(1)}" y="${h - 6}" text-anchor="middle" font-size="7" fill="#444">${i === 0 ? 'last year' : p.v == null ? esc(FAST_WHEN[p.lab] || '') : 'this year'}</text>`).join('')}
+    ${pts.map((p, i) => `<text x="${X(i).toFixed(1)}" y="${h - 16}" text-anchor="middle" font-size="8.5" font-weight="700">${p.lab}</text><text x="${X(i).toFixed(1)}" y="${h - 6}" text-anchor="middle" font-size="7" fill="#444">${i === 0 ? esc(syLast) : p.v == null ? esc(FAST_WHEN[p.lab] || '') : esc(syNow)}</text>`).join('')}
   </svg>`;
 }
 function fastReportSection(sec, name) {
@@ -391,21 +394,22 @@ function fastReportSection(sec, name) {
   /* In plain sentences, each score with its level (Croix, 25 Oct 2026: "Hayden scored a 247 (Level 4) on last year's
      Math Grade 6 FAST. A learning gain this year means scoring a 263 (Level 5) or higher on the Math Grade 8 FAST.
      Hayden scored 229 (Low Level 2) on the PM1. Hayden must increase by 34 points in order to achieve a gain."). */
+  const syNow = syShort(t.thisYear) || 'this year', syLast = syShort(t.prior && t.prior.year) || (t.thisYear ? syShort(prevSchoolYear(t.thisYear)) : '') || 'last year';
+  const syNowL = /\//.test(syNow) ? `${syNow} School Year` : 'This year', syLastL = /\//.test(syLast) ? `${syLast} School Year` : 'Last year';
   const lvOf = (g, v) => { const bk = fastBucket(g, v); return bk ? ` (${esc(bk.label)})` : ''; };
   const gainLv = t.gain ? (fastBucket(t.gradeNow, t.gain.score) || { label: t.gain.label }).label : '';
   const said = [
-    t.prior ? `${esc(first)} scored a <b>${t.prior.scale}</b>${lvOf(priorGrade, t.prior.scale)} on last year's ${esc(priorName)}.` : `There is no PM3 score from last year on file, so there is no learning-gain target yet; the level targets below still apply.`,
-    t.gain ? `A learning gain this year means scoring a <b>${t.gain.score} (${esc(gainLv)}) or higher</b> on the ${esc(nowName)}.` : '',
-    t.latest ? `${esc(first)} scored a <b>${t.latest.scale}</b>${lvOf(t.gradeNow, t.latest.scale)} on the ${esc(t.latest.pm)}.` : '',
-    t.gain && t.latest ? (t.latest.scale >= t.gain.score ? (t.latest.pm === 'PM3' ? `That is a gain.` : `That is already a gain. PM3 is the one that counts, so ${esc(first)} must hold it there.`) : `${esc(first)} must increase by <b>${t.gain.score - t.latest.scale} points</b> to achieve a gain.`) : ''];
+    t.prior ? `${esc(first)} scored a <b>${t.prior.scale}</b>${lvOf(priorGrade, t.prior.scale)} on the ${esc(syLast)} ${esc(priorName)}.` : `There is no PM3 score from last year on file, so there is no learning-gain target yet; the level targets below still apply.`,
+    t.gain ? `A learning gain in ${esc(syNow)} means scoring a <b>${t.gain.score} (${esc(gainLv)}) or higher</b> on the ${esc(nowName)}.` : '',
+    t.latest ? `On the ${esc(t.latest.pm)}, the score was a <b>${t.latest.scale}</b>${lvOf(t.gradeNow, t.latest.scale)}${t.gain ? (t.latest.scale >= t.gain.score ? (t.latest.pm === 'PM3' ? ', a gain.' : ', already a gain. PM3 is the one that counts, so hold it there.') : `, so <b>${t.gain.score - t.latest.scale} more points</b> are needed for a gain.`) : '.'}` : ''];   /* the name once (Croix, 25 Oct 2026: "I might've put Hayden's name in that text too many times") */
   const gainWords = said.filter(Boolean).join(' ');
   const rows = t.rows.map(r => `<tr class="${r.met ? 'met' : ''}"><td><span class="box"></span>${esc(r.what)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ''}</td><td class="r"><b>${r.score}</b></td><td>${r.met ? `✓ reached on ${esc(t.latest.pm)}` : r.gap != null ? `${r.gap} more than ${esc(t.latest.pm)}` : ''}</td></tr>`).join('');
   const W = fastBandWidths([priorGrade, t.gradeNow].filter((g, i, a) => FAST_MATH[g] && a.indexOf(g) === i));
   const thisYearMarks = [...t.now.map(h => ({ v: h.scale, label: h.pm, cls: 'now' })), ...(t.gain && !gainIsL3 ? [{ v: t.gain.score, label: 'Gain', cls: 'tg' }] : []), { v: l3, label: gainIsL3 ? 'Gain · grade level' : 'Grade level', cls: 'tg' }];
   return `<section class="rep fast"><div class="head"><div><h1>${esc(niceName(name))}</h1><div class="meta">${esc(sec.label)} · ${esc(nowName)} · ${esc(today)}</div></div></div>
     <div class="cards">${cards}</div>
-    <div class="slab first">Last year · ${esc(priorName)}</div>${fastScaleHtml(priorGrade, t.prior ? [{ v: t.prior.scale, label: 'PM3', cls: 'now' }] : [], W)}
-    <div class="slab">This year · ${esc(nowName)}</div>${fastScaleHtml(t.gradeNow, thisYearMarks, W)}
+    <div class="slab first">${esc(syLastL)} · ${esc(priorName)}</div>${fastScaleHtml(priorGrade, t.prior ? [{ v: t.prior.scale, label: 'PM3', cls: 'now' }] : [], W)}
+    <div class="slab">${esc(syNowL)} · ${esc(nowName)}</div>${fastScaleHtml(t.gradeNow, thisYearMarks, W)}
     <p class="gain">${gainWords}</p>
     <div class="two tl"><div><h2>Your targets for PM2 and PM3</h2><table class="targets"><tbody>${rows}</tbody></table></div><div><h2>Your FAST scores</h2>${fastLineChart(t)}</div></div>
     ${(() => { const h = t.now.slice().reverse().find(x => x.cats) || null; const cs = catList(h);
