@@ -29,6 +29,10 @@ div.grades{padding:4px 0 40px;display:flex;flex-direction:column;gap:16px}   /* 
 .gstu tr.sliding td:first-child{background:var(--coral)}
 .gstu td.down{color:var(--bad);font-weight:var(--w-black)}.gstu td.up{color:var(--teal);font-weight:var(--w-black)}
 .boardCard{max-width:520px;margin:12vh auto 0;background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:28px 32px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}.boardCard h2{margin:0;font-size:var(--t-xl)}.boardCard p{margin:0;color:var(--ink-soft)}body.boardOnly #bar{display:none}body.boardOnly #board{background:transparent;box-shadow:none;border:none}body.boardOnly #gridwrap{padding-top:20px}
+#pFamily .fcards{display:flex;flex-direction:column;gap:6px;margin:4px 0 8px}#pFamily .fcard{border:1px solid var(--grid);border-radius:var(--r-s);padding:8px 10px;font-size:var(--t-m)}#pFamily .fcard .rel{color:var(--ink-soft);font-size:var(--t-s);margin-left:6px}#pFamily .fcard .ways{margin-top:2px}#pFamily .fcard a{color:var(--teal);font-weight:var(--w-bold);text-decoration:none}#pFamily .cnote{color:var(--ink-soft);font-size:var(--t-s);margin-top:2px}#pFamily .cbtns{display:flex;gap:12px;margin-top:4px}#pFamily .linkbtn{font-size:var(--t-xs)}
+#pFamily .fform,#pFamily .lform{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0 8px}#pFamily .fform input,#pFamily .lform input,#pFamily .lform select,#pFamily .lform textarea{font:inherit;font-size:var(--t-m);padding:7px 9px;border:1px solid var(--grid);border-radius:var(--r-s);min-width:0}#pFamily .fform input[name=note],#pFamily .fform .fbtns,#pFamily .lform textarea,#pFamily .lform button{grid-column:1/-1}#pFamily .fbtns{display:flex;gap:8px}#pFamily .lform button{justify-self:start}
+#pFamily .clog,#pFamily .reps{list-style:none;margin:0;padding:0}#pFamily .clog li{display:grid;grid-template-columns:auto 1fr auto;gap:2px 12px;align-items:baseline;padding:8px 0;border-top:1px solid var(--grid)}#pFamily .clog time,#pFamily .reps time{font-size:var(--t-xs);font-weight:var(--w-black);color:var(--teal);white-space:nowrap}#pFamily .clog .how{font-size:var(--t-s);font-weight:var(--w-bold)}#pFamily .clog p{grid-column:1/-1;margin:0;white-space:pre-wrap;font-size:var(--t-m)}#pFamily .reps li{padding:6px 0;border-top:1px solid var(--grid);font-size:var(--t-m)}#pFamily .reps label{display:flex;gap:8px;align-items:baseline;cursor:pointer}#pFamily .reps small{color:var(--ink-soft);margin-left:auto}
+.rettab{width:100%;border-collapse:collapse;font-size:var(--t-m)}.rettab th{text-align:left;font-size:var(--t-xs);color:var(--ink-soft);padding:4px 8px 4px 0;border-bottom:1px solid var(--grid)}.rettab td{padding:7px 8px 7px 0;border-bottom:1px solid var(--grid);vertical-align:top}.rettab tr.back td{color:var(--ink-soft)}.rettab td.who{font-size:var(--t-s)}
 #pNotes .noteAdd{display:flex;gap:8px;align-items:flex-end;margin:4px 0 8px}#pNotes textarea{flex:1;min-height:56px;font:inherit;font-size:var(--t-m);padding:8px 10px;border:1px solid var(--grid);border-radius:var(--r-s);resize:vertical}#pNotes .notes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}#pNotes .notes li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:baseline;padding:8px 0;border-top:1px solid var(--grid)}#pNotes time{font-size:var(--t-xs);font-weight:var(--w-black);color:var(--teal);white-space:nowrap}#pNotes .notes p{margin:0;white-space:pre-wrap;font-size:var(--t-m)}#pNotes .linkbtn{font-size:var(--t-xs)}
 #pTests .ftab{width:100%;border-collapse:collapse;font-size:var(--t-m)}#pTests th,#pTests td{padding:6px 8px 6px 0;border-top:1px solid var(--grid);text-align:left;white-space:nowrap}#pTests th{font-weight:var(--w-bold);color:var(--ink-soft);font-size:var(--t-s)}#pTests td.num{font-variant-numeric:tabular-nums;font-weight:var(--w-bold)}#pTests small{font-size:var(--t-xs)}#pTests small.neg{color:var(--g-f,#b3261e)}#pTests small.pos{color:var(--teal)}#pTests td:last-child{color:var(--ink-soft);font-size:var(--t-s)}
 .fcats{display:flex;flex-direction:column;gap:4px;margin:4px 0 10px}.fcat{display:flex;align-items:center;gap:8px;font-size:var(--t-s);font-weight:var(--w-bold)}.fcat i{width:10px;height:10px;border-radius:50%;flex:none;border:1px solid var(--grid)}.fcat.below i{background:var(--coral);border-color:var(--bad)}.fcat.near i{background:var(--sand)}.fcat.above i{background:var(--turq);border-color:var(--teal)}.fcat small{color:var(--ink-soft);font-weight:var(--w-med)}
@@ -3031,6 +3035,74 @@ function wireNotes(sec, name) {
   document.querySelectorAll('#pNotes [data-ndel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this note?')) return; dropNote(sec, name, b.dataset.ndel); save(); render(); });
 }
 
+/* ---------- Family: contacts, the contact log, and signed reports ----------
+   Croix (25 Oct 2026): "a space or a tab or something on the students page for parent contact information … email,
+   phone number, relationship to student, contact log, notes about times I've had to contact that I can write in …
+   to fortify my command center". Kept on the class like notes: sec.family[norm(name)] = { contacts: [{ id, name,
+   rel, phone, email, note }], log: [{ id, at, how, who, text }] }. Teacher-only: hidden while names are hidden,
+   never on Show student, never in a Board file (which lists its fields); carried by the backup, a full save and
+   Sync. Whether a weekly report came back signed lives on that report's log entry (sec.reportLog[…].back). */
+var HOWS = ['Call', 'Email', 'Focus message', 'Text', 'In person', 'Note home'];
+var RELS = ['Mother', 'Father', 'Guardian', 'Grandparent', 'Stepmother', 'Stepfather', 'Other'];
+function cleanFamily(o) { const out = {}; const str = (v, n) => typeof v === 'string' ? v.trim().slice(0, n) : ''; const rid = () => Math.random().toString(36).slice(2, 10);
+  if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue;
+    const contacts = (Array.isArray(v.contacts) ? v.contacts : []).map(c => c && typeof c === 'object' ? { id: str(c.id, 20) || rid(), name: str(c.name, 80), rel: str(c.rel, 40), phone: str(c.phone, 40), email: str(c.email, 120), note: str(c.note, 300) } : null).filter(c => c && (c.name || c.phone || c.email)).slice(0, 10);
+    const log = (Array.isArray(v.log) ? v.log : []).map(e => e && typeof e === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(String(e.at)) ? { id: str(e.id, 20) || rid(), at: String(e.at), how: HOWS.includes(e.how) ? e.how : 'Note home', who: str(e.who, 80), text: str(e.text, 2000) } : null).filter(e => e && (e.text || e.who)).slice(-300);
+    if (contacts.length || log.length) out[k] = { contacts, log }; }
+  return out; }
+const familyOf = (sec, name) => { const f = (sec.family || {})[norm(name)]; return f ? { contacts: f.contacts || [], log: f.log || [] } : { contacts: [], log: [] }; };
+function setFamily(sec, name, f) { sec.family = sec.family || {}; const k = norm(name); if (f.contacts.length || f.log.length) sec.family[k] = f; else delete sec.family[k]; }
+const reportsOf = (sec, name) => ((sec.reportLog || {})[norm(name)] || []);
+function markReportBack(sec, name, date, back) { const l = reportsOf(sec, name); const e = l.find(x => x.date === date); if (!e) return; if (back) e.back = todayISO(); else delete e.back; }
+function familySection(sec, name) {
+  const H = state.settings.hideNames; const f = familyOf(sec, name); const reps = reportsOf(sec, name).slice(-6).reverse(); const n = f.contacts.length;
+  if (H) return `<section class="gsec" id="pFamily"><h3>Family${n ? ` <small>${n}</small>` : ''}</h3><p class="ghint">Hidden while names are hidden.</p></section>`;
+  const tel = v => `<a href="tel:${esc(v.replace(/[^\d+]/g, ''))}">${esc(v)}</a>`, mail = v => `<a href="mailto:${esc(v)}">${esc(v)}</a>`;
+  const cards = f.contacts.map(c => `<div class="fcard" data-cid="${esc(c.id)}"><div><b>${esc(c.name || '(no name)')}</b>${c.rel ? ` <span class="rel">${esc(c.rel)}</span>` : ''}</div><div class="ways">${[c.phone ? tel(c.phone) : '', c.email ? mail(c.email) : ''].filter(Boolean).join(' · ') || '<span class="ghint">no phone or email yet</span>'}</div>${c.note ? `<div class="cnote">${esc(c.note)}</div>` : ''}<div class="cbtns"><button class="linkbtn" data-cedit="${esc(c.id)}">Edit</button><button class="linkbtn" data-cdel="${esc(c.id)}">Remove</button></div></div>`).join('');
+  const who = f.contacts.map(c => c.name).filter(Boolean);
+  const logRows = f.log.slice().reverse().map(e => `<li data-lid="${esc(e.id)}"><time>${esc(fmtDate(e.at))}</time><span class="how">${esc(e.how)}${e.who ? ` · ${esc(e.who)}` : ''}</span><p>${esc(e.text)}</p><button class="linkbtn" data-ldel="${esc(e.id)}" aria-label="Remove this entry">Remove</button></li>`).join('');
+  const repRows = reps.map(e => `<li><label><input type="checkbox" data-back="${esc(e.date)}" ${e.back ? 'checked' : ''}> <time>${esc(fmtDate(e.date))}</time> <span>${e.grade != null ? e.grade + '%' : ''}${e.missing ? ` · ${e.missing} missing` : ''}</span> <small>${e.back ? `back signed ${esc(fmtDate(e.back))}` : 'not back yet'}</small></label></li>`).join('');
+  return `<section class="gsec" id="pFamily"><h3>Family${n ? ` <small>${n}</small>` : ''}</h3>
+    <div class="fcards">${cards || '<p class="ghint">No contacts yet.</p>'}</div>
+    <div id="fformSlot"></div><button class="pill toggle small" id="fAdd">Add contact</button>
+    <h4 class="subh">Contact log${f.log.length ? ` <small>${f.log.length}</small>` : ''}</h4>
+    <form class="lform" id="lform"><input type="date" name="at" value="${esc(todayISO())}" aria-label="Date"><select name="how" aria-label="How">${HOWS.map(h => `<option>${h}</option>`).join('')}</select><input name="who" list="whoList" placeholder="Who" value="${esc(who[0] || '')}" maxlength="80" aria-label="Who"><datalist id="whoList">${who.map(w => `<option value="${esc(w)}">`).join('')}</datalist><textarea name="text" rows="2" maxlength="2000" placeholder="What was said, what was agreed" aria-label="What was said"></textarea><button class="pill small" type="submit">Log it</button></form>
+    ${logRows ? `<ul class="clog">${logRows}</ul>` : ''}
+    <h4 class="subh">Weekly reports</h4>${repRows ? `<ul class="reps">${repRows}</ul>` : '<p class="ghint">None printed yet. Tick each one here when it comes back signed.</p>'}</section>`;
+}
+function wireFamily(sec, name) {
+  const root = $('#pFamily'); if (!root) return; const f = familyOf(sec, name); const fa = $('#fAdd'); if (!fa) return;
+  const showForm = c => { const slot = $('#fformSlot'); if (!slot || state.settings.hideNames) return; slot.innerHTML = familyFormHtml(c); $('#fAdd').classList.add('hidden'); const fm = slot.querySelector('form'); fm.querySelector('[name=name]').focus();
+    fm.onsubmit = e => { e.preventDefault(); const d = Object.fromEntries(new FormData(fm).entries()); const id = fm.dataset.cid; const next = { ...familyOf(sec, name) }; const c = { id: id || Date.now().toString(36), name: String(d.name || '').trim(), rel: String(d.rel || '').trim(), phone: String(d.phone || '').trim(), email: String(d.email || '').trim(), note: String(d.note || '').trim() };
+      if (!c.name && !c.phone && !c.email) { toast('A contact needs at least a name, a phone or an email.', false, 3000); return; }
+      next.contacts = id ? next.contacts.map(x => x.id === id ? c : x) : next.contacts.concat([c]); setFamily(sec, name, next); save(); render(); };
+    fm.querySelector('[data-fcancel]').onclick = () => { slot.innerHTML = ''; $('#fAdd').classList.remove('hidden'); }; };
+  $('#fAdd').onclick = () => showForm({});
+  root.querySelectorAll('[data-cedit]').forEach(b => b.onclick = () => showForm(f.contacts.find(c => c.id === b.dataset.cedit) || {}));
+  root.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this contact?')) return; const next = { ...familyOf(sec, name) }; next.contacts = next.contacts.filter(c => c.id !== b.dataset.cdel); setFamily(sec, name, next); save(); render(); });
+  const lf = $('#lform'); if (lf) lf.onsubmit = e => { e.preventDefault(); const d = Object.fromEntries(new FormData(lf).entries()); const text = String(d.text || '').trim(); if (!text) { toast('Write what happened first.', false, 2500); lf.querySelector('[name=text]').focus(); return; }
+    const next = { ...familyOf(sec, name) }; next.log = next.log.concat([{ id: Date.now().toString(36), at: /^\d{4}-\d{2}-\d{2}$/.test(d.at) ? d.at : todayISO(), how: HOWS.includes(d.how) ? d.how : 'Note home', who: String(d.who || '').trim(), text }]); setFamily(sec, name, next); save(); render(); };
+  root.querySelectorAll('[data-ldel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this log entry?')) return; const next = { ...familyOf(sec, name) }; next.log = next.log.filter(x => x.id !== b.dataset.ldel); setFamily(sec, name, next); save(); render(); });
+  root.querySelectorAll('[data-back]').forEach(cb => cb.onchange = () => { markReportBack(sec, name, cb.dataset.back, cb.checked); save(); render(); });
+}
+function familyFormHtml(c = {}) { return `<form class="fform" data-cid="${esc(c.id || '')}"><input name="name" placeholder="Name" value="${esc(c.name || '')}" maxlength="80" aria-label="Name"><input name="rel" list="relList" placeholder="Relationship" value="${esc(c.rel || '')}" maxlength="40" aria-label="Relationship"><datalist id="relList">${RELS.map(r => `<option value="${r}">`).join('')}</datalist><input name="phone" type="tel" placeholder="Phone" value="${esc(c.phone || '')}" maxlength="40" aria-label="Phone"><input name="email" type="email" placeholder="Email" value="${esc(c.email || '')}" maxlength="120" aria-label="Email"><input name="note" placeholder="Note (best time to call, language, …)" value="${esc(c.note || '')}" maxlength="300" aria-label="Note"><div class="fbtns"><button class="pill small" type="submit">${c.id ? 'Save' : 'Add contact'}</button><button class="pill toggle small" type="button" data-fcancel>Cancel</button></div></form>`; }
+// Class level (⋯ → Signed reports): who has the latest weekly report back, who doesn't, and how to reach home.
+function openReturns(s) {
+  const gb = s.grades; if (!gb) { toast('No gradebook yet, so no reports have been printed for this class.', true); return; }
+  const rows = gb.students.map(nm => { const l = reportsOf(s, nm); const last = l[l.length - 1] || null; const f = familyOf(s, nm); return { nm, last, f }; }).filter(r => r.last);
+  if (!rows.length) { toast('No weekly reports printed for this class yet.', false, 4000); return; }
+  const out = rows.filter(r => !r.last.back); const H = state.settings.hideNames;
+  const m = $('#modal'); m.classList.remove('hidden');
+  const row = r => { const c = r.f.contacts[0]; return `<tr class="${r.last.back ? 'back' : ''}"><td><label><input type="checkbox" data-rback="${esc(r.nm)}" data-date="${esc(r.last.date)}" ${r.last.back ? 'checked' : ''}> ${esc(H ? mask(r.nm) : r.nm)}</label></td><td>${esc(fmtDate(r.last.date))}</td><td>${r.last.back ? `back ${esc(fmtDate(r.last.back))}` : `<b>${ageDays(r.last.date) ? plural(ageDays(r.last.date), 'day') + ' out' : 'printed today'}</b>`}</td><td class="who">${H ? '' : c ? `${esc(c.name)}${c.rel ? ` (${esc(c.rel)})` : ''}${c.phone ? ` · ${esc(c.phone)}` : ''}${c.email ? ` · ${esc(c.email)}` : ''}` : '<span class="ghint">no contact yet</span>'}</td></tr>`; };
+  m.innerHTML = `<div class="panel"><header><h2>Signed reports · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one"><p class="ghint">Tick a report when it comes back signed. The rest are your list to contact: ${plural(out.length, 'report')} still out.</p>
+      <table class="rettab"><thead><tr><th>Back signed</th><th>Printed</th><th></th><th>Home</th></tr></thead><tbody>${out.map(row).join('')}${rows.filter(r => r.last.back).map(row).join('')}</tbody></table>
+      ${out.length && !H ? `<div class="rp-actions"><button class="pill pale" id="retCopy">Copy the still-out list</button></div>` : ''}</div></div>`;
+  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; }; m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  m.querySelectorAll('[data-rback]').forEach(cb => cb.onchange = () => { markReportBack(s, cb.dataset.rback, cb.dataset.date, cb.checked); save(); openReturns(s); });
+  const cp = $('#retCopy'); if (cp) cp.onclick = async () => { const text = out.map(r => { const c = r.f.contacts[0]; return `${r.nm}\t${fmtDate(r.last.date)}\t${c ? [c.name, c.rel, c.phone, c.email].filter(Boolean).join(' · ') : ''}`; }).join('\n'); try { await navigator.clipboard.writeText(text); toast('Copied: one line per student, with the first contact.', false, 3000); } catch (e) { toast('Could not copy here.', true); } };
+}
+
 /* ---------- Retake eligibility ----------
    Croix's rule (19 Oct 2026): a student may retake an assessment only when they are completely caught up: nothing not
    handed in (NHI) in the open quarter, and every counted IXL skill in the unit the course is working in at goal.
@@ -3196,7 +3268,7 @@ function renderProfile() {
   const wi = openB ? `${qp ? `<section class="gsec" id="pQuick">${quickestCard(qp)}</section>` : ''}<section class="gsec" id="pWhat"><h3>What would move the grade <small>${esc(Q_NAMES[openB.q - 1])}</small></h3>${whatIfMarkup(openB.s, openB.i, retakeStatus(sec, name))}</section>`
     : `<section class="gsec"><h3>What would move the grade</h3><p class="ghint">${anyClosed() ? `${esc(Q_NAMES[cq - 1])} has no gradebook yet: closed quarters don't change, so there's nothing to move until the first ${esc(Q_NAMES[cq - 1])} import.` : 'Import this class\'s Focus gradebook for grades and what-ifs.'}</p></section>`;
 
-  $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}${testsSection(sec, name)}${notesSection(sec, name)}</div></div></div>`;
+  $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}${testsSection(sec, name)}${notesSection(sec, name)}${familySection(sec, name)}</div></div></div>`;
   if (openB) wireWhatIf($('#pWhat'), openB.s, openB.i);
   $('#back').onclick = profileLeave;
   const go = d => { const n = list[at + d]; if (n) { view.stu = { key: sec.key, name: n }; render(); } };
@@ -3204,7 +3276,7 @@ function renderProfile() {
   const pp = $('#pPrint'); if (pp) pp.onclick = () => printStudentReports(sec, [f.gi], `${name}: report`);
   const pf = $('#pFast'); if (pf) pf.onclick = () => printFastReports(sec, [name], 'FAST report');
   const ps = $('#pShow'); if (ps) ps.onclick = () => openShow(sec, name);
-  wireNotes(sec, name);
+  wireNotes(sec, name); wireFamily(sec, name);
   const pc = $('#pConf'); if (pc) pc.onclick = () => openConference(sec, name);
 }
 
@@ -4008,7 +4080,7 @@ function load() { let raw = null; try { raw = localStorage.getItem(LS_KEY); } ca
 // along for good).
 function safeObj(o) { if (!o || typeof o !== 'object' || Array.isArray(o)) return {}; const out = {}; for (const k of Object.keys(o)) if (SAFE_KEY(k)) out[k] = o[k]; return out; }
 // The printed-report log per student: { [norm(name)]: [{ date, grade, missing, ixl }] }, the last dozen.
-function cleanReportLog(o) { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !Array.isArray(o[k])) continue; const l = o[k].filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date))).map(e => ({ date: String(e.date), q: e.q >= 1 && e.q <= 4 ? Number(e.q) : null, gb: /^\d{4}-\d{2}-\d{2}$/.test(String(e.gb)) ? String(e.gb) : '', ix: /^\d{4}-\d{2}-\d{2}$/.test(String(e.ix)) ? String(e.ix) : '', grade: e.grade == null ? null : Number(e.grade), missing: Number(e.missing) || 0, ixl: e.ixl == null ? null : Number(e.ixl) })).slice(-12); if (l.length) out[k] = l; } return out; }
+function cleanReportLog(o) { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !Array.isArray(o[k])) continue; const l = o[k].filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date))).map(e => ({ date: String(e.date), ...(/^\d{4}-\d{2}-\d{2}$/.test(String(e.back)) ? { back: String(e.back) } : {}), q: e.q >= 1 && e.q <= 4 ? Number(e.q) : null, gb: /^\d{4}-\d{2}-\d{2}$/.test(String(e.gb)) ? String(e.gb) : '', ix: /^\d{4}-\d{2}-\d{2}$/.test(String(e.ix)) ? String(e.ix) : '', grade: e.grade == null ? null : Number(e.grade), missing: Number(e.missing) || 0, ixl: e.ixl == null ? null : Number(e.ixl) })).slice(-12); if (l.length) out[k] = l; } return out; }
 function hydrate(s) {
   try {
     if (!s || !s.sections) return null;
@@ -4058,7 +4130,7 @@ function migrate() {
     if (typeof s.label !== 'string') s.label = s.autoLabel || k;
     // A gradebook is only usable whole: assignments with values/status arrays of the students' length.
     if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) delete s.grades; else gb.assignments.forEach(a => { a.missing = a.status ? a.status.filter(t => t === 'missing').length : Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); }
-    s.stuNotes = cleanNotes(s.stuNotes); s.confForms = cleanConfForms(s.confForms); s.reportLog = cleanReportLog(s.reportLog);
+    s.stuNotes = cleanNotes(s.stuNotes); s.family = cleanFamily(s.family); s.confForms = cleanConfForms(s.confForms); s.reportLog = cleanReportLog(s.reportLog);
     s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s.overrides = cleanOverrides(s.overrides); s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
     if (s.hiddenUnits && Object.keys(s.hiddenUnits).length) { for (const u in s.hiddenUnits) if (state.assigned[s.prep || 'on'][u] == null) state.assigned[s.prep || 'on'][u] = !s.hiddenUnits[u]; s.hiddenUnits = {}; }
@@ -4087,7 +4159,7 @@ function migrate() {
 var foldedTwins = [];
 function foldPeriodTwins() {
   const secs = () => state.order.map(k => state.sections[k]).filter(Boolean);
-  const empty = x => /^\d{5,8}-/.test(x.key) && !x.grades && !String(x.roster || '').trim() && !Object.keys(x.stuNotes || {}).length && !x.seating && !Object.keys(x.confForms || {}).length && !Object.keys(x.qArchive || {}).length;
+  const empty = x => /^\d{5,8}-/.test(x.key) && !x.grades && !String(x.roster || '').trim() && !Object.keys(x.stuNotes || {}).length && !Object.keys(x.family || {}).length && !x.seating && !Object.keys(x.confForms || {}).length && !Object.keys(x.qArchive || {}).length;
   for (const x of secs()) {
     if (!x.period || !empty(x)) continue;
     const y = secs().find(o => o !== x && Number(o.period) === Number(x.period) && (o.prep === x.prep || !o.prep) && !empty(o)); if (!y) continue;
@@ -5327,7 +5399,7 @@ function askNewClass(fileName, gb, orExisting) {
       state.sections[key] = { key, label, autoLabel: label, period, pool: true, accelerated: prep === 'acc', prep, threshold: prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on,
         date: null, file: '', importedAt: new Date().toISOString(), students: [], skills: [], scores: [], roster: '', rosterAt: null, skipRoster: false,
         excluded: state.skips[prep], ignored: {}, aliases: {}, hiddenUnits: {}, studentSkips: {}, history: [], team: '', placeholder: false, allBlank: false, best: null, receipts: {}, _keys: null };
-      const held = state.pendingCfg[key]; if (held) { const s0 = state.sections[key]; ['threshold', 'roster', 'rosterAt', 'skipRoster', 'ignored', 'aliases', 'studentSkips', 'history', 'gradeHistory', 'seating', 'seatInfo', 'qArchive', 'stuNotes', 'confForms', 'reportLog', 'overrides', 'hiddenUnits'].forEach(f => { if (held[f] != null) s0[f] = held[f]; }); if (held.label) s0.label = held.label; delete state.pendingCfg[key]; }   // a backup loaded before the class existed
+      const held = state.pendingCfg[key]; if (held) { const s0 = state.sections[key]; ['threshold', 'roster', 'rosterAt', 'skipRoster', 'ignored', 'aliases', 'studentSkips', 'history', 'gradeHistory', 'seating', 'seatInfo', 'qArchive', 'stuNotes', 'family', 'confForms', 'reportLog', 'overrides', 'hiddenUnits'].forEach(f => { if (held[f] != null) s0[f] = held[f]; }); if (held.label) s0.label = held.label; delete state.pendingCfg[key]; }   // a backup loaded before the class existed
       if (!state.order.includes(key)) state.order.push(key); state.active = key;
       done(key);
     };
@@ -5544,7 +5616,7 @@ function renderBar() {
       ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
       <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
       <label class="curUnit" title="The unit this course is working in: every unit up to it counts; later units are gathered under Ahead">Working in <select id="curUnit">${units.some(u => u.current) ? '' : '<option value="">— pick —</option>'}${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
-      <button class="pill toggle soft" id="btnPrint" aria-pressed="true" title="Reports and lists for this class, on paper">Print</button><div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>`;
+      <button class="pill toggle soft" id="btnPrint" aria-pressed="true" title="Reports and lists for this class, on paper">Print</button><div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mReturns">Signed reports</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>`;
   } else if (view.mode === 'grades' && s.grades) {
     html = renderGradesBar(s);
   } else if (view.mode === 'seating') {
@@ -5569,7 +5641,7 @@ function renderBar() {
   const hu = $('#hideUnit'); if (hu) hu.onclick = () => { const u = units.find(u => u.name === view.unit); const want = !u.assigned; const cur = (state.settings.currentUnit || {})[s.prep]; const skip = (state.settings.skipFirst || {})[s.prep] || 0; const byDefault = u.num > 0 ? (u.num > skip && !!cur && u.num <= cur) : startedShare(s, u.idx) >= 0.25; if (want === byDefault) delete state.assigned[s.prep][u.name]; else state.assigned[s.prep][u.name] = want; save(); render(); toast(`${esc(u.short)} ${!u.assigned ? 'assigned' : 'unassigned'} for every ${s.prep === 'acc' ? 'accelerated' : 'on-level'} class`, false); };
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
   const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu'); wireMenu(mb, menu);
-    const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const bp = $('#btnPrint'); if (bp) bp.onclick = () => openPrintMenu(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; }
+    const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const bp = $('#btnPrint'); if (bp) bp.onclick = () => openPrintMenu(s); const mrt = $('#mReturns'); if (mrt) mrt.onclick = () => openReturns(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; }
   const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
   const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.settings.curUnitTouched = { ...(state.settings.curUnitTouched || {}), [s.prep]: true }; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); landOnCurrent = true; render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b>: ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}${(() => { const off = units.filter(u => u.num && u.num <= Number(cuSel.value) && u.num > (state.settings.skipFirst[s.prep] || 0) && state.assigned[s.prep][u.name] === false).map(u => u.num); return off.length ? ` (not Unit ${off.join(', ')}: marked Not assigned)` : ''; })()}; work in later units shows under Ahead.` : 'No current unit: no unit counts until you pick one.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
@@ -5967,7 +6039,8 @@ li{margin:3px 0}
 <p><b>Retake</b>: a student may retake an assessment when nothing is missing and every IXL skill in the unit the course is working in is at goal. The Students list, the student's page, the what-ifs and Show student all say "eligible" or what stands in the way.</p>
 <p><b>Conference form</b>: on a student's page. Tally fills in the school's parent conference form (grades, FAST, missing work, assessments under 70%, retakes) and drafts Strengths and Concerns. Edit anything, then Print. Your edits to a student's form are kept.</p>
 <p><b>Notes</b>: on a student's page. Dated, only for you: hidden when names are hidden and never on the Board.</p>
-<p><b>FAST</b>: import the FAST report from Focus like any other file. Scores are matched by student ID and show on the student's page and the conference form. The state's score report PDF ("Score, Achievement and Points Earned on Grade 7 FAST Mathematics", from the FAST reporting site) imports the same way: it adds each student's percentile and the result by reporting category, matched by name.</p>
+<p><b>Family</b>: a student's page keeps parent contacts, a contact log, and a box per weekly report to tick when it comes back signed; ⋯ → Signed reports lists who is still out.</p>
+<p><b>FAST</b>: import the FAST report from Focus like any other file. Scores are matched by student ID and show on the student's page and the conference form. The state's score report PDF imports the same way, adding percentiles and the result by reporting category, matched by name.</p>
 <p><b>Google Site</b>: the page forgets everything when you leave, so open your newest Full save each visit. Tally autosaves one after 10 minutes of changes and when you switch away; Ctrl+S saves. If Chrome asks about multiple downloads, Allow.</p>
 <p><b>Board</b>: the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade; <b>Average</b> marks each class's average, and <b>Class averages</b> puts the classes side by side). Names never show. Hold the exit button to leave.</p>
 <p><b>Names</b>: the eye button in the header. Crossed out = initials only, for projecting.</p>
@@ -6391,7 +6464,7 @@ function loadSettingsBackup(cfg) {
         excluded: c.excluded && typeof c.excluded === 'object' ? c.excluded : {}, ignored: c.ignored && typeof c.ignored === 'object' ? c.ignored : {},
         aliases: c.aliases && typeof c.aliases === 'object' ? c.aliases : {}, hiddenUnits: c.hiddenUnits && typeof c.hiddenUnits === 'object' ? c.hiddenUnits : {},
         overrides: c.overrides && typeof c.overrides === 'object' ? cleanOverrides(c.overrides) : (prev ? prev.overrides : {}),
-        seatInfo: c.seatInfo && typeof c.seatInfo === 'object' ? c.seatInfo : (prev ? prev.seatInfo : {}), stuNotes: c.stuNotes && typeof c.stuNotes === 'object' ? { ...(prev ? prev.stuNotes : {}), ...cleanNotes(c.stuNotes) } : (prev ? prev.stuNotes : {}), confForms: c.confForms && typeof c.confForms === 'object' ? { ...(prev ? prev.confForms : {}), ...cleanConfForms(c.confForms) } : (prev ? prev.confForms : {}), seating: c.seating && typeof c.seating === 'object' && c.seating.seats ? c.seating : (prev ? prev.seating : undefined),
+        seatInfo: c.seatInfo && typeof c.seatInfo === 'object' ? c.seatInfo : (prev ? prev.seatInfo : {}), stuNotes: c.stuNotes && typeof c.stuNotes === 'object' ? { ...(prev ? prev.stuNotes : {}), ...cleanNotes(c.stuNotes) } : (prev ? prev.stuNotes : {}), family: c.family && typeof c.family === 'object' ? { ...(prev ? prev.family : {}), ...cleanFamily(c.family) } : (prev ? prev.family : {}), confForms: c.confForms && typeof c.confForms === 'object' ? { ...(prev ? prev.confForms : {}), ...cleanConfForms(c.confForms) } : (prev ? prev.confForms : {}), seating: c.seating && typeof c.seating === 'object' && c.seating.seats ? c.seating : (prev ? prev.seating : undefined),
         studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, qArchive: mergeArchives(prev ? prev.qArchive : {}, cleanArchive(c.qArchive)), prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, gradeHistory: Array.isArray(c.gradeHistory) ? c.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : (prev ? prev.gradeHistory : []), history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })) : (prev ? prev.history : [])
       });
       let applied = 0, held = 0;

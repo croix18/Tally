@@ -677,6 +677,19 @@ per-section-file era and many items in them are now done).
   the assessment (or how many) and the grade it reaches, the HOWL time line with the teacher's name from Settings
   ("your math teacher" when blank), and three boxes: told my HOWL teacher, came Wednesday, came Thursday. The
   Do this week fallback no longer says "every assessment at full marks" when a retake is on the table.
+- **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
+  signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
+  as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab
+  or something on the students page for parent contact information … email, phone number, relationship to student,
+  contact log, notes about times I've had to contact that I can write in … to fortify my command center and make it
+  easier for me to contact parents and log interactions." `sec.family[norm(name)] = { contacts, log }` (students.js:
+  cleanFamily, familyOf, setFamily; hydrated, held, merged on a course import and emptiness-checked like stuNotes;
+  never in a Board file, which lists its fields; hidden while names are hidden; not on Show student). The student
+  page's Family section: contact cards (tap-to-call phone, mailto email, relationship from a datalist, a note), an
+  inline add/edit form, a contact log (date, how, who, what) newest first, and the weekly reports printed for that
+  student with a box per report; ticking it stamps `back` on that reportLog entry (kept by cleanReportLog). Class
+  level: ⋯ → Signed reports (`openReturns`): every student's latest report, back or "N days out", the first contact
+  beside each, still-out first, a tick per row, and Copy the still-out list. tests/family.js.
 - **24 Oct 2026 — The state's score report PDF.** Croix: "I want to upload this report of their pm 1 data because it
   will fill in their percentiles as well as give more in depth detail of the standard sections broken down. I can
   only get it as a pdf, so I'd need tally to be able to get it and match it to the students names." The report is

@@ -97,6 +97,74 @@ function wireNotes(sec, name) {
   document.querySelectorAll('#pNotes [data-ndel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this note?')) return; dropNote(sec, name, b.dataset.ndel); save(); render(); });
 }
 
+/* ---------- Family: contacts, the contact log, and signed reports ----------
+   Croix (25 Oct 2026): "a space or a tab or something on the students page for parent contact information … email,
+   phone number, relationship to student, contact log, notes about times I've had to contact that I can write in …
+   to fortify my command center". Kept on the class like notes: sec.family[norm(name)] = { contacts: [{ id, name,
+   rel, phone, email, note }], log: [{ id, at, how, who, text }] }. Teacher-only: hidden while names are hidden,
+   never on Show student, never in a Board file (which lists its fields); carried by the backup, a full save and
+   Sync. Whether a weekly report came back signed lives on that report's log entry (sec.reportLog[…].back). */
+var HOWS = ['Call', 'Email', 'Focus message', 'Text', 'In person', 'Note home'];
+var RELS = ['Mother', 'Father', 'Guardian', 'Grandparent', 'Stepmother', 'Stepfather', 'Other'];
+function cleanFamily(o) { const out = {}; const str = (v, n) => typeof v === 'string' ? v.trim().slice(0, n) : ''; const rid = () => Math.random().toString(36).slice(2, 10);
+  if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue;
+    const contacts = (Array.isArray(v.contacts) ? v.contacts : []).map(c => c && typeof c === 'object' ? { id: str(c.id, 20) || rid(), name: str(c.name, 80), rel: str(c.rel, 40), phone: str(c.phone, 40), email: str(c.email, 120), note: str(c.note, 300) } : null).filter(c => c && (c.name || c.phone || c.email)).slice(0, 10);
+    const log = (Array.isArray(v.log) ? v.log : []).map(e => e && typeof e === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(String(e.at)) ? { id: str(e.id, 20) || rid(), at: String(e.at), how: HOWS.includes(e.how) ? e.how : 'Note home', who: str(e.who, 80), text: str(e.text, 2000) } : null).filter(e => e && (e.text || e.who)).slice(-300);
+    if (contacts.length || log.length) out[k] = { contacts, log }; }
+  return out; }
+const familyOf = (sec, name) => { const f = (sec.family || {})[norm(name)]; return f ? { contacts: f.contacts || [], log: f.log || [] } : { contacts: [], log: [] }; };
+function setFamily(sec, name, f) { sec.family = sec.family || {}; const k = norm(name); if (f.contacts.length || f.log.length) sec.family[k] = f; else delete sec.family[k]; }
+const reportsOf = (sec, name) => ((sec.reportLog || {})[norm(name)] || []);
+function markReportBack(sec, name, date, back) { const l = reportsOf(sec, name); const e = l.find(x => x.date === date); if (!e) return; if (back) e.back = todayISO(); else delete e.back; }
+function familySection(sec, name) {
+  const H = state.settings.hideNames; const f = familyOf(sec, name); const reps = reportsOf(sec, name).slice(-6).reverse(); const n = f.contacts.length;
+  if (H) return `<section class="gsec" id="pFamily"><h3>Family${n ? ` <small>${n}</small>` : ''}</h3><p class="ghint">Hidden while names are hidden.</p></section>`;
+  const tel = v => `<a href="tel:${esc(v.replace(/[^\d+]/g, ''))}">${esc(v)}</a>`, mail = v => `<a href="mailto:${esc(v)}">${esc(v)}</a>`;
+  const cards = f.contacts.map(c => `<div class="fcard" data-cid="${esc(c.id)}"><div><b>${esc(c.name || '(no name)')}</b>${c.rel ? ` <span class="rel">${esc(c.rel)}</span>` : ''}</div><div class="ways">${[c.phone ? tel(c.phone) : '', c.email ? mail(c.email) : ''].filter(Boolean).join(' · ') || '<span class="ghint">no phone or email yet</span>'}</div>${c.note ? `<div class="cnote">${esc(c.note)}</div>` : ''}<div class="cbtns"><button class="linkbtn" data-cedit="${esc(c.id)}">Edit</button><button class="linkbtn" data-cdel="${esc(c.id)}">Remove</button></div></div>`).join('');
+  const who = f.contacts.map(c => c.name).filter(Boolean);
+  const logRows = f.log.slice().reverse().map(e => `<li data-lid="${esc(e.id)}"><time>${esc(fmtDate(e.at))}</time><span class="how">${esc(e.how)}${e.who ? ` · ${esc(e.who)}` : ''}</span><p>${esc(e.text)}</p><button class="linkbtn" data-ldel="${esc(e.id)}" aria-label="Remove this entry">Remove</button></li>`).join('');
+  const repRows = reps.map(e => `<li><label><input type="checkbox" data-back="${esc(e.date)}" ${e.back ? 'checked' : ''}> <time>${esc(fmtDate(e.date))}</time> <span>${e.grade != null ? e.grade + '%' : ''}${e.missing ? ` · ${e.missing} missing` : ''}</span> <small>${e.back ? `back signed ${esc(fmtDate(e.back))}` : 'not back yet'}</small></label></li>`).join('');
+  return `<section class="gsec" id="pFamily"><h3>Family${n ? ` <small>${n}</small>` : ''}</h3>
+    <div class="fcards">${cards || '<p class="ghint">No contacts yet.</p>'}</div>
+    <div id="fformSlot"></div><button class="pill toggle small" id="fAdd">Add contact</button>
+    <h4 class="subh">Contact log${f.log.length ? ` <small>${f.log.length}</small>` : ''}</h4>
+    <form class="lform" id="lform"><input type="date" name="at" value="${esc(todayISO())}" aria-label="Date"><select name="how" aria-label="How">${HOWS.map(h => `<option>${h}</option>`).join('')}</select><input name="who" list="whoList" placeholder="Who" value="${esc(who[0] || '')}" maxlength="80" aria-label="Who"><datalist id="whoList">${who.map(w => `<option value="${esc(w)}">`).join('')}</datalist><textarea name="text" rows="2" maxlength="2000" placeholder="What was said, what was agreed" aria-label="What was said"></textarea><button class="pill small" type="submit">Log it</button></form>
+    ${logRows ? `<ul class="clog">${logRows}</ul>` : ''}
+    <h4 class="subh">Weekly reports</h4>${repRows ? `<ul class="reps">${repRows}</ul>` : '<p class="ghint">None printed yet. Tick each one here when it comes back signed.</p>'}</section>`;
+}
+function wireFamily(sec, name) {
+  const root = $('#pFamily'); if (!root) return; const f = familyOf(sec, name); const fa = $('#fAdd'); if (!fa) return;
+  const showForm = c => { const slot = $('#fformSlot'); if (!slot || state.settings.hideNames) return; slot.innerHTML = familyFormHtml(c); $('#fAdd').classList.add('hidden'); const fm = slot.querySelector('form'); fm.querySelector('[name=name]').focus();
+    fm.onsubmit = e => { e.preventDefault(); const d = Object.fromEntries(new FormData(fm).entries()); const id = fm.dataset.cid; const next = { ...familyOf(sec, name) }; const c = { id: id || Date.now().toString(36), name: String(d.name || '').trim(), rel: String(d.rel || '').trim(), phone: String(d.phone || '').trim(), email: String(d.email || '').trim(), note: String(d.note || '').trim() };
+      if (!c.name && !c.phone && !c.email) { toast('A contact needs at least a name, a phone or an email.', false, 3000); return; }
+      next.contacts = id ? next.contacts.map(x => x.id === id ? c : x) : next.contacts.concat([c]); setFamily(sec, name, next); save(); render(); };
+    fm.querySelector('[data-fcancel]').onclick = () => { slot.innerHTML = ''; $('#fAdd').classList.remove('hidden'); }; };
+  $('#fAdd').onclick = () => showForm({});
+  root.querySelectorAll('[data-cedit]').forEach(b => b.onclick = () => showForm(f.contacts.find(c => c.id === b.dataset.cedit) || {}));
+  root.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this contact?')) return; const next = { ...familyOf(sec, name) }; next.contacts = next.contacts.filter(c => c.id !== b.dataset.cdel); setFamily(sec, name, next); save(); render(); });
+  const lf = $('#lform'); if (lf) lf.onsubmit = e => { e.preventDefault(); const d = Object.fromEntries(new FormData(lf).entries()); const text = String(d.text || '').trim(); if (!text) { toast('Write what happened first.', false, 2500); lf.querySelector('[name=text]').focus(); return; }
+    const next = { ...familyOf(sec, name) }; next.log = next.log.concat([{ id: Date.now().toString(36), at: /^\d{4}-\d{2}-\d{2}$/.test(d.at) ? d.at : todayISO(), how: HOWS.includes(d.how) ? d.how : 'Note home', who: String(d.who || '').trim(), text }]); setFamily(sec, name, next); save(); render(); };
+  root.querySelectorAll('[data-ldel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this log entry?')) return; const next = { ...familyOf(sec, name) }; next.log = next.log.filter(x => x.id !== b.dataset.ldel); setFamily(sec, name, next); save(); render(); });
+  root.querySelectorAll('[data-back]').forEach(cb => cb.onchange = () => { markReportBack(sec, name, cb.dataset.back, cb.checked); save(); render(); });
+}
+function familyFormHtml(c = {}) { return `<form class="fform" data-cid="${esc(c.id || '')}"><input name="name" placeholder="Name" value="${esc(c.name || '')}" maxlength="80" aria-label="Name"><input name="rel" list="relList" placeholder="Relationship" value="${esc(c.rel || '')}" maxlength="40" aria-label="Relationship"><datalist id="relList">${RELS.map(r => `<option value="${r}">`).join('')}</datalist><input name="phone" type="tel" placeholder="Phone" value="${esc(c.phone || '')}" maxlength="40" aria-label="Phone"><input name="email" type="email" placeholder="Email" value="${esc(c.email || '')}" maxlength="120" aria-label="Email"><input name="note" placeholder="Note (best time to call, language, …)" value="${esc(c.note || '')}" maxlength="300" aria-label="Note"><div class="fbtns"><button class="pill small" type="submit">${c.id ? 'Save' : 'Add contact'}</button><button class="pill toggle small" type="button" data-fcancel>Cancel</button></div></form>`; }
+// Class level (⋯ → Signed reports): who has the latest weekly report back, who doesn't, and how to reach home.
+function openReturns(s) {
+  const gb = s.grades; if (!gb) { toast('No gradebook yet, so no reports have been printed for this class.', true); return; }
+  const rows = gb.students.map(nm => { const l = reportsOf(s, nm); const last = l[l.length - 1] || null; const f = familyOf(s, nm); return { nm, last, f }; }).filter(r => r.last);
+  if (!rows.length) { toast('No weekly reports printed for this class yet.', false, 4000); return; }
+  const out = rows.filter(r => !r.last.back); const H = state.settings.hideNames;
+  const m = $('#modal'); m.classList.remove('hidden');
+  const row = r => { const c = r.f.contacts[0]; return `<tr class="${r.last.back ? 'back' : ''}"><td><label><input type="checkbox" data-rback="${esc(r.nm)}" data-date="${esc(r.last.date)}" ${r.last.back ? 'checked' : ''}> ${esc(H ? mask(r.nm) : r.nm)}</label></td><td>${esc(fmtDate(r.last.date))}</td><td>${r.last.back ? `back ${esc(fmtDate(r.last.back))}` : `<b>${ageDays(r.last.date) ? plural(ageDays(r.last.date), 'day') + ' out' : 'printed today'}</b>`}</td><td class="who">${H ? '' : c ? `${esc(c.name)}${c.rel ? ` (${esc(c.rel)})` : ''}${c.phone ? ` · ${esc(c.phone)}` : ''}${c.email ? ` · ${esc(c.email)}` : ''}` : '<span class="ghint">no contact yet</span>'}</td></tr>`; };
+  m.innerHTML = `<div class="panel"><header><h2>Signed reports · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
+    <div class="body one"><p class="ghint">Tick a report when it comes back signed. The rest are your list to contact: ${plural(out.length, 'report')} still out.</p>
+      <table class="rettab"><thead><tr><th>Back signed</th><th>Printed</th><th></th><th>Home</th></tr></thead><tbody>${out.map(row).join('')}${rows.filter(r => r.last.back).map(row).join('')}</tbody></table>
+      ${out.length && !H ? `<div class="rp-actions"><button class="pill pale" id="retCopy">Copy the still-out list</button></div>` : ''}</div></div>`;
+  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; }; m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  m.querySelectorAll('[data-rback]').forEach(cb => cb.onchange = () => { markReportBack(s, cb.dataset.rback, cb.dataset.date, cb.checked); save(); openReturns(s); });
+  const cp = $('#retCopy'); if (cp) cp.onclick = async () => { const text = out.map(r => { const c = r.f.contacts[0]; return `${r.nm}\t${fmtDate(r.last.date)}\t${c ? [c.name, c.rel, c.phone, c.email].filter(Boolean).join(' · ') : ''}`; }).join('\n'); try { await navigator.clipboard.writeText(text); toast('Copied: one line per student, with the first contact.', false, 3000); } catch (e) { toast('Could not copy here.', true); } };
+}
+
 /* ---------- Retake eligibility ----------
    Croix's rule (19 Oct 2026): a student may retake an assessment only when they are completely caught up: nothing not
    handed in (NHI) in the open quarter, and every counted IXL skill in the unit the course is working in at goal.
@@ -262,7 +330,7 @@ function renderProfile() {
   const wi = openB ? `${qp ? `<section class="gsec" id="pQuick">${quickestCard(qp)}</section>` : ''}<section class="gsec" id="pWhat"><h3>What would move the grade <small>${esc(Q_NAMES[openB.q - 1])}</small></h3>${whatIfMarkup(openB.s, openB.i, retakeStatus(sec, name))}</section>`
     : `<section class="gsec"><h3>What would move the grade</h3><p class="ghint">${anyClosed() ? `${esc(Q_NAMES[cq - 1])} has no gradebook yet: closed quarters don't change, so there's nothing to move until the first ${esc(Q_NAMES[cq - 1])} import.` : 'Import this class\'s Focus gradebook for grades and what-ifs.'}</p></section>`;
 
-  $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}${testsSection(sec, name)}${notesSection(sec, name)}</div></div></div>`;
+  $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}${testsSection(sec, name)}${notesSection(sec, name)}${familySection(sec, name)}</div></div></div>`;
   if (openB) wireWhatIf($('#pWhat'), openB.s, openB.i);
   $('#back').onclick = profileLeave;
   const go = d => { const n = list[at + d]; if (n) { view.stu = { key: sec.key, name: n }; render(); } };
@@ -270,7 +338,7 @@ function renderProfile() {
   const pp = $('#pPrint'); if (pp) pp.onclick = () => printStudentReports(sec, [f.gi], `${name}: report`);
   const pf = $('#pFast'); if (pf) pf.onclick = () => printFastReports(sec, [name], 'FAST report');
   const ps = $('#pShow'); if (ps) ps.onclick = () => openShow(sec, name);
-  wireNotes(sec, name);
+  wireNotes(sec, name); wireFamily(sec, name);
   const pc = $('#pConf'); if (pc) pc.onclick = () => openConference(sec, name);
 }
 
