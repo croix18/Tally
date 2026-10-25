@@ -53,7 +53,7 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   check(await p.evaluate(()=>JSON.stringify(window.__tally.state.tests))===before,'importing the same PDF again changes nothing');
   const other=path.join(require('os').tmpdir(),'not-fast.pdf'); fs.writeFileSync(other, '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>');
   await p.setInputFiles('#file',[other]); await p.waitForTimeout(2500);
-  check(/not the FAST score report Tally reads|could not read this PDF/.test(await p.textContent('#toast')),'another PDF is refused with a reason: '+(await p.textContent('#toast')).slice(0,120));
+  check(/not a PDF Tally reads|could not read this PDF/.test(await p.textContent('#toast')),'another PDF is refused with a reason: '+(await p.textContent('#toast')).slice(0,120));
   check(await p.evaluate(()=>JSON.stringify(window.__tally.state.tests))===before,'…and leaves the scores alone');
   console.log('errors:',errs); check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();

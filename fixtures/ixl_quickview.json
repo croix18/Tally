@@ -1,0 +1,2625 @@
+{
+ "asOf": "2026-10-24",
+ "students": [
+  {
+   "ixlName": "HAYDEN SUTTER",
+   "display": "Hayden Sutter",
+   "questions": 375,
+   "minutes": 423,
+   "days": 2,
+   "mastered": 0,
+   "proficient": 2,
+   "rows": [
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 5,
+     "min": 5,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "8th (E.4)",
+     "name": "Evaluate powers",
+     "id": "SZQ",
+     "q": 28,
+     "min": 0,
+     "from": 0,
+     "to": 75
+    },
+    {
+     "grade": "7th (B.3)",
+     "name": "Solve equations of the form p(x + q) = r with fractions",
+     "id": "A8D",
+     "q": 15,
+     "min": 83,
+     "from": 10,
+     "to": 0
+    },
+    {
+     "grade": "7th (B.9)",
+     "name": "Solve two-step inequalities",
+     "id": "N9D",
+     "q": 4,
+     "min": 5,
+     "from": 35,
+     "to": 45
+    },
+    {
+     "grade": "8th (C.8)",
+     "name": "Solve equations using square roots",
+     "id": "NNA",
+     "q": 9,
+     "min": 9,
+     "from": 0,
+     "to": 66
+    },
+    {
+     "grade": "7th (C.4)",
+     "name": "Solve multi-step inequalities: word problems",
+     "id": "DKH",
+     "q": 35,
+     "min": 1,
+     "from": 0,
+     "to": 0
+    },
+    {
+     "grade": "7th",
+     "name": "Solve two-step equations without parentheses",
+     "id": "CMX",
+     "q": 36,
+     "min": 2,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "7th (B.1)",
+     "name": "Solve equations of the form px + q = r with fractions",
+     "id": "Y6Q",
+     "q": 37,
+     "min": 5,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (O.2)",
+     "name": "Convert between percents, fractions, and decimals",
+     "id": "2HW",
+     "q": 7,
+     "min": 3,
+     "from": 0,
+     "to": 10
+    }
+   ]
+  },
+  {
+   "ixlName": "CASEY DORSEY88",
+   "display": "Casey Dorsey88",
+   "questions": 768,
+   "minutes": 283,
+   "days": 5,
+   "mastered": 0,
+   "proficient": 2,
+   "rows": [
+    {
+     "grade": "8th (E.4)",
+     "name": "Evaluate powers",
+     "id": "SZQ",
+     "q": 38,
+     "min": 34,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "8th (E.7)",
+     "name": "Understanding exponents",
+     "id": "BFA",
+     "q": 6,
+     "min": 9,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "7th (A.4)",
+     "name": "Write a repeating decimal as a fraction",
+     "id": "W49",
+     "q": 5,
+     "min": 0,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "8th (F.1)",
+     "name": "Identify equivalent expressions involving whole-number exponents",
+     "id": "KBE",
+     "q": 20,
+     "min": 83,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (F.6)",
+     "name": "Evaluate expressions using properties of exponents",
+     "id": "6T7",
+     "q": 19,
+     "min": 21,
+     "from": 13,
+     "to": 14
+    },
+    {
+     "grade": "8th",
+     "name": "Complete a function table: quadratic functions",
+     "id": "VN8",
+     "q": 2,
+     "min": 34,
+     "from": 32,
+     "to": 68
+    },
+    {
+     "grade": "7th (C.1)",
+     "name": "Graph solutions to two-step inequalities",
+     "id": "WHT",
+     "q": 40,
+     "min": 1,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "7th",
+     "name": "Convert fractions or mixed numbers to decimals",
+     "id": "M2D",
+     "q": 14,
+     "min": 9,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "8th (F.3)",
+     "name": "Understanding negative exponents",
+     "id": "YBB",
+     "q": 16,
+     "min": 21,
+     "from": 0,
+     "to": 72
+    }
+   ]
+  },
+  {
+   "ixlName": "SHILOH INGRAM",
+   "display": "Shiloh Ingram",
+   "questions": 972,
+   "minutes": 384,
+   "days": 5,
+   "mastered": 2,
+   "proficient": 3,
+   "rows": [
+    {
+     "grade": "8th (E.2)",
+     "name": "Compare and order rational and irrational numbers",
+     "id": "EED",
+     "q": 14,
+     "min": 34,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 22,
+     "min": 83,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "7th (G.8)",
+     "name": "Scale drawings: find the scale factor, missing side, or missing angle",
+     "id": "WEA",
+     "q": 1,
+     "min": 83,
+     "from": 0,
+     "to": 0
+    },
+    {
+     "grade": "8th (C.6)",
+     "name": "Evaluate squares",
+     "id": "H77",
+     "q": 7,
+     "min": 13,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th (E.4)",
+     "name": "Evaluate powers",
+     "id": "SZQ",
+     "q": 5,
+     "min": 5,
+     "from": 0,
+     "to": 73
+    },
+    {
+     "grade": "8th (F.2)",
+     "name": "Evaluate expressions using properties of exponents",
+     "id": "ZE9",
+     "q": 10,
+     "min": 9,
+     "from": 0,
+     "to": 16
+    },
+    {
+     "grade": "7th",
+     "name": "Solve two-step equations without parentheses",
+     "id": "CMX",
+     "q": 31,
+     "min": 1,
+     "from": 56,
+     "to": 82
+    },
+    {
+     "grade": "8th (D.1)",
+     "name": "Relationship between squares and square roots",
+     "id": "8W2",
+     "q": 32,
+     "min": 34,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th (K.9)",
+     "name": "Identify reflections and rotations",
+     "id": "S8S",
+     "q": 20,
+     "min": 1,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "7th (B.3)",
+     "name": "Solve equations of the form p(x + q) = r with fractions",
+     "id": "A8D",
+     "q": 22,
+     "min": 9,
+     "from": 0,
+     "to": 80
+    }
+   ]
+  },
+  {
+   "ixlName": "LOGAN EASTON",
+   "display": "Logan Easton",
+   "questions": 708,
+   "minutes": 230,
+   "days": 12,
+   "mastered": 2,
+   "proficient": 2,
+   "rows": [
+    {
+     "grade": "8th",
+     "name": "Division with exponents",
+     "id": "XNC",
+     "q": 14,
+     "min": 34,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (G.2)",
+     "name": "Convert between standard and scientific notation: small numbers",
+     "id": "85M",
+     "q": 40,
+     "min": 0,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th (E.8)",
+     "name": "Powers with negative bases",
+     "id": "WFW",
+     "q": 23,
+     "min": 1,
+     "from": 0,
+     "to": 91
+    },
+    {
+     "grade": "8th",
+     "name": "Put rational numbers in order",
+     "id": "QP5",
+     "q": 25,
+     "min": 5,
+     "from": 25,
+     "to": 88
+    },
+    {
+     "grade": "8th (F.5)",
+     "name": "Identify equivalent expressions involving exponents I",
+     "id": "VLM",
+     "q": 12,
+     "min": 21,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (C.9)",
+     "name": "Square roots of perfect squares",
+     "id": "9RS",
+     "q": 22,
+     "min": 1,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th (A.4)",
+     "name": "Write a repeating decimal as a fraction",
+     "id": "W49",
+     "q": 30,
+     "min": 21,
+     "from": 60,
+     "to": 100
+    },
+    {
+     "grade": "8th (E.7)",
+     "name": "Understanding exponents",
+     "id": "BFA",
+     "q": 6,
+     "min": 2,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (E.2)",
+     "name": "Compare and order rational and irrational numbers",
+     "id": "EED",
+     "q": 9,
+     "min": 0,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "8th (F.2)",
+     "name": "Evaluate expressions using properties of exponents",
+     "id": "ZE9",
+     "q": 30,
+     "min": 2,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th",
+     "name": "Convert between standard and scientific notation: large numbers",
+     "id": "2AL",
+     "q": 39,
+     "min": 34,
+     "from": 0,
+     "to": 71
+    }
+   ]
+  },
+  {
+   "ixlName": "REMY COBB89",
+   "display": "Remy Cobb89",
+   "questions": 942,
+   "minutes": 474,
+   "days": 2,
+   "mastered": 0,
+   "proficient": 4,
+   "rows": [
+    {
+     "grade": "7th",
+     "name": "Solve two-step equations without parentheses",
+     "id": "CMX",
+     "q": 39,
+     "min": 0,
+     "from": 33,
+     "to": 83
+    },
+    {
+     "grade": "7th (C.4)",
+     "name": "Solve multi-step inequalities: word problems",
+     "id": "DKH",
+     "q": 10,
+     "min": 2,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 40,
+     "min": 1,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "7th (C.2)",
+     "name": "Solve multi-step inequalities",
+     "id": "6AZ",
+     "q": 21,
+     "min": 72,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "8th",
+     "name": "Division with exponents",
+     "id": "XNC",
+     "q": 31,
+     "min": 1,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "8th (C.5)",
+     "name": "Identify square numbers",
+     "id": "54P",
+     "q": 16,
+     "min": 5,
+     "from": 13,
+     "to": 71
+    },
+    {
+     "grade": "8th",
+     "name": "Evaluate cubes",
+     "id": "AMR",
+     "q": 7,
+     "min": 72,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (D.4)",
+     "name": "Solve equations using cube roots",
+     "id": "TQ5",
+     "q": 2,
+     "min": 1,
+     "from": 0,
+     "to": 69
+    },
+    {
+     "grade": "8th",
+     "name": "Complete a function table: quadratic functions",
+     "id": "VN8",
+     "q": 40,
+     "min": 72,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (D.3)",
+     "name": "Cube roots of positive and negative perfect cubes",
+     "id": "J7K",
+     "q": 13,
+     "min": 9,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (C.9)",
+     "name": "Square roots of perfect squares",
+     "id": "9RS",
+     "q": 35,
+     "min": 34,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th (D.1)",
+     "name": "Relationship between squares and square roots",
+     "id": "8W2",
+     "q": 16,
+     "min": 72,
+     "from": 0,
+     "to": 68
+    }
+   ]
+  },
+  {
+   "ixlName": "PARKER TOLLIVER",
+   "display": "Parker Tolliver",
+   "questions": 733,
+   "minutes": 567,
+   "days": 8,
+   "mastered": 0,
+   "proficient": 3,
+   "rows": [
+    {
+     "grade": "8th (E.3)",
+     "name": "Compare rational numbers",
+     "id": "MUK",
+     "q": 8,
+     "min": 34,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "7th (A.4)",
+     "name": "Write a repeating decimal as a fraction",
+     "id": "W49",
+     "q": 36,
+     "min": 21,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "8th",
+     "name": "Division with exponents",
+     "id": "XNC",
+     "q": 40,
+     "min": 2,
+     "from": 27,
+     "to": 72
+    },
+    {
+     "grade": "8th",
+     "name": "Convert between standard and scientific notation: large numbers",
+     "id": "2AL",
+     "q": 16,
+     "min": 1,
+     "from": 0,
+     "to": 52
+    },
+    {
+     "grade": "7th (I.6)",
+     "name": "Find values using function graphs",
+     "id": "7N2",
+     "q": 4,
+     "min": 2,
+     "from": 26,
+     "to": 68
+    },
+    {
+     "grade": "7th (H.9)",
+     "name": "Identify functions",
+     "id": "JT2",
+     "q": 20,
+     "min": 9,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "7th (J.9)",
+     "name": "Create scatter plots",
+     "id": "AVL",
+     "q": 14,
+     "min": 9,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "7th (J.5)",
+     "name": "Create and interpret dot plots with fractions",
+     "id": "SHS",
+     "q": 12,
+     "min": 9,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th",
+     "name": "Identify rational and irrational numbers",
+     "id": "NV6",
+     "q": 2,
+     "min": 9,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "7th (K.2)",
+     "name": "Describe associations between two variables using scatter plots",
+     "id": "9ER",
+     "q": 2,
+     "min": 72,
+     "from": 0,
+     "to": 35
+    },
+    {
+     "grade": "7th",
+     "name": "Convert fractions or mixed numbers to decimals",
+     "id": "M2D",
+     "q": 13,
+     "min": 72,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "8th (E.2)",
+     "name": "Compare and order rational and irrational numbers",
+     "id": "EED",
+     "q": 29,
+     "min": 1,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "7th (K.5)",
+     "name": "Make predictions with scatter plots",
+     "id": "CM7",
+     "q": 28,
+     "min": 34,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "7th (M.4)",
+     "name": "Distance between two points",
+     "id": "RUZ",
+     "q": 7,
+     "min": 3,
+     "from": 0,
+     "to": 10
+    }
+   ]
+  },
+  {
+   "ixlName": "DEVIN WHITLOCK",
+   "display": "Devin Whitlock",
+   "questions": 421,
+   "minutes": 582,
+   "days": 20,
+   "mastered": 1,
+   "proficient": 0,
+   "rows": [
+    {
+     "grade": "7th (B.2)",
+     "name": "Solve two-step equations with parentheses",
+     "id": "NSH",
+     "q": 12,
+     "min": 0,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th (E.2)",
+     "name": "Compare and order rational and irrational numbers",
+     "id": "EED",
+     "q": 6,
+     "min": 34,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "8th (G.1)",
+     "name": "Powers of ten",
+     "id": "LJQ",
+     "q": 13,
+     "min": 5,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "7th (B.7)",
+     "name": "Solve two-step equations: word problems",
+     "id": "D2Y",
+     "q": 1,
+     "min": 1,
+     "from": 0,
+     "to": 69
+    },
+    {
+     "grade": "7th (A.7)",
+     "name": "Which x satisfies an equation?",
+     "id": "DJS",
+     "q": 6,
+     "min": 2,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (D.5)",
+     "name": "Estimate square roots and cube roots",
+     "id": "PFD",
+     "q": 3,
+     "min": 21,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (D.7)",
+     "name": "Square roots and cube roots",
+     "id": "9LU",
+     "q": 20,
+     "min": 5,
+     "from": 0,
+     "to": 42
+    },
+    {
+     "grade": "8th (D.3)",
+     "name": "Cube roots of positive and negative perfect cubes",
+     "id": "J7K",
+     "q": 34,
+     "min": 2,
+     "from": 0,
+     "to": 79
+    },
+    {
+     "grade": "7th (B.3)",
+     "name": "Solve equations of the form p(x + q) = r with fractions",
+     "id": "A8D",
+     "q": 39,
+     "min": 21,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "8th (D.9)",
+     "name": "Irrational numbers on number lines",
+     "id": "QZ7",
+     "q": 32,
+     "min": 2,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "8th",
+     "name": "Division with exponents",
+     "id": "XNC",
+     "q": 40,
+     "min": 2,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th",
+     "name": "Convert decimals to fractions or mixed numbers",
+     "id": "HZD",
+     "q": 33,
+     "min": 21,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th",
+     "name": "Multiplication with exponents",
+     "id": "5SK",
+     "q": 33,
+     "min": 2,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (E.3)",
+     "name": "Compare rational numbers",
+     "id": "MUK",
+     "q": 33,
+     "min": 83,
+     "from": 58,
+     "to": 68
+    }
+   ]
+  },
+  {
+   "ixlName": "QUINN NASH",
+   "display": "Quinn Nash",
+   "questions": 1103,
+   "minutes": 607,
+   "days": 0,
+   "mastered": 0,
+   "proficient": 1,
+   "rows": [
+    {
+     "grade": "8th (F.5)",
+     "name": "Identify equivalent expressions involving exponents I",
+     "id": "VLM",
+     "q": 40,
+     "min": 5,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "7th",
+     "name": "Graph solutions to multi-step inequalities",
+     "id": "HKW",
+     "q": 10,
+     "min": 13,
+     "from": 0,
+     "to": 69
+    },
+    {
+     "grade": "8th",
+     "name": "Multiplication with exponents",
+     "id": "5SK",
+     "q": 20,
+     "min": 83,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (F.9)",
+     "name": "Compare large numbers",
+     "id": "WEZ",
+     "q": 1,
+     "min": 34,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "8th (F.3)",
+     "name": "Understanding negative exponents",
+     "id": "YBB",
+     "q": 18,
+     "min": 1,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th",
+     "name": "Solutions to inequalities",
+     "id": "G2U",
+     "q": 32,
+     "min": 9,
+     "from": 0,
+     "to": 63
+    },
+    {
+     "grade": "8th",
+     "name": "Evaluate powers with negative exponents",
+     "id": "WGS",
+     "q": 19,
+     "min": 34,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (C.8)",
+     "name": "Solve equations using square roots",
+     "id": "NNA",
+     "q": 8,
+     "min": 72,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th",
+     "name": "Put rational numbers in order",
+     "id": "QP5",
+     "q": 6,
+     "min": 34,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (B.9)",
+     "name": "Solve two-step inequalities",
+     "id": "N9D",
+     "q": 30,
+     "min": 1,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (C.1)",
+     "name": "Graph solutions to two-step inequalities",
+     "id": "WHT",
+     "q": 18,
+     "min": 21,
+     "from": 38,
+     "to": 69
+    },
+    {
+     "grade": "8th (E.8)",
+     "name": "Powers with negative bases",
+     "id": "WFW",
+     "q": 14,
+     "min": 1,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "7th (B.1)",
+     "name": "Solve equations of the form px + q = r with fractions",
+     "id": "Y6Q",
+     "q": 10,
+     "min": 72,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "8th (E.6)",
+     "name": "Power rule",
+     "id": "8DA",
+     "q": 24,
+     "min": 2,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (C.2)",
+     "name": "Solve multi-step inequalities",
+     "id": "6AZ",
+     "q": 33,
+     "min": 9,
+     "from": 0,
+     "to": 68
+    }
+   ]
+  },
+  {
+   "ixlName": "EMERSON LOWELL90",
+   "display": "Emerson Lowell90",
+   "questions": 910,
+   "minutes": 544,
+   "days": 1,
+   "mastered": 0,
+   "proficient": 4,
+   "rows": [
+    {
+     "grade": "8th (D.8)",
+     "name": "Identify rational and irrational square roots",
+     "id": "UGE",
+     "q": 28,
+     "min": 9,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "8th",
+     "name": "Evaluate cubes",
+     "id": "AMR",
+     "q": 7,
+     "min": 0,
+     "from": 27,
+     "to": 68
+    },
+    {
+     "grade": "8th (D.7)",
+     "name": "Square roots and cube roots",
+     "id": "9LU",
+     "q": 10,
+     "min": 5,
+     "from": 28,
+     "to": 72
+    },
+    {
+     "grade": "7th",
+     "name": "Choose two-step equations: word problems",
+     "id": "8NH",
+     "q": 33,
+     "min": 13,
+     "from": 65,
+     "to": 80
+    },
+    {
+     "grade": "8th (D.9)",
+     "name": "Irrational numbers on number lines",
+     "id": "QZ7",
+     "q": 24,
+     "min": 21,
+     "from": 0,
+     "to": 75
+    },
+    {
+     "grade": "8th (E.7)",
+     "name": "Understanding exponents",
+     "id": "BFA",
+     "q": 26,
+     "min": 72,
+     "from": 61,
+     "to": 70
+    },
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 6,
+     "min": 0,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "7th (B.5)",
+     "name": "Solve two-step equations with integers",
+     "id": "QEB",
+     "q": 29,
+     "min": 83,
+     "from": 11,
+     "to": 0
+    },
+    {
+     "grade": "8th (D.4)",
+     "name": "Solve equations using cube roots",
+     "id": "TQ5",
+     "q": 19,
+     "min": 34,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th (C.5)",
+     "name": "Identify square numbers",
+     "id": "54P",
+     "q": 36,
+     "min": 2,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "8th",
+     "name": "Complete a function table: quadratic functions",
+     "id": "VN8",
+     "q": 27,
+     "min": 13,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th (E.4)",
+     "name": "Evaluate powers",
+     "id": "SZQ",
+     "q": 17,
+     "min": 9,
+     "from": 0,
+     "to": 76
+    },
+    {
+     "grade": "7th (B.3)",
+     "name": "Solve equations of the form p(x + q) = r with fractions",
+     "id": "A8D",
+     "q": 16,
+     "min": 9,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "7th (B.2)",
+     "name": "Solve two-step equations with parentheses",
+     "id": "NSH",
+     "q": 26,
+     "min": 1,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "8th (C.9)",
+     "name": "Square roots of perfect squares",
+     "id": "9RS",
+     "q": 11,
+     "min": 1,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th (C.6)",
+     "name": "Evaluate squares",
+     "id": "H77",
+     "q": 32,
+     "min": 72,
+     "from": 0,
+     "to": 70
+    }
+   ]
+  },
+  {
+   "ixlName": "MICAH DORSEY",
+   "display": "Micah Dorsey",
+   "questions": 752,
+   "minutes": 401,
+   "days": 12,
+   "mastered": 3,
+   "proficient": 2,
+   "rows": [
+    {
+     "grade": "8th (C.5)",
+     "name": "Identify square numbers",
+     "id": "54P",
+     "q": 12,
+     "min": 13,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th",
+     "name": "Convert fractions or mixed numbers to decimals",
+     "id": "M2D",
+     "q": 21,
+     "min": 5,
+     "from": 0,
+     "to": 86
+    },
+    {
+     "grade": "7th (A.3)",
+     "name": "Convert between percents, fractions, and decimals",
+     "id": "2HW",
+     "q": 37,
+     "min": 5,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "7th (A.2)",
+     "name": "Convert between mixed numbers and improper fractions",
+     "id": "LGK",
+     "q": 25,
+     "min": 21,
+     "from": 62,
+     "to": 100
+    },
+    {
+     "grade": "8th (C.6)",
+     "name": "Evaluate squares",
+     "id": "H77",
+     "q": 14,
+     "min": 21,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th (A.4)",
+     "name": "Write a repeating decimal as a fraction",
+     "id": "W49",
+     "q": 4,
+     "min": 34,
+     "from": 0,
+     "to": 12
+    },
+    {
+     "grade": "8th",
+     "name": "Complete a function table: quadratic functions",
+     "id": "VN8",
+     "q": 24,
+     "min": 2,
+     "from": 0,
+     "to": 18
+    }
+   ]
+  },
+  {
+   "ixlName": "TAYLOR COBB",
+   "display": "Taylor Cobb",
+   "questions": 483,
+   "minutes": 437,
+   "days": 8,
+   "mastered": 1,
+   "proficient": 3,
+   "rows": [
+    {
+     "grade": "7th (A.2)",
+     "name": "Convert between mixed numbers and improper fractions",
+     "id": "LGK",
+     "q": 34,
+     "min": 34,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "7th (B.2)",
+     "name": "Solve two-step equations with parentheses",
+     "id": "NSH",
+     "q": 7,
+     "min": 5,
+     "from": 25,
+     "to": 71
+    },
+    {
+     "grade": "8th (C.5)",
+     "name": "Identify square numbers",
+     "id": "54P",
+     "q": 34,
+     "min": 1,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "7th",
+     "name": "Solutions to inequalities",
+     "id": "G2U",
+     "q": 30,
+     "min": 1,
+     "from": 56,
+     "to": 70
+    },
+    {
+     "grade": "7th",
+     "name": "Choose two-step equations: word problems",
+     "id": "8NH",
+     "q": 3,
+     "min": 0,
+     "from": 0,
+     "to": 69
+    },
+    {
+     "grade": "7th (A.4)",
+     "name": "Write a repeating decimal as a fraction",
+     "id": "W49",
+     "q": 15,
+     "min": 83,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th (A.7)",
+     "name": "Which x satisfies an equation?",
+     "id": "DJS",
+     "q": 9,
+     "min": 9,
+     "from": 48,
+     "to": 82
+    },
+    {
+     "grade": "7th (C.1)",
+     "name": "Graph solutions to two-step inequalities",
+     "id": "WHT",
+     "q": 28,
+     "min": 1,
+     "from": 0,
+     "to": 0
+    },
+    {
+     "grade": "7th (B.9)",
+     "name": "Solve two-step inequalities",
+     "id": "N9D",
+     "q": 20,
+     "min": 72,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (M.1)",
+     "name": "Which x satisfies an equation?",
+     "id": "BVQ",
+     "q": 7,
+     "min": 3,
+     "from": 0,
+     "to": 10
+    }
+   ]
+  },
+  {
+   "ixlName": "SUTTON RHODES",
+   "display": "Sutton Rhodes",
+   "questions": 507,
+   "minutes": 351,
+   "days": 8,
+   "mastered": 0,
+   "proficient": 1,
+   "rows": [
+    {
+     "grade": "7th (B.3)",
+     "name": "Solve equations of the form p(x + q) = r with fractions",
+     "id": "A8D",
+     "q": 13,
+     "min": 34,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "7th (B.9)",
+     "name": "Solve two-step inequalities",
+     "id": "N9D",
+     "q": 27,
+     "min": 1,
+     "from": 51,
+     "to": 68
+    },
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 28,
+     "min": 13,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "7th (C.4)",
+     "name": "Solve multi-step inequalities: word problems",
+     "id": "DKH",
+     "q": 3,
+     "min": 13,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "8th (C.5)",
+     "name": "Identify square numbers",
+     "id": "54P",
+     "q": 24,
+     "min": 21,
+     "from": 0,
+     "to": 74
+    },
+    {
+     "grade": "7th (A.4)",
+     "name": "Write a repeating decimal as a fraction",
+     "id": "W49",
+     "q": 19,
+     "min": 72,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "7th (C.1)",
+     "name": "Graph solutions to two-step inequalities",
+     "id": "WHT",
+     "q": 32,
+     "min": 5,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th",
+     "name": "Solutions to inequalities",
+     "id": "G2U",
+     "q": 13,
+     "min": 5,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (C.2)",
+     "name": "Solve multi-step inequalities",
+     "id": "6AZ",
+     "q": 17,
+     "min": 9,
+     "from": 0,
+     "to": 69
+    },
+    {
+     "grade": "7th",
+     "name": "Solve two-step equations without parentheses",
+     "id": "CMX",
+     "q": 40,
+     "min": 34,
+     "from": 0,
+     "to": 71
+    }
+   ]
+  },
+  {
+   "ixlName": "NOOR IVERSON",
+   "display": "Noor Iverson",
+   "questions": 334,
+   "minutes": 440,
+   "days": 8,
+   "mastered": 3,
+   "proficient": 3,
+   "rows": [
+    {
+     "grade": "8th (D.1)",
+     "name": "Relationship between squares and square roots",
+     "id": "8W2",
+     "q": 8,
+     "min": 72,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th (E.8)",
+     "name": "Powers with negative bases",
+     "id": "WFW",
+     "q": 25,
+     "min": 13,
+     "from": 23,
+     "to": 72
+    },
+    {
+     "grade": "8th (D.7)",
+     "name": "Square roots and cube roots",
+     "id": "9LU",
+     "q": 20,
+     "min": 21,
+     "from": 0,
+     "to": 69
+    },
+    {
+     "grade": "8th (E.6)",
+     "name": "Power rule",
+     "id": "8DA",
+     "q": 31,
+     "min": 5,
+     "from": 0,
+     "to": 87
+    },
+    {
+     "grade": "7th",
+     "name": "Choose two-step equations: word problems",
+     "id": "8NH",
+     "q": 29,
+     "min": 5,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "7th (C.4)",
+     "name": "Solve multi-step inequalities: word problems",
+     "id": "DKH",
+     "q": 31,
+     "min": 0,
+     "from": 0,
+     "to": 0
+    },
+    {
+     "grade": "8th (D.9)",
+     "name": "Irrational numbers on number lines",
+     "id": "QZ7",
+     "q": 16,
+     "min": 21,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "7th (B.3)",
+     "name": "Solve equations of the form p(x + q) = r with fractions",
+     "id": "A8D",
+     "q": 3,
+     "min": 34,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th (E.4)",
+     "name": "Evaluate powers",
+     "id": "SZQ",
+     "q": 4,
+     "min": 9,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (C.6)",
+     "name": "Evaluate squares",
+     "id": "H77",
+     "q": 5,
+     "min": 83,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th",
+     "name": "Complete a function table: quadratic functions",
+     "id": "VN8",
+     "q": 18,
+     "min": 13,
+     "from": 0,
+     "to": 86
+    }
+   ]
+  },
+  {
+   "ixlName": "BELLAMY FAIRLEY",
+   "display": "Bellamy Fairley",
+   "questions": 613,
+   "minutes": 550,
+   "days": 2,
+   "mastered": 0,
+   "proficient": 3,
+   "rows": [
+    {
+     "grade": "8th (E.4)",
+     "name": "Evaluate powers",
+     "id": "SZQ",
+     "q": 28,
+     "min": 1,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "8th (F.9)",
+     "name": "Compare large numbers",
+     "id": "WEZ",
+     "q": 40,
+     "min": 1,
+     "from": 26,
+     "to": 68
+    },
+    {
+     "grade": "8th",
+     "name": "Compare small numbers",
+     "id": "KDR",
+     "q": 27,
+     "min": 34,
+     "from": 0,
+     "to": 69
+    },
+    {
+     "grade": "8th",
+     "name": "Evaluate cubes",
+     "id": "AMR",
+     "q": 12,
+     "min": 5,
+     "from": 38,
+     "to": 68
+    },
+    {
+     "grade": "8th (D.7)",
+     "name": "Square roots and cube roots",
+     "id": "9LU",
+     "q": 30,
+     "min": 83,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th",
+     "name": "Graph solutions to multi-step inequalities",
+     "id": "HKW",
+     "q": 35,
+     "min": 1,
+     "from": 25,
+     "to": 68
+    },
+    {
+     "grade": "8th (D.9)",
+     "name": "Irrational numbers on number lines",
+     "id": "QZ7",
+     "q": 19,
+     "min": 9,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 18,
+     "min": 13,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "8th",
+     "name": "Division with exponents",
+     "id": "XNC",
+     "q": 17,
+     "min": 5,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th",
+     "name": "Solve two-step equations without parentheses",
+     "id": "CMX",
+     "q": 12,
+     "min": 5,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "7th (B.7)",
+     "name": "Solve two-step equations: word problems",
+     "id": "D2Y",
+     "q": 19,
+     "min": 83,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "8th (F.2)",
+     "name": "Evaluate expressions using properties of exponents",
+     "id": "ZE9",
+     "q": 5,
+     "min": 21,
+     "from": 0,
+     "to": 69
+    }
+   ]
+  },
+  {
+   "ixlName": "EVERLY MERCER",
+   "display": "Everly Mercer",
+   "questions": 556,
+   "minutes": 361,
+   "days": 12,
+   "mastered": 0,
+   "proficient": 7,
+   "rows": [
+    {
+     "grade": "7th",
+     "name": "Graph solutions to multi-step inequalities",
+     "id": "HKW",
+     "q": 10,
+     "min": 0,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "8th (C.8)",
+     "name": "Solve equations using square roots",
+     "id": "NNA",
+     "q": 17,
+     "min": 0,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th",
+     "name": "Identify rational and irrational numbers",
+     "id": "NV6",
+     "q": 14,
+     "min": 0,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "7th (B.9)",
+     "name": "Solve two-step inequalities",
+     "id": "N9D",
+     "q": 24,
+     "min": 2,
+     "from": 62,
+     "to": 81
+    },
+    {
+     "grade": "8th (D.3)",
+     "name": "Cube roots of positive and negative perfect cubes",
+     "id": "J7K",
+     "q": 5,
+     "min": 5,
+     "from": 0,
+     "to": 73
+    },
+    {
+     "grade": "7th (C.2)",
+     "name": "Solve multi-step inequalities",
+     "id": "6AZ",
+     "q": 32,
+     "min": 72,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "8th (E.2)",
+     "name": "Compare and order rational and irrational numbers",
+     "id": "EED",
+     "q": 27,
+     "min": 1,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "8th (D.7)",
+     "name": "Square roots and cube roots",
+     "id": "9LU",
+     "q": 36,
+     "min": 2,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "7th (B.1)",
+     "name": "Solve equations of the form px + q = r with fractions",
+     "id": "Y6Q",
+     "q": 6,
+     "min": 2,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "8th (C.9)",
+     "name": "Square roots of perfect squares",
+     "id": "9RS",
+     "q": 18,
+     "min": 21,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 27,
+     "min": 0,
+     "from": 49,
+     "to": 82
+    },
+    {
+     "grade": "7th (B.7)",
+     "name": "Solve two-step equations: word problems",
+     "id": "D2Y",
+     "q": 37,
+     "min": 13,
+     "from": 0,
+     "to": 85
+    },
+    {
+     "grade": "7th (B.2)",
+     "name": "Solve two-step equations with parentheses",
+     "id": "NSH",
+     "q": 2,
+     "min": 13,
+     "from": 0,
+     "to": 83
+    }
+   ]
+  },
+  {
+   "ixlName": "DEVIN ASHBY91",
+   "display": "Devin Ashby91",
+   "questions": 474,
+   "minutes": 348,
+   "days": 0,
+   "mastered": 0,
+   "proficient": 4,
+   "rows": [
+    {
+     "grade": "8th (F.1)",
+     "name": "Identify equivalent expressions involving whole-number exponents",
+     "id": "KBE",
+     "q": 13,
+     "min": 34,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (D.1)",
+     "name": "Relationship between squares and square roots",
+     "id": "8W2",
+     "q": 14,
+     "min": 0,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "8th",
+     "name": "Evaluate cubes",
+     "id": "AMR",
+     "q": 34,
+     "min": 2,
+     "from": 0,
+     "to": 75
+    },
+    {
+     "grade": "8th",
+     "name": "Division with exponents",
+     "id": "XNC",
+     "q": 8,
+     "min": 2,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "8th (C.9)",
+     "name": "Square roots of perfect squares",
+     "id": "9RS",
+     "q": 13,
+     "min": 0,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th (C.8)",
+     "name": "Solve equations using square roots",
+     "id": "NNA",
+     "q": 3,
+     "min": 13,
+     "from": 63,
+     "to": 71
+    },
+    {
+     "grade": "8th (D.7)",
+     "name": "Square roots and cube roots",
+     "id": "9LU",
+     "q": 39,
+     "min": 34,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "7th (A.4)",
+     "name": "Write a repeating decimal as a fraction",
+     "id": "W49",
+     "q": 20,
+     "min": 21,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "8th",
+     "name": "Complete a function table: quadratic functions",
+     "id": "VN8",
+     "q": 16,
+     "min": 21,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "8th (E.2)",
+     "name": "Compare and order rational and irrational numbers",
+     "id": "EED",
+     "q": 24,
+     "min": 34,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (C.4)",
+     "name": "Solve multi-step inequalities: word problems",
+     "id": "DKH",
+     "q": 12,
+     "min": 0,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "8th (D.3)",
+     "name": "Cube roots of positive and negative perfect cubes",
+     "id": "J7K",
+     "q": 32,
+     "min": 34,
+     "from": 0,
+     "to": 90
+    },
+    {
+     "grade": "8th (F.7)",
+     "name": "Identify equivalent expressions involving exponents II",
+     "id": "QDM",
+     "q": 40,
+     "min": 34,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "8th",
+     "name": "Evaluate powers with negative exponents",
+     "id": "WGS",
+     "q": 31,
+     "min": 21,
+     "from": 61,
+     "to": 70
+    },
+    {
+     "grade": "7th (O.2)",
+     "name": "Convert between percents, fractions, and decimals",
+     "id": "2HW",
+     "q": 7,
+     "min": 3,
+     "from": 0,
+     "to": 10
+    }
+   ]
+  },
+  {
+   "ixlName": "TATUM JESSUP92",
+   "display": "Tatum Jessup92",
+   "questions": 929,
+   "minutes": 544,
+   "days": 20,
+   "mastered": 2,
+   "proficient": 1,
+   "rows": [
+    {
+     "grade": "8th (F.5)",
+     "name": "Identify equivalent expressions involving exponents I",
+     "id": "VLM",
+     "q": 10,
+     "min": 9,
+     "from": 24,
+     "to": 39
+    },
+    {
+     "grade": "8th",
+     "name": "Complete a function table: quadratic functions",
+     "id": "VN8",
+     "q": 31,
+     "min": 5,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "7th",
+     "name": "Solutions to inequalities",
+     "id": "G2U",
+     "q": 40,
+     "min": 72,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "7th",
+     "name": "Choose two-step equations: word problems",
+     "id": "8NH",
+     "q": 24,
+     "min": 0,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "8th",
+     "name": "Multiplication with exponents",
+     "id": "5SK",
+     "q": 26,
+     "min": 2,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "7th (C.1)",
+     "name": "Graph solutions to two-step inequalities",
+     "id": "WHT",
+     "q": 18,
+     "min": 13,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (C.4)",
+     "name": "Solve multi-step inequalities: word problems",
+     "id": "DKH",
+     "q": 17,
+     "min": 1,
+     "from": 20,
+     "to": 68
+    },
+    {
+     "grade": "8th (E.8)",
+     "name": "Powers with negative bases",
+     "id": "WFW",
+     "q": 4,
+     "min": 13,
+     "from": 0,
+     "to": 73
+    },
+    {
+     "grade": "8th (D.7)",
+     "name": "Square roots and cube roots",
+     "id": "9LU",
+     "q": 36,
+     "min": 72,
+     "from": 38,
+     "to": 68
+    },
+    {
+     "grade": "8th (C.8)",
+     "name": "Solve equations using square roots",
+     "id": "NNA",
+     "q": 7,
+     "min": 9,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th (B.9)",
+     "name": "Solve two-step inequalities",
+     "id": "N9D",
+     "q": 26,
+     "min": 13,
+     "from": 50,
+     "to": 68
+    },
+    {
+     "grade": "8th (C.9)",
+     "name": "Square roots of perfect squares",
+     "id": "9RS",
+     "q": 24,
+     "min": 83,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th",
+     "name": "Graph solutions to multi-step inequalities",
+     "id": "HKW",
+     "q": 22,
+     "min": 1,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th",
+     "name": "Put rational numbers in order",
+     "id": "QP5",
+     "q": 12,
+     "min": 83,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "8th",
+     "name": "Identify rational and irrational numbers",
+     "id": "NV6",
+     "q": 4,
+     "min": 9,
+     "from": 0,
+     "to": 68
+    }
+   ]
+  },
+  {
+   "ixlName": "YAEL76 INGRAM93",
+   "display": "Yael76 Ingram93",
+   "questions": 426,
+   "minutes": 500,
+   "days": 12,
+   "mastered": 6,
+   "proficient": 0,
+   "rows": [
+    {
+     "grade": "8th (E.4)",
+     "name": "Evaluate powers",
+     "id": "SZQ",
+     "q": 28,
+     "min": 21,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th",
+     "name": "Multiplication with exponents",
+     "id": "5SK",
+     "q": 4,
+     "min": 2,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th (L.4)",
+     "name": "Samples spaces for repeated events",
+     "id": "AGW",
+     "q": 40,
+     "min": 0,
+     "from": 0,
+     "to": 28
+    },
+    {
+     "grade": "7th (A.4)",
+     "name": "Write a repeating decimal as a fraction",
+     "id": "W49",
+     "q": 1,
+     "min": 83,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th (F.1)",
+     "name": "Identify equivalent expressions involving whole-number exponents",
+     "id": "KBE",
+     "q": 7,
+     "min": 72,
+     "from": 0,
+     "to": 16
+    },
+    {
+     "grade": "7th",
+     "name": "Convert fractions or mixed numbers to decimals",
+     "id": "M2D",
+     "q": 15,
+     "min": 21,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th (L.3)",
+     "name": "Compound events: find the number of outcomes",
+     "id": "P5R",
+     "q": 38,
+     "min": 2,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th (E.8)",
+     "name": "Powers with negative bases",
+     "id": "WFW",
+     "q": 40,
+     "min": 34,
+     "from": 0,
+     "to": 61
+    },
+    {
+     "grade": "8th (E.6)",
+     "name": "Power rule",
+     "id": "8DA",
+     "q": 1,
+     "min": 5,
+     "from": 0,
+     "to": 100
+    }
+   ]
+  },
+  {
+   "ixlName": "SUTTON ORME78",
+   "display": "Sutton Orme78",
+   "questions": 283,
+   "minutes": 193,
+   "days": 8,
+   "mastered": 0,
+   "proficient": 0,
+   "rows": [
+    {
+     "grade": "8th (F.3)",
+     "name": "Understanding negative exponents",
+     "id": "YBB",
+     "q": 28,
+     "min": 34,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th",
+     "name": "Identify rational and irrational numbers",
+     "id": "NV6",
+     "q": 29,
+     "min": 2,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (D.5)",
+     "name": "Estimate square roots and cube roots",
+     "id": "PFD",
+     "q": 7,
+     "min": 9,
+     "from": 0,
+     "to": 76
+    },
+    {
+     "grade": "8th (C.5)",
+     "name": "Identify square numbers",
+     "id": "54P",
+     "q": 3,
+     "min": 1,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "8th (D.8)",
+     "name": "Identify rational and irrational square roots",
+     "id": "UGE",
+     "q": 17,
+     "min": 0,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "7th (C.1)",
+     "name": "Graph solutions to two-step inequalities",
+     "id": "WHT",
+     "q": 36,
+     "min": 21,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th",
+     "name": "Evaluate cubes",
+     "id": "AMR",
+     "q": 34,
+     "min": 9,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "8th (G.1)",
+     "name": "Powers of ten",
+     "id": "LJQ",
+     "q": 14,
+     "min": 1,
+     "from": 0,
+     "to": 71
+    }
+   ]
+  },
+  {
+   "ixlName": "KAI ASHBY94",
+   "display": "Kai Ashby94",
+   "questions": 283,
+   "minutes": 278,
+   "days": 5,
+   "mastered": 0,
+   "proficient": 2,
+   "rows": [
+    {
+     "grade": "7th (A.2)",
+     "name": "Convert between mixed numbers and improper fractions",
+     "id": "LGK",
+     "q": 2,
+     "min": 1,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "8th (C.9)",
+     "name": "Square roots of perfect squares",
+     "id": "9RS",
+     "q": 11,
+     "min": 13,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "7th (A.3)",
+     "name": "Convert between percents, fractions, and decimals",
+     "id": "2HW",
+     "q": 2,
+     "min": 0,
+     "from": 13,
+     "to": 82
+    },
+    {
+     "grade": "7th (C.2)",
+     "name": "Solve multi-step inequalities",
+     "id": "6AZ",
+     "q": 3,
+     "min": 1,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th",
+     "name": "Identify rational and irrational numbers",
+     "id": "NV6",
+     "q": 5,
+     "min": 83,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (B.3)",
+     "name": "Solve equations of the form p(x + q) = r with fractions",
+     "id": "A8D",
+     "q": 13,
+     "min": 72,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (C.8)",
+     "name": "Solve equations using square roots",
+     "id": "NNA",
+     "q": 25,
+     "min": 1,
+     "from": 14,
+     "to": 71
+    },
+    {
+     "grade": "8th (D.1)",
+     "name": "Relationship between squares and square roots",
+     "id": "8W2",
+     "q": 14,
+     "min": 1,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 6,
+     "min": 9,
+     "from": 0,
+     "to": 71
+    }
+   ]
+  },
+  {
+   "ixlName": "SKYLER82 HALE81",
+   "display": "Skyler82 Hale81",
+   "questions": 671,
+   "minutes": 242,
+   "days": 5,
+   "mastered": 0,
+   "proficient": 4,
+   "rows": [
+    {
+     "grade": "8th",
+     "name": "Identify rational and irrational numbers",
+     "id": "NV6",
+     "q": 13,
+     "min": 9,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "8th",
+     "name": "Division with exponents",
+     "id": "XNC",
+     "q": 4,
+     "min": 0,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (L.3)",
+     "name": "Compound events: find the number of outcomes",
+     "id": "P5R",
+     "q": 7,
+     "min": 34,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "7th (A.4)",
+     "name": "Write a repeating decimal as a fraction",
+     "id": "W49",
+     "q": 12,
+     "min": 34,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "7th",
+     "name": "Solve two-step equations without parentheses",
+     "id": "CMX",
+     "q": 33,
+     "min": 9,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "8th (F.1)",
+     "name": "Identify equivalent expressions involving whole-number exponents",
+     "id": "KBE",
+     "q": 11,
+     "min": 9,
+     "from": 0,
+     "to": 45
+    },
+    {
+     "grade": "8th (D.5)",
+     "name": "Estimate square roots and cube roots",
+     "id": "PFD",
+     "q": 15,
+     "min": 34,
+     "from": 54,
+     "to": 69
+    },
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 6,
+     "min": 34,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "7th",
+     "name": "Graph solutions to multi-step inequalities",
+     "id": "HKW",
+     "q": 36,
+     "min": 1,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "8th (E.8)",
+     "name": "Powers with negative bases",
+     "id": "WFW",
+     "q": 23,
+     "min": 1,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "7th (M.4)",
+     "name": "Distance between two points",
+     "id": "RUZ",
+     "q": 7,
+     "min": 3,
+     "from": 0,
+     "to": 10
+    }
+   ]
+  },
+  {
+   "ixlName": "YAEL84 ZINK83",
+   "display": "Yael84 Zink83",
+   "questions": 303,
+   "minutes": 563,
+   "days": 0,
+   "mastered": 0,
+   "proficient": 2,
+   "rows": [
+    {
+     "grade": "8th (C.8)",
+     "name": "Solve equations using square roots",
+     "id": "NNA",
+     "q": 16,
+     "min": 72,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th (C.9)",
+     "name": "Square roots of perfect squares",
+     "id": "9RS",
+     "q": 20,
+     "min": 83,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "7th",
+     "name": "Convert fractions or mixed numbers to decimals",
+     "id": "M2D",
+     "q": 10,
+     "min": 5,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "8th",
+     "name": "Identify rational and irrational numbers",
+     "id": "NV6",
+     "q": 39,
+     "min": 72,
+     "from": 0,
+     "to": 68
+    },
+    {
+     "grade": "7th (B.9)",
+     "name": "Solve two-step inequalities",
+     "id": "N9D",
+     "q": 16,
+     "min": 13,
+     "from": 0,
+     "to": 72
+    },
+    {
+     "grade": "8th",
+     "name": "Multiplication with exponents",
+     "id": "5SK",
+     "q": 7,
+     "min": 2,
+     "from": 26,
+     "to": 72
+    },
+    {
+     "grade": "7th",
+     "name": "Solve two-step equations without parentheses",
+     "id": "CMX",
+     "q": 13,
+     "min": 21,
+     "from": 16,
+     "to": 69
+    },
+    {
+     "grade": "8th (C.5)",
+     "name": "Identify square numbers",
+     "id": "54P",
+     "q": 10,
+     "min": 9,
+     "from": 0,
+     "to": 71
+    },
+    {
+     "grade": "8th",
+     "name": "Put rational numbers in order",
+     "id": "QP5",
+     "q": 28,
+     "min": 9,
+     "from": 0,
+     "to": 70
+    },
+    {
+     "grade": "8th (D.4)",
+     "name": "Solve equations using cube roots",
+     "id": "TQ5",
+     "q": 7,
+     "min": 9,
+     "from": 0,
+     "to": 83
+    },
+    {
+     "grade": "8th (D.3)",
+     "name": "Cube roots of positive and negative perfect cubes",
+     "id": "J7K",
+     "q": 25,
+     "min": 34,
+     "from": 0,
+     "to": 71
+    }
+   ]
+  },
+  {
+   "ixlName": "BELLAMY86 VANCE85",
+   "display": "Bellamy86 Vance85",
+   "questions": 695,
+   "minutes": 674,
+   "days": 2,
+   "mastered": 5,
+   "proficient": 6,
+   "rows": [
+    {
+     "grade": "8th (D.5)",
+     "name": "Estimate square roots and cube roots",
+     "id": "PFD",
+     "q": 40,
+     "min": 21,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th",
+     "name": "Identify rational and irrational numbers",
+     "id": "NV6",
+     "q": 12,
+     "min": 13,
+     "from": 0,
+     "to": 82
+    },
+    {
+     "grade": "7th (B.9)",
+     "name": "Solve two-step inequalities",
+     "id": "N9D",
+     "q": 25,
+     "min": 34,
+     "from": 0,
+     "to": 81
+    },
+    {
+     "grade": "7th (A.6)",
+     "name": "Solve two-step equations: complete the solution",
+     "id": "X2L",
+     "q": 3,
+     "min": 9,
+     "from": 23,
+     "to": 82
+    },
+    {
+     "grade": "7th (B.7)",
+     "name": "Solve two-step equations: word problems",
+     "id": "D2Y",
+     "q": 11,
+     "min": 5,
+     "from": 0,
+     "to": 85
+    },
+    {
+     "grade": "8th (E.6)",
+     "name": "Power rule",
+     "id": "8DA",
+     "q": 7,
+     "min": 83,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th",
+     "name": "Multiplication with exponents",
+     "id": "5SK",
+     "q": 14,
+     "min": 34,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "7th (C.4)",
+     "name": "Solve multi-step inequalities: word problems",
+     "id": "DKH",
+     "q": 24,
+     "min": 72,
+     "from": 0,
+     "to": 67
+    },
+    {
+     "grade": "8th (D.8)",
+     "name": "Identify rational and irrational square roots",
+     "id": "UGE",
+     "q": 30,
+     "min": 5,
+     "from": 0,
+     "to": 100
+    },
+    {
+     "grade": "8th (E.2)",
+     "name": "Compare and order rational and irrational numbers",
+     "id": "EED",
+     "q": 26,
+     "min": 72,
+     "from": 33,
+     "to": 82
+    },
+    {
+     "grade": "7th",
+     "name": "Solutions to inequalities",
+     "id": "G2U",
+     "q": 8,
+     "min": 83,
+     "from": 0,
+     "to": 80
+    },
+    {
+     "grade": "8th",
+     "name": "Put rational numbers in order",
+     "id": "QP5",
+     "q": 4,
+     "min": 9,
+     "from": 0,
+     "to": 100
+    }
+   ]
+  }
+ ]
+}

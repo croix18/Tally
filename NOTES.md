@@ -677,6 +677,19 @@ per-section-file era and many items in them are now done).
   the assessment (or how many) and the grade it reaches, the HOWL time line with the teacher's name from Settings
   ("your math teacher" when blank), and three boxes: told my HOWL teacher, came Wednesday, came Thursday. The
   Do this week fallback no longer says "every assessment at full marks" when a retake is on the table.
+- **25 Oct 2026 — IXL Students Quickview PDF.** Croix: "it's gonna be big. I have pdfs with this data. Can you
+  utilize it?" (Analytics → Students Quickview, printed: 79 pages for a class). What it adds over the Score Grid:
+  effort (questions, minutes) and recency per student, and per skill the questions, time, start and current score,
+  including skills outside the assigned units. `parseIxlQuickviewPdf` (students.js) on pdf.js text: a header line
+  ("Hayden Sutter · 375 questions · 7 hr 3 min · Practiced 2 days ago") starts a student; rows match grade/code ·
+  name · permanent ID · questions · time · from · to; "N Mastered N Proficient" closes it; the DATE RANGE end is the
+  as-of day and "practiced N days ago" is counted back from it. Matched by IXL name (both spellings of first/last
+  tried), kept as `sec.practice[norm(ixlName)]` (cleanPractice; held, merged, never on the Board). Shown: an IXL
+  practice section on the student page (three cards, skills by time, "not in a unit" for extras), a line on the
+  weekly report's IXL panel plus the minutes beside each owed skill (a (0) with 1 hr 23 min beside it is a student
+  stuck, not idle), and an Overview item for students idle a week or more. Fixture:
+  fixtures/make_ixl_quickview_pdf.py; tests/quickview.js. Not seen: the real PDF; the parser ignores non-ASCII glyphs
+  (stars, arrows) and tolerates "8th" without a code, "<1 min", "1 hr 12 min" and blocks split across pages.
 - **25 Oct 2026 — Family: contacts, the contact log, signed reports.** Croix: "I thought it meant number of missing
   signed progress reports. I'd like that tracked somehow as well, conveniently for me. I can input it as I get them
   as a check mark or something. Then I can have a list of parents to contact. Can you also give me a space or a tab

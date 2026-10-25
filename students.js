@@ -97,6 +97,71 @@ function wireNotes(sec, name) {
   document.querySelectorAll('#pNotes [data-ndel]').forEach(b => b.onclick = async () => { if (!await ask('Remove this note?')) return; dropNote(sec, name, b.dataset.ndel); save(); render(); });
 }
 
+/* ---------- IXL Students Quickview (a PDF) ----------
+   Analytics → Students Quickview, printed: for every student, every skill practised this school year with questions
+   answered, time spent, the score they started at and where they are now, plus the student's totals and when they
+   last practised (Croix, 25 Oct 2026: "I have pdfs with this data. Can you utilize it?"). What the Score Grid cannot
+   say: effort (questions, minutes), recency, and practice outside the assigned units. Kept on the class as
+   sec.practice[norm(ixlName)] = { asOf, questions, minutes, last, mastered, proficient, skills: { ID: { q, min, from,
+   to, name, g } } }, matched by the IXL name (the Quickview shows "Hayden Sutter"; the Score Grid "HAYDEN SUTTER"). */
+const MONTHS3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+function parseMins(t) { const m = /(?:(\d+)\s*hr)?\s*(?:(\d+)\s*min)?/.exec(String(t || '')); if (/<\s*1\s*min/.test(t)) return 0; return (Number(m && m[1] || 0) * 60) + Number(m && m[2] || 0); }
+function parseIxlQuickviewPdf(pages) {
+  const flat = pages.flat().map(i => i.s).join(' ').replace(/\s+/g, ' ');
+  if (!/STUDENTS\s+QUICKVIEW/i.test(flat)) return null;
+  const dr = /DATE RANGE:\s*(.*?):\s*([A-Za-z]{3})\w*\.? (\d{1,2})(?:,? (\d{4}))?\s*[-–]\s*([A-Za-z]{3})\w*\.? (\d{1,2})(?:,? (\d{4}))?/.exec(flat);
+  let asOf = todayISO(), range = '';
+  if (dr) { const mo = MONTHS3.indexOf(dr[5].toLowerCase()) + 1; const start = Number(quarters().ends[0].slice(0, 4)); const y = dr[7] ? Number(dr[7]) : (mo >= 7 ? start : start + 1); if (mo) asOf = `${y}-${String(mo).padStart(2, '0')}-${String(Number(dr[6])).padStart(2, '0')}`; range = `${dr[2]} ${dr[3]} to ${dr[5]} ${dr[6]}`; }
+  const students = []; let cur = null;
+  const HEAD = /^(.+?)\s+([\d,]+)\s+questions?\s+((?:\d+\s*hr\s*)?(?:<?\s*\d+\s*min)?)\s*Practiced\s+(today|yesterday|(\d+)\s+days?\s+ago)/i;
+  const ROW = /^(\d(?:st|nd|rd|th))\s*(\([A-Z]+\.?\d*\))?\s+(.+?)\s+([A-Z0-9]{3})\s+(\d+)\s+(<\s*1\s*min|\d+\s*hr(?:\s*\d+\s*min)?|\d+\s*min)\s+(\d+)\s+(\d+)$/;
+  pages.forEach(items => {
+    const its = items.filter(i => i.s && i.s.trim()).map(i => ({ ...i, s: i.s.trim() })).sort((a, b) => b.y - a.y || a.x - b.x);
+    const lines = []; its.forEach(i => { const ln = lines.find(l => Math.abs(l.y - i.y) <= 2.5); if (ln) ln.items.push(i); else lines.push({ y: i.y, items: [i] }); });
+    lines.forEach(ln => { ln.items.sort((a, b) => a.x - b.x); const text = ln.items.map(i => i.s).join(' ').replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ').trim();
+      const h = HEAD.exec(text); if (h) { cur = { name: h[1].trim(), questions: Number(h[2].replace(/,/g, '')), minutes: parseMins(h[3]), days: /today/i.test(h[4]) ? 0 : /yesterday/i.test(h[4]) ? 1 : Number(h[5]), mastered: 0, proficient: 0, rows: [] }; students.push(cur); return; }
+      if (!cur) return;
+      const mp = /(\d+)\s+Mastered\s+(\d+)\s+Proficient/i.exec(text); if (mp) { cur.mastered = Number(mp[1]); cur.proficient = Number(mp[2]); return; }
+      const r = ROW.exec(text); if (r) cur.rows.push({ g: (r[1] + (r[2] ? ' ' + r[2] : '')).trim(), name: r[3].trim(), id: r[4], q: Number(r[5]), min: parseMins(r[6]), from: Number(r[7]), to: Number(r[8]) }); });
+  });
+  return { asOf, range, students, kind: 'quickview' };
+}
+function cleanPractice(o) { const out = {}; const n = v => typeof v === 'number' && isFinite(v) ? v : (Number(v) || 0); const day = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? String(v) : '';
+  if (o && typeof o === 'object') for (const k of Object.keys(o)) { const v = o[k]; if (!SAFE_KEY(k) || !v || typeof v !== 'object') continue; const skills = {};
+    Object.keys(v.skills || {}).slice(0, 300).forEach(id => { const x = v.skills[id]; if (!/^[A-Z0-9]{2,6}$/.test(id) || !x || typeof x !== 'object') return; skills[id] = { q: n(x.q), min: n(x.min), from: n(x.from), to: n(x.to), name: typeof x.name === 'string' ? x.name.slice(0, 100) : '', g: typeof x.g === 'string' ? x.g.slice(0, 16) : '' }; });
+    out[k] = { asOf: day(v.asOf), questions: n(v.questions), minutes: n(v.minutes), last: day(v.last), mastered: n(v.mastered), proficient: n(v.proficient), skills }; }
+  return out; }
+const practiceOf = (sec, ixlName) => (sec.practice || {})[norm(ixlName)] || null;
+function importQuickview(fx, file) {
+  if (!fx.students.length) { toast(`${esc(file)}: no student blocks in this Quickview.`, true, 8000); return; }
+  const secs = state.order.map(k => state.sections[k]).filter(s => s && !s.board && !s.placeholder && s.students.length);
+  const swap = nm => nm.split(/\s+/).length === 2 ? nm.split(/\s+/).reverse().join(' ') : nm;
+  let matched = 0; const unmatched = []; const touched = new Set();
+  fx.students.forEach(st => {
+    const keys = [norm(st.name), norm(swap(st.name))]; let hit = false;
+    secs.forEach(s => { const found = s.students.find(n => keys.includes(norm(n))); if (!found) return; hit = true; touched.add(s.key);
+      const skills = {}; st.rows.forEach(r => { skills[r.id] = { q: r.q, min: r.min, from: r.from, to: r.to, name: r.name, g: r.g }; });
+      const last = (() => { const d = new Date(fx.asOf + 'T12:00:00'); d.setDate(d.getDate() - (st.days || 0)); return localDayOf(d.toISOString()); })();
+      s.practice = s.practice || {}; s.practice[norm(found)] = { asOf: fx.asOf, questions: st.questions, minutes: st.minutes, last, mastered: st.mastered, proficient: st.proficient, skills }; });
+    if (hit) matched++; else unmatched.push(st.name);
+  });
+  save();
+  toast(`IXL Quickview${fx.range ? ` (${esc(fx.range)})` : ''}: ${plural(matched, 'student')} matched by IXL name in ${plural(touched.size, 'class')}: questions, time and when they last practiced, by skill${unmatched.length ? ` · <b>${unmatched.length} not in your classes</b>: ${unmatched.slice(0, 3).map(esc).join('; ')}${unmatched.length > 3 ? '…' : ''}` : ''}.`, false, 10000);
+  render();
+}
+// The practice a student has on an assigned skill (by its permanent ID), if the Quickview knew it.
+function skillPractice(sec, ixlName, k) { const pr = practiceOf(sec, ixlName); const id = sec.skills[k] && sec.skills[k].id; return pr && id && pr.skills[id] ? pr.skills[id] : null; }
+const minsWord = m => m == null ? '' : m < 1 ? '<1 min' : m >= 60 ? `${Math.floor(m / 60)} hr ${m % 60} min` : `${m} min`;
+function practiceSection(sec, name) {
+  const f = findStudent(sec, name); const ixlName = f.ixl != null ? sec.students[f.ixl] : null; const pr = ixlName ? practiceOf(sec, ixlName) : null; if (!pr) return '';
+  const idOf = {}; sec.skills.forEach((sk, k) => { if (sk.id) idOf[sk.id] = k; });
+  const rows = Object.keys(pr.skills).map(id => ({ id, ...pr.skills[id], k: idOf[id] })).sort((a, b) => b.min - a.min || b.q - a.q);
+  const top = rows.slice(0, 12); const idle = ageDays(pr.last);
+  return `<section class="gsec" id="pPractice"><h3>IXL practice <small>this school year, as of ${esc(fmtDate(pr.asOf))}</small></h3>
+    <div class="gcards"><div class="gcard"><small>Answered</small><b>${pr.questions.toLocaleString()}</b><span>questions</span></div><div class="gcard"><small>Time on IXL</small><b>${esc(minsWord(pr.minutes))}</b><span>${pr.mastered || pr.proficient ? `${pr.mastered} mastered · ${pr.proficient} proficient` : 'learning'}</span></div><div class="gcard ${idle >= 7 ? 'warn' : ''}"><small>Last practiced</small><b>${esc(fmtDate(pr.last))}</b><span>${idle === 0 ? 'today' : idle === 1 ? 'yesterday' : plural(idle, 'day') + ' ago'}</span></div></div>
+    ${top.length ? `<table class="ftab prac"><thead><tr><th>Skill</th><th class="num">Questions</th><th class="num">Time</th><th class="num">Score</th></tr></thead><tbody>${top.map(r => `<tr class="${r.k == null ? 'off' : ''}"><td>${esc(r.name)}${r.k == null ? ' <small>not in a unit</small>' : ''}</td><td class="num">${r.q}</td><td class="num">${esc(minsWord(r.min))}</td><td class="num">${r.from && r.from !== r.to ? `<small>${r.from} →</small> ` : ''}<b>${r.to}</b></td></tr>`).join('')}</tbody></table>${rows.length > top.length ? `<p class="ghint">and ${rows.length - top.length} more skills, less time on each</p>` : ''}` : '<p class="ghint">No skills practiced yet.</p>'}</section>`;
+}
+
 /* ---------- Family: contacts, the contact log, and signed reports ----------
    Croix (25 Oct 2026): "a space or a tab or something on the students page for parent contact information … email,
    phone number, relationship to student, contact log, notes about times I've had to contact that I can write in …
@@ -330,7 +395,7 @@ function renderProfile() {
   const wi = openB ? `${qp ? `<section class="gsec" id="pQuick">${quickestCard(qp)}</section>` : ''}<section class="gsec" id="pWhat"><h3>What would move the grade <small>${esc(Q_NAMES[openB.q - 1])}</small></h3>${whatIfMarkup(openB.s, openB.i, retakeStatus(sec, name))}</section>`
     : `<section class="gsec"><h3>What would move the grade</h3><p class="ghint">${anyClosed() ? `${esc(Q_NAMES[cq - 1])} has no gradebook yet: closed quarters don't change, so there's nothing to move until the first ${esc(Q_NAMES[cq - 1])} import.` : 'Import this class\'s Focus gradebook for grades and what-ifs.'}</p></section>`;
 
-  $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}${testsSection(sec, name)}${notesSection(sec, name)}${familySection(sec, name)}</div></div></div>`;
+  $('#gridwrap').innerHTML = `<div class="grades profile">${tiles}<div class="pcols"><div class="pmain">${trends}${assessSec}${asgSecs}</div><div class="pside">${wi}${ixlSec}${practiceSection(sec, name)}${testsSection(sec, name)}${notesSection(sec, name)}${familySection(sec, name)}</div></div></div>`;
   if (openB) wireWhatIf($('#pWhat'), openB.s, openB.i);
   $('#back').onclick = profileLeave;
   const go = d => { const n = list[at + d]; if (n) { view.stu = { key: sec.key, name: n }; render(); } };
