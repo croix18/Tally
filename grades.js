@@ -374,7 +374,7 @@ function studentReportSection(s0, i, ixlRow) {
       ${ixlNow != null && last.ixl != null ? `<span>IXL skills <b>${last.ixl}</b> → <b>${ixlNow}</b> ${delta(last.ixl, ixlNow, true)}</span>` : ''}${stale.length ? `<small class="stale">${stale.join(' and ')} export${stale.length > 1 ? 's' : ''} unchanged since then</small>` : ''}</div>` : '';   /* a first report has nothing to move from, so it carries no box (Croix, 25 Oct 2026) */
   // ---- this week's checklist: the quickest path's steps, each a box to tick ----
   const qp = r ? quickestPath(s0, s, i, ixlRow ? ixlRow.ixl : null) : null;
-  const stepText = x => x.kind === 'nhi' ? `Turn in <b>${esc(x.a.name)}</b> <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small>`
+  const stepText = x => x.kind === 'nhi' ? `${/\bixl\b/i.test(x.a.name) ? `Do the <b>${esc(x.a.name)}</b> skills` : `Turn in <b>${esc(x.a.name)}</b>`} <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small>`
     : x.kind === 'ixl' ? `Pass <b>${plural(x.n, 'more IXL skill')}${x.unit ? ' in ' + esc(x.unit.short) : ''}</b>${x.skills.length ? ` <small>${esc(x.skills.slice(0, 2).map(k => k.name).join(' · '))}${x.skills.length > 2 ? ` and ${x.skills.length - 2} more` : ''}</small>` : ''}`
     : x.kind === 'copy' ? `Your <b>${esc(x.unit ? x.unit.short : x.a.name)} IXL</b> goes into Focus <small>already earned: ${fmtN(x.to)}</small>`
     : x.kind === 'ixlreq' ? `Finish <b>${plural(x.n, 'IXL skill')} in ${esc(x.unit.short)}</b> <small>needed before a retake</small>`
@@ -384,13 +384,19 @@ function studentReportSection(s0, i, ixlRow) {
   const copyNote = copies.length ? `<p class="lead"><small>${copies.map(x => `Your ${esc(x.unit ? x.unit.short : x.a.name)} IXL points (${fmtN(x.to)}) go into Focus at the next grade update.`).join(' ')}</small></p>` : '';
   // With no step for the student, say only what is true (audit, 25 Oct 2026: "Nothing missing and every assessment at
   // full marks" printed for a student with missing work whenever the IXL copy alone reached the next letter).
-  const missWork = missing.filter(a => !/\bixl\b/i.test(a.name)); const belowFull = tests.some(a => a.status[i] === 'score' && Number(a.values[i]) < a.max);
-  const stillMissing = () => `Still missing: ${missWork.slice(0, 3).map(a => `<b>${esc(a.name)}</b>`).join(', ')}${missWork.length > 3 ? ` and ${missWork.length - 3} more` : ''}. Turn ${missWork.length === 1 ? 'it' : 'them'} in this week.`;
-  const steady = () => missWork.length ? `<p class="keep">${stillMissing()}</p>`
+  /* An IXL column Focus marks NHI is a missing assignment too (Croix, 31 Oct 2026: "If ixl is missing, they have a
+     missing assignment"): the report never says nothing is missing while one is, and names it with the rest. */
+  const missWork = missing.filter(a => !/\bixl\b/i.test(a.name));
+  const earnedIxl = a => { if (!ixlRow || ixlRow.ixl == null) return false; const u = gbUnitFor(s, a); return !!u && points(s, u, ixlRow.ixl) >= a.max; };   // every skill done: the points just aren't in Focus yet (the copy note says so)
+  const missIxl = missing.filter(a => /\bixl\b/i.test(a.name) && !earnedIxl(a)); const belowFull = tests.some(a => a.status[i] === 'score' && Number(a.values[i]) < a.max);
+  const stillMissing = () => { const names = [...missWork, ...missIxl]; const todo = [missWork.length ? `turn ${missWork.length === 1 ? 'it' : 'them'} in` : '', missIxl.length ? `do the ${missIxl.length === 1 ? esc(missIxl[0].name) : 'IXL'} skills` : ''].filter(Boolean).join(' and ');
+    return `Still missing: ${names.slice(0, 3).map(a => `<b>${esc(a.name)}</b>`).join(', ')}${names.length > 3 ? ` and ${names.length - 3} more` : ''}. ${todo.charAt(0).toUpperCase() + todo.slice(1)} this week.`; };
+  const steady = () => missWork.length || missIxl.length ? `<p class="keep">${stillMissing()}</p>`
+    : missing.length ? ''   // only an IXL column already earned: the copy note above says so, and "nothing missing" would contradict the tile
     : better.length ? '<p class="keep">Nothing missing.</p>'
     : `<p class="keep">Nothing missing${belowFull ? '' : ' and every assessment at full marks'}: keep going.</p>`;
   const copyOnly = !!(qp && !qp.top && !steps.length && copies.length && qp.reached);
-  const doThis = qp && qp.top ? `<p class="keep">An A already. ${missWork.length ? stillMissing() : 'This week: keep every assignment in on time and the current unit\'s IXL at goal.'}</p>`
+  const doThis = qp && qp.top ? `<p class="keep">An A already. ${missWork.length || missIxl.length ? stillMissing() : 'This week: keep every assignment in on time and the current unit\'s IXL at goal.'}</p>`
     : steps.length ? `<p class="lead">${qp.reached ? `These steps take the grade from ${qp.base.rounded}% to <b>${qp.result.rounded}% ${qp.result.letter}</b>.` : `Missing work, IXL and retakes reach ${qp.result.rounded}%: the next assessments are needed too.`}</p><ol class="todo">${steps.join('')}</ol>${copyNote}`
     : r ? `${copyOnly ? `<p class="lead">Your ${(u => u.length > 1 ? `${u.slice(0, -1).join(', ')} and ${u[u.length - 1]}` : u[0])(copies.map(x => esc(x.unit ? x.unit.short : x.a.name)))} IXL points go into Focus at the next grade update, and that takes the grade to <b>${qp.result.rounded}% ${qp.result.letter}</b>.</p>` : ''}${steady()}` : '';
   // ---- IXL by unit (the names a student can act on; the rest are counted) ----

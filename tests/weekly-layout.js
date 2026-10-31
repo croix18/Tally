@@ -43,6 +43,13 @@ const K = '1205050-7T1A';
   const nhiAt=await p.evaluate(K=>{ const T=window.__tally; const gb=T.state.sections[K].grades; const q=gb.assignments.find(a=>a.name==='Squares and Cubes Quiz'); return q.status.indexOf('missing'); },K);
   const nhiRow=nhiAt>=0 ? (await report(nhiAt)).tq.find(r=>r[0]==='Squares and Cubes Quiz') : null;
   check(nhiRow && nhiRow[1]==='NHI' && nhiRow[2]==='0%','an assessment not handed in reads NHI, 0%: '+JSON.stringify(nhiRow));
+  // an IXL column Focus marks NHI is missing work (Croix, 31 Oct 2026): the report says so, with or without an IXL link
+  const nhiIxl=await p.evaluate(({K,who})=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const i=who.b; const col=gb.assignments.find(a=>/\bixl\b/i.test(a.name)); const keep=[col.status[i],col.values[i]]; col.status[i]='missing'; col.values[i]=null;
+    const d=document.createElement('div'); const txt=x=>x?x.textContent.replace(/\s+/g,' ').trim():'';
+    d.innerHTML=T.studentReportSection(s,i,T.gbRows(s)[i]); const linked={ main:txt(d.querySelector('.panel.main')), tile:txt(([...d.querySelectorAll('.board > div')].find(x=>/Missing assignments/.test(txt(x)))||d).querySelector('b')) };
+    d.innerHTML=T.studentReportSection(s,i,null); const unlinked={ main:txt(d.querySelector('.panel.main')) };
+    col.status[i]=keep[0]; col.values[i]=keep[1]; return { col:col.name, linked, unlinked }; },{K,who});
+  check(nhiIxl.linked.tile==='1' && !/Nothing missing/.test(nhiIxl.linked.main) && !/Nothing missing/.test(nhiIxl.unlinked.main) && new RegExp(`(Still missing: ${nhiIxl.col}\\. Do the ${nhiIxl.col} skills this week\\.|Do the ${nhiIxl.col} skills \\d+ pts)`).test(nhiIxl.unlinked.main) && new RegExp(`(Still missing: ${nhiIxl.col}|IXL skill|${nhiIxl.col} points \\(\\d+\\) go into Focus|${nhiIxl.col} points go into Focus)`).test(nhiIxl.linked.main) && !/Nothing missing/.test(nhiIxl.linked.main),'an NHI IXL column is a missing assignment: the tile counts it and "Do this week" never says nothing is missing: '+JSON.stringify(nhiIxl).slice(0,700));
   // 2. B: an A already, and a retake would still raise it
   const B=await report(who.b);
   check(/An A already/.test(B.main) && /Retake Unit 1 Vocabulary Quiz: a full score takes your grade to 100% A\./.test(B.main) && B.boxes===4 && !/see the box above/.test(B.main),'with an A already, the retake that still raises it is one line with the HOWL days under it: '+B.main.slice(0,200));

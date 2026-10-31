@@ -930,6 +930,14 @@ per-section-file era and many items in them are now done).
     it until a newer Quickview finds someone idle (`state.dismissed`, keyed by class, Quickview day and a hash of who,
     so no name is stored; the newest 100 kept). Undo in the toast.
   `tests/reminders-clear.js` (20 checks); `grades.js` updated (the import's answered question leaves nothing to check).
+- **31 Oct 2026 — An NHI IXL column is missing work.** Croix: "it says no missing assignments, when ixl is missing. If
+  ixl is missing, they have a missing assignment." The tile and the back already counted it; "Do this week" didn't:
+  its words came from the non-IXL missing list, so a student with only an IXL column NHI read "Nothing missing".
+  Now: "Still missing: Unit 2 IXL. Do the Unit 2 IXL skills this week." (with other work: "Turn them in and do the
+  IXL skills"); with no IXL link the plan lists the column whole ("Do the Unit 2 IXL skills · 17 pts"), since Tally
+  can't name its skills; when the student has every skill done and Focus just hasn't been updated, the copy note
+  ("Your Unit 2 IXL points go into Focus at the next grade update") stands alone and nothing says "nothing missing".
+  Retake eligibility is unchanged: an IXL column is judged by its skills. Check in `tests/weekly-layout.js`.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

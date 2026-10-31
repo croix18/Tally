@@ -289,3 +289,5 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   only about unchecked guesses, with "These are right" on the Grades page (a checked guess stays free for a later
   Focus Grade column to prove); the practice line names the student, opens their page and can be dismissed until a
   newer Quickview. New suite `tests/reminders-clear.js` (20 checks).
+
+- 31 Oct 2026: an NHI IXL column is a missing assignment in the weekly report's words (Croix). `weekly-layout.js` +1.

@@ -511,7 +511,9 @@ function quickestPath(sec, s, i, ixlIdx) {
   const copyTo = n => { const c = copies.find(x => x.a.name === n); return c ? c.to : null; };
   const nowOf = a => { const c = copyTo(a.name); return c != null ? c : focusOf(a); };
   const capOf = a => ixlInfo[a.name] ? ixlInfo[a.name].cap : a.max;
-  const nhi = gb.assignments.filter(a => a.max > 0 && a.status && a.status[i] === 'missing' && !ixlCol(a));
+  // an NHI IXL column is missing work (Croix, 31 Oct 2026); with no IXL link Tally can't name its skills, so it is planned
+  // whole, like any assignment to turn in
+  const nhi = gb.assignments.filter(a => a.max > 0 && a.status && a.status[i] === 'missing' && (!ixlCol(a) || ixlIdx == null));
   const ixl = ixlIdx == null ? [] : gb.assignments.filter(a => ixlCol(a) && nowOf(a) < capOf(a));   // no IXL link: Tally can't name the skills, so it doesn't plan them (the retake line says "IXL not linked")
   const over = {}; copies.forEach(c => over[c.a.name] = c.to); const done = new Set(); const ixlPlus = {}; const g = () => computeGrade(s, i, over).rounded;
   let cur = g(); let guard = 0;
@@ -584,7 +586,7 @@ function quickestShort(q) {
 function quickestList(q, forStudent) {
   if (!q || q.top) return '';
   const after = x => `<span class="qafter" title="The grade once this and everything above it is done">→ ${x.after}%</span>`;
-  const items = q.plan.map(x => x.kind === 'nhi' ? `<li>${after(x)}<b>Turn in ${esc(x.a.name)}</b> <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small></li>`
+  const items = q.plan.map(x => x.kind === 'nhi' ? `<li>${after(x)}<b>${/\bixl\b/i.test(x.a.name) ? `Do the ${esc(x.a.name)} skills` : `Turn in ${esc(x.a.name)}`}</b> <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small></li>`
     : x.kind === 'ixl' ? `<li>${after(x)}<b>Pass ${plural(x.n, 'more IXL skill')}${x.unit ? ' in ' + esc(x.unit.short) : ''}</b> <small>${esc(x.a.name)}</small>${x.skills.length ? `<div class="qsk">${x.skills.map(k => `${esc(k.name)} <small>${k.v == null ? 'not started' : 'at ' + k.v}</small>`).join(' · ')}</div>` : ''}</li>`
     : x.kind === 'copy' ? `<li>${after(x)}<b>${forStudent ? `Your ${esc(x.unit ? x.unit.short : x.a.name)} IXL goes into Focus` : `Copy ${esc(x.unit ? x.unit.short : x.a.name)} IXL into Focus`}</b> <small>${forStudent ? 'already earned' : `IXL has ${fmtN(x.to)}, Focus shows ${fmtN(x.from)}`}</small></li>`
     : x.kind === 'ixlreq' ? `<li><span class="qafter none" title="This step opens the retake; it adds no points until Focus has a column for it">no change</span><b>Finish ${plural(x.n, 'IXL skill')} in ${esc(x.unit.short)}</b> <small>${x.full ? `Focus already gives full credit for ${esc(x.unit.short)} IXL` : `${esc(x.unit.short)} IXL isn't in Focus yet`} · needed before a retake</small></li>`
