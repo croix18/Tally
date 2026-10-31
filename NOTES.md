@@ -954,6 +954,14 @@ per-section-file era and many items in them are now done).
     the first step this week? Questions? Message Mr. Shaffer in Focus."
   The signatures and plan box were tightened a little so a three-step front still fits on one page. Checks in
   `tests/weekly-layout.js` (22).
+- **31 Oct 2026 — From a Gemini draft Croix passed on** ("See if it has any worth"), the parts worth keeping: "Start
+  here" skips skills at 0 (a zero is no head start) and lists one per line with the points to goal in a black tag;
+  the at goal / started / not yet key sits in the IXL header, not on a line of its own; dotted leaders join a skill
+  to its score across the two columns, with a rule between them; unit headers are lightly shaded; the plan box's
+  where-boxes stay with their words; the last plan's line has a dashed rule above it; a missing IXL row says "do
+  the IXL skills, listed below". Left out: "—" for an unstarted skill (Croix asked for zeros, 24 Oct), a shaded
+  checkbox for a started skill (reads as half-ticked), grey pills on the "→ 93%" figures, equal-height side-by-side
+  panels (an empty tall box), smaller skill type.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
