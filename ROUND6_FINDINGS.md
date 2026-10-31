@@ -291,3 +291,6 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   newer Quickview. New suite `tests/reminders-clear.js` (20 checks).
 
 - 31 Oct 2026: an NHI IXL column is a missing assignment in the weekly report's words (Croix). `weekly-layout.js` +1.
+
+- 31 Oct 2026: from a review Croix passed on, the four worth doing: the retake tile says "None" when every assessment
+  is full; "Start here" on the back; a structured plan box; a family line above the signatures. `weekly-layout.js` +4.

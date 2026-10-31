@@ -75,11 +75,11 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
     const withCol=new Set(gb.assignments.map(a=>(T.gbUnitFor(s,a)||{}).name).filter(Boolean)); const u=T.unitsOf(s).find(x=>x.num && !withCol.has(x.name)); const i=rows.findIndex(r=>r && r.ixl!=null);
     const keep=gb.assignments.map(a=>[a.values[i],a.status[i]]); const cu=JSON.stringify(T.state.settings.currentUnit||{});
     gb.assignments.forEach(a=>{ a.values[i]=a.max; a.status[i]='score'; }); T.state.settings.currentUnit={ ...(T.state.settings.currentUnit||{}), [s.prep]:u.num };
-    const rt=T.retakeStatus(s,gb.students[i]); const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,rows[i]); const line=(d.querySelector('.rt')||{}).textContent||'';
+    const rt=T.retakeStatus(s,gb.students[i]); const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,rows[i]); const line=(d.querySelector('.rt, .howl')||{}).textContent||'';   // 31 Oct: with every assessment full the report prints no retake line; the words come from the student page below
     T.openProfile(K,gb.students[i]); window.__a5back=()=>{ keep.forEach(([v,st],k)=>{ gb.assignments[k].values[i]=v; gb.assignments[k].status[i]=st; }); T.state.settings.currentUnit=JSON.parse(cu); };
     return { ok:rt.ok, cur:u.short, line:line.replace(/\s+/g,' '), checked:rt.checked.map(x=>x.short) }; },K);
   await p.waitForTimeout(300); a5.tile=await p.evaluate(()=>{ const t=((document.querySelector('#pRetake')||{}).innerText||'').replace(/\s+/g,' '); window.__a5back(); delete window.__a5back; return t; });
-  check(a5.ok && /eligible: nothing missing and Units 1 and 2 IXL at goal\./.test(a5.line) && !a5.line.includes(a5.cur),'the eligible line names the units Focus grades (Units 1 and 2), not '+a5.cur+', which nothing checked: '+a5.line);
+  check(a5.ok && /nothing missing and Units 1 and 2 IXL at goal/.test(a5.tile) && !a5.tile.includes(a5.cur+' IXL'),'the eligible line names the units Focus grades (Units 1 and 2), not '+a5.cur+', which nothing checked: '+a5.tile.slice(0,160));
   check(/Units 1 and 2 IXL at goal/.test(a5.tile) && !a5.tile.includes(a5.cur+' IXL'),'the student page\'s Retake tile says the same: '+a5.tile);
   await p.click('#back').catch(()=>{}); await p.waitForTimeout(200);
   // A10: names hidden with fresh exports: the question is about the names only

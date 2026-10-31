@@ -938,6 +938,22 @@ per-section-file era and many items in them are now done).
   can't name its skills; when the student has every skill done and Focus just hasn't been updated, the copy note
   ("Your Unit 2 IXL points go into Focus at the next grade update") stands alone and nothing says "nothing missing".
   Retake eligibility is unchanged: an IXL column is judged by its skills. Check in `tests/weekly-layout.js`.
+- **31 Oct 2026 — Four things from a review Croix passed on** ("You don't have to follow this review … think about what
+  we can change for the better"; then "All 4 do it"). I took four of its fourteen sections and pushed back on the rest
+  in the chat (the grade audit, the dates, the week-over-week strip and the conditional panels were already built; the
+  per-student "interpretation" paragraph would read as canned and be wrong often enough to cost trust).
+  - **Retake tile:** "None · none needed: every assessment at full marks" when no scored assessment is below full
+    marks (it said "Not yet" over IXL owed, which read as a warning to students with nothing to retake). The
+    "Retakes: not yet…" line in Do this week goes with it; Eligible / Not yet are unchanged for everyone else.
+  - **"Start here" on the back:** the three started skills closest to goal across the open units, each with its score
+    and the points to goal, at the top of the IXL list (`data-keep`, so it stays with the header). The list keeps
+    IXL's order.
+  - **The plan box:** "My plan this week · pick a step from Do this week or Start here on the back", then My goal /
+    My first step / I will have it done by ___ ☐ in class ☐ at home ☐ during HOWL, and the last plan's check as before.
+  - **A line for the family** above the signatures: "Talk about it together: what is going well in math, and what is
+    the first step this week? Questions? Message Mr. Shaffer in Focus."
+  The signatures and plan box were tightened a little so a three-step front still fits on one page. Checks in
+  `tests/weekly-layout.js` (22).
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
