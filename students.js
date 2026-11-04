@@ -321,7 +321,8 @@ function retakeStatus(sec, name) {
   const checked = [];   // the units this check looked at, in gradebook order: the eligible line names these and no others (audit, 25 Oct 2026)
   if (!noIxl && gb) { const seen = new Set();
     gb.assignments.forEach(a => { if (!/\bixl\b/i.test(a.name) || aClosed(a, gb)) return; const u = gbUnitFor(sec, a); if (!u || seen.has(u.name) || unitClosed(sec, u)) return; seen.add(u.name); checked.push(u);
-      const full = a.max > 0 && a.status && a.status[f.gi] === 'score' && Number(a.values[f.gi]) >= a.max; if (full) return;
+      // full credit in Focus, or IXL points enough for it that wait to be copied: the same answer before and after the copy (review, 3 Nov 2026)
+      const full = a.max > 0 && ((a.status && a.status[f.gi] === 'score' && Number(a.values[f.gi]) >= a.max) || points(sec, u, f.ixl) >= a.max); if (full) return;
       const sh = shortIn(u); if (!sh.length) return; if (unit && u.name === unit.name) short = sh; else behind.push({ unit: u, short: sh, col: a.name }); }); }
   if (unit && !noIxl) nUnit = activeFor(sec, unit, f.ixl).length;
   const unitDone = !!(unit && !noIxl && nUnit && !shortIn(unit).length);   // every skill in the unit being worked in at goal, whether or not Focus grades it yet
@@ -338,7 +339,7 @@ function retakeOkWhy(r, forStudent) {
 function retakeWhy(r, forStudent) {
   const parts = [];
   if (r.missing.length) parts.push(forStudent ? `turn in ${plural(r.missing.length, 'missing assignment')}` : `${r.missing.length} missing`);
-  if (r.noIxl) parts.push(forStudent ? 'check your IXL account with your teacher' : 'IXL not linked');
+  if (r.noIxl) parts.push(forStudent ? 'ask your teacher to check your IXL' : 'IXL not linked');
   else { const units = [...(r.short.length ? [{ unit: r.unit, short: r.short }] : []), ...(r.behind || [])];
     units.forEach(x => parts.push(forStudent ? `finish ${plural(x.short.length, 'IXL skill')} in ${x.unit.short}` : `${plural(x.short.length, 'IXL skill')} in ${x.unit.short}`)); }
   return parts.join(forStudent ? ' and ' : ' · ');
@@ -496,18 +497,33 @@ function renderProfile() {
    retakes added (the last one at the lowest score that still works). An IXL step is one skill: one more point in that
    unit's Focus IXL column, and the page names which skills are closest to goal. */
 const NEXT_UP = [[60, 'D'], [70, 'C'], [80, 'B'], [90, 'A']];
-function quickestPath(sec, s, i, ixlIdx) {
-  const base = computeGrade(s, i); if (!base || base.rounded == null) return null;
-  const tgt = NEXT_UP.find(([t]) => base.rounded < t); if (!tgt) return { top: true, base };
-  const [target, letter] = tgt; const gb = s.grades;
-  const ixlCol = a => /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing');
-  // IXL as it really stands (audit, 22 Oct 2026): Tally's points can be ahead of the Focus column (not copied yet) —
-  // that gap is a copy, not student work — and no student is planned more skills than their own list holds.
-  const focusOf = a => a.status[i] === 'missing' ? 0 : (Number(a.values[i]) || 0);
+const ixlColOf = (a, i) => /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing');
+const focusPts = (a, i) => a.status[i] === 'missing' ? 0 : (Number(a.values[i]) || 0);
+/* IXL points Tally has that Focus doesn't yet (audit, 22 Oct 2026): per Focus IXL column, the student's points in that
+   unit's IXL (a point a skill at goal, up to the column's points) when they are more than the Focus cell. The gap is the
+   teacher's copy, not student work. One list for the plan, the report and the check before printing. */
+function pendingCopies(sec, s, i, ixlIdx) {
+  if (ixlIdx == null || !s || !s.grades) return [];
+  return s.grades.assignments.filter(a => ixlColOf(a, i)).map(a => { const u = gbUnitFor(sec, a); const unit = u ? unitsOf(sec).find(x => x.name === u.name) : null; if (!unit) return null;
+    const to = Math.min(a.max, points(sec, unit, ixlIdx)), from = focusPts(a, i); return to > from ? { a, from, to, unit: u } : null; }).filter(Boolean);   // a column Focus already has in full is no copy, whatever IXL has
+}
+// opt.fromCopies (the printed report, 3 Nov 2026): the IXL points waiting to be copied count as in Focus already, so the
+// plan starts from the grade they make, aims at the letter above that, and lists no copy step: the report says once,
+// above the plan, which points go in. The teacher's pages keep the copy as the plan's first step.
+function quickestPath(sec, s, i, ixlIdx, opt) {
+  const focus = computeGrade(s, i); if (!focus || focus.rounded == null) return null;
+  const gb = s.grades; const ixlCol = a => ixlColOf(a, i);
+  // IXL as it really stands: Tally's points can be ahead of the Focus column (a copy), and no student is planned more
+  // skills than their own list holds.
+  const focusOf = a => focusPts(a, i);
   const ixlInfo = {};
   if (ixlIdx != null) gb.assignments.filter(ixlCol).forEach(a => { const u = gbUnitFor(sec, a); const unit = u ? unitsOf(sec).find(x => x.name === u.name) : null; if (!unit) return;
     const tp = points(sec, unit, ixlIdx), n = activeFor(sec, unit, ixlIdx).length; ixlInfo[a.name] = { tp, cap: Math.min(a.max, Math.max(n, focusOf(a))), unit: u }; });
-  const copies = gb.assignments.filter(a => ixlInfo[a.name] && ixlInfo[a.name].tp > focusOf(a)).map(a => ({ a, from: focusOf(a), to: Math.min(a.max, ixlInfo[a.name].tp), unit: ixlInfo[a.name].unit }));
+  const copies = pendingCopies(sec, s, i, ixlIdx);
+  const fromCopies = !!(opt && opt.fromCopies && copies.length);
+  const base = fromCopies ? computeGrade(s, i, Object.fromEntries(copies.map(c => [c.a.name, c.to]))) : focus;
+  const tgt = NEXT_UP.find(([t]) => base.rounded < t); if (!tgt) return { top: true, base, focus, copies };
+  const [target, letter] = tgt;
   const copyTo = n => { const c = copies.find(x => x.a.name === n); return c ? c.to : null; };
   const nowOf = a => { const c = copyTo(a.name); return c != null ? c : focusOf(a); };
   const capOf = a => ixlInfo[a.name] ? ixlInfo[a.name].cap : a.max;
@@ -568,12 +584,12 @@ function quickestPath(sec, s, i, ixlIdx) {
   // (Croix, 7 Oct: the list was in gradebook order, so a +3 worksheet sat above a +7 one and read as the tool's first pick.)
   const pend = [...nhi.filter(a => done.has(a.name)).map(a => ({ kind: 'nhi', a, n: 1, to: a.max })), ...ixlSteps.map(x => ({ kind: 'ixl', a: x.a, n: x.n, to: nowOf(x.a) + x.n, unit: x.unit, skills: x.skills }))];
   const plan = []; const acc = {}; let at = base.pct;
-  copies.forEach(c => { acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ kind: 'copy', a: c.a, n: 0, from: c.from, to: c.to, unit: c.unit, after: r.rounded }); });   // the teacher's copy comes first: it needs no student work
+  copies.forEach(c => { acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; if (!fromCopies) plan.push({ kind: 'copy', a: c.a, n: 0, from: c.from, to: c.to, unit: c.unit, after: r.rounded }); });   // the teacher's copy comes first: it needs no student work (from copies, it is the starting point)
   while (pend.length) { let bi = 0, bv = -Infinity; pend.forEach((c, k) => { acc[c.a.name] = c.to; const v = (computeGrade(s, i, acc).pct - at) / c.n; delete acc[c.a.name]; if (v > bv + 1e-9) { bv = v; bi = k; } });
     const c = pend.splice(bi, 1)[0]; acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ ...c, after: r.rounded }); }
   retakes.forEach(a => { acc[a.name] = over[a.name]; plan.push({ kind: 'retake', a, n: 1, to: over[a.name], after: computeGrade(s, i, acc).rounded }); });
   if (needUnits.length && retakes.length) { needUnits.forEach(nu => { const ri = plan.findIndex(x => x.kind === 'retake'); plan.splice(ri, 0, { kind: 'ixlreq', full: nu.full, a: { name: nu.unit.short + ' IXL', max: nu.n }, n: nu.n, unit: nu.unit, after: ri > 0 ? plan[ri - 1].after : base.rounded, skills: [] }); }); }
-  return { base, target, letter, reached: result.rounded >= target, result, over, plan, retakeBlocked, nhi: plan.filter(x => x.kind === 'nhi').map(x => x.a), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length + (needUnits.length && retakes.length ? needUnits.reduce((x, y) => x + y.n, 0) : 0) };
+  return { base, focus, copies, target, letter, reached: result.rounded >= target, result, over, plan, retakeBlocked, nhi: plan.filter(x => x.kind === 'nhi').map(x => x.a), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length + (needUnits.length && retakes.length ? needUnits.reduce((x, y) => x + y.n, 0) : 0) };
 }
 const anLetter = l => (/^[AF]/.test(l) ? 'an ' : 'a ') + l;
 // One line for the Students list: "2 missing + 3 IXL skills → C".

@@ -36,7 +36,7 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
       back(); }
     return null; },K);
   const a1t=a1?a1.txt:'';
-  check(a1 && /Still missing: 2\.03 Worksheet\. Turn it in this week\./.test(a1t) && !/Nothing missing/.test(a1t) && /Your Unit 2 IXL points go into Focus at the next grade update, and that takes the grade to \d+% [A-D]\./.test(a1t),'a plan the IXL copy alone completes still names the missing work: '+(a1t.match(/DO THIS WEEK.{0,260}/i)||[''])[0]);
+  check(a1 && /Still missing: 2\.03 Worksheet\. Turn it in this week\./.test(a1t) && !/Nothing missing/.test(a1t) && /Your IXL points go into Focus at the next grade update: Unit 2 IXL \((all \d+ points|\d+ of \d+ points so far)\) → \d+% [A-D]\./.test(a1t),'a plan the IXL copy alone completes still names the missing work: '+(a1t.match(/DO THIS WEEK.{0,260}/i)||[''])[0]);
   // A2: the tests-and-quizzes figure counts an NHI as 0, as the student page does (since 25 Oct it heads the Tests &
   // quizzes panel; the tile that said "5 gradeds" is gone, so A7 went with it)
   const a2=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s); const quiz=gb.assignments.find(a=>a.name==='Squares and Cubes Quiz'); const i=quiz.status.indexOf('missing');

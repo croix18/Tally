@@ -62,6 +62,9 @@ const round = p => Math.round(p + 1e-9);
   // ---- 4. retake eligibility: no NHI, and the current unit's IXL all at goal ---------------------------------------------
   // set the course to Unit 1 and shape three students: eligible; missing work only; IXL short only
   const shaped=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; T.state.settings.currentUnit={...(T.state.settings.currentUnit||{}),[s.prep]:1}; T.state.settings.curUnitTouched={...(T.state.settings.curUnitTouched||{}),[s.prep]:true}; const gb=s.grades; const names=gb.students; const t=s.threshold;
+    // Unit 1 set up for Focus, as the Focus check asks (its total = the Focus column's points). Left with more skills than
+    // the column counts, IXL points enough for full credit are full credit (3 Nov 2026), and C below would not be short.
+    { const u=T.unitsOf(s).find(u=>u.num===1); const col=gb.assignments.find(a=>/\bixl\b/i.test(a.name)&&(T.gbUnitFor(s,a)||{}).name===u.name); if (col && u.active.length>col.max) u.active.slice(col.max).forEach(k=>{ s.excluded[T.skillKey(s.skills[k])]=true; }); }
     const u1=T.unitsOf(s).find(u=>u.num===1); const pick=[]; names.forEach((nm,i)=>{ const f=T.findStudent(s,nm); if (f.ixl==null || f.gi<0) return; pick.push({nm,i,ixl:f.ixl}); });
     const setAll=(ixl,ok)=>{ u1.active.forEach(k=>{ s.scores[k][ixl]=ok?Math.max(t,s.scores[k][ixl]||0):Math.min(t-1,s.scores[k][ixl]==null?t-5:s.scores[k][ixl]); }); if (s.best) u1.active.forEach(k=>{ const b=s.best[T.skillKey(s.skills[k])]; if (b) delete b[T.ixlKeyAt(s,ixl)]; }); };
     const clearMissing=i=>gb.assignments.forEach(a=>{ if (a.status&&a.status[i]==='missing'){ a.status[i]='score'; a.values[i]=a.max; } });
@@ -95,7 +98,7 @@ const round = p => Math.round(p + 1e-9);
   const line=await p.evaluate(()=>(document.querySelector('#show .rtLine')||{textContent:''}).textContent); check(new RegExp('^To retake: finish 2 IXL skills in '+shaped.unit+'\\.$').test(line.trim()),'Show student tells the student what to do first: "'+line.trim()+'"');
   await p.reload(); await p.waitForTimeout(600);
   const rep=await p.evaluate(({K,nm})=>{ const T=window.__tally; const s=T.state.sections[K]; const i=s.grades.students.indexOf(nm); return T.studentReportSection(s,i,null); },{K,nm:shaped.B});
-  check(/Retakes:<\/b> not yet\. To retake: turn in 1 missing assignment\./.test(rep),'the printed report carries the same line');
+  check(rep.includes('Retakes:</b> not yet. To retake: turn in '+shaped.mB+'.'),'the printed report carries the same line, naming the work (3 Nov 2026)');
   check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();
 })();

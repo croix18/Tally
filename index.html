@@ -1270,8 +1270,9 @@ const courseWord = prep => prep === 'acc' ? 'accelerated' : 'on-level';
 
 /* ---------- what-ifs ---------- */
 // Minimum points out of `max` on a NEW assignment in `cat` to reach `target` percent (rounded), or null if impossible.
-function neededOn(sec, i, cat, max, target) {
-  const g = gradingFor(sec.prep); const base = computeGrade(sec, i); if (!base) return null;
+// `over` (optional) replaces cells first, as in computeGrade: the report starts from the grade with the IXL points in.
+function neededOn(sec, i, cat, max, target, over) {
+  const g = gradingFor(sec.prep); const base = computeGrade(sec, i, over); if (!base) return null;
   const c = base.cats[cat] || { earned: 0, possible: 0, w: (g.cats.find(x => x.name === cat) || {}).w || 0 };
   const grade = pts => { let tw = 0, tot = 0; for (const k in base.cats) { const x = base.cats[k]; const e = k === cat ? x.earned + pts : x.earned, p = k === cat ? x.possible + max : x.possible; if (p > 0) { tw += x.w; tot += x.w * e / p * 100; } } if (!(cat in base.cats) && c.w) { tw += c.w; tot += c.w * pts / max * 100; } return tw ? tot / tw : null; };
   if (roundPct(grade(max)) < target) return null;
@@ -1480,110 +1481,157 @@ table{border-collapse:collapse;width:100%}td,th{padding:1.5px 6px;text-align:lef
 .wk .pledge{margin-top:8px;border:1.5px solid #000;border-radius:6px;padding:7px 10px 8px;display:block;break-inside:avoid;page-break-inside:avoid}.wk .pledge>b{display:inline-block;margin-bottom:3px}.wk .lines{display:block}.wk .lines .pl{display:flex;align-items:flex-end;gap:8px;height:22px}.wk .lines .pl>span:first-child{flex:none;font-size:9pt;padding-bottom:2px}.wk .lines .pl i{flex:1;display:block;border-bottom:1px solid #000;height:20px}.wk .lines .pl i.short{flex:0 0 1.4in}.wk .lines .where{flex:none;display:flex;gap:4px 10px;align-items:center;font-size:9pt;padding:0 0 2px 10px}.wk .lines .where>span{display:inline-flex;align-items:center;gap:4px}.wk .lines .where .box{margin:0}.wk .pledge>b+small{color:#333;font-size:8.5pt}.wk .lastplan{display:flex;align-items:center;gap:5px;margin-top:7px;padding-top:5px;border-top:1px dashed #bbb;font-size:9.5pt}.wk .lastplan b{margin-right:8px}.wk .lastplan .box{margin:0 2px 0 6px}
 .wk .sigs .talk{margin:0 0 2px;font-size:9pt;border-top:1px solid #999;padding-top:5px}.wk .start{margin:3px 0 4px;font-size:9pt;padding:3px 8px 4px;background:#f2f2f2;border:1px solid #bbb;border-left:3px solid #000;border-radius:4px}.wk .start>b{display:block;font-size:8pt;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}.wk .start .si{display:flex;align-items:baseline;gap:6px;padding:1px 0}.wk .start em{font-style:normal;font-weight:900;font-size:7.5pt;background:#000;color:#fff;border-radius:3px;padding:0 5px;white-space:nowrap;flex:none}.wk .start small{color:#444}.wk .sigs{padding-top:8px;break-inside:avoid;page-break-inside:avoid}.wk .sigs .sr{display:flex;gap:28px}.wk .sigs .sr+.sr{margin-top:10px}.wk .sigs .f{flex:1;min-width:0}.wk .sigs .f.d{flex:0 0 1.7in}.wk .sigs i{display:block;height:28px;border-bottom:1px solid #000}.wk .sigs small{display:block;font-size:8.5pt;color:#333;margin-top:2px}
 .wk .panel.next .ntd{font-size:12pt;font-weight:900;margin:2px 0 0}.wk .panel.next .ntu{margin:1px 0 1px}
+.wk .gl{display:flex;align-items:center;gap:8px}.wk .withixl{margin:0 0 3px;font-size:8pt;line-height:1.2;max-width:100px}.wk .withixl b{white-space:nowrap}.sk .sid{font-size:7.5pt;color:#555;letter-spacing:.03em;white-space:nowrap}.wk .panel.miss tr.done td{color:#333}.wk .panel.miss tr.done td:first-child{padding-left:25px}
 .wk .tq{margin:0 0 1px}.wk .tq td{padding:2.5px 0;font-size:9pt;border-bottom:1px solid #ddd;vertical-align:baseline}.wk .tq tr:last-child td{border-bottom:none}.wk .tq td.sc,.wk .tq td.pc{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.wk .tq td.sc{padding-left:10px}.wk .tq td.pc{width:3.4em}
 .teach .ret{margin-top:10px}.teach .ret th{font-size:8pt;padding:3px 6px;border-bottom:1.5px solid #000}.teach .ret td{padding:4px 6px;font-size:9.5pt;border-bottom:1px solid #bbb;height:20px}.teach .ret td.c,.teach .ret th.c{text-align:center;width:70px}.teach .ret td:nth-child(2){white-space:nowrap}.teach .ret td.w{min-width:80px}.teach .ret td:last-child{width:120px}.teach .ret .box{margin:0;width:13px;height:13px}\n.bar{position:fixed;bottom:14px;right:14px;z-index:10;padding:6px;background:#fff;border-radius:8px;box-shadow:0 1px 8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px}.bar button{font:inherit;padding:8px 18px}.bar .hint{font-size:9pt;color:#333;padding-left:6px}@media print{.bar{display:none}}`;
 // What one next assessment of `mx` points can do for student i — only what is computed: for each letter above the
 // current grade (a D counts), the score that reaches it or the fact that none does; and the score that keeps the
 // current letter. The report, the student page and Show student all word their sentence from this.
-function nextAssessment(s, i, mx) {
-  const r = computeGrade(s, i); const cur = r && r.rounded != null ? r.rounded : null; if (cur == null) return { cur: null, can: [], cant: [], keep: null };
-  const reach = [[90, 'an A'], [80, 'a B'], [70, 'a C'], [60, 'a D']].filter(([t]) => cur < t).map(([t, w]) => ({ w, n: neededOn(s, i, 'Assessments', mx, t) }));
-  const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : cur >= 70 ? 70 : cur >= 60 ? 60 : null; const kn = floor == null ? null : neededOn(s, i, 'Assessments', mx, floor);
+function nextAssessment(s, i, mx, over) {
+  const r = computeGrade(s, i, over); const cur = r && r.rounded != null ? r.rounded : null; if (cur == null) return { cur: null, can: [], cant: [], keep: null };
+  const reach = [[90, 'an A'], [80, 'a B'], [70, 'a C'], [60, 'a D']].filter(([t]) => cur < t).map(([t, w]) => ({ w, n: neededOn(s, i, 'Assessments', mx, t, over) }));
+  const floor = cur >= 90 ? 90 : cur >= 80 ? 80 : cur >= 70 ? 70 : cur >= 60 ? 60 : null; const kn = floor == null ? null : neededOn(s, i, 'Assessments', mx, floor, over);
   return { cur, can: reach.filter(x => x.n != null), cant: reach.filter(x => x.n == null).map(x => x.w), keep: kn == null ? null : { n: kn, letter: floor === 90 ? 'A' : floor === 80 ? 'B' : floor === 70 ? 'C' : 'D' } };
 }
+/* What a student still owes: one count everywhere on the report and its log (review of 3 Nov 2026: the tile, "Still
+   missing" and the retake line counted three ways). Every assignment Focus marks NHI, except an IXL column whose skills
+   are all at goal in IXL: that one is done, and its points wait for the teacher to copy them into Focus. */
+function owedWork(s0, s, i, ixlIdx) {
+  const missing = s.grades.assignments.filter(a => a.status && a.status[i] === 'missing');
+  const done = a => { if (ixlIdx == null || !/\bixl\b/i.test(a.name) || !(a.max > 0)) return false; const u = gbUnitFor(s0, a); const unit = u ? unitsOf(s0).find(x => x.name === u.name) : null; return !!unit && points(s0, unit, ixlIdx) >= a.max; };
+  return { owed: missing.filter(a => !done(a)), earned: missing.filter(done) };
+}
+const andList = xs => xs.length > 2 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs.join(' and ');
 function studentReportSection(s0, i, ixlRow) {
   const s = openSec(s0);   // a closed quarter's work can't move the grade any more, so the report is about the open one
   const gb = s.grades; const g = gradingFor(s.prep); const name = gb.students[i]; const r0 = computeGrade(s, i); const r = r0 && r0.rounded != null ? r0 : null;   // nothing graded yet → no grade line, no targets
-  const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing'); const allIn = {}; missing.filter(a => !/\bixl\b/i.test(a.name)).forEach(a => allIn[a.name] = a.max);
-  const ixlCols = gb.assignments.filter(a => /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && (a.values[i] == null || a.values[i] < a.max));
-  const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
+  const ixlIdx = ixlRow && ixlRow.ixl != null ? ixlRow.ixl : null; const isIxl = a => /\bixl\b/i.test(a.name);
+  const teacher = state.settings.teacherName || 'your math teacher';
+  /* One baseline (review of 3 Nov 2026; Croix: "Fix all ten"). IXL points Tally has that Focus doesn't yet go in at the
+     next grade update, so every number on the page that looks ahead (the plan, what would move the grade, the next
+     assessment, a retake, each missing assignment) starts from the grade they make. The big grade stays Focus's; the
+     line under it and the first line of "Do this week" say which points go in. (Before, "Turn in the quiz" read → 86%
+     in the plan and → 82% in the table beside it.) */
+  const copies = r ? pendingCopies(s0, s, i, ixlIdx) : []; const pend = {}; copies.forEach(c => pend[c.a.name] = c.to);
+  const gw = over => computeGrade(s, i, { ...pend, ...(over || {}) });
+  const b0 = r && copies.length ? gw() : r;   // the grade every projection starts from
+  const withIxl = !!(r && copies.length && b0.rounded !== r.rounded);
+  const { owed, earned } = owedWork(s0, s, i, ixlIdx);
+  const missWork = owed.filter(a => !isIxl(a)), missIxl = owed.filter(isIxl); const allIn = {}; missWork.forEach(a => allIn[a.name] = a.max);
+  const owedPts = owed.reduce((n, a) => n + Math.max(0, (a.max || 0) - (pend[a.name] || 0)), 0);   // a column part done in IXL waits for the rest only
+  const madeUp = a => looksLikeTest(a.name);   // a quiz or test not taken is made up, not turned in
+  const ixlCols = gb.assignments.filter(a => ixlColOf(a, i) && (a.name in pend ? pend[a.name] : focusPts(a, i)) < a.max);
+  const sizes = {}; gb.assignments.filter(a => catOf(s.prep, a.name) === 'Assessments' && !isIxl(a) && a.max).forEach(a => sizes[a.max] = (sizes[a.max] || 0) + 1);
   const nextMax = Number(Object.keys(sizes).sort((a, b) => sizes[b] - sizes[a] || b - a)[0] || 20);
-  const na = nextAssessment(s, i, nextMax);
+  const na = nextAssessment(s, i, nextMax, pend);
   const nextLine = [na.can.map(x => `${x.n}/${nextMax} for ${x.w}`).join(' · '),
     na.cant.length ? (na.can.length ? `${na.cant.join(' or ')} would take more than one assessment` : `one assessment alone won't reach ${na.cant[na.cant.length - 1]}`) : '',
     na.keep ? `${na.keep.n === 0 ? 'even a 0' : na.keep.n + '/' + nextMax} keeps the ${na.keep.letter}` : ''].filter(Boolean).join(' · ');
   const arrow = x => x && x.rounded != null ? `→ ${x.rounded}% ${x.letter}` : '';
   const rt = r ? retakeStatus(s0, name) : null;
-  const tests = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
-  const retakeable = () => tests.filter(a => a.status[i] === 'score' && a.values[i] < a.max).map(a => ({ a, g: computeGrade(s, i, { [a.name]: a.max }) })).filter(x => x.g && x.g.rounded != null && r && x.g.rounded > r.rounded).sort((x, y) => y.g.rounded - x.g.rounded);
+  const tests = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && !isIxl(a) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
+  const retakeable = () => tests.filter(a => a.status[i] === 'score' && a.values[i] < a.max).map(a => ({ a, g: gw({ [a.name]: a.max }) })).filter(x => x.g && x.g.rounded != null && b0 && x.g.rounded > b0.rounded).sort((x, y) => y.g.rounded - x.g.rounded);
   const better = rt && rt.ok ? retakeable() : [];
+  const names = xs => { const n = xs.map(a => esc(a.name)); return n.length > 3 ? `${n.slice(0, 2).join(', ')} and ${n.length - 2} more` : andList(n); };
   // ---- since the last report: what moved (the log is written when a report prints) ----
   // A report is the week's (logReport keeps one per school week), so a reprint in the same week moves from the same
   // report the first print did: last week's. A report from an earlier quarter is not the one to move from.
   const thisWeek = weekOf(localDay(new Date().toISOString())); const q = liveQuarter(s0); const log = ((s0.reportLog || {})[norm(name)] || []).filter(e => weekOf(e.date) < thisWeek && (e.q == null || e.q === q)); const last = log[log.length - 1] || null;
   const gbAt = gb.exportedAt || gb.importedAt || '';   // when Focus wrote the file (its date on disk), else when it came into Tally
   const stale = last ? [(last.gbAt ? last.gbAt === gbAt : last.gb && last.gb === (localDayOf(gb.importedAt) || '')) ? 'Focus' : '', last.ix && last.ix === (dataDate(s) || '') ? 'IXL' : ''].filter(Boolean) : [];
-  const ixlNow = ixlRow && ixlRow.ixl != null ? unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)).reduce((n, u) => n + points(s, u, ixlRow.ixl), 0) : null;
+  const ixlNow = ixlIdx != null ? unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)).reduce((n, u) => n + points(s, u, ixlIdx), 0) : null;
   const delta = (a, b, up) => a == null || b == null ? '' : b === a ? '<span class="same">same</span>' : `<span class="${(b > a) === up ? 'up' : 'down'}">${b > a ? '+' : '−'}${Math.abs(b - a)}</span>`;
   const since = last ? `<div class="since"><b>Since the last report <small>${esc(fmtDate(last.date))}</small></b>
-      <span>Grade <b>${last.grade != null ? last.grade + '%' : '—'}</b> → <b>${r ? r.rounded + '%' : '—'}</b> ${delta(last.grade, r ? r.rounded : null, true)}</span>
-      <span>Missing <b>${last.missing}</b> → <b>${missing.length}</b> ${delta(last.missing, missing.length, false)}</span>
+      <span>Grade <b>${last.grade != null ? last.grade + '%' : '—'}</b> → <b>${r ? r.rounded + '%' : '—'}</b> ${delta(last.grade, r ? r.rounded : null, true)}${withIxl ? ` <small>(${b0.rounded}% with IXL)</small>` : ''}</span>
+      <span>Missing <b>${last.missing}</b> → <b>${owed.length}</b> ${delta(last.missing, owed.length, false)}</span>
       ${ixlNow != null && last.ixl != null ? `<span>IXL skills <b>${last.ixl}</b> → <b>${ixlNow}</b> ${delta(last.ixl, ixlNow, true)}</span>` : ''}${stale.length ? `<small class="stale">${stale.join(' and ')} export${stale.length > 1 ? 's' : ''} unchanged since then</small>` : ''}</div>` : '';   /* a first report has nothing to move from, so it carries no box (Croix, 25 Oct 2026) */
   // ---- this week's checklist: the quickest path's steps, each a box to tick ----
-  const qp = r ? quickestPath(s0, s, i, ixlRow ? ixlRow.ixl : null) : null;
-  const stepText = x => x.kind === 'nhi' ? `${/\bixl\b/i.test(x.a.name) ? `Do the <b>${esc(x.a.name)}</b> skills` : `Turn in <b>${esc(x.a.name)}</b>`} <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small>`
+  const qp = r ? quickestPath(s0, s, i, ixlIdx, { fromCopies: true }) : null;
+  const stepText = x => x.kind === 'nhi' ? `${isIxl(x.a) ? `Do the <b>${esc(x.a.name)}</b> skills` : `${madeUp(x.a) ? 'Make up' : 'Turn in'} <b>${esc(x.a.name)}</b>`} <small>${x.a.max} pts${x.a.due ? ' · was due ' + esc(x.a.due) : ''}</small>`
     : x.kind === 'ixl' ? `Pass <b>${plural(x.n, 'more IXL skill')}${x.unit ? ' in ' + esc(x.unit.short) : ''}</b>${x.skills.length ? ` <small>${esc(x.skills.slice(0, 2).map(k => k.name).join(' · '))}${x.skills.length > 2 ? ` and ${x.skills.length - 2} more` : ''}</small>` : ''}`
-    : x.kind === 'copy' ? `Your <b>${esc(x.unit ? x.unit.short : x.a.name)} IXL</b> goes into Focus <small>already earned: ${fmtN(x.to)}</small>`
     : x.kind === 'ixlreq' ? `Finish <b>${plural(x.n, 'IXL skill')} in ${esc(x.unit.short)}</b> <small>needed before a retake</small>`
     : (() => { const full = computeGrade(s, i, { ...qp.over, [x.a.name]: x.a.max }); return `Retake <b>${esc(x.a.name)}</b> <small>score at least ${fmtN(x.to)} / ${x.a.max}${x.first ? '' : ', once everything above is done'}${full && full.rounded != null && full.rounded > x.after ? ` · a full score: ${full.rounded}% ${full.letter}` : ''}</small>`; })();
   const steps = qp && !qp.top ? qp.plan.filter(x => x.kind !== 'copy').map((x, k) => `<li><span class="box"></span><span class="st">${stepText({ ...x, first: k === 0 })}</span><span class="aft">${x.kind === 'ixlreq' ? '' : `→ ${x.after}%`}</span></li>`) : [];
-  const copies = qp && !qp.top ? qp.plan.filter(x => x.kind === 'copy') : [];   // the teacher's step, not a box for the student (audit, 24 Oct)
-  const copyNote = copies.length ? `<p class="lead"><small>${copies.map(x => `Your ${esc(x.unit ? x.unit.short : x.a.name)} IXL points (${fmtN(x.to)}) go into Focus at the next grade update.`).join(' ')}</small></p>` : '';
-  // With no step for the student, say only what is true (audit, 25 Oct 2026: "Nothing missing and every assessment at
-  // full marks" printed for a student with missing work whenever the IXL copy alone reached the next letter).
-  /* An IXL column Focus marks NHI is a missing assignment too (Croix, 31 Oct 2026: "If ixl is missing, they have a
-     missing assignment"): the report never says nothing is missing while one is, and names it with the rest. */
-  const missWork = missing.filter(a => !/\bixl\b/i.test(a.name));
-  const earnedIxl = a => { if (!ixlRow || ixlRow.ixl == null) return false; const u = gbUnitFor(s, a); return !!u && points(s, u, ixlRow.ixl) >= a.max; };   // every skill done: the points just aren't in Focus yet (the copy note says so)
-  const missIxl = missing.filter(a => /\bixl\b/i.test(a.name) && !earnedIxl(a)); const belowFull = tests.some(a => a.status[i] === 'score' && Number(a.values[i]) < a.max);
-  const stillMissing = () => { const names = [...missWork, ...missIxl]; const todo = [missWork.length ? `turn ${missWork.length === 1 ? 'it' : 'them'} in` : '', missIxl.length ? `do the ${missIxl.length === 1 ? esc(missIxl[0].name) : 'IXL'} skills` : ''].filter(Boolean).join(' and ');
-    return `Still missing: ${names.slice(0, 3).map(a => `<b>${esc(a.name)}</b>`).join(', ')}${names.length > 3 ? ` and ${names.length - 3} more` : ''}. ${todo.charAt(0).toUpperCase() + todo.slice(1)} this week.`; };
-  const steady = () => missWork.length || missIxl.length ? `<p class="keep">${stillMissing()}</p>`
-    : missing.length ? ''   // only an IXL column already earned: the copy note above says so, and "nothing missing" would contradict the tile
+  // The points waiting to be copied, said once, first: the teacher's step, not a box for the student (audit, 24 Oct). A
+  // column part done in IXL says so (review, 3 Nov 2026: "Your Unit 3 IXL points go into Focus" read as finished at 1 of 17).
+  const copyLine = copies.length ? `<p class="lead">Your IXL points go into Focus at the next grade update: ${andList(copies.map(c => `<b>${esc(c.a.name)}</b> (${c.to >= c.a.max ? `all ${fmtN(c.a.max)} points` : `${fmtN(c.to)} of ${fmtN(c.a.max)} points so far`})`))}${withIxl ? ` <b>→ ${b0.rounded}% ${b0.letter}</b>` : ''}.</p>` : '';
+  /* With no step for the student, say only what is true (audit, 25 Oct 2026). An IXL column Focus marks NHI is a missing
+     assignment too (Croix, 31 Oct 2026: "If ixl is missing, they have a missing assignment"), unless every skill in it
+     is done in IXL: then only the copy is left, and the page says so. */
+  const belowFull = tests.some(a => a.status[i] === 'score' && Number(a.values[i]) < a.max);
+  const stillMissing = () => { const all = [...missWork, ...missIxl]; const tIn = missWork.filter(a => !madeUp(a)), mUp = missWork.filter(madeUp);
+    const one = [tIn, mUp, missIxl].filter(x => x.length).length === 1;
+    const todo = andList([tIn.length ? (one ? `turn ${tIn.length === 1 ? 'it' : 'them'} in` : `turn in ${tIn.length === 1 ? esc(tIn[0].name) : 'the work'}`) : '',
+      mUp.length ? (one ? `make ${mUp.length === 1 ? 'it' : 'them'} up` : `make up ${mUp.length === 1 ? esc(mUp[0].name) : 'the quizzes and tests'}`) : '',
+      missIxl.length ? `do the ${missIxl.length === 1 ? esc(missIxl[0].name) : 'IXL'} skills` : ''].filter(Boolean));
+    const list = all.map(a => `<b>${esc(a.name)}</b>`);
+    return `Still missing: ${list.length > 3 ? `${list.slice(0, 3).join(', ')} and ${list.length - 3} more` : andList(list)}. ${todo.charAt(0).toUpperCase() + todo.slice(1)} this week.`; };
+  const steady = () => owed.length ? `<p class="keep">${stillMissing()}</p>`
     : better.length ? '<p class="keep">Nothing missing.</p>'
     : `<p class="keep">Nothing missing${belowFull ? '' : ' and every assessment at full marks'}: keep going.</p>`;
-  const copyOnly = !!(qp && !qp.top && !steps.length && copies.length && qp.reached);
-  const doThis = qp && qp.top ? `<p class="keep">An A already. ${missWork.length || missIxl.length ? stillMissing() : 'This week: keep every assignment in on time and the current unit\'s IXL at goal.'}</p>`
-    : steps.length ? `<p class="lead">${qp.reached ? `These steps take the grade from ${qp.base.rounded}% to <b>${qp.result.rounded}% ${qp.result.letter}</b>.` : `Missing work, IXL and retakes reach ${qp.result.rounded}%: the next assessments are needed too.`}</p><ol class="todo">${steps.join('')}</ol>${copyNote}`
-    : r ? `${copyOnly ? `<p class="lead">Your ${(u => u.length > 1 ? `${u.slice(0, -1).join(', ')} and ${u[u.length - 1]}` : u[0])(copies.map(x => esc(x.unit ? x.unit.short : x.a.name)))} IXL points go into Focus at the next grade update, and that takes the grade to <b>${qp.result.rounded}% ${qp.result.letter}</b>.</p>` : ''}${steady()}` : '';
+  const doThis = !r ? '' : qp && qp.top ? `${copyLine}<p class="keep">${withIxl ? '' : 'An A already. '}${owed.length ? stillMissing() : 'This week: keep every assignment in on time and the current unit\'s IXL at goal.'}</p>`
+    : steps.length ? `${copyLine}<p class="lead">${qp.reached ? `These steps take the grade from ${qp.base.rounded}% to <b>${qp.result.rounded}% ${qp.result.letter}</b>.` : `Missing work, IXL and retakes reach ${qp.result.rounded}%: the next assessments are needed too.`}</p><ol class="todo">${steps.join('')}</ol>`
+    : `${copyLine}${steady()}`;
   // ---- IXL by unit (the names a student can act on; the rest are counted) ----
-  const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const t = s.threshold; let ixl = '';
-  if (ixlRow && ixlRow.ixl != null) {
+  const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const t = s.threshold; let ixl = '', startHere = '', ixlOwedN = 0;
+  const sid = k => s.skills[k].id ? ` <small class="sid">${esc(s.skills[k].id)}</small>` : '';   // IXL's skill ID: two skills can share a name (review, 3 Nov 2026)
+  if (ixlIdx != null) {
     /* Every skill still owed, by unit, each with the student's SmartScore in parentheses, 0 when not begun (Croix,
        24 Oct 2026: "list them all out more neatly and put what the student currently has on it in parentheses …
        If a student has zero put zero next to each one … you are not limited to one page per student"). The unit's
        bar shows at goal / started / not started at a glance; the list is in IXL's order, two columns, and may run
        onto a second page. Skills at goal are not listed: they are not owed. */
-    const per = units.map(u => { const own = activeFor(s, u, ixlRow.ixl); const p = points(s, u, ixlRow.ixl); const n = own.length || 1;
-      const owed = own.filter(k => { const v = eff(s, k, ixlRow.ixl); return v == null || v < t; }); const started = owed.filter(k => eff(s, k, ixlRow.ixl) != null);
+    const per = units.map(u => { const own = activeFor(s, u, ixlIdx); const p = points(s, u, ixlIdx); const n = own.length || 1;
+      const owedSk = own.filter(k => { const v = eff(s, k, ixlIdx); return v == null || v < t; }); const started = owedSk.filter(k => eff(s, k, ixlIdx) != null); ixlOwedN += owedSk.length;
       const atPct = Math.round(p / n * 100), stPct = Math.round(started.length / n * 100);
-      return `<div class="u${owed.length > 14 ? ' long' : ''}"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}${u.current ? ' <em>now</em>' : ''}</span><span class="pb"><i class="at" style="width:${atPct}%"></i><i class="st" style="width:${stPct}%"></i></span><b>${p} / ${own.length}</b></div>
-        ${owed.length ? `<div class="sks" data-items>${owed.map(k => { const v = eff(s, k, ixlRow.ixl); return `<div class="sk"><span class="box"></span><span class="nm">${esc(s.skills[k].name)}</span> <b class="${v == null ? 'zero' : ''}">(${v == null ? 0 : v})</b></div>`; }).join('')}</div>` : `<div class="l"><span class="done">All ${own.length} skills at goal</span></div>`}</div>`; }).join('');
+      return `<div class="u${owedSk.length > 14 ? ' long' : ''}"><div class="uh"><span><b>${esc(u.short)}</b> ${esc(u.title)}${u.current ? ' <em>now</em>' : ''}</span><span class="pb"><i class="at" style="width:${atPct}%"></i><i class="st" style="width:${stPct}%"></i></span><b>${p} / ${own.length}</b></div>
+        ${owedSk.length ? `<div class="sks" data-items>${owedSk.map(k => { const v = eff(s, k, ixlIdx); return `<div class="sk"><span class="box"></span><span class="nm"><span>${esc(s.skills[k].name)}${sid(k)}</span></span> <b class="${v == null ? 'zero' : ''}">(${v == null ? 0 : v})</b></div>`; }).join('')}</div>` : `<div class="l"><span class="done">All ${own.length} skills at goal</span></div>`}</div>`; }).join('');
     // "Start here": the three started skills closest to goal, across the open units (31 Oct 2026: a first step a student
-    // can finish, instead of a page of equal boxes). The list below keeps IXL's order.
-    const near = units.flatMap(u => activeFor(s, u, ixlRow.ixl).map(k => ({ k, u, v: eff(s, k, ixlRow.ixl) }))).filter(x => x.v > 0 && x.v < t).sort((a, b) => b.v - a.v).slice(0, 3);   // a score of 0 is no head start
-    const startHere = near.length ? `<div class="start" data-keep><b>Start here</b>${near.map(x => `<div class="si"><em>${t - x.v} from goal</em><span>${esc(s.skills[x.k].name)} <small>${esc(x.u.short)} · at ${x.v}</small></span></div>`).join('')}</div>` : '';
-    ixl = `<div class="panel ixl"><div class="ph"><span>IXL still owed <span class="hs">goal SmartScore ${t}</span></span><span class="keyline"><i class="key at"></i> at goal <i class="key st"></i> started <i class="key no"></i> not yet</span></div><div class="pbody" data-items>${startHere}${per || '<p>No units assigned yet.</p>'}</div></div>`;
-  } else if (s.students.length) ixl = `<div class="panel"><div class="ph">IXL still owed</div><div class="pbody"><p>${ixlRow && ixlRow.status === 'noAccount' ? 'No IXL account.' : 'IXL is not linked to this report yet.'}</p></div></div>`;
-  else ixl = '';
+    // can finish, instead of a page of equal boxes), and only when one is within 15 of goal (review, 3 Nov 2026: "23
+    // from goal" is no head start). The list below keeps IXL's order.
+    const near = units.flatMap(u => activeFor(s, u, ixlIdx).map(k => ({ k, u, v: eff(s, k, ixlIdx) }))).filter(x => x.v > 0 && x.v < t && t - x.v <= 15).sort((a, b) => b.v - a.v).slice(0, 3);   // a score of 0 is no head start
+    startHere = near.length ? `<div class="start" data-keep><b>Start here</b>${near.map(x => `<div class="si"><em>${t - x.v} from goal</em><span>${esc(s.skills[x.k].name)} <small>${esc(x.u.short)}${s.skills[x.k].id ? ' · ' + esc(s.skills[x.k].id) : ''} · at ${x.v}</small></span></div>`).join('')}</div>` : '';
+    const ids = units.some(u => activeFor(s, u, ixlIdx).some(k => s.skills[k].id && (eff(s, k, ixlIdx) == null || eff(s, k, ixlIdx) < t)));
+    ixl = `<div class="panel ixl"><div class="ph"><span>IXL still owed <span class="hs">goal SmartScore ${t}${ids ? ' · codes are IXL skill IDs' : ''}</span></span><span class="keyline"><i class="key at"></i> at goal <i class="key st"></i> started <i class="key no"></i> not yet</span></div><div class="pbody" data-items>${startHere}${per || '<p>No units assigned yet.</p>'}</div></div>`;
+  } else if (s.students.length) ixl = `<div class="panel"><div class="ph">IXL still owed</div><div class="pbody"><p>${ixlRow && ixlRow.status === 'noAccount' ? 'No IXL account.' : `Your IXL skills aren't on this report. Ask ${esc(teacher)} which ones are still owed.`}</p></div></div>`;   // words for the family, not Tally's (review, 3 Nov 2026: "IXL is not linked")
   // ---- tests and quizzes so far: one row each, the score and its percent in columns (Croix, 25 Oct 2026: "make the
   // test assessment box more organized"; it was one run-on line). Focus's order, newest first; not handed in: NHI, 0%.
   const testsTable = tests.length ? `<table class="tq"><tbody>${tests.map(a => { const nhi = a.status[i] === 'missing';
     return `<tr><td>${esc(a.name)}</td><td class="sc">${nhi ? '<b>NHI</b>' : `${fmtN(a.values[i])}/${fmtN(a.max)}`}</td><td class="pc">${nhi ? '0%' : `${Math.round(a.values[i] / a.max * 100)}%`}</td></tr>`; }).join('')}</tbody></table>` : '<p class="tests">None graded yet.</p>';
   // ---- what would move the grade ----
-  const moves = [   // the missing work in one line: each assignment is listed on the back. An IXL column is finished, not turned in: it has its own row (audit: an NHI IXL column was listed twice)
-    missWork.length ? `<tr><td class="nhi">${missWork.length === 1 ? `${esc(missWork[0].name)} turned in` : `All ${missWork.length} missing assignments turned in`}</td><td class="r"><b>${arrow(computeGrade(s, i, allIn))}</b></td></tr>` : '',
-    ...ixlCols.map(a => `<tr><td>${esc(a.name)} <small>now ${a.status[i] === 'missing' ? 'NHI' : a.values[i] + '/' + a.max}</small></td><td class="r">at ${a.max}/${a.max} ${arrow(computeGrade(s, i, { [a.name]: a.max }))}</td></tr>`),
-    (missWork.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work turned in and IXL finished</b></td><td class="r"><b>${arrow(computeGrade(s, i, both))}</b></td></tr>`; })() : '',
-    nextLine ? `<tr><td>Next assessment (out of ${nextMax})</td><td colspan="2">${nextLine.charAt(0).toUpperCase() + nextLine.slice(1)}.</td></tr>` : ''].filter(Boolean).join('');
+  // The missing work in one line: each assignment is listed on the back. An IXL column is finished, not turned in: it has
+  // its own row (audit: an NHI IXL column was listed twice). The next assessment takes the table's full width (review,
+  // 3 Nov 2026: it wrapped into a column a few words wide).
+  const verbAll = xs => xs.every(madeUp) ? 'made up' : xs.some(madeUp) ? 'done' : 'turned in';
+  const moves = [
+    // counted as the tile counts: with an IXL column owed too, the row is every missing assignment but that one
+    missWork.length ? `<tr><td class="nhi">${missWork.length === 1 ? `${esc(missWork[0].name)} ${madeUp(missWork[0]) ? 'made up' : 'turned in'}` : missIxl.length ? `Every missing assignment but ${missIxl.length === 1 ? esc(missIxl[0].name) : 'the IXL'} ${verbAll(missWork)}` : `${missWork.length === 2 ? 'Both' : `All ${missWork.length}`} missing assignments ${verbAll(missWork)}`}</td><td class="r"><b>${arrow(gw(allIn))}</b></td></tr>` : '',
+    ...ixlCols.map(a => { const now = a.name in pend ? pend[a.name] : a.status[i] === 'missing' ? null : Number(a.values[i]); return `<tr><td>${esc(a.name)} <small>${now == null ? 'now NHI' : `${fmtN(now)} of ${a.max} so far`}</small></td><td class="r">at ${a.max}/${a.max} ${arrow(gw({ [a.name]: a.max }))}</td></tr>`; }),
+    (missWork.length && ixlCols.length) ? (() => { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); return `<tr><td><b>All missing work ${verbAll(missWork)} and IXL finished</b></td><td class="r"><b>${arrow(gw(both))}</b></td></tr>`; })() : '',
+    nextLine ? `<tr class="nx"><td colspan="2"><b>Next assessment (out of ${nextMax}):</b> ${nextLine.charAt(0).toUpperCase() + nextLine.slice(1)}.</td></tr>` : ''].filter(Boolean).join('');
   /* A student with every assessment at full marks has nothing to retake, so the tile says "None needed" rather than
      "Not yet" over IXL still owed (31 Oct 2026: a review Croix passed on; "Not yet" read as a warning to students who
      needed no retake). The IXL owed still shows in its own tile and on the back. */
   const noRetake = !!rt && !tests.some(a => a.status[i] === 'score' && Number(a.values[i]) < a.max);
+  /* What a retake waits for, by name (review, 3 Nov 2026: "turn in 2 missing assignments" beside a tile of 4): the work
+     to turn in or make up, the IXL skills by unit, and for a student Tally can't see in IXL, a word with the teacher.
+     The tile has the short form, without a count that could disagree with the tile beside it. */
+  const rtUnits = rt && !rt.noIxl ? [...(rt.short.length && rt.unit ? [{ unit: rt.unit, short: rt.short }] : []), ...(rt.behind || [])] : [];
+  const rtWork = rt ? rt.missing.map(n => gb.assignments.find(a => a.name === n)).filter(Boolean) : [];
+  const ixlNeed = rtUnits.map((x, k) => `${k ? x.short.length : plural(x.short.length, 'IXL skill')} in ${esc(x.unit.short)}`).join(' and ');   // "15 IXL skills in Unit 2 and 20 in Unit 1"
+  const rtNeed = rt && !rt.ok ? (() => { const verb = rtWork.every(madeUp) ? 'make up' : rtWork.some(madeUp) ? 'turn in or make up' : 'turn in';
+    const work = rtWork.length > 2 && !missIxl.length ? [`${verb} all ${rtWork.length} missing assignments`]   // the tile's count, when the tile counts the same work
+      : [rtWork.some(a => !madeUp(a)) ? `turn in ${names(rtWork.filter(a => !madeUp(a)))}` : '', rtWork.some(madeUp) ? `make up ${names(rtWork.filter(madeUp))}` : ''];
+    const parts = [...work, ixlNeed ? `finish ${ixlNeed}` : '', rt.noIxl ? (ixlRow && ixlRow.status === 'noAccount' ? `ask ${esc(teacher)} about IXL` : `ask ${esc(teacher)} to check your IXL`) : ''].filter(Boolean);
+    return parts.length > 1 && parts.some(p => / and /.test(p)) ? `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}` : andList(parts); })() : '';
+  const rtShort = rt && !rt.ok ? [rtWork.length ? 'missing work' : '', ixlNeed, rt.noIxl ? `ask ${esc(teacher)} about IXL` : ''].filter(Boolean).join(' · ') : '';
+  // Tiles in the family's words (review, 3 Nov 2026: "assigned units", "not linked"): the units by name, and a done IXL
+  // column that Focus still shows NHI is named, so a 0 here beside an NHI in Focus makes sense.
+  const unitWords = (() => { const sh = units.map(u => u.short); const nums = sh.map(x => (/^Unit (\S+)$/.exec(x) || [])[1]); return sh.length > 1 && nums.every(Boolean) ? `Units ${andList(nums)}` : andList(sh); })();
   const scoreboard = `<div class="board">
-      <div><small>Missing assignments</small><b>${missing.length}</b><span>${missing.length ? plural(missing.reduce((n, a) => n + (a.max || 0), 0), 'point') + ' waiting' : 'nothing'}</span></div>
-      <div><small>IXL at goal</small><b>${ixlNow != null ? `${ixlNow} / ${units.reduce((n, u) => n + activeFor(s, u, ixlRow.ixl).length, 0)}` : '—'}</b><span>${ixlNow != null ? 'skills, assigned units' : 'not linked'}</span></div>
-      <div class="${rt ? (noRetake ? 'ok' : rt.ok ? 'ok' : 'no') : ''}"><small>Retake</small><b>${rt ? (noRetake ? 'None' : rt.ok ? 'Eligible' : 'Not yet') : '—'}</b><span>${rt ? (noRetake ? 'none needed: every assessment at full marks' : rt.ok ? 'nothing in the way' : esc(retakeWhy(rt))) : ''}</span></div></div>`;
+      <div><small>Missing assignments</small><b>${owed.length}</b><span>${owed.length ? plural(owedPts, 'point') + ' waiting' : earned.length ? `${earned.length === 1 ? esc(earned[0].name) : plural(earned.length, 'IXL assignment')} done, not in Focus yet` : 'nothing'}</span></div>
+      <div><small>IXL at goal</small><b>${ixlNow != null ? `${ixlNow} / ${units.reduce((n, u) => n + activeFor(s, u, ixlIdx).length, 0)}` : '—'}</b><span>${ixlNow != null ? (units.length ? `skills in ${esc(unitWords)}` : 'no units assigned yet') : ixlRow && ixlRow.status === 'noAccount' ? 'no IXL account' : 'not on this report'}</span></div>
+      <div class="${rt ? (noRetake ? 'ok' : rt.ok ? 'ok' : 'no') : ''}"><small>Retake</small><b>${rt ? (noRetake ? 'None' : rt.ok ? 'Eligible' : 'Not yet') : '—'}</b><span>${rt ? (noRetake ? 'none needed: every assessment at full marks' : rt.ok ? 'nothing in the way' : rtShort) : ''}</span></div></div>`;
   /* The page is a form (Croix, 24 Oct 2026, with a mock-up: "see how much the borders and boxes complement the data
      and make it easier to understand"): a title block, grey cards, each section a boxed panel with a header bar, and
      the plan as a box of its own. The header bars are light grey (Croix, 25 Oct 2026: "the bars are dark. We can reduce
@@ -1594,28 +1642,35 @@ function studentReportSection(s0, i, ixlRow) {
      the teacher they would be with; the days now carry their dates, there is a way to ask for another time, and the
      score to aim for comes first, a full score second. Retakes may be taken more than once, and a 79.5 is an 80, a B
      (Croix, 25 Oct 2026), so a retake is offered while it can still raise the grade. */
-  const teacher = state.settings.teacherName || 'your math teacher';
   const retakeStep = qp && !qp.top ? qp.plan.find(x => x.kind === 'retake') : null;
-  const nextUp = r ? NEXT_UP.find(([tt]) => r.rounded < tt) : null;
-  const aimFor = a => { let at = null; if (nextUp) for (let v = Math.ceil((Number(a.values[i]) || 0) * 2) / 2; v <= a.max; v += 0.5) { const gg = computeGrade(s, i, { [a.name]: v }); if (gg && gg.rounded >= nextUp[0]) { at = { v, g: gg }; break; } } return { at, full: computeGrade(s, i, { [a.name]: a.max }) }; };
-  const extra = !retakeStep && better.length ? (() => { const a = better[0].a; const m = aimFor(a);
-    return `<p class="lead">Retake <b>${esc(a.name)}</b>: ${m.at ? `${fmtN(m.at.v)}/${a.max} or better takes your grade to <b>${m.at.g.rounded}% ${m.at.g.letter}</b>; a full score, ${m.full.rounded}% ${m.full.letter}` : `a full score takes your grade to <b>${m.full.rounded}% ${m.full.letter}</b>`}.${better.length > 1 ? ` <small>${plural(better.length - 1, 'more assessment')} can be retaken too.</small>` : ''}</p>`; })() : '';
+  const nextUp = b0 ? NEXT_UP.find(([tt]) => b0.rounded < tt) : null;
+  const aimFor = a => { let at = null; if (nextUp) for (let v = Math.ceil((Number(a.values[i]) || 0) * 2) / 2; v <= a.max; v += 0.5) { const gg = gw({ [a.name]: v }); if (gg && gg.rounded >= nextUp[0]) { at = { v, g: gg }; break; } } return { at, full: gw({ [a.name]: a.max }) }; };
+  const extra = !retakeStep && better.length ? (() => { const a = better[0].a; const m = aimFor(a); const more = better.slice(1).map(x => x.a);   // the others by name (review, 3 Nov 2026: "1 more assessment" said not which)
+    return `<p class="lead">Retake <b>${esc(a.name)}</b>: ${m.at ? `${fmtN(m.at.v)}/${a.max} or better takes your grade to <b>${m.at.g.rounded}% ${m.at.g.letter}</b>; a full score, ${m.full.rounded}% ${m.full.letter}` : `a full score takes your grade to <b>${m.full.rounded}% ${m.full.letter}</b>`}.${more.length ? ` <small>${names(more)} can be retaken too.</small>` : ''}</p>`; })() : '';
   const howlDays = (() => { const mon = new Date(weekOf(localDay(new Date().toISOString())) + 'T12:00:00'); const now = new Date(); now.setHours(12, 0, 0, 0); if (mon.getTime() + 2 * 864e5 < now.getTime()) mon.setDate(mon.getDate() + 7);   // Wednesday gone: next week's
     return [2, 3].map(d => new Date(mon.getTime() + d * 864e5).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })); })();
   const howl = rt && rt.ok && (retakeStep || better.length) ? `<div class="howl"><p><b>Retakes:</b> you are eligible (${esc(retakeOkWhy(rt))}). Come to ${esc(teacher)}'s room during HOWL on <b>${esc(howlDays[0])}</b> or <b>${esc(howlDays[1])}</b>. Tell the teacher whose HOWL you would be in that you are with ${esc(teacher)}, in person or by Focus message. Need another time? Tell ${esc(teacher)}.</p>
       <p class="ticks"><span><span class="box"></span> I told my HOWL teacher</span><span><span class="box"></span> I came Wednesday</span><span><span class="box"></span> I came Thursday</span><span><span class="box"></span> I need another time</span></p></div>` : '';
-  const rtLine = rt && !howl && !noRetake ? `<p class="rt"><b>Retakes:</b> ${rt.ok ? `eligible: ${esc(retakeOkWhy(rt))}.` : `not yet. To retake: ${esc(retakeWhy(rt, true))}.`}</p>` : '';
+  const rtLine = rt && !howl && !noRetake ? `<p class="rt"><b>Retakes:</b> ${rt.ok ? `eligible: ${esc(retakeOkWhy(rt))}.` : `not yet. To retake: ${rtNeed}.`}</p>` : '';
   // ---- tests and quizzes: the overall figure in the header, each one listed ----
   const testPct = (() => { const e = tests.reduce((n, a) => n + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), p = tests.reduce((n, a) => n + a.max, 0); return p ? Math.round(e / p * 100) : null; })();
   // ---- the back: every missing assignment, then the IXL still owed (Croix, 25 Oct 2026: "move missing assignments and
-  // ixls on the back page"). Each assignment has a box and what turning it in does, the biggest first. ----
-  const missRows = missing.map(a => { const isIxl = /\bixl\b/i.test(a.name); return { a, isIxl, res: isIxl ? null : computeGrade(s, i, { [a.name]: a.max }) }; }).sort((x, y) => (y.res ? y.res.pct : -1) - (x.res ? x.res.pct : -1));
-  const missPanel = panel(`Missing assignments${missing.length ? ` <span class="hs">${plural(missing.length, 'assignment')} · ${plural(missing.reduce((n, a) => n + (a.max || 0), 0), 'point')}</span>` : ''}`,
-    missing.length ? `<table><tbody data-items>${missRows.map(m => `<tr><td><span class="box"></span> <b>${esc(m.a.name)}</b> <small>${m.a.max} pts${m.a.due ? ' · was due ' + esc(m.a.due) : ''}</small></td><td class="r">${m.isIxl ? 'do the IXL skills, listed below' : `turned in ${arrow(m.res)}`}</td></tr>`).join('')}</tbody></table>` : '<p>None. Every assignment is turned in.</p>', 'miss', ' data-newpage');
+  // ixls on the back page"). Each assignment has a box and what turning it in does, the biggest first. An IXL column
+  // says where its skills are: listed below, in IXL, or done and waiting for Focus (review, 3 Nov 2026: "do the IXL
+  // skills, listed below" sat over an empty list). ----
+  const listed = a => { const u = gbUnitFor(s0, a); return !!u && units.some(x => x.name === u.name); };
+  const ixlTodo = a => ixlIdx == null || !listed(a) ? 'do the skills in IXL' : pend[a.name] ? `${fmtN(pend[a.name])} of ${fmtN(a.max)} points so far: the rest are below` : 'do the skills listed below';
+  const missRows = owed.map(a => ({ a, isIxl: isIxl(a), res: isIxl(a) ? null : gw({ [a.name]: a.max }) })).sort((x, y) => (y.res ? y.res.pct : -1) - (x.res ? x.res.pct : -1));
+  const doneRows = earned.map(a => `<tr class="done"><td><b>${esc(a.name)}</b> <small>${a.max} pts</small></td><td class="r">done in IXL, not in Focus yet</td></tr>`).join('');
+  const missPanel = panel(`Missing assignments${owed.length ? ` <span class="hs">${plural(owed.length, 'assignment')} · ${plural(owedPts, 'point')}</span>` : ''}`,
+    owed.length ? `<table><tbody data-items>${missRows.map(m => `<tr><td><span class="box"></span> <b>${esc(m.a.name)}</b> <small>${m.a.max} pts${m.a.due ? ' · was due ' + esc(m.a.due) : ''}</small></td><td class="r">${m.isIxl ? ixlTodo(m.a) : `${madeUp(m.a) ? 'made up' : 'turned in'} ${arrow(m.res)}`}</td></tr>`).join('')}${doneRows}</tbody></table>`
+    : earned.length ? `<p>Nothing to turn in.</p><table><tbody>${doneRows}</tbody></table>` : '<p>None. Every assignment is turned in.</p>', 'miss', ' data-newpage');
   // ---- the plan box: "This week I will" on full lines; the last plan's check only when there was a report before ----
   const priorRep = ((s0.reportLog || {})[norm(name)] || []).filter(e => weekOf(e.date) < thisWeek).pop() || null;
   const prevWeek = (() => { const d = new Date(thisWeek + 'T12:00:00'); d.setDate(d.getDate() - 7); return localDayOf(d.toISOString()); })();
   const lastPlan = priorRep ? `<div class="lastplan"><b>${weekOf(priorRep.date) === prevWeek ? 'Last week\'s plan' : `My plan from ${esc(fmtDate(priorRep.date))}`}</b><span class="box"></span> done <span class="box"></span> partly <span class="box"></span> not yet</div>` : '';
+  // the plan box points only at what the page has (review, 3 Nov 2026: "Start here" was named on reports without one)
+  const pickFrom = startHere ? 'pick a step from "Do this week" or "Start here" on the back' : owed.length || ixlOwedN ? 'pick a step from "Do this week" or the lists on the back' : 'pick a step from "Do this week"';
   /* ---- the next test, under the tests and quizzes (Croix, 25 Oct 2026: "use the space on the front to add in a test
      reminder of when the next scheduled test is"): the course's next test from Settings → Course → Test dates, its
      day and its unit. A name left blank in the dates takes the IXL unit's. (The line on the unit's IXL that sat under
@@ -1627,12 +1682,12 @@ function studentReportSection(s0, i, ixlRow) {
      the box, move it to the bottom, and give more space"). data-bottom: the print layout sets it at the bottom of the
      report's first page. */
   const sigs = `<div class="sigs" data-bottom><p class="talk"><b>Talk about it together:</b> what is going well in math, and what is the first step this week? Questions? Message ${esc(teacher)} in Focus.</p>${[['Student signature', 'Date'], ['Parent or guardian signature', 'Date']].map(([a, d]) => `<div class="sr"><div class="f"><i></i><small>${a}</small></div><div class="f d"><i></i><small>${d}</small></div></div>`).join('')}</div>`;
-  return `<section class="rep wk"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Weekly progress report</div></div><div class="who"><h1>${esc(name)}</h1><div class="meta">${esc(new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))} <small>· Focus as of ${esc(fmtDate(localDayOf(gbAt)))}${ixlRow && ixlRow.ixl != null && dataDate(s) ? ` · IXL as of ${esc(fmtDate(dataDate(s)))}` : ''}</small></div></div></div>${since}
-    <div class="top"><div class="gradeBox"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
+  return `<section class="rep wk"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Weekly progress report</div></div><div class="who"><h1>${esc(name)}</h1><div class="meta">${esc(new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))} <small>· Focus as of ${esc(fmtDate(localDayOf(gbAt)))}${ixlIdx != null && dataDate(s) ? ` · IXL as of ${esc(fmtDate(dataDate(s)))}` : ''}</small></div></div></div>${since}
+    <div class="top"><div class="gradeBox"><div class="gl"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div>${withIxl ? `<p class="withixl"><b>${b0.rounded}% ${b0.letter}</b> once your IXL is in Focus</p>` : ''}</div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <table class="cats"><tbody>${g.cats.map(c => { const x = r && r.cats[c.name]; return `<tr><td>${esc(c.name)} <small>(${c.w}%)</small></td><td class="r">${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible}` : '—'}</td><td class="r">${x && x.pct != null ? Math.round(x.pct) + '%' : '—'}</td></tr>`; }).join('')}</tbody></table></div>${scoreboard}</div>
     ${panel('Do this week', `${doThis}${extra}${howl}${rtLine}`, 'main')}
     <div class="two"><div class="col">${panel(`Tests &amp; quizzes${testPct != null ? ` <span class="hs">${testPct}% overall${tests.some(a => a.status[i] === 'missing') ? ' · NHI counts as 0' : ''}</span>` : ''}`, testsTable)}${nextPanel}</div>${panel('What would move the grade', moves ? `<table><tbody>${moves}</tbody></table>` : `<p>${r ? `Nothing missing${belowFull ? '' : ' and every assessment at full marks'}.` : 'Nothing graded yet.'}</p>`)}</div>
-    <div class="pledge"><b>My plan this week</b> <small>pick a step from "Do this week" or "Start here" on the back</small><div class="lines"><div class="pl"><span>My goal</span><i></i></div><div class="pl"><span>My first step</span><i></i></div><div class="pl"><span>I will have it done by</span><i class="short"></i><span class="where"><span><span class="box"></span>in class</span><span><span class="box"></span>at home</span><span><span class="box"></span>during HOWL</span></span></div></div>${lastPlan}</div>
+    <div class="pledge"><b>My plan this week</b> <small>${pickFrom}</small><div class="lines"><div class="pl"><span>My goal</span><i></i></div><div class="pl"><span>My first step</span><i></i></div><div class="pl"><span>I will have it done by</span><i class="short"></i><span class="where"><span><span class="box"></span>in class</span><span><span class="box"></span>at home</span><span><span class="box"></span>during HOWL</span></span></div></div>${lastPlan}</div>
     ${sigs}
     ${missPanel}
     ${ixl}
@@ -1643,7 +1698,7 @@ function logReport(s0, i, ixlRow) {
   const s = openSec(s0); const gb = s.grades; if (!gb) return; const name = gb.students[i]; const r = computeGrade(s, i);
   const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const ixl = ixlRow && ixlRow.ixl != null ? units.reduce((n, u) => n + points(s, u, ixlRow.ixl), 0) : null;
   const gbAt = gb.exportedAt || gb.importedAt || '';
-  const entry = { date: localDay(new Date().toISOString()), q: liveQuarter(s0), gb: localDayOf(gb.importedAt) || '', ...(gbAt ? { gbAt } : {}), ix: dataDate(s) || '', grade: r && r.rounded != null ? r.rounded : null, missing: gb.assignments.filter(a => a.status && a.status[i] === 'missing').length, ixl };
+  const entry = { date: localDay(new Date().toISOString()), q: liveQuarter(s0), gb: localDayOf(gb.importedAt) || '', ...(gbAt ? { gbAt } : {}), ix: dataDate(s) || '', grade: r && r.rounded != null ? r.rounded : null, missing: owedWork(s0, s, i, ixlRow && ixlRow.ixl != null ? ixlRow.ixl : null).owed.length, ixl };   // the report's own count of missing work
   // One entry per school week: a reprint or a second look the same week replaces that week's entry and keeps its
   // "back, signed" tick (audit, 25 Oct 2026: reopening a report wiped the tick). A cleared list is not carried over:
   // a report printed after Clear starts the new list.
@@ -1728,8 +1783,22 @@ function printWeekly(groups, title) {
     if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(x => shown(x)).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
   const old = groups.length === 1 ? staleExports(groups[0].s, groups[0].indices) : staleAcross(groups);
   const why = [...old, ...(state.settings.hideNames ? [`names are hidden, but the ${n === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen`] : [])];   // projected: say so first (audit)
-  if (why.length) { ask(`Before printing: ${why.join('; ')}.${old.length ? ' A weekly report wants today\'s numbers.' : ''} Print anyway?`, 'Print anyway').then(ok => { if (ok) go(); }); return; }
+  const lines = [why.length ? `${why.join('; ')}.${old.length ? ' A weekly report wants today\'s numbers.' : ''}` : '', ...reportGaps(groups)].filter(Boolean);
+  if (lines.length) { ask(`Before printing: ${lines.join(' ')} Print anyway?`, 'Print anyway').then(ok => { if (ok) go(); }); return; }
   go();
+}
+/* Two gaps worth fixing before printing (review of 3 Nov 2026), said after the exports: students whose IXL points Focus
+   doesn't have yet (their reports count them as going in at the next grade update), and students not matched to an IXL
+   account (their reports can't list IXL skills; "No IXL account" on the roster is an answer, not a gap). */
+function reportGaps(groups) {
+  const behind = [], unlinked = [];
+  groups.forEach(g => { const rows = gbRows(g.s); const o = openSec(g.s);
+    g.indices.forEach(i => { const row = rows[i], nm = g.s.grades.students[i];
+      if (row && row.ixl != null) { const r = computeGrade(o, i); if (r && r.rounded != null && pendingCopies(g.s, o, i, row.ixl).length) behind.push(nm); }
+      else if (g.s.students.length && !(row && row.status === 'noAccount')) unlinked.push(nm); }); });
+  const who = xs => { const nm = xs.map(x => state.settings.hideNames ? mask(x) : niceName(x)); return nm.length > 3 ? `${nm.slice(0, 3).join(', ')} and ${nm.length - 3} more` : andList(nm); };
+  return [behind.length ? (behind.length === 1 ? `${who(behind)}'s IXL points aren't all in Focus yet, so the report counts them as going in at the next grade update.` : `${behind.length} students' IXL points aren't all in Focus yet (${who(behind)}), so their reports count them as going in at the next grade update.`) : '',
+    unlinked.length ? (unlinked.length === 1 ? `${who(unlinked)} isn't matched to an IXL account, so the report can't list IXL skills.` : `${unlinked.length} students aren't matched to an IXL account (${who(unlinked)}), so their reports can't list IXL skills.`) : ''].filter(Boolean);
 }
 // Several classes' old exports, said once each: "the IXL export is from Oct 20, 5 days ago (every class)".
 function staleAcross(groups) {
@@ -1751,8 +1820,8 @@ function staleExports(s0, indices) {
 // 24 Oct 2026: "a checklist or something as a separate page at the end of the print so that I can hold them
 // responsible for getting their progress report signed by parent and turned back in to me").
 function returnChecklist(s0, indices) {
-  const s = openSec(s0); const gb = s.grades; const today = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-  const rows = indices.map((i, n) => { const r = computeGrade(s, i); const miss = gb.assignments.filter(a => a.status && a.status[i] === 'missing').length;
+  const s = openSec(s0); const gb = s.grades; const today = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }); const ix = gbRows(s0);
+  const rows = indices.map((i, n) => { const r = computeGrade(s, i); const miss = owedWork(s0, s, i, ix[i] && ix[i].ixl != null ? ix[i].ixl : null).owed.length;   // the count each report shows
     return `<tr><td class="r">${n + 1}</td><td>${esc(gb.students[i])}</td><td class="r">${r && r.rounded != null ? `${r.rounded}% ${r.letter}` : '—'}</td><td class="r">${miss || ''}</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td><td class="w"></td><td class="w"></td></tr>`; }).join('');
   return `<section class="rep wk teach"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Reports out and back</div></div><div class="who"><h1>${plural(indices.length, 'report')} handed out ${esc(today)}</h1><div class="meta">Tick when each report goes home and again when it comes back signed. Keep this page.</div></div></div>
     <table class="ret"><thead><tr><th></th><th>Student</th><th class="r">Grade</th><th class="r">Missing</th><th class="c">Handed out</th><th class="c">Back, signed</th><th>Date back</th><th>Note</th></tr></thead><tbody data-items>${rows}</tbody></table></section>`;
@@ -1771,9 +1840,9 @@ function openPrintMenu(s) {
   const allMode = reportWho.scope === 'all'; const secs = allMode ? classes : [s];
   const open = sec => unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u));
   const info = secs.map(sec => { const gb = sec.grades; if (!gb || !hasOpenGrades(sec)) return { sec, have: false };
-    const rows = gbRows(sec); const og = openSec(sec); const ogb = og.grades; const us = open(sec);
+    const rows = gbRows(sec); const og = openSec(sec); const us = open(sec);
     return { sec, have: true, n: gb.students.length,
-      owes: gb.students.map((_, i) => ogb.assignments.some(a => a.status && a.status[i] === 'missing') || !!(rows[i] && rows[i].ixl != null && us.some(u => points(sec, u, rows[i].ixl) < totalFor(sec, u, rows[i].ixl)))),
+      owes: gb.students.map((_, i) => owedWork(sec, og, i, rows[i] && rows[i].ixl != null ? rows[i].ixl : null).owed.length > 0 || !!(rows[i] && rows[i].ixl != null && us.some(u => points(sec, u, rows[i].ixl) < totalFor(sec, u, rows[i].ixl)))),   // missing work as the reports count it
       letterOf: gb.students.map((_, i) => { const r = computeGrade(og, i); return r && r.rounded != null ? r.letter : '—'; }),
       hasFast: gb.students.map(nm => testHistory(sec, nm).some(h => /FAST/i.test(h.test) && h.scale != null)) }; });
   const graded = info.filter(x => x.have); const sum = f => graded.reduce((n, x) => n + f(x), 0);
@@ -3527,7 +3596,8 @@ function retakeStatus(sec, name) {
   const checked = [];   // the units this check looked at, in gradebook order: the eligible line names these and no others (audit, 25 Oct 2026)
   if (!noIxl && gb) { const seen = new Set();
     gb.assignments.forEach(a => { if (!/\bixl\b/i.test(a.name) || aClosed(a, gb)) return; const u = gbUnitFor(sec, a); if (!u || seen.has(u.name) || unitClosed(sec, u)) return; seen.add(u.name); checked.push(u);
-      const full = a.max > 0 && a.status && a.status[f.gi] === 'score' && Number(a.values[f.gi]) >= a.max; if (full) return;
+      // full credit in Focus, or IXL points enough for it that wait to be copied: the same answer before and after the copy (review, 3 Nov 2026)
+      const full = a.max > 0 && ((a.status && a.status[f.gi] === 'score' && Number(a.values[f.gi]) >= a.max) || points(sec, u, f.ixl) >= a.max); if (full) return;
       const sh = shortIn(u); if (!sh.length) return; if (unit && u.name === unit.name) short = sh; else behind.push({ unit: u, short: sh, col: a.name }); }); }
   if (unit && !noIxl) nUnit = activeFor(sec, unit, f.ixl).length;
   const unitDone = !!(unit && !noIxl && nUnit && !shortIn(unit).length);   // every skill in the unit being worked in at goal, whether or not Focus grades it yet
@@ -3544,7 +3614,7 @@ function retakeOkWhy(r, forStudent) {
 function retakeWhy(r, forStudent) {
   const parts = [];
   if (r.missing.length) parts.push(forStudent ? `turn in ${plural(r.missing.length, 'missing assignment')}` : `${r.missing.length} missing`);
-  if (r.noIxl) parts.push(forStudent ? 'check your IXL account with your teacher' : 'IXL not linked');
+  if (r.noIxl) parts.push(forStudent ? 'ask your teacher to check your IXL' : 'IXL not linked');
   else { const units = [...(r.short.length ? [{ unit: r.unit, short: r.short }] : []), ...(r.behind || [])];
     units.forEach(x => parts.push(forStudent ? `finish ${plural(x.short.length, 'IXL skill')} in ${x.unit.short}` : `${plural(x.short.length, 'IXL skill')} in ${x.unit.short}`)); }
   return parts.join(forStudent ? ' and ' : ' · ');
@@ -3702,18 +3772,33 @@ function renderProfile() {
    retakes added (the last one at the lowest score that still works). An IXL step is one skill: one more point in that
    unit's Focus IXL column, and the page names which skills are closest to goal. */
 const NEXT_UP = [[60, 'D'], [70, 'C'], [80, 'B'], [90, 'A']];
-function quickestPath(sec, s, i, ixlIdx) {
-  const base = computeGrade(s, i); if (!base || base.rounded == null) return null;
-  const tgt = NEXT_UP.find(([t]) => base.rounded < t); if (!tgt) return { top: true, base };
-  const [target, letter] = tgt; const gb = s.grades;
-  const ixlCol = a => /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing');
-  // IXL as it really stands (audit, 22 Oct 2026): Tally's points can be ahead of the Focus column (not copied yet) —
-  // that gap is a copy, not student work — and no student is planned more skills than their own list holds.
-  const focusOf = a => a.status[i] === 'missing' ? 0 : (Number(a.values[i]) || 0);
+const ixlColOf = (a, i) => /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing');
+const focusPts = (a, i) => a.status[i] === 'missing' ? 0 : (Number(a.values[i]) || 0);
+/* IXL points Tally has that Focus doesn't yet (audit, 22 Oct 2026): per Focus IXL column, the student's points in that
+   unit's IXL (a point a skill at goal, up to the column's points) when they are more than the Focus cell. The gap is the
+   teacher's copy, not student work. One list for the plan, the report and the check before printing. */
+function pendingCopies(sec, s, i, ixlIdx) {
+  if (ixlIdx == null || !s || !s.grades) return [];
+  return s.grades.assignments.filter(a => ixlColOf(a, i)).map(a => { const u = gbUnitFor(sec, a); const unit = u ? unitsOf(sec).find(x => x.name === u.name) : null; if (!unit) return null;
+    const to = Math.min(a.max, points(sec, unit, ixlIdx)), from = focusPts(a, i); return to > from ? { a, from, to, unit: u } : null; }).filter(Boolean);   // a column Focus already has in full is no copy, whatever IXL has
+}
+// opt.fromCopies (the printed report, 3 Nov 2026): the IXL points waiting to be copied count as in Focus already, so the
+// plan starts from the grade they make, aims at the letter above that, and lists no copy step: the report says once,
+// above the plan, which points go in. The teacher's pages keep the copy as the plan's first step.
+function quickestPath(sec, s, i, ixlIdx, opt) {
+  const focus = computeGrade(s, i); if (!focus || focus.rounded == null) return null;
+  const gb = s.grades; const ixlCol = a => ixlColOf(a, i);
+  // IXL as it really stands: Tally's points can be ahead of the Focus column (a copy), and no student is planned more
+  // skills than their own list holds.
+  const focusOf = a => focusPts(a, i);
   const ixlInfo = {};
   if (ixlIdx != null) gb.assignments.filter(ixlCol).forEach(a => { const u = gbUnitFor(sec, a); const unit = u ? unitsOf(sec).find(x => x.name === u.name) : null; if (!unit) return;
     const tp = points(sec, unit, ixlIdx), n = activeFor(sec, unit, ixlIdx).length; ixlInfo[a.name] = { tp, cap: Math.min(a.max, Math.max(n, focusOf(a))), unit: u }; });
-  const copies = gb.assignments.filter(a => ixlInfo[a.name] && ixlInfo[a.name].tp > focusOf(a)).map(a => ({ a, from: focusOf(a), to: Math.min(a.max, ixlInfo[a.name].tp), unit: ixlInfo[a.name].unit }));
+  const copies = pendingCopies(sec, s, i, ixlIdx);
+  const fromCopies = !!(opt && opt.fromCopies && copies.length);
+  const base = fromCopies ? computeGrade(s, i, Object.fromEntries(copies.map(c => [c.a.name, c.to]))) : focus;
+  const tgt = NEXT_UP.find(([t]) => base.rounded < t); if (!tgt) return { top: true, base, focus, copies };
+  const [target, letter] = tgt;
   const copyTo = n => { const c = copies.find(x => x.a.name === n); return c ? c.to : null; };
   const nowOf = a => { const c = copyTo(a.name); return c != null ? c : focusOf(a); };
   const capOf = a => ixlInfo[a.name] ? ixlInfo[a.name].cap : a.max;
@@ -3774,12 +3859,12 @@ function quickestPath(sec, s, i, ixlIdx) {
   // (Croix, 7 Oct: the list was in gradebook order, so a +3 worksheet sat above a +7 one and read as the tool's first pick.)
   const pend = [...nhi.filter(a => done.has(a.name)).map(a => ({ kind: 'nhi', a, n: 1, to: a.max })), ...ixlSteps.map(x => ({ kind: 'ixl', a: x.a, n: x.n, to: nowOf(x.a) + x.n, unit: x.unit, skills: x.skills }))];
   const plan = []; const acc = {}; let at = base.pct;
-  copies.forEach(c => { acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ kind: 'copy', a: c.a, n: 0, from: c.from, to: c.to, unit: c.unit, after: r.rounded }); });   // the teacher's copy comes first: it needs no student work
+  copies.forEach(c => { acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; if (!fromCopies) plan.push({ kind: 'copy', a: c.a, n: 0, from: c.from, to: c.to, unit: c.unit, after: r.rounded }); });   // the teacher's copy comes first: it needs no student work (from copies, it is the starting point)
   while (pend.length) { let bi = 0, bv = -Infinity; pend.forEach((c, k) => { acc[c.a.name] = c.to; const v = (computeGrade(s, i, acc).pct - at) / c.n; delete acc[c.a.name]; if (v > bv + 1e-9) { bv = v; bi = k; } });
     const c = pend.splice(bi, 1)[0]; acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ ...c, after: r.rounded }); }
   retakes.forEach(a => { acc[a.name] = over[a.name]; plan.push({ kind: 'retake', a, n: 1, to: over[a.name], after: computeGrade(s, i, acc).rounded }); });
   if (needUnits.length && retakes.length) { needUnits.forEach(nu => { const ri = plan.findIndex(x => x.kind === 'retake'); plan.splice(ri, 0, { kind: 'ixlreq', full: nu.full, a: { name: nu.unit.short + ' IXL', max: nu.n }, n: nu.n, unit: nu.unit, after: ri > 0 ? plan[ri - 1].after : base.rounded, skills: [] }); }); }
-  return { base, target, letter, reached: result.rounded >= target, result, over, plan, retakeBlocked, nhi: plan.filter(x => x.kind === 'nhi').map(x => x.a), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length + (needUnits.length && retakes.length ? needUnits.reduce((x, y) => x + y.n, 0) : 0) };
+  return { base, focus, copies, target, letter, reached: result.rounded >= target, result, over, plan, retakeBlocked, nhi: plan.filter(x => x.kind === 'nhi').map(x => x.a), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length + (needUnits.length && retakes.length ? needUnits.reduce((x, y) => x + y.n, 0) : 0) };
 }
 const anLetter = l => (/^[AF]/.test(l) ? 'an ' : 'a ') + l;
 // One line for the Students list: "2 missing + 3 IXL skills → C".

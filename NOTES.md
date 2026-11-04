@@ -962,6 +962,47 @@ per-section-file era and many items in them are now done).
   the IXL skills, listed below". Left out: "—" for an unstarted skill (Croix asked for zeros, 24 Oct), a shaded
   checkbox for a started skill (reads as half-ticked), grey pills on the "→ 93%" figures, equal-height side-by-side
   panels (an empty tall box), smaller skill type.
+- **3 Nov 2026 — Ten things that confused, read as a student or parent would.** Croix: "Run the report with some fake
+  names and missing ixls. Take a look at it closely. Tell me if there's anything confusing or difficult to understand
+  from a student or parents point of view"; then "Fix all ten". Seven synthetic students (an IXL column NHI with the
+  skills done, part done, not linked; a quiz missing; two IXL columns missing).
+  1. **One baseline.** When IXL had points Focus didn't, the plan counted them and the table beside it didn't ("Turn in
+     the quiz → 86%" in one, "→ 82% B" in the other). Now every projection (plan, What would move the grade, next
+     assessment, retakes, each missing assignment on the back) starts from the grade with those points in. The big
+     grade stays Focus's, with "96% A once your IXL is in Focus" beside it, "(96% with IXL)" in the since strip, and
+     "Do this week" opens "Your IXL points go into Focus at the next grade update: Unit 3 IXL (all 17 points) → 96% A."
+     `pendingCopies()` is the one list (it also stops a no-op copy when Focus already has a column in full);
+     `quickestPath(…, { fromCopies: true })` plans from it for the report only (the teacher's pages keep the copy as
+     step one). Retake eligibility counts IXL points enough for full credit as full credit, so copying them changes
+     nothing on the page but the grade at the top. Before printing, the question names those students.
+  2. **One missing count.** The tile counted every NHI, "Still missing" left out a done IXL column, the retake line
+     left out every IXL column. `owedWork()`: NHI work, less an IXL column whose skills are all at goal in IXL (that one
+     is done; the tile says "Unit 3 IXL done, not in Focus yet", the back notes it without a box). The tile, the
+     since strip, the back's header, the log (so next week's strip) and "Reports out and back" all use it. This keeps
+     Croix's 31 Oct rule: an IXL column with skills still to do is a missing assignment.
+  3. **"listed below" only over a list:** "do the skills listed below", "6 of 17 points so far: the rest are below",
+     "do the skills in IXL" (no IXL link), or the done note.
+  4. **A part-done column says so:** "Unit 3 IXL (1 of 17 points so far)", here and in the table ("6 of 17 so far").
+  5. **"Make up"** a quiz or test (`looksLikeTest`), "made up → 86% B"; worksheets are still turned in.
+  6. **The family's words:** "skills in Units 2 and 3" (not "assigned units"), "not on this report" and "Your IXL
+     skills aren't on this report. Ask Mr. Shaffer which ones are still owed." (not "not linked"); the retake line
+     names what is needed ("To retake: turn in Whiteboard Practice Week 10/19 and Unit 2 Notebook Check, and finish 18
+     IXL skills in Unit 3"; "all 5 missing assignments" when the tile counts the same five); "ask Mr. Shaffer to check
+     your IXL" replaces "check your IXL account with your teacher" (also on Show student). Before printing, the students
+     not matched to an IXL account are named ("No IXL account" on the roster is an answer, not listed).
+  7. **IXL's skill ID** after each owed skill and in Start here ("ZE9", "6T7": two skills are both "Evaluate expressions
+     using properties of exponents"); the header says "codes are IXL skill IDs".
+  8. **The next assessment** is one row across the table; two missing read "Both missing assignments turned in"; with
+     an IXL column on the tile too, "Every missing assignment but Unit 3 IXL turned in".
+  9. **Start here** only within 15 of goal ("23 from goal" is no head start).
+  10. **The other retakes by name** ("Unit 2 Vocab Retake Quiz can be retaken too"); the plan box points only at what
+     the page has ("Start here" on the back, the lists on the back, or Do this week alone).
+  Room on the front: the IXL line is one line, the with-IXL grade sits beside the big grade, so the plan box stays on
+  the front (the 5-missing student in `weekly-layout.js` had under 17 px to spare before; its main panel is now 16 px
+  shorter than it was). New suite `tests/review-nov3.js` (20 checks; 17 fail on the build before); `weekly-layout.js`
+  (23), `audit-oct25.js` and `grades.js` updated for the new words, `round6.js` for the next-assessment row (compared
+  from the same baseline), `whatif-audit.js` with its Unit 1 set up for Focus (two skills short are short under either
+  rule). The print menu's "Owe work" counts missing work the same way.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

@@ -240,3 +240,36 @@ the fix: `tests/audit-oct25.js` (39 checks), with more in `tests/quickview.js` a
   the plan moves a test on mrshaffer.org, the date here needs the same change (or, later, Tally reads them from the plan).
 - A short text sample of one Quickview block (names removed) would confirm the wrapped-cell cause of the time misses;
   the parser now handles every layout the fixture draws.
+
+## The weekly report read as a family would (3 Nov 2026)
+
+Croix: "Run the report with some fake names and missing ixls. Take a look at it closely. Tell me if there's anything
+confusing or difficult to understand from a student or parents point of view", then "Fix all ten". Seven synthetic
+students printed and read page by page. Every finding below has a check in `tests/review-nov3.js` (20 checks; 17 of them
+fail on the build before the fix), computed from the gradebook and the IXL export rather than the report's helpers.
+
+### Fixed: the weekly report
+1. Two baselines (High): with IXL points Focus didn't have yet, the plan counted them and everything else didn't, so one
+   step read → 86% in the plan and → 82% B in the table beside it. One baseline now, and the page says which points go
+   in; copying them changes nothing on the page but the grade at the top. Retake eligibility agrees (IXL points enough
+   for full credit count as full credit).
+2. Missing work counted three ways (tile 4, "Still missing" 3, retake line 2) (High): one count everywhere, the log and
+   "Reports out and back" included. An IXL column done in IXL is noted, not counted.
+3. "do the IXL skills, listed below" over an empty list (every skill done, or no IXL link).
+4. A column 1 of 17 done read as finished ("Your Unit 3 IXL points go into Focus"): "1 of 17 points so far".
+5. "Turn in Proportions Quiz": a quiz not taken is made up.
+6. Tally's words on a family's page: "assigned units", "not linked", "check your IXL account with your teacher".
+7. Two owed skills with the same name: IXL's skill ID beside each.
+8. The next-assessment line squeezed into a column a few words wide; "All 2 missing assignments".
+9. "Start here" listed skills 23 and 25 from goal.
+10. "1 more assessment can be retaken too" without saying which; the plan box sent students to a "Start here" that
+    wasn't on the page.
+
+### For Croix
+- An IXL column Focus marks NHI whose skills are all done in IXL is no longer counted as missing (it says "done, not in
+  Focus yet"). One with skills still to do is, as he asked on 31 Oct.
+- Retakes: IXL points enough for full credit in a unit's Focus column now count as full credit before they are copied,
+  as they already did after. With a unit set up for Focus (its skills = the column's points) nothing changes; it matters
+  only for a unit with more skills than the column counts.
+- Before printing, the question now also names students whose IXL points Focus doesn't have yet and students not matched
+  to an IXL account. Copying the IXL into Focus and exporting again before printing makes the first line go away.

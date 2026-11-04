@@ -294,3 +294,8 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 
 - 31 Oct 2026: from a review Croix passed on, the four worth doing: the retake tile says "None" when every assessment
   is full; "Start here" on the back; a structured plan box; a family line above the signatures. `weekly-layout.js` +4.
+
+- 3 Nov 2026: the weekly report read as a family would, ten fixes (Croix: "Fix all ten"): one baseline when IXL has
+  points Focus doesn't; one missing count; "listed below" only over a list; part-done IXL says so; "make up" a quiz;
+  the family's words; IXL skill IDs; the next assessment across the table; Start here within 15 of goal; other
+  retakes by name and a plan box that points only at what is there. New suite `tests/review-nov3.js` (20 checks).
