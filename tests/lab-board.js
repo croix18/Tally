@@ -40,7 +40,15 @@ const near = (shown, want) => want != null && Math.abs(shown - want) <= 0.5 + 1e
       s.scores = s.scores.map(row => Array.isArray(row) ? row.map((v, i) => v == null ? (((i + per) % 6 === 0) ? 70 : null) : Math.max(0, Math.min(100, v + boost * (((i + per) % 3) - 1)))) : row);
       s.history = s.history.map(hh => { const c = JSON.parse(JSON.stringify(hh)); Object.keys(c.pu || {}).forEach(u => Object.keys(c.pu[u]).forEach(k => { c.pu[u][k] = Math.max(0, c.pu[u][k] + ((k.charCodeAt(0) + per) % 5) - 2); })); return c; });
       T.state.sections[s.key] = s; T.state.order.push(s.key); };
-    mk(2, 3, 12); mk(3, -2, 20); mk(5, 4, -15); mk(6, 1, 8); T.save(); });
+    mk(2, 3, 12); mk(3, -2, 20); mk(5, 4, -15); mk(6, 1, 8);
+    // 3rd Period's Unit 1 IXL split in two (half of it at goal on every skill, half on none), so its class line in IXL
+    // and a test has two ranges of 5 or more students
+    { const p3 = T.state.sections['p3-acc']; const u = T.unitsOf(p3).find(u => u.num === 1); u.idx.forEach(k => { p3.scores[k] = p3.scores[k].map((v, i) => i % 2 ? 20 : 95); if (p3.best) delete p3.best[T.skillKey(p3.skills[k])]; }); }
+    // a pretest and a retake listed before the Unit 1 Assessment in every gradebook (Focus lists the newest first)
+    T.state.order.forEach(k => { const g = T.state.sections[k].grades; const ua = g.assignments.find(a => a.name === 'Unit 1 Assessment');
+      const like = (name, f) => { const a = JSON.parse(JSON.stringify(ua)); a.name = name; a.values = ua.values.map(f); a.status = a.values.map(v => v == null ? 'blank' : 'score'); a.missing = 0; a.excused = 0; return a; };
+      g.assignments.unshift(like('Unit 1 Pretest', (v, i) => v == null ? null : Math.max(0, Math.round(v / 3) - (i % 3))), like('Unit 1 Assessment Retake', (v, i) => v != null && i % 4 === 0 ? Math.min(ua.max, v + 3) : null)); });
+    T.save(); });
   await p.reload(); await p.waitForTimeout(800);
   const NAMES = ['1st Period', '2nd Period', '3rd Period', '5th Period', '6th Period'];
   // recounts: a unit's points per counted student (the grid's own points column), and the unit's skill total
@@ -54,7 +62,7 @@ const near = (shown, want) => want != null && Math.abs(shown - want) <= 0.5 + 1e
   const pies = () => p.evaluate(() => ({ cards: [...document.querySelectorAll('#lb .labPie')].map(c => { const art = c.querySelector('.labPieArt svg'); const ring = art && art.querySelector('circle'); const box = c.getBoundingClientRect();
       const labs = art ? [...art.querySelectorAll('text.val')].map(t => { const r = t.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; }) : [];
       return { name: c.querySelector('.labName').textContent.trim(), small: (c.querySelector('.labPieHead small') || {}).textContent || '', chips: [...c.querySelectorAll('.labPieKey span')].map(s => s.textContent.trim()), d: ring ? ring.getBoundingClientRect().width : 0, top: box.top, bottom: box.bottom, left: box.left, right: box.right, labs }; }),
-    key: [...document.querySelectorAll('#lb .labPieLegend span')].map(s => s.textContent.trim()), legends: document.querySelectorAll('#lb .labPieLegend').length, toolsTop: document.querySelector('.lbTools').getBoundingClientRect().top, vh: innerHeight }));
+    gridH: (document.querySelector('#lb .labPies') || { getBoundingClientRect: () => ({ height: 0 }) }).getBoundingClientRect().height, key: [...document.querySelectorAll('#lb .labPieLegend span')].map(s => s.textContent.trim()), legends: document.querySelectorAll('#lb .labPieLegend').length, toolsTop: document.querySelector('.lbTools').getBoundingClientRect().top, vh: innerHeight }));
   const set = cfg => p.evaluate(cfg => { const T = window.__tally; Object.assign(T.state.settings, cfg); T.save(); T.render(); }, cfg).then(() => p.waitForTimeout(350));
   const choose = async (sel, v) => { await p.selectOption(sel, v); await p.waitForTimeout(380); };
 
@@ -150,37 +158,49 @@ const near = (shown, want) => want != null && Math.abs(shown - want) <= 0.5 + 1e
       else { const a = gb.assignments.find(a => 'gb:' + a.name === yId); ys = gb.students.map((_, i) => a.values[i] != null && (!a.status || a.status[i] === 'score') ? a.values[i] / a.max * 100 : null); }
       out[(s.team || s.label).replace(/ · .*/, '')] = gb.students.map((_, i) => { const r = rows[i]; if (!r || r.ixl == null || ys[i] == null) return null; const own = T.activeFor(s, u, r.ixl).length; return own ? { f: T.points(s, u, r.ixl) / own, y: ys[i] } : null; }).filter(Boolean); });
     return out; }, [xName, yId]);
-  const bands = pairs => { const s = [0, 0, 0, 0], n = [0, 0, 0, 0]; pairs.forEach(q => { const k = Math.min(3, Math.floor(q.f * 4 + 1e-9)); s[k] += q.y; n[k]++; }); return n.map((k, i) => ({ n: k, v: k >= 3 ? s[i] / k : null })); };
+  // The rules, recounted: a quarter of the unit each (a unit of 1 or 2 skills: one range per count); a class's point needs
+  // 5 or more of its students, its line two such points; the course's point needs 5 or more, and is left off where the
+  // students no class line shows number 1 to 4 (every view alike)
+  const model = (pr, m) => { const nb = m && m <= 2 ? m + 1 : 4; const band = f => nb < 4 ? Math.round(f * m) : Math.min(3, Math.floor(f * 4 + 1e-9));
+    const tally = ps => { const s = Array(nb).fill(0), n = Array(nb).fill(0); ps.forEach(q => { const b = band(q.f); s[b] += q.y; n[b]++; }); return { s, n }; };
+    const cls = {}; Object.keys(pr).forEach(k => { const t = tally(pr[k]); const ok = t.n.map(c => c >= 5); cls[k] = { ...t, ok: ok.filter(Boolean).length >= 2 ? ok : ok.map(() => false) }; });
+    const A = tally(Object.values(pr).flat()); const hidden = A.n.map((c, b) => c - Object.values(cls).reduce((a, t) => a + (t.ok[b] ? t.n[b] : 0), 0));
+    const okA = A.n.map((c, b) => c >= 5 && !(hidden[b] > 0 && hidden[b] < 5)); const pts = (t, ok) => t.n.map((c, b) => ok[b] ? { v: t.s[b] / c, n: c } : null);
+    return { nb, cls: Object.fromEntries(Object.keys(cls).map(k => [k, pts(cls[k], cls[k].ok)])), course: pts(A, okA), dropped: A.n.map((c, b) => c >= 5 && !okA[b]), hidden, A }; };
+  const drawnOf = arr => arr.filter(Boolean).length >= 2;
   await set({ labCmp: { acc: 'class', on: 'class' }, labUnit: U1, labKind: 'box', labCorr: { acc: {}, on: {} } });
   await choose('#labKind', 'corr');
   const cx0 = await p.$eval('#labCx', s => s.value), cy0 = await p.$eval('#labCy', s => s.value);
-  check(cx0 === U1 && cy0 === 'gb:Unit 1 Assessment', '"IXL and a test" opens on the unit showing and that unit\'s own test: ' + cx0.slice(5, 11) + ' and ' + cy0.slice(3));
-  const pr = await pairsOf(U1n, 'gb:Unit 1 Assessment'); const prAll = Object.values(pr).flat();
-  const wantL = Object.fromEntries([...NAMES.map(n => [n, bands(pr[n])]), ['All accelerated', bands(prAll)]]);
-  const drawnW = Object.keys(wantL).filter(k => wantL[k].filter(x => x.v != null).length >= 2);
+  check(cx0 === U1 && cy0 === 'gb:Unit 1 Assessment', '"IXL and a test" opens on the unit showing and that unit\'s own test, not its pretest or retake (listed first): ' + cx0.slice(5, 11) + ' and ' + cy0.slice(3));
+  const pr = await pairsOf(U1n, 'gb:Unit 1 Assessment'); const prAll = Object.values(pr).flat(); const M1 = model(pr, m1);
+  const wantL = { ...M1.cls, 'All accelerated': M1.course }; const drawnW = Object.keys(wantL).filter(k => drawnOf(wantL[k]));
+  const dropW = [0, 1, 2, 3].filter(b => M1.dropped[b]).map(b => rng(m1, b));
   { const L = await lines(); const v = await view(); const ax = await p.$$eval('#lb .labAxis', e => e.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
     check(v.title === 'Unit 1 IXL and Unit 1 Assessment', 'the title names both: "' + v.title + '"');
     const days = await p.evaluate(() => { const T = window.__tally; const s = T.state.sections['1205050-7T1A']; return { ixl: T.fmtDate(s.date), gb: T.fmtDate(T.localDayOf(s.grades.importedAt)) }; });
     check(days.ixl !== days.gb && v.sub.endsWith(`IXL as of ${days.ixl}, Focus as of ${days.gb}`), 'the IXL export and the gradebook are from different days, and the line says both: "…' + v.sub.slice(-40) + '"');
-    check(L && JSON.stringify(Object.keys(L.pts).sort()) === JSON.stringify(drawnW.slice().sort()) && L.paths.filter(Boolean).length === 1, 'a line for each class with points in two ranges or more, and the whole course dashed (' + drawnW.join(', ') + ')');
+    check(drawnW.includes('3rd Period') && drawnW.includes('All accelerated') && drawnW.length < 6, 'the scenario: some classes have two ranges of 5 or more, some don\'t (' + drawnW.join(', ') + ')');
+    check(L && JSON.stringify(Object.keys(L.pts).sort()) === JSON.stringify(drawnW.slice().sort()) && L.paths.filter(Boolean).length === 1, 'a line for each class with two ranges of 5 or more students, and the whole course dashed (' + drawnW.join(', ') + ')');
     check(L && L.ticks.slice(-4).join('|') === [0, 1, 2, 3].map(i => rng(m1, i)).join('|'), 'across: four ranges of the unit\'s ' + m1 + ' skills, a quarter each: ' + (L ? L.ticks.slice(-4).join(', ') : ''));
-    const ok = L && drawnW.every(k => { const got = L.pts[k], w = wantL[k].map((x, i) => ({ ...x, at: rng(m1, i) })).filter(x => x.v != null); return got.length === w.length && got.every((pt, i) => pt.at === w[i].at && near(pt.v, w[i].v) && pt.n === w[i].n); });
-    check(ok, 'up: each point is the average test score of the students in that range, recounted: ' + (L ? Object.entries(L.pts).map(([k, a]) => k.slice(0, 3) + ' ' + a.map(x => x.v).join('/')).join(', ') : ''));
-    check(L && Object.values(L.pts).flat().every(pt => pt.n >= 3) && L.circles === Object.values(L.pts).flat().length, 'every point stands for 3 or more students, and there is no other mark: no one\'s score is on the board (' + (L ? L.circles : 0) + ' points)');
+    const ok = L && drawnW.every(k => { const got = L.pts[k], w = wantL[k].map((x, i) => x && ({ ...x, at: rng(m1, i) })).filter(Boolean); return got.length === w.length && got.every((pt, i) => pt.at === w[i].at && near(pt.v, w[i].v) && pt.n === w[i].n); });
+    check(ok, 'up: each point is the average test score of the students in that range, recounted: ' + (L ? Object.entries(L.pts).map(([k, a]) => k.slice(0, 3) + ' ' + a.map(x => x.at + ' ' + x.v + '% of ' + x.n).join('/')).join(', ') : ''));
+    check(L && Object.values(L.pts).flat().every(pt => pt.n >= 5) && L.circles === Object.values(L.pts).flat().length, 'every point stands for 5 or more students, as every Focus number on the board does, and there is no other mark (' + (L ? L.circles : 0) + ' points)');
+    check(dropW.length > 0 && L && dropW.every(at => !L.pts['All accelerated'].some(pt => pt.at === at)) && ax.some(t => t === `Left off the course's line: ${dropW.join(', ')} (too few students there outside the class lines).`), 'the course\'s ' + dropW.join(', ') + ' point is left off: the ' + M1.hidden.filter((h, b) => M1.dropped[b]).join(', ') + ' students there outside the class lines would be the course minus the lines; the caption says so');
     const r = pear(prAll.map(q => q.f), prAll.map(q => q.y));
     check(ax[0] && ax[0].includes(`r = ${r.toFixed(2)} for the ${prAll.length} accelerated students with both`), 'r is worked out over every student with both: r = ' + r.toFixed(2) + ' for ' + prAll.length);
     const words = Math.abs(r) < 0.3 ? 'no clear relationship' : (Math.abs(r) < 0.5 ? 'a weak' : Math.abs(r) < 0.7 ? 'a moderate' : 'a strong') + ' tendency for students with more of the IXL at goal to score ' + (r > 0 ? 'higher' : 'lower');
-    check(ax[0] && ax[0].includes(words) && ax[0].startsWith(`Across: Unit 1 IXL skills at goal (of ${m1}). Up: the average on Unit 1 Assessment of the students in each range, 3 or more to a point.`), '…and the caption reads it in words: "' + (ax[0] || '').slice(-90) + '"'); }
+    check(ax[0] && ax[0].includes(words) && ax[0].startsWith(`Across: Unit 1 IXL skills at goal (of ${m1}). Up: the average on Unit 1 Assessment of the students in each range, 5 or more to a point.`), '…and the caption reads it in words: "' + (ax[0] || '').slice(-90) + '"'); }
   await choose('#labCmp', 'vs:p3-acc');
   { const L = await lines(); const ax = await p.$eval('#lb .labAxis', e => e.textContent.replace(/\s+/g, ' '));
-    const w3 = wantL['3rd Period'].filter(x => x.v != null), wc = wantL['All accelerated'].filter(x => x.v != null);
+    const w3 = wantL['3rd Period'].filter(Boolean), wc = wantL['All accelerated'].filter(Boolean);
     check(L && Object.keys(L.pts).join('|') === '3rd Period|All accelerated' && JSON.stringify(L.paths) === '[false,true]', '3rd Period vs all accelerated: the class\'s line and the course\'s, dashed');
     check(L && L.pts['3rd Period'].every((pt, i) => near(pt.v, w3[i].v)) && L.pts['All accelerated'].every((pt, i) => near(pt.v, wc[i].v)), '…each from its own students');
     check(L && L.vals === L.circles - 2, 'two lines: every point but the last carries its value (the last is in the line\'s label)');
     const r3 = pr['3rd Period'].length >= 8 ? pear(pr['3rd Period'].map(q => q.f), pr['3rd Period'].map(q => q.y)) : null;
     check(r3 == null || ax.includes(`3rd Period's ${pr['3rd Period'].length}: r = ${r3.toFixed(2)}.`), '…and the class\'s own r beside the course\'s' + (r3 != null ? ': ' + r3.toFixed(2) : '')); }
   await choose('#labCmp', 'pool');
-  { const L = await lines(); check(L && Object.keys(L.pts).join() === 'All accelerated' && JSON.stringify(L.paths) === '[false]', 'all accelerated together: one solid line'); }
+  { const L = await lines(); const wc = wantL['All accelerated'].map((x, b) => x && rng(m1, b)).filter(Boolean);
+    check(L && Object.keys(L.pts).join() === 'All accelerated' && JSON.stringify(L.paths) === '[false]' && JSON.stringify(L.pts['All accelerated'].map(x => x.at)) === JSON.stringify(wc), 'all accelerated together: one solid line, the same points as beside the classes (nothing left off in one view shows in another)'); }
   // a class with no gradebook yet, set beside the course: the course's line, solid, and a line saying why the class has none
   await p.evaluate(() => { const T = window.__tally; window.__gb6 = T.state.sections['p6-acc'].grades; T.state.sections['p6-acc'].grades = null; T.render(); }); await p.waitForTimeout(300);
   await choose('#labCmp', 'vs:p6-acc');
@@ -193,7 +213,7 @@ const near = (shown, want) => want != null && Math.abs(shown - want) <= 0.5 + 1e
   check(await p.$eval('#labCy', s => s.value) === 'gb:Unit 2 Vocabulary Quiz', 'Unit 2 brings Unit 2\'s own graded work: ' + (await p.$eval('#labCy', s => s.value)).slice(3));
   await choose('#labCx', U3);
   { const cy = await p.$eval('#labCy', s => s.value); const v = await view(); check(cy === 'grade:course' && /^Unit \d+ IXL and Course grade, Quarter \d$/.test(v.title), U3n.slice(0, 6) + ' has no test in Focus yet: it is set beside the course grade ("' + v.title + '")');
-    const pg = await pairsOf(U3n, 'grade:course'); const all = Object.values(pg).flat(); const L = await lines(); const wc = bands(all).filter(x => x.v != null);
+    const m3 = (await unitVals(U3n))['1st Period'].total; const pg = await pairsOf(U3n, 'grade:course'); const L = await lines(); const wc = model(pg, m3).course.filter(Boolean);
     check(L && L.pts['All accelerated'] && L.pts['All accelerated'].every((pt, i) => near(pt.v, wc[i].v)), '…from Tally\'s own count of the unit and each student\'s Focus grade: ' + (L && L.pts['All accelerated'] ? L.pts['All accelerated'].map(x => x.v + '%').join(' → ') : 'no line')); }
   await choose('#labCy', 'gb:Squares and Cubes Quiz');
   await p.reload(); await p.waitForTimeout(800);
@@ -208,7 +228,7 @@ const near = (shown, want) => want != null && Math.abs(shown - want) <= 0.5 + 1e
   { const s = await fsNow(); check(s.fs && /\blbFull\b/.test(s.body), 'pressed: the page fills the screen (the browser\'s bars are gone)');
     check(s.locks.join() === 'screen', '…and a screen wake lock is asked for, so the board doesn\'t dim or sleep: ' + s.locks.join());
     check(s.btn === 'Exit full screen' && s.pressed === 'true', '…the button now reads "Exit full screen"'); }
-  { const P = await pies(); check(Math.min(...P.cards.map(c => c.d)) > dMin5, 'in full screen the pies take the room the bar gave up: ' + Math.round(Math.min(...P.cards.map(c => c.d))) + ' px across (was ' + Math.round(dMin5) + ')'); }
+  { const P = await pies(); check(P.gridH > pie5.gridH + 40 && Math.min(...P.cards.map(c => c.d)) >= dMin5, 'in full screen the pies take the room the bar gave up: the grid is ' + Math.round(P.gridH - pie5.gridH) + ' px taller, each pie ' + Math.round(Math.min(...P.cards.map(c => c.d))) + ' px across (was ' + Math.round(dMin5) + '; three across, they are as wide as their cards allow)'); }
   await p.mouse.move(8, 8); await p.waitForTimeout(4300);
   { const s = await fsNow(); check(s.op === '0' && s.pe === 'none', 'left alone for a few seconds, the bar fades away (opacity ' + s.op + ')'); }
   await p.evaluate(() => window.__tally.render()); await p.waitForTimeout(500);

@@ -305,3 +305,10 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   ranges against the average on its test, groups of 3 or more, r in words); a Compare menu (each class, the whole
   course, or a class beside a whole course); IXL units grouped in Focus / not in Focus yet, and a single unit's line
   over time. New suite `tests/lab-board.js` (89 checks).
+
+- 4 Nov 2026: the Data Lab hardened (Croix: "harden it and check for bugs and fringe cases"; NOTES.md, "The Data Lab
+  hardened"). Privacy: course rows of Focus scores count only classes shown on their own; IXL and a test needs 5 to a
+  point and leaves off a course point the class lines would give away; Focus lines over time need 5 scores a day. The
+  wake lock is asked for once and always let go; the full-screen bar always fades. Stuck or hostile Compare settings,
+  a Board save, the saved page's dots, goals and totals that differ by class, tiny units, extra credit, pretests, and
+  the pie grid on a phone, a tablet and with stats or ten classes. New suite `tests/lab-hardening.js` (40 checks).

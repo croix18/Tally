@@ -294,3 +294,46 @@ a test on a line, a class beside a whole course, and IXL units Focus doesn't hav
 - Full screen keeps the screen on only while Chrome shows the board. Esc or Exit full screen ends both. If the panel
   still dims, its own power settings are the next place to look.
 - IXL and a test draws groups, not students: each point is the average of 3 or more, so no one's score is on the board.
+
+## The Data Lab hardened (4 Nov 2026)
+
+Croix: "Can you harden it and check for bugs and fringe cases." An independent review of the Data Lab commit (ten
+findings, each reproduced in a browser) plus my own probes. All fixed; `tests/lab-hardening.js` (40 checks, 35 fail on
+the build before) and `tests/lab-board.js` (91).
+
+### Fixed: privacy (Focus scores stay aggregate on the board)
+1. A course row counted every class, then hid the ones under 5: one make-up score was the course's F count minus the
+   classes', and its exact points were the course's minimum under Show stats. Course rows of Focus scores now count only
+   the classes shown on their own, in one course, in Both and on a line over time.
+2. IXL and a test drew points for 3 students, and the course's line had points no class line showed. Now 5 to a point,
+   and a course point is left off when 1 to 4 students there are outside the class lines, the same in every view.
+3. A Focus assignment's line over time drew a class's point from however many scores it had that day (one, at an early
+   import). A class needs 5; a course counts only the classes that have them. Imports now keep the count.
+
+### Fixed: full screen
+4. Two wake locks per press (full screen signals twice) and one never released; one kept when Exit came before Chrome
+   answered. One request at a time; a late lock is released at once.
+5. The bar never faded after Options was left open and its button went away (IXL and a test, the Race).
+
+### Fixed: settings and files
+6. A saved "vs" with one class left showed the class twice, with no menu to undo it; a class without the data set fell
+   back to each class under a subtitle naming it.
+7. "vs:__proto__" from a file threw on every render. Keys are checked before use; a renamed file's key (spaces, dots)
+   now survives a reload, where the old pattern reset it.
+8. A Board save offered IXL and a test, which can't work there (shuffled Focus columns) and said "No student has both";
+   it is not offered there, and the Compare choice now travels in the save.
+9. The saved Data Lab page drew 202 dots for a Focus assignment in Both (decided from the single-course pick).
+
+### Fixed: math and layout
+10. Pooled skill pies used the first class's goal; the key named one goal. Each class's own goal now.
+11. One assignment out of 27 in four classes and 30 in one was pooled in points: percent now.
+12. A 2-skill unit's ranges read "0, 1, 1, 2"; extra credit drew the line above the chart; "Unit 3 Pretest" (and a
+    retake) could be taken as the unit's test.
+13. The pie grid overflowed with stats on, with ten classes by course, and on a laptop whose bar wraps to two lines;
+    on a phone the pies were 30 px (later 144) wide. It fills the room now and scrolls only when a card can't fit.
+
+### For Croix
+- IXL and a test needs 5 students to a point now, so a class's own line shows only when it has two ranges of 5 or more.
+  The course line and each class's r (8 or more students) are there either way.
+- A whole course of Focus scores leaves out a class with fewer than 5 scores (say, one make-up). The class's row says
+  it needs 5; once it has them it counts.

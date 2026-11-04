@@ -74,7 +74,7 @@ function hydrate(s) {
 function adopt(s) { const keep = state; state = s; try { migrate(); } catch (e) { state = keep; throw e; } return state; }
 function migrate() {
   const st = state.settings || {};
-  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, duplex: st.duplex !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : st.labPrep === 'both' ? 'both' : 'acc', labPick: { acc: st.labPick && typeof st.labPick.acc === 'string' ? st.labPick.acc.slice(0, 200) : '', on: st.labPick && typeof st.labPick.on === 'string' ? st.labPick.on.slice(0, 200) : '' }, labRows: st.labRows === 'class' ? 'class' : typeof st.labRows === 'string' && /^vs:[\w-]{1,80}$/.test(st.labRows) ? st.labRows : 'course', labCmp: Object.fromEntries(['acc', 'on'].map(c => [c, st.labCmp && typeof st.labCmp[c] === 'string' && /^(class|pool|vs:[\w-]{1,80})$/.test(st.labCmp[c]) ? st.labCmp[c] : 'class'])), labCorr: Object.fromEntries(['acc', 'on'].map(c => { const o = st.labCorr && st.labCorr[c]; const str = v => typeof v === 'string' && v.length < 300 ? v : undefined; return [c, o && typeof o === 'object' ? { x: str(o.x), y: str(o.y) } : {}]; })), labPairs: st.labPairs && typeof st.labPairs === 'object' ? Object.fromEntries(Object.entries(st.labPairs).filter(([k, v]) => SAFE_KEY(k) && typeof v === 'string').slice(0, 200)) : {}, labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
+  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, duplex: st.duplex !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : st.labPrep === 'both' ? 'both' : 'acc', labPick: { acc: st.labPick && typeof st.labPick.acc === 'string' ? st.labPick.acc.slice(0, 200) : '', on: st.labPick && typeof st.labPick.on === 'string' ? st.labPick.on.slice(0, 200) : '' }, labRows: st.labRows === 'class' ? 'class' : typeof st.labRows === 'string' && /^vs:[^\u0000-\u001f]{1,300}$/.test(st.labRows) ? st.labRows : 'course', labCmp: Object.fromEntries(['acc', 'on'].map(c => [c, st.labCmp && typeof st.labCmp[c] === 'string' && /^(class|pool|vs:[^\u0000-\u001f]{1,300})$/.test(st.labCmp[c]) ? st.labCmp[c] : 'class'])),   /* a class key can be a renamed file's stem (spaces, dots): labCmpFor checks it names a class */ labCorr: Object.fromEntries(['acc', 'on'].map(c => { const o = st.labCorr && st.labCorr[c]; const str = v => typeof v === 'string' && v.length < 300 ? v : undefined; return [c, o && typeof o === 'object' ? { x: str(o.x), y: str(o.y) } : {}]; })), labPairs: st.labPairs && typeof st.labPairs === 'object' ? Object.fromEntries(Object.entries(st.labPairs).filter(([k, v]) => SAFE_KEY(k) && typeof v === 'string').slice(0, 200)) : {}, labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
     skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line', 'avg', 'corr'].includes(st.labKind) ? st.labKind : 'box', labAvg: !!st.labAvg, labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null },
     curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) },
@@ -733,7 +733,7 @@ const LB_CSS = `
    (25 px there, 18 px on a laptop); tags and stat labels are about 1 bu. */
 .lbWrap{--bu0:clamp(11px,min(1vw,1.7778vh),40px);--bu:var(--bu0)}
 .lbLeagues:not(.two){--bu:calc(var(--bu0)*1.3)}   /* one league has the whole width: its cards are a third larger */
-.lbWrap{--padB:96px;min-height:100%;display:flex;flex-direction:column;gap:calc(var(--bu)*.85);padding:calc(var(--bu)*1.1) calc(var(--bu)*1.6) var(--padB);max-width:min(96vw,2600px);margin:0 auto;width:100%}
+.lbWrap{--padB:calc(var(--barH,80px) + 16px);min-height:100%;display:flex;flex-direction:column;gap:calc(var(--bu)*.85);padding:calc(var(--bu)*1.1) calc(var(--bu)*1.6) var(--padB);max-width:min(96vw,2600px);margin:0 auto;width:100%}
 .lbHead{display:flex;flex-direction:column;gap:calc(var(--bu)*.2)}
 .lbTitle{margin:0;font-weight:var(--w-heavy);font-size:calc(var(--bu)*2.5);color:var(--navy);line-height:1.15}
 .lbSub{margin:0;font-weight:var(--w-med);color:var(--ink-soft);font-size:calc(var(--bu)*1.3);line-height:1.3}
@@ -817,7 +817,8 @@ function labDatasets(prep) {
   // don't have it in the grade book yet. Id still like to display the classes progress"): the units Focus has a column
   // for, then the ones it doesn't yet. Every one of them is Tally's own count, so both work in every graph.
   const inFocus = new Set(); secs.forEach(s => (s.grades ? s.grades.assignments : []).forEach(a => { const u = gbUnitFor(s, a); if (u) inFocus.add(u.name); }));
-  const IXL_IN = 'IXL units in Focus (points)', IXL_NOT = 'IXL units not in Focus yet (points)';
+  const anyGb = secs.some(s => s.grades && s.grades.assignments.length);
+  const IXL_IN = 'IXL units in Focus (points)', IXL_NOT = anyGb ? 'IXL units not in Focus yet (points)' : 'IXL units (points)';   // no gradebook in Tally: no unit is waiting for Focus
   const units = []; secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden && u.total && !units.some(x => x.name === u.name)) units.push(u); }));
   units.filter(u => inFocus.has(u.name)).forEach(u => add(IXL_IN, 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')));
   add(inFocus.size ? IXL_IN : IXL_NOT, 'unit:__all__', 'All assigned units · skills at goal');
@@ -908,7 +909,8 @@ function labPlot(kind, x, scale, id, o) {
 // quarters of the maximum, red to green. `chip` is the short name under a pie in the grid, beside its count.
 function pieParts(x) {
   const vals = x.values.filter(v => v != null);
-  if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return [{ label: 'At goal (' + x.thr + '+)', chip: 'At goal', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', chip: 'Below', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', chip: 'Not started', value: x.missing, color: NEUTRAL_FILL }]; }
+  if (x.kind === 'skill') { let at = 0, below = 0; x.values.forEach((v, i) => { if (v == null) return; if (v >= (x.thrs ? x.thrs[i] : x.thr)) at++; else below++; }); const goals = [...new Set(x.thrs || [x.thr])];
+    return [{ label: goals.length === 1 ? 'At goal (' + goals[0] + '+)' : 'At goal (each class\'s goal)', chip: 'At goal', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', chip: 'Below', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', chip: 'Not started', value: x.missing, color: NEUTRAL_FILL }]; }
   if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return ['A', 'B', 'C', 'D', 'F'].map(k => ({ label: k, short: k, chip: k, value: b[k], color: LETTER_COLORS[k] })); }
   const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1;
   if (x.pct) return [0, 1, 2, 3].map(i => ({ label: ['Under 25%', '25–49%', '50–74%', '75–100%'][i], chip: ['0–24%', '25–49%', '50–74%', '75–100%'][i], value: q[i], color: QUARTER_COLORS[i] }));
@@ -956,7 +958,8 @@ function labPickFor(c) {
 // ("All accelerated" when the row stands beside one of its own classes).
 function labPool(c, series, name) {
   if (!series.length) return null; const values = series.flatMap(x => x.values); const st = stats(values) || { n: 0 };
-  return { ...series[0], name: name || COURSE_NAMES[c], course: c, pool: true, values, st, total: values.length, missing: series.reduce((a, x) => a + (x.missing || 0), 0), excused: series.reduce((a, x) => a + (x.excused || 0), 0), max: Math.max(...series.map(x => x.max)), sec: null, secs: series.map(x => x.sec), color: COURSE_COLORS[c], classes: series.map(x => labShort(x.name)) };
+  return { ...series[0], name: name || COURSE_NAMES[c], course: c, pool: true, values, st, total: values.length, missing: series.reduce((a, x) => a + (x.missing || 0), 0), excused: series.reduce((a, x) => a + (x.excused || 0), 0), max: Math.max(...series.map(x => x.max)), sec: null, secs: series.map(x => x.sec), color: COURSE_COLORS[c], classes: series.map(x => labShort(x.name)),
+    thrs: series.flatMap(x => x.values.map(() => x.thr)) };   // each student's own class goal: a skill's pie counts at goal by it (audit: the first class's goal was used for all)
 }
 /* What the rows are (Croix, 4 Nov 2026: "a way to display all of a prep so like all of a7 or all of m7 compared to a
    specific class"). One course: each class (the default), the whole course together, or one class beside the whole
@@ -964,7 +967,11 @@ function labPool(c, series, name) {
 const allCourse = c => 'All ' + COURSE_NAMES[c].toLowerCase();   // "All accelerated", "All on-level"
 function labCmpFor(prep) {
   const st = state.settings; const v = prep === 'both' ? st.labRows : (st.labCmp || {})[prep];
-  if (/^vs:/.test(v || '')) { const s = state.sections[v.slice(3)]; if (s && !s.placeholder && s.students.length && (prep === 'both' || s.prep === prep)) return v; }
+  const live = s => !!(s && !s.placeholder && Array.isArray(s.students) && s.students.length);
+  // one class in the course: nothing to set it beside, and the menu is gone, so a choice saved earlier can't stick (audit)
+  if (prep !== 'both' && state.order.filter(k => live(state.sections[k]) && state.sections[k].prep === prep).length < 2) return 'class';
+  if (typeof v === 'string' && v.startsWith('vs:')) { const k = v.slice(3); const s = SAFE_KEY(k) && Object.prototype.hasOwnProperty.call(state.sections, k) ? state.sections[k] : null;   // "vs:__proto__" from a file is no class
+    if (live(s) && (prep === 'both' || s.prep === prep)) return v; }
   if (prep === 'both') return v === 'class' ? 'class' : 'course';
   return v === 'pool' ? 'pool' : 'class';
 }
@@ -977,9 +984,15 @@ function labCmpWords(prep, cmp) {
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow) {
   statsLevel = +statsLevel || 0; let kind = kindNow || state.settings.labKind || 'box';
   const both = prep === 'both'; const cmp = labCmpFor(prep); const vs = /^vs:/.test(cmp) ? cmp.slice(3) : null;
-  if (kind === 'corr') { if (!both) return labCorrMarkup(prep, cmp); kind = 'box'; }
+  if (kind === 'corr') { if (!both && !state.board) return labCorrMarkup(prep, cmp); kind = 'box'; }   // a Board save shuffles each Focus column, so no row pairs IXL with a test
   const rowsBy = vs ? 'vs' : both ? cmp : 'class';   // 'course' | 'class' | 'vs' (one class beside a whole course)
   let seriesAll, secs, title, ids, units;
+  /* A whole course of Focus scores counts only the classes that show on their own (5 or more scores). Audit, 4 Nov 2026:
+     with one make-up score in 5th Period, the course's F count minus the classes' was that student's grade, and "5th
+     Period vs all accelerated" put both on one screen. IXL counts pool every class, as they always did. */
+  const poolOf = (c, ser, name, focus) => labPool(c, focus ? ser.filter(x => x.st.n >= MIN_N) : ser, name);
+  // the class he picked has nothing for this data set: an empty row in its place, so the rows match the line under the title
+  const blank = (k, course) => { const s = state.sections[k]; return { name: s.team || s.label, st: { n: 0 }, values: [], max: 0, missing: 0, total: 0, kind: 'none', sec: s, course, empty: true }; };
   if (both) {
     ids = { acc: labPickFor('acc'), on: labPickFor('on') }; const L = c => (labDatasets(c).list.find(d => d.id === ids[c]) || {}).label || '';
     if (!ids.acc || !ids.on) return `<div class="lbEmpty">Comparing needs classes in both courses.</div>`;
@@ -987,9 +1000,10 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     const raw = { acc: labSeries('acc', ids.acc), on: labSeries('on', ids.on) };
     const all = [...raw.acc, ...raw.on]; const pctNeeded = all.some(x => !x.pct && x.unit !== 'SmartScore') && (new Set(all.map(x => x.max)).size > 1 || new Set(all.map(x => x.unit)).size > 1);
     const ser = pctNeeded ? { acc: labSeries('acc', ids.acc, true), on: labSeries('on', ids.on, true) } : raw;
-    const pools = () => ['acc', 'on'].map(c => labPool(c, ser[c])).filter(Boolean);
-    seriesAll = rowsBy === 'course' ? pools() : rowsBy === 'vs' ? (() => { const c1 = state.sections[vs].prep === 'acc' ? 'acc' : 'on', c2 = c1 === 'acc' ? 'on' : 'acc'; const one = ser[c1].find(x => x.sec.key === vs);
-        return one ? [{ ...one, course: c1 }, labPool(c2, ser[c2], allCourse(c2))].filter(Boolean) : pools(); })()
+    const foc = { acc: focusSet(ids.acc), on: focusSet(ids.on) };
+    const pools = () => ['acc', 'on'].map(c => poolOf(c, ser[c], null, foc[c])).filter(Boolean);
+    seriesAll = rowsBy === 'course' ? pools() : rowsBy === 'vs' ? (() => { const c1 = state.sections[vs].prep === 'acc' ? 'acc' : 'on', c2 = c1 === 'acc' ? 'on' : 'acc'; const one = ser[c1].find(x => x.sec.key === vs) || blank(vs, c1);
+        return [{ ...one, course: c1 }, poolOf(c2, ser[c2], allCourse(c2), foc[c2])].filter(Boolean); })()
       : [...ser.acc.map(x => ({ ...x, course: 'acc' })), ...ser.on.map(x => ({ ...x, course: 'on' }))];
     title = labNorm(L('acc')) === labNorm(L('on')) ? L('acc') : `${L('acc')} vs ${L('on')}`;
     units = { acc: L('acc'), on: L('on') };
@@ -997,8 +1011,11 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     const ds0 = labDatasets(prep); secs = ds0.secs;
     if (!secs.length) return `<div class="lbEmpty">No ${prep === 'acc' ? 'accelerated' : 'on-level'} classes imported yet.</div>`;
     if (!ds0.list.some(d => d.id === unitName)) unitName = ds0.list[0].id;
-    const raw = labSeries(prep, unitName); title = ds0.list.find(d => d.id === unitName).label;
-    seriesAll = cmp === 'pool' ? [labPool(prep, raw, allCourse(prep))].filter(Boolean) : vs ? (() => { const one = raw.find(x => x.sec.key === vs); return one ? [one, labPool(prep, raw, allCourse(prep))] : raw; })() : raw;
+    let raw = labSeries(prep, unitName); title = ds0.list.find(d => d.id === unitName).label; const foc = focusSet(unitName);
+    // the same Focus assignment out of different totals in different classes: percent, so every row (and a course of
+    // them) is on one scale (audit: points out of 20 and out of 25 were pooled as one)
+    if (raw.length > 1 && !raw[0].pct && raw.every(x => x.kind === 'gb') && new Set(raw.map(x => x.max)).size > 1) raw = labSeries(prep, unitName, true);
+    seriesAll = cmp === 'pool' ? [poolOf(prep, raw, allCourse(prep), foc)].filter(Boolean) : vs ? [raw.find(x => x.sec.key === vs) || blank(vs), poolOf(prep, raw, allCourse(prep), foc)].filter(Boolean) : raw;
   }
   const anyId = both ? ids.acc : unitName;
   const series = seriesAll.filter(x => x.st.n >= MIN_N), thin = seriesAll.filter(x => x.st.n < MIN_N);
@@ -1006,7 +1023,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
   // no excused counts. Comparing whole courses (15 or more students a row) is the exception he asked for: every chart.
   const gbSet = both ? (focusSet(ids.acc) || focusSet(ids.on)) : focusSet(unitName);
   const fullSuite = labFullSuite(prep, ids, rowsBy, series);
-  if (gbSet && !fullSuite) { valuesOn = false; tukey = false; if (!FOCUS_KINDS.includes(kind)) kind = 'box'; }   // shown as a box plot, his choice kept for the next data set
+  if (gbSet && !fullSuite) { valuesOn = false; tukey = false; dotsOn = false; if (!FOCUS_KINDS.includes(kind)) kind = 'box'; }   // shown as a box plot, his choice kept for the next data set; never a dot per student (audit: the saved page drew them in Both)
   const course = both ? 'accelerated and on-level' : prep === 'acc' ? 'accelerated' : 'on-level'; const avgOn = !!state.settings.labAvg;
   const color = x => x.color || classColor(x.sec);
   if (kind === 'line') {   // every row on one chart: the comparison is the point
@@ -1020,12 +1037,19 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     const secsOf = x => x.pool ? x.secs : [x.sec];
     const hist = (s, x) => ixlLine ? (s.history || []) : (s.gradeHistory || []).filter(z => lk === 'grade' || z.assignments.some(a => a.name === idOf(x).slice(3)));
     const dates = lk ? [...new Set(rows.flatMap(x => secsOf(x).flatMap(s => hist(s, x).map(h => h.date))))].sort() : [];
+    // One class at one import: the sum and how many it counts. Focus scores (an assignment, the course grade) need 5 or
+    // more in a class, as every Focus number on the board does, and a course's line counts only the classes that have
+    // them (audit: an early import with one score drew that student's score as the class's point). An assignment's
+    // count is kept since 4 Nov 2026; older imports count the students not marked missing.
+    const focusLine = lk === 'gb' || lk === 'grade';
+    const partAt = (s, x, h) => { let sum = 0, n = 0;
+      if (lk === 'all') snapTotals(s, h).forEach(v => { sum += v; n++; });
+      else if (lk === 'unit') { const nm = idOf(x).slice(5); const pu = (h.pu || {})[nm], tot = (h.ua || {})[nm]; if (pu && tot) Object.values(pu).forEach(v => { sum += v / tot * 100; n++; }); }
+      else if (lk === 'grade') (h.grade || []).forEach(g => { if (g != null) { sum += g; n++; } });
+      else { const a = h.assignments.find(a => a.name === idOf(x).slice(3)); if (a && a.avg != null) { const k = Number.isInteger(a.n) ? a.n : Math.max(0, (h.students || []).length - (a.missing || 0)); sum += a.avg * k; n += k; } }
+      return focusLine && n < MIN_N ? [0, 0] : [sum, n]; };
     const valueAt = (x, d) => { let sum = 0, n = 0;
-      secsOf(x).forEach(s => { const H = hist(s, x); const h = x.pool ? H.filter(z => z.date <= d).pop() : H.filter(z => z.date === d).pop(); if (!h) return;
-        if (lk === 'all') snapTotals(s, h).forEach(v => { sum += v; n++; });
-        else if (lk === 'unit') { const nm = idOf(x).slice(5); const pu = (h.pu || {})[nm], tot = (h.ua || {})[nm]; if (pu && tot) Object.values(pu).forEach(v => { sum += v / tot * 100; n++; }); }
-        else if (lk === 'grade') h.grade.forEach(g => { if (g != null) { sum += g; n++; } });
-        else { const a = h.assignments.find(a => a.name === idOf(x).slice(3)); if (a && a.avg != null) { const w = x.pool ? Math.max(1, (h.students || []).length - (a.missing || 0)) : 1; sum += a.avg * w; n += w; } } });   // a course's average on an assignment: its classes' averages, each by the students it counts
+      secsOf(x).forEach(s => { const H = hist(s, x); const h = x.pool ? H.filter(z => z.date <= d).pop() : H.filter(z => z.date === d).pop(); if (!h) return; const [a, b] = partAt(s, x, h); sum += a; n += b; });
       return n ? sum / n : null; };
     const asOfL = labAsOf(secs, gbSet); let body = '';
     if (!lk) body = '<div class="labNotYet">A line graph needs data over time. Pick an IXL unit, <b>All assigned units</b>, the course grade or a Focus assignment.</div>';
@@ -1034,16 +1058,20 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
       body = chartLines(dates.map(fmtDate), rows.map(x => ({ name: labShort(x.name), color: x.pool ? x.color : classColor(x.sec), ref: mixed && !!x.pool, values: dates.map(d => valueAt(x, d)) })),
         lk === 'all' ? { aria: 'average of skills at goal by import', h: LINE_H(), w: 900, labelW: 200 } : { pct: true, min: lk === 'grade' ? 40 : 0, max: 100, h: LINE_H(), w: 900, labelW: 200, aria: lk === 'unit' ? 'average share of the unit at goal by import' : lk === 'grade' ? 'average course grade by import' : 'average on this assignment by import' }); }
     const what = lk === 'unit' ? 'average share of the unit\'s skills at goal at each import' : rows.every(x => !x.pool) ? 'class average at each import' : 'average at each import';
+    // a row with no line says why, as in every other form (a class too small to show, or one with nothing for this yet)
+    const offL = (both && rowsBy === 'class' ? [] : seriesAll).filter(x => x.st.n < MIN_N); const few = offL.filter(x => x.st.n), none = offL.filter(x => !x.st.n);
+    const why = `${few.length ? `<div class="labNotYet">${esc(few.map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}${none.length ? `<div class="labNotYet">${esc(none.map(x => labShort(x.name)).join(', '))}: no scores for this yet</div>` : ''}`;
     return `${boardHead(dsTitle(title), [labCmpWords(prep, cmp), what, asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
-      <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
+      <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot">${body}${why}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
-  if (seriesAll[0] && seriesAll[0].pct) scale = 100;
+  const ref0 = seriesAll.find(x => !x.empty) || seriesAll[0];   // the first row with data (an empty row for a class with nothing says nothing about units)
+  if (ref0 && ref0.pct) scale = 100;
   else if (anyId === 'unit:__all__' || series.some(x => x.st.max > x.max)) { const top = Math.max(...series.map(x => Math.max(x.st.max, anyId === 'unit:__all__' ? 0 : x.max)), 1); const step = top > 100 ? 20 : top > 40 ? 10 : 5; scale = Math.ceil((top + 1) / step) * step; }
-  const mixedMax = both && new Set(seriesAll.map(x => x.unit)).size > 1;   // two assignments out of different totals: say so, not one side's total
-  const unitLabel = mixedMax ? 'the maximum' : seriesAll.length ? seriesAll[0].unit : 'points';
+  const mixedMax = both && new Set(seriesAll.filter(x => !x.empty).map(x => x.unit)).size > 1;   // two assignments out of different totals: say so, not one side's total
+  const unitLabel = mixedMax ? 'the maximum' : ref0 && ref0.unit ? ref0.unit : 'points';
   const asOf = labAsOf(secs, gbSet);
-  const isGrade = anyId === 'grade:course'; const isPct = !!(seriesAll[0] && seriesAll[0].pct);
+  const isGrade = anyId === 'grade:course'; const isPct = !!(ref0 && ref0.pct);
   const facts = [labCmpWords(prep, cmp)];
   const pooled = seriesAll.some(x => x.pool); const perWord = seriesAll.every(x => x.pool) ? 'course' : pooled ? 'row' : 'class';
   if (both && units && labNorm(units.acc) !== labNorm(units.on)) facts.push(`accelerated: ${units.acc}; on-level: ${units.on}`);
@@ -1051,7 +1079,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     const what = isGrade ? 'course grade' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')}` : unitLabel;
     const bars = series.length ? chartBars(series.map(x => ({ label: labShort(x.name), value: x.st.mean, color: color(x), hint: 'n = ' + x.st.n })), { max: scale, pct: isPct, fmt: v => v.toFixed(1) + (isPct ? '%' : ''), w: 760, labelW: 170, rowH: 46, barH: 26, ticks: (() => { const st = scale > 60 ? 25 : scale > 30 ? 10 : scale > 12 ? 5 : scale > 6 ? 2 : 1; const a = []; for (let v = 0; v <= scale + 1e-9; v += st) a.push(v); return a; })(), aria: 'average, one bar per ' + perWord }) : '<div class="labNotYet">No class has enough scores for an average yet.</div>';
     return `${boardHead(dsTitle(title), [...facts, perWord === 'row' ? `average ${what}` : `average ${what} per ${perWord}`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
-      <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labAvgBars">${bars}${thin.length ? `<div class="labNotYet">${esc(thin.map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}</div></div></div>`;
+      <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labAvgBars">${bars}${thin.filter(x => x.st.n).length ? `<div class="labNotYet">${esc(thin.filter(x => x.st.n).map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}${thin.filter(x => !x.st.n).length ? `<div class="labNotYet">${esc(thin.filter(x => !x.st.n).map(x => labShort(x.name)).join(', '))}: no scores for this yet</div>` : ''}</div></div></div>`;
   }
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
   const statsOf = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return statsLevel > 0 ? `<div class="labStats">
@@ -1064,18 +1092,28 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
      of the comparisons but it views as kinda small on the board"): one per row, as many columns as fill the screen,
      each pie as tall as its share of the height allows. Under each pie, its counts in the key's order. */
   if (kind === 'circle') {
-    const pies = series.map(x => ({ x, parts: pieParts(x) })); const key = pies.length ? pies[0].parts : [];
-    const n = pies.length + thin.length; const cols = n <= 1 ? 1 : n === 2 ? 2 : n === 3 ? 3 : n === 4 ? 2 : n <= 6 ? 3 : 4;
-    const grouped = both && rowsBy === 'class'; const rowsN = Math.ceil(n / cols) + (grouped ? 1 : 0);
+    const pies = series.map(x => ({ x, parts: pieParts(x) }));
+    // one key for every pie: a skill's goal is named only when every class has the same one
+    const key = !pies.length ? [] : pies[0].x.kind === 'skill' && new Set(series.flatMap(x => x.thrs || [x.thr])).size > 1 ? pies[0].parts.map((p, i) => i ? p : { ...p, label: 'At goal (each class\'s goal)' }) : pies[0].parts;
+    // Columns: as many as fill the board (1, 2, 3; 4 as 2×2; 5 or 6 as 3×2; more, 4 across). By course, as many as the
+    // larger course has classes (5 at most), each course on its own rows under its name. The rows, the course names and
+    // the stats under each pie are taken out of the height each pie may use (audit: ten classes by course overflowed).
+    const grouped = both && rowsBy === 'class'; const n = seriesAll.length;
+    const sizes = grouped ? ['acc', 'on'].map(c => seriesAll.filter(x => x.course === c).length).filter(Boolean) : [n];
+    const cols = grouped ? Math.min(5, Math.max(1, ...sizes)) : n <= 1 ? 1 : n === 2 ? 2 : n === 3 ? 3 : n === 4 ? 2 : n <= 6 ? 3 : 4;
+    // the grid's rows: each course's name, then its rows of pies, every row of pies an equal share of the height left
+    const rowsT = c => (grouped ? sizes : [n]).map(k => (grouped ? 'auto ' : '') + Array(Math.max(1, Math.ceil(k / c))).fill('minmax(min-content,1fr)').join(' ')).join(' ');
+    const cols2 = Math.min(cols, 2), narrow = cols >= 5;   // a tablet on its end: two across; five across: the counts under each pie
+    const fit = `--pc:${cols};--prows:${rowsT(cols)};--pc2:${cols2};--prows2:${rowsT(cols2)}`;
     const card = q => `<div class="labPie" style="--cc:${color(q.x)}"><div class="labPieHead"><span class="labName">${esc(labShort(q.x.name))}</span><small>${nameSmall(q.x)}</small>${avgOn ? `<span class="labAvg"><b>${fmtAvg(q.x)}</b><span>average</span></span>` : ''}</div>
         <div class="labPieBody"><div class="labPieArt">${chartPie(q.parts, { aria: 'circle graph, ' + labShort(q.x.name) })}</div>
         <div class="labPieKey">${q.parts.map(p => `<span title="${esc(p.label)}: ${p.value}"><i style="background:${p.color}"></i>${esc(p.chip)}: <b>${p.value}</b></span>`).join('')}</div></div>${statsOf(q.x)}${valuesOn ? valuesMarkup(q.x.st, tukey, q.x.pct) : ''}</div>`;
     // every row in its place (a class too small to draw keeps its spot beside the course it is compared with)
-    const thinCard = x => `<div class="labPie thin" style="--cc:${color(x)}"><div class="labPieHead"><span class="labName">${esc(labShort(x.name))}</span><small>n = ${x.st.n || 0}</small></div><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div>`;
+    const thinCard = x => `<div class="labPie thin" style="--cc:${color(x)}"><div class="labPieHead"><span class="labName">${esc(labShort(x.name))}</span><small>n = ${x.st.n || 0}</small></div><div class="labNotYet">${x.st.n ? `Not enough students yet (needs ${MIN_N})` : 'No scores for this yet'}</div></div>`;
     let cards = '', at = null; seriesAll.forEach(x => { if (grouped && x.course !== at) { at = x.course; cards += `<div class="labGroupHead" style="--cc:${COURSE_COLORS[at]}">${COURSE_NAMES[at]}</div>`; } cards += x.st.n >= MIN_N ? card(pies.find(q => q.x === x)) : thinCard(x); });
     return `${boardHead(dsTitle(title), [...facts, perStudent, asOf ? 'as of ' + fmtDate(asOf) : ''])}
       ${key.length ? `<div class="labLegend labPieLegend">${key.map(p => `<span><i style="background:${p.color}"></i>${esc(p.label)}</span>`).join('')}</div>` : ''}
-      <div class="labPies" style="--pc:${cols};--pr:${rowsN}">${cards}${!seriesAll.length ? '<div class="lbEmpty">No class has data for that yet.</div>' : ''}</div>`;
+      <div class="labPies${narrow ? ' narrow' : ''}" style="${fit}">${cards}${!seriesAll.length ? '<div class="lbEmpty">No class has data for that yet.</div>' : ''}</div>`;
   }
   const marks = avgOn && ['box', 'dots', 'hist', 'bar'].includes(kind);   // the forms that can carry a mark at the average; the others show the number only
   // every row stacks its dots to the same height, so every row is drawn to one scale (audit: a taller stack in one class
@@ -1095,7 +1133,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
       ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
       ${statsOf(x)}
     </div>`;
-  const thinRow = x => `${head(x)}<div class="labRow thin${x.pool ? ' course' : ''}" style="--cc:${color(x)}"><div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
+  const thinRow = x => `${head(x)}<div class="labRow thin${x.pool ? ' course' : ''}" style="--cc:${color(x)}"><div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div></div><div class="labPlot"><div class="labNotYet">${x.st.n ? `Not enough students yet (needs ${MIN_N})` : 'No scores for this yet'}</div></div></div>`;
   // two whole courses side by side: one line on how their centers and spreads compare (MA.7.DP.1.2)
   const versus = (both && rowsBy === 'course' || rowsBy === 'vs') && series.length === 2 && statsLevel > 1 ? (() => { const [a, b] = series; const U = isPct ? ' percentage points' : ' points'; const d = Math.abs(a.st.median - b.st.median); return `<div class="labVersus">Medians ${fmtN(d)}${U} apart · IQR ${fmtN(a.st.iqr)} vs ${fmtN(b.st.iqr)}${isPct ? '' : ''}</div>`; })() : '';
   const meanKey = '<span><i class="lgMean"></i>average (mean)</span>';
@@ -1107,10 +1145,11 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
    grades so like unit 3 ixl and unit 3 assessment on a line chart") ----------
    Students are grouped by how much of the IXL unit they have at goal (four ranges, a quarter of the unit each), and each
    point is a group's average score on the test, so the line climbs when more IXL goes with higher scores. A point
-   stands for 3 or more students, so the board shows no one's score (Focus scores stay aggregate on the board); r is
-   worked out over every student with both. One line per class with the whole course dashed, the course alone, or one
-   class beside the course. */
-const CORR_MIN = 3;
+   stands for 5 or more students, as every Focus number on the board does (audit, 4 Nov 2026: 3 let two of the three
+   work out the third's score), and the course's point at a range is left off when the students no class line shows
+   there number 1 to 4 (the course minus the class lines would be their average). r is worked out over every student
+   with both. One line per class with the whole course dashed, the course alone, or one class beside the course. */
+const CORR_MIN = MIN_N;
 const LINE_H = () => PHONE() ? 300 : 380;   // a line graph on the board fills the room under the heading; on a phone it stays short
 const corrXs = prep => labDatasets(prep).groups.filter(g => /^IXL units/.test(g.group)).map(g => ({ group: g.group.replace(/ \(points\)$/, ''), items: g.items.filter(d => /^unit:/.test(d.id)) })).filter(g => g.items.length);
 const corrYs = prep => labDatasets(prep).groups.filter(g => !/^IXL /.test(g.group) && g.group !== 'Our own data').map(g => ({ group: g.group, items: g.items.filter(d => d.id === 'grade:course' || (/^gb:/.test(d.id) && !/\bixl\b/i.test(d.id))) })).filter(g => g.items.length);
@@ -1120,8 +1159,9 @@ function corrPick(prep) {
   const cur = (st.currentUnit || {})[prep]; const curU = cur ? xs.find(d => new RegExp('^unit:Unit ' + cur + '(\\b|$)').test(d.id)) : null;
   const x = xs.some(d => d.id === saved.x) ? saved.x : xs.some(d => d.id === st.labUnit && st.labPrep === prep) ? st.labUnit : curU ? curU.id : (xs[0] || {}).id || null;
   const num = x ? (/^unit:Unit (\d+)/.exec(x) || [])[1] : null;
-  // the unit's own test: an assessment, test or exam first, then a quiz, then anything else named for the unit
-  const rank = d => /assess|test|exam/i.test(d.id) ? 2 : /quiz/i.test(d.id) ? 1 : 0;
+  // the unit's own test: an assessment, test or exam first, then a quiz, then anything else named for the unit; a pretest
+  // or a retake last (audit: "Unit 3 Pretest" was taken for the unit's test, and a retake has only the students who retook)
+  const rank = d => /\bpre-?(test|assess)/i.test(d.id) ? -2 : /re-?take|redo|make-?up/i.test(d.id) ? -1 : /assess|test|exam/i.test(d.id) ? 2 : /quiz/i.test(d.id) ? 1 : 0;
   const own = num ? ys.filter(d => /^gb:/.test(d.id) && new RegExp('\\bunit\\s*' + num + '\\b', 'i').test(d.id)).sort((a, b) => rank(b) - rank(a))[0] : null;
   // a unit Focus has no test for yet (Unit 5 before its test) is set beside the course grade
   const y = ys.some(d => d.id === saved.y) && saved.x === x ? saved.y : own ? own.id : ys.some(d => d.id === saved.y) ? saved.y : ys.some(d => d.id === 'grade:course') ? 'grade:course' : (ys.find(d => /^gb:/.test(d.id)) || ys[0] || {}).id || null;
@@ -1145,28 +1185,40 @@ function labCorrMarkup(prep, cmp) {
   const title = xd && yd ? `${xShort} and ${yName}` : 'IXL and a test';
   if (!xd || !yd) return `${boardHead(title, [labCmpWords(prep, cmp)])}<div class="lbEmpty">${!xd ? 'No IXL units in this course yet.' : 'Import a Focus gradebook to set IXL beside a test.'}</div>`;
   const per = secs.map(s => ({ s, pairs: corrPairs(s, x, y) })).filter(c => c.pairs.length); const all = per.flatMap(c => c.pairs);
-  const vs = /^vs:/.test(cmp) ? cmp.slice(3) : null; const course = { name: allCourse(prep), color: COURSE_COLORS[prep], pairs: all };
-  const one = c => ({ name: labShort(c.s.team || c.s.label), color: classColor(c.s), pairs: c.pairs });
-  const mineC = vs ? per.filter(c => c.s.key === vs).map(one) : [];
-  const groups = cmp === 'pool' ? [course] : vs ? [...mineC, { ...course, ref: mineC.length > 0 }] : [...per.map(one), ...(per.length > 1 ? [{ ...course, ref: true }] : [])];
-  const noneVs = vs && !mineC.length ? labShort(state.sections[vs].team || state.sections[vs].label) : null;   // the class he picked has no student with both yet
-  // the four ranges, in skills when every class counts the same number (a quarter of the unit each), else in percent
+  const vs = /^vs:/.test(cmp) ? cmp.slice(3) : null;
+  // the ranges: a quarter of the unit each, in skills when every class counts the same number, else in percent; a unit of
+  // one or two skills has a range for each count (audit: quarters of 2 skills read "0, 1, 1, 2")
   const totals = new Set(secs.map(s => (x === 'unit:__all__' ? unitsOf(s).filter(u => u.assigned) : unitsOf(s).filter(u => 'unit:' + u.name === x)).reduce((a, u) => a + u.total, 0)).filter(Boolean)); const m = totals.size === 1 ? [...totals][0] : null;
-  const edge = i => Math.ceil(m * i / 4); const labels = [0, 1, 2, 3].map(i => { if (!m) return ['0–24%', '25–49%', '50–74%', '75–100%'][i]; const lo = edge(i), hi = i === 3 ? m : edge(i + 1) - 1; return lo >= hi ? `${lo}` : `${lo}–${hi}`; });
-  const band = f => Math.min(3, Math.floor(f * 4 + 1e-9));
-  const lines = groups.map(g => { const sum = [0, 0, 0, 0], n = [0, 0, 0, 0]; g.pairs.forEach(p => { const b = band(p.f); sum[b] += p.y; n[b]++; });
-    return { ...g, n, values: n.map((k, i) => k >= CORR_MIN ? sum[i] / k : null), r: g.pairs.length >= 8 ? pearson(g.pairs.map(p => p.f), g.pairs.map(p => p.y)) : null }; });
+  const nb = m && m <= 2 ? m + 1 : 4;
+  const edge = i => Math.ceil(m * i / 4); const labels = [...Array(nb).keys()].map(i => { if (nb < 4) return String(i); if (!m) return ['0–24%', '25–49%', '50–74%', '75–100%'][i]; const lo = edge(i), hi = i === 3 ? m : edge(i + 1) - 1; return lo >= hi ? `${lo}` : `${lo}–${hi}`; });
+  const band = f => nb < 4 ? Math.round(f * m) : Math.min(3, Math.floor(f * 4 + 1e-9));
+  const tally = pairs => { const sum = Array(nb).fill(0), n = Array(nb).fill(0); pairs.forEach(p => { const b = band(p.f); sum[b] += p.y; n[b]++; }); return { sum, n }; };
+  // A class's points: ranges with 5 or more of its students, and a line only with two of them. The course's point at a
+  // range is left off when the students no class's line shows there number 1 to 4, in every view alike, so no view can
+  // be taken from another to leave a student or two.
+  const classT = per.map(c => { const t = tally(c.pairs); const ok = t.n.map(k => k >= CORR_MIN); return { c, ...t, ok: ok.filter(Boolean).length >= 2 ? ok : ok.map(() => false) }; });
+  const allT = tally(all); const hidden = allT.n.map((k, b) => k - classT.reduce((a, t) => a + (t.ok[b] ? t.n[b] : 0), 0));
+  const courseOk = allT.n.map((k, b) => k >= CORR_MIN && !(hidden[b] > 0 && hidden[b] < CORR_MIN));
+  const lineOf = (name, color, t, ok, pairs, ref) => ({ name, color, ref, pairs, n: t.n, values: t.n.map((k, b) => ok[b] ? t.sum[b] / k : null), r: pairs.length >= 8 ? pearson(pairs.map(p => p.f), pairs.map(p => p.y)) : null });
+  const courseLine = ref => lineOf(allCourse(prep), COURSE_COLORS[prep], allT, courseOk, all, ref);
+  const classLine = t => lineOf(labShort(t.c.s.team || t.c.s.label), classColor(t.c.s), t, t.ok, t.c.pairs, false);
+  const mine = vs ? classT.filter(t => t.c.s.key === vs) : [];
+  const lines = cmp === 'pool' ? [courseLine(false)] : vs ? [...mine.map(classLine), courseLine(mine.length > 0)] : [...classT.map(classLine), ...(per.length > 1 ? [courseLine(true)] : [])];
+  const noneVs = vs && !mine.length ? labShort(state.sections[vs].team || state.sections[vs].label) : null;   // the class he picked has no student with both yet
+  const dropped = labels.filter((_, b) => allT.n[b] >= CORR_MIN && !courseOk[b]);   // left off the course's line by the rule above
   const drawn = lines.filter(l => l.values.filter(v => v != null).length >= 2), short = lines.filter(l => !drawn.includes(l) && l.pairs.length);
-  const body = drawn.length ? chartLines(labels, drawn.map(l => ({ name: l.name, color: l.color, ref: !!l.ref, values: l.values, tips: l.n.map(k => k >= CORR_MIN ? plural(k, 'student') : '') })), { pct: true, min: 0, max: 100, h: LINE_H(), w: 960, labelW: 230, padX: 46, pointLabels: drawn.length <= 2, aria: `average ${yName} score by ${xShort} skills at goal` })
+  // extra credit can put a range's average over 100%: the axis goes up to meet it rather than drawing above the chart
+  const top = Math.max(100, ...drawn.flatMap(l => l.values.filter(v => v != null).map(v => Math.ceil(v / 10) * 10)));
+  const body = drawn.length ? chartLines(labels, drawn.map(l => ({ name: l.name, color: l.color, ref: !!l.ref, values: l.values, tips: l.n.map((k, b) => l.values[b] != null ? plural(k, 'student') : '') })), { pct: true, min: 0, max: top, h: LINE_H(), w: 960, labelW: 230, padX: 46, pointLabels: drawn.length <= 2, aria: `average ${yName} score by ${xShort} skills at goal` })
     : `<div class="labNotYet">${all.length ? `Not enough students in each range yet: a point needs ${CORR_MIN} or more.` : `No student has both a score on ${esc(yName)} and ${esc(xShort)} yet.`}</div>`;
-  const main = lines.find(l => l.ref || cmp === 'pool') || lines[0]; const mine = vs ? lines.find(l => !l.ref) : null;
-  const rLine = main && main.r != null ? `r = ${main.r.toFixed(2)} for the ${main.pairs.length} ${lines.length > 1 || cmp === 'pool' ? COURSE_NAMES[prep].toLowerCase() + ' ' : ''}students with both: ${corrWords(main.r)}.${mine && mine.r != null ? ` ${esc(mine.name)}'s ${mine.pairs.length}: r = ${mine.r.toFixed(2)}.` : ''}` : '';
+  const main = lines.find(l => l.ref || cmp === 'pool') || lines[0]; const mineL = vs ? lines.find(l => !l.ref && l !== main) : null;
+  const rLine = main && main.r != null ? `r = ${main.r.toFixed(2)} for the ${main.pairs.length} ${lines.length > 1 || cmp === 'pool' ? COURSE_NAMES[prep].toLowerCase() + ' ' : ''}students with both: ${corrWords(main.r)}.${mineL && mineL.r != null ? ` ${esc(mineL.name)}'s ${mineL.pairs.length}: r = ${mineL.r.toFixed(2)}.` : ''}` : '';
   const ixlAt = labAsOf(secs, false), gbAt = labAsOf(secs, true);   // the IXL export and the gradebook can be from different days: say both
   const asOfC = ixlAt && gbAt && ixlAt !== gbAt ? `IXL as of ${fmtDate(ixlAt)}, Focus as of ${fmtDate(gbAt)}` : (ixlAt || gbAt) ? 'as of ' + fmtDate(ixlAt || gbAt) : '';
   return `${boardHead(title, [labCmpWords(prep, cmp), `average score on ${yName} by how much of ${xShort} is at goal`, asOfC])}
     <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labCorr">${body}
       <p class="labAxis"><b>Across:</b> ${esc(xShort)} skills at goal${m ? ` (of ${m})` : ''}. <b>Up:</b> the average on ${esc(yName)} of the students in each range, ${CORR_MIN} or more to a point.${rLine ? ` ${rLine}` : ''}</p>
-      ${short.length ? `<p class="labAxis">${esc(short.map(l => l.name).join(', '))}: not enough students in each range yet for a line.</p>` : ''}${noneVs ? `<p class="labAxis">${esc(noneVs)}: no student has both a score on ${esc(yName)} and ${esc(xShort)} yet.</p>` : ''}</div></div></div>`;
+      ${short.length ? `<p class="labAxis">${esc(short.map(l => l.name).join(', '))}: not enough students in each range yet for a line.</p>` : ''}${noneVs ? `<p class="labAxis">${esc(noneVs)}: no student has both a score on ${esc(yName)} and ${esc(xShort)} yet.</p>` : ''}${dropped.length && drawn.some(l => l.name === allCourse(prep)) ? `<p class="labAxis">Left off the course's line: ${esc(dropped.join(', '))} (too few students there outside the class lines).</p>` : ''}</div></div></div>`;
 }
 // Every chart for Focus scores only when comparing whole courses, each row 15 students or more.
 function labFullSuite(prep, ids, rowsBy, series) { return prep === 'both' && rowsBy === 'course' && series.length > 0 && series.every(x => x.st.n >= 15); }
@@ -1225,20 +1277,27 @@ const LAB_ONLY_CSS = `
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
 .lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:var(--r-l);padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}
-/* the pie grid: each pie as tall as its share of the screen allows (header, key, the bottom bar and each card's own lines taken out) */
+/* The pie grid fills the board under the heading: its rows share the height left, and in each card the pie takes what
+   the name, the counts and any stats leave, so it fits by construction whatever those hold (audit, 4 Nov 2026: sizes
+   reckoned from fixed allowances overflowed with stats on, or with ten classes by course). A card never squeezes its
+   pie below 7 board units: past that the rows grow and the board scrolls. */
 .labPieLegend{font-size:calc(var(--bu)*1.3);gap:calc(var(--bu)*.5) calc(var(--bu)*1.4)}.labPieLegend i{width:calc(var(--bu)*1.05);height:calc(var(--bu)*1.05);vertical-align:-.12em;border:1px solid rgba(22,33,58,.35)}
-.labPies{display:grid;grid-template-columns:repeat(var(--pc,3),minmax(0,1fr));gap:calc(var(--bu)*.9)}
+.labPies{flex:1 1 auto;display:grid;grid-template-columns:repeat(var(--pc,3),minmax(0,1fr));grid-template-rows:var(--prows,none);gap:calc(var(--bu)*.9)}
 .labPies>.labGroupHead{grid-column:1/-1;margin:0 0 -6px 4px}.labPies>.lbEmpty{grid-column:1/-1}
-.labPie{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);border-top:calc(var(--bu)*.45) solid var(--cc,var(--turq));padding:calc(var(--bu)*.6) calc(var(--bu)*1) calc(var(--bu)*.6);display:flex;flex-direction:column;align-items:center;gap:calc(var(--bu)*.25);min-width:0}
+.labPie{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);border-top:calc(var(--bu)*.45) solid var(--cc,var(--turq));padding:calc(var(--bu)*.6) calc(var(--bu)*1) calc(var(--bu)*.6);display:flex;flex-direction:column;align-items:center;gap:calc(var(--bu)*.25);min-width:0;min-height:0}
 .labPie.thin{opacity:.75}
 .labPieHead{align-self:stretch;display:flex;align-items:baseline;gap:4px calc(var(--bu)*.8);flex-wrap:wrap}
 .labPieHead .labName{font-size:calc(var(--bu)*1.8)}.labPieHead small{font-size:calc(var(--bu)*1.15);font-weight:var(--w-bold);color:var(--teal)}.labPieHead small b{font-weight:var(--w-black)}.labPieHead .labAvg{margin-left:auto}
-.labPieBody{align-self:stretch;display:flex;align-items:center;justify-content:center;gap:calc(var(--bu)*.8);min-width:0}
-.labPieArt{flex:1 1 auto;min-width:0;display:flex;justify-content:center}
-.labPieArt .chart.pie{width:100%;max-width:none;height:auto;max-height:min(74vh,calc((100vh - var(--bu)*10.5 - var(--padB) - var(--bu)*.9*(var(--pr,1) - 1)) / var(--pr,1) - var(--bu)*4))}
-.labPieKey{flex:none;display:flex;flex-direction:column;gap:calc(var(--bu)*.35);font-weight:var(--w-bold);font-size:calc(var(--bu)*1.3);color:var(--navy);white-space:nowrap}
+.labPieBody{align-self:stretch;flex:1 1 auto;min-height:calc(var(--bu)*7);display:flex;align-items:stretch;justify-content:center;gap:calc(var(--bu)*.8);min-width:0}
+.labPieArt{flex:1 1 auto;min-width:0;min-height:0;position:relative}
+.labPieArt .chart.pie,#lb .labPieArt .chart.pie{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none}   /* #lb: past the board's cap on a circle graph's width (62vw left a phone's pie 242 px wide) */
+.labPieKey{flex:none;align-self:center;display:flex;flex-direction:column;gap:calc(var(--bu)*.35);font-weight:var(--w-bold);font-size:calc(var(--bu)*1.3);color:var(--navy);white-space:nowrap}
 .labPieKey i{display:inline-block;width:.8em;height:.8em;border-radius:var(--r-xs);margin-right:.35em;vertical-align:-.05em;border:1px solid rgba(22,33,58,.35)}.labPieKey b{font-weight:var(--w-black)}
-.labPie .labStats,.labPie .labValues{align-self:stretch}
+.labPies.narrow .labPieBody{flex-direction:column}.labPies.narrow .labPieKey{align-self:stretch;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:4px 12px;white-space:normal;font-size:calc(var(--bu)*1.05)}   /* five across: the counts under the pie */
+.labPie .labStats,.labPie .labValues{align-self:stretch;flex:none}
+.labPie .labStats{grid-template-columns:repeat(4,minmax(0,1fr))}.labPie .labStats div.wide{grid-column:1/-1}.labPie .labStats b{font-size:calc(var(--bu)*1.15)}.labPie .labStats span{font-size:calc(var(--bu)*.8)}   /* stats under a pie: four to a row, so they take two rows, not four */
+@media (max-width:1100px) and (orientation:portrait){.labPies{grid-template-columns:repeat(var(--pc2,2),minmax(0,1fr));grid-template-rows:var(--prows2,none)}.labPies.narrow .labPieBody{flex-direction:row}.labPies.narrow .labPieKey{align-self:center;flex-direction:column;white-space:nowrap;font-size:calc(var(--bu)*1.3)}}   /* a tablet on its end: two across */
+@media (max-width:640px),(max-height:500px) and (pointer:coarse){.labPies{grid-template-columns:minmax(0,1fr);grid-template-rows:none}.labPies .labPieBody{flex-direction:column;min-height:0}.labPies .labPieArt{position:static}.labPies .labPieArt .chart.pie,#lb .labPies .labPieArt .chart.pie{position:static;height:auto;max-height:62vh}.labPies .labPieKey{align-self:stretch;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:4px 14px;white-space:normal;font-size:calc(var(--bu)*1.3)}}   /* a phone: one pie across at its full width, its counts under it, and the board scrolls (audit: three across left the pies 30 px wide) */
 .labAxis{margin:.5em 0 0;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.2);color:var(--ink-soft);line-height:1.4}.labAxis b{color:var(--navy)}
 .labCorr .chart{max-height:min(62vh,calc(100vh - var(--bu)*16 - var(--padB)))}
 `;
@@ -1253,13 +1312,19 @@ const parseNums = txt => String(txt || '').split(/[\s,;]+/).filter(x => x !== ''
    Chrome lets the lock go whenever the tab is hidden, so it is asked for again when the board is back in view. It goes
    with full screen (Esc, the button, or leaving the board). In full screen the bar fades after a few still seconds and
    comes back with any touch, click or key. */
-let lbLock = null, lbFsMine = false, lbIdleT = null, lbFullWas = false;
+let lbLock = null, lbLockAsk = null, lbWant = false, lbFsMine = false, lbIdleT = null, lbIdleSince = 0, lbFullWas = false;
 const lbFsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
 const lbFsOK = () => !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+// One request at a time, and a lock that arrives after full screen ended is let go at once (audit, 4 Nov 2026: entering
+// full screen signals twice, so two locks were asked for and one was never released; Exit before Chrome answered kept it).
 async function lbWake(on) {
+  lbWant = on;
   if (!on) { const l = lbLock; lbLock = null; try { if (l) await l.release(); } catch (e) {} return; }
-  if (lbLock || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
-  try { const l = await navigator.wakeLock.request('screen'); lbLock = l; l.addEventListener('release', () => { if (lbLock === l) lbLock = null; }); } catch (e) { lbLock = null; }   // refused (battery saver, a policy): full screen still works
+  if (lbLock || lbLockAsk || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+  lbLockAsk = (async () => { try { const l = await navigator.wakeLock.request('screen');
+      if (!lbWant || lbLock) { try { await l.release(); } catch (e) {} return; }
+      lbLock = l; l.addEventListener('release', () => { if (lbLock === l) lbLock = null; }); } catch (e) {} })();   // refused (battery saver, a policy): full screen still works
+  try { await lbLockAsk; } finally { lbLockAsk = null; }
 }
 async function lbFull(on) {
   const d = document.documentElement;
@@ -1275,7 +1340,17 @@ function lbFullSync() {
   const b = $('#lbFull'); if (b) { b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'Exit full screen' : 'Full screen'; }
   if (on && !lbFullWas) lbPoke(); lbFullWas = on;   // the bar shows on the way in, then fades; a redraw of the board leaves it as it is
 }
-function lbPoke() { if (!document.body.classList.contains('lbFull')) return; document.body.classList.add('lbShowTools'); clearTimeout(lbIdleT); lbIdleT = setTimeout(() => { if (!lbOptsOpen && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('.lbTools select'))) document.body.classList.remove('lbShowTools'); }, 3500); }
+// The room kept at the foot of the board is the bar's own height: on a laptop the bar wraps to two lines, and a fixed
+// 96 px left the last row of pies under it (audit). Measured after each draw and when the window changes size.
+function lbBarRoom() { const el = $('#lb'); const t = el && el.querySelector('.lbTools'), w = el && el.querySelector('.lbWrap'); if (t && w) w.style.setProperty('--barH', Math.max(0, Math.ceil(innerHeight - t.getBoundingClientRect().top)) + 'px'); }   // from the bar's top edge to the foot of the window
+{ let rt = null; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (state.settings.leaderboard) lbBarRoom(); }, 150); }); }
+function lbPoke() { if (!document.body.classList.contains('lbFull')) return; document.body.classList.add('lbShowTools'); clearTimeout(lbIdleT); lbIdleSince = Date.now(); lbIdleT = setTimeout(lbIdle, 3500); }
+// Still for 3½ seconds: the bar goes. With Options open or a menu in use it looks again, and lets the bar go after 20
+// still seconds even so (audit: a menu left holding the focus kept the bar up for good); a control it hides lets go of
+// the focus, so a stray key can't change a menu no one can see.
+function lbIdle() { const a = document.activeElement; const busy = (lbOptsOpen && $('#lbOpts')) || (a && a.closest && a.closest('.lbTools select'));
+  if (busy && Date.now() - lbIdleSince < 20000) { lbIdleT = setTimeout(lbIdle, 3500); return; }
+  if (a && a.closest && a.closest('.lbTools') && a.blur) a.blur(); document.body.classList.remove('lbShowTools'); }
 document.addEventListener('fullscreenchange', lbFullSync); document.addEventListener('webkitfullscreenchange', lbFullSync);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && document.body.classList.contains('lbFull')) lbWake(true); });
 ['pointermove', 'pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, lbPoke, { passive: true }));
@@ -1295,9 +1370,9 @@ function renderLeaderboard() {
   if (lab && cur && st.labUnit) st.labPick = { ...(st.labPick || {}), [cur]: st.labUnit };
   const pickA = both ? labPickFor('acc') : null, pickO = both ? labPickFor('on') : null;
   const anyFocus = both ? (focusSet(pickA) || focusSet(pickO)) : focusSet(st.labUnit);
-  const fullSuite = both && labCmpFor('both') === 'course' && ['acc', 'on'].every(c => labSeries(c, c === 'acc' ? pickA : pickO).reduce((a, x) => a + x.st.n, 0) >= 15);
+  const fullSuite = both && labCmpFor('both') === 'course' && ['acc', 'on'].every(c => { const id = c === 'acc' ? pickA : pickO; return labSeries(c, id).filter(x => !focusSet(id) || x.st.n >= MIN_N).reduce((a, x) => a + x.st.n, 0) >= 15; });   // counted as the course's row is: Focus scores from the classes shown on their own
   // the chart he picked comes back with the next data set: a Focus set narrows what is offered without saving over it
-  const corrOK = !!(cur && corrXs(cur).length && corrYs(cur).length);   // IXL and a test: one course, with a gradebook
+  const corrOK = !!(!state.board && cur && corrXs(cur).length && corrYs(cur).length);   // IXL and a test: one course, with a gradebook, in Tally itself (a Board save has no rows that pair IXL with a test)
   const kinds = LAB_KINDS.filter(([k]) => (k !== 'corr' || corrOK) && (!anyFocus || fullSuite || FOCUS_KINDS.includes(k))); const kindNow = kinds.some(([k]) => k === st.labKind) ? st.labKind : 'box';
   const one = kindNow === 'line' || kindNow === 'avg' || kindNow === 'corr';   // every row on one chart: the per-row controls don't apply
   const dotKey = both ? 'both|' + pickA + '|' + pickO : st.labUnit;
@@ -1331,11 +1406,13 @@ function renderLeaderboard() {
        ${(anyFocus && !fullSuite) || one ? '' : `<button class="pill small" id="labValues" aria-pressed="${!!st.labValues}">Values</button>`}
        ${kindNow === 'box' && (!anyFocus || fullSuite) ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`;
   const nOpts = (toggles.match(/<(button|select|div class="seg)/g) || []).length;
+  if (!lab || !nOpts) lbOptsOpen = false;   // no Options button on screen: nothing is open (audit: left true, the full-screen bar never faded)
   const controls = lab
     ? `${courseSeg}${cmpSel}${pickers}<select id="labKind" class="labSelect" aria-label="Show as">${kinds.map(([k, n]) => `<option value="${k}" ${kindNow === k ? 'selected' : ''}>${n}</option>`).join('')}</select>${nOpts ? `<button class="pill small" id="lbOpts" aria-pressed="${lbOptsOpen}" aria-expanded="${lbOptsOpen}">Options</button><div class="lbOptsBox">${toggles}</div>` : ''}`
     : (hasBoth ? `<div class="seg lbFocus">${[['both', 'Both'], ['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-focus="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '');
   el.innerHTML = `<div class="lbWrap">${lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues, kindNow) : lbMarkup(data, f)}</div>
     <div class="lbTools ${lbOptsOpen ? 'open' : ''}">${tabs}${controls}${lbFsOK() ? `<button class="pill small" id="lbFull" aria-pressed="${!!lbFsEl()}" title="Full screen, and the screen stays on while the board shows">${lbFsEl() ? 'Exit full screen' : 'Full screen'}</button>` : ''}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
+  lbBarRoom();
   const lo = el.querySelector('#lbOpts'); if (lo) lo.onclick = () => { lbOptsOpen = !lbOptsOpen; el.querySelector('.lbTools').classList.toggle('open', lbOptsOpen); lo.setAttribute('aria-expanded', lbOptsOpen); lo.setAttribute('aria-pressed', lbOptsOpen); };   /* the toggles fold behind Options; the card stays open while the chart is changed */
   el.querySelectorAll('[data-focus]').forEach(b => b.onclick = () => { st.lbFocus = b.dataset.focus; if (st.lbFocus !== 'both') st.labPrep = st.lbFocus; save(); renderLeaderboard(); });
   el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { st.lbTab = b.dataset.tab; save(); renderLeaderboard(); });
@@ -2468,7 +2545,7 @@ function boardFile() {
     sec.gradeHistory = (s.gradeHistory || []).map(h => { const idx = shuffled(h.students.length); return { date: h.date, at: h.at, q: h.q, file: '', students: idx.map(j => pseudoName(j, 'G')), grade: idx.map(j => h.grade[j]), missing: shuffled(h.students.length).map(j => (h.missing || [])[j]), cats: Object.fromEntries(Object.entries(h.cats || {}).map(([c, arr]) => { const ci = shuffled(h.students.length); return [c, ci.map(j => arr[j])]; })), assignments: h.assignments }; });   // each list shuffled on its own: no row ties a grade to a missing count (audit)
     sections[s.key] = sec;
   });
-  const settings = { hideNames: true, leaderboard: true, lbFocus: st.lbFocus, lbTab: st.lbTab, labUnit: st.labUnit, labPick: st.labPick, labRows: st.labRows, labPairs: st.labPairs, labStats: st.labStats, labTukey: false, labDots: {}, labPrep: st.labPrep, labValues: false, labPct: st.labPct, labKind: st.labKind, labBin: st.labBin, labAvg: st.labAvg, useBest: true, skipFirst: st.skipFirst, skipFirstV2: true, currentUnit: st.currentUnit, curUnitTouched: st.curUnitTouched, details: false, copyMode: st.copyMode, remindDays: st.remindDays };
+  const settings = { hideNames: true, leaderboard: true, lbFocus: st.lbFocus, lbTab: st.lbTab, labUnit: st.labUnit, labPick: st.labPick, labRows: st.labRows, labCmp: st.labCmp, labPairs: st.labPairs, labStats: st.labStats, labTukey: false, labDots: {}, labPrep: st.labPrep, labValues: false, labPct: st.labPct, labKind: st.labKind, labBin: st.labBin, labAvg: st.labAvg, useBest: true, skipFirst: st.skipFirst, skipFirstV2: true, currentUnit: st.currentUnit, curUnitTouched: st.curUnitTouched, details: false, copyMode: st.copyMode, remindDays: st.remindDays };
   return { tally: 4, board: { saved: new Date().toISOString(), classes: secs.length }, state: { settings, sections, order: secs.map(s => s.key), active: secs.length ? secs[0].key : null, pendingCfg: {}, pools: {}, assigned: state.assigned, skips: state.skips, custom: state.custom, grading: state.grading, quarters: quarters(), board: { saved: new Date().toISOString(), classes: secs.length } } };
 }
 function saveBoardFile() {

@@ -1050,6 +1050,42 @@ per-section-file era and many items in them are now done).
   from the raw state; on the previous build it fails at the first new feature it reaches). `colors.js`,
   `lab-average.js`, `command-center.js`, `plain.js` and `gradebook-import.js` follow the pie grid and the longer Show as
   list.
+- **4 Nov 2026 — The Data Lab hardened.** Croix: "Can you harden it and check for bugs and fringe cases." An independent
+  review and probes in the browser found these; each is fixed and checked (AUDIT_PLAN.md, "The Data Lab hardened"):
+  - **Privacy, a whole course beside its classes.** A course row of Focus scores now counts only the classes shown on
+    their own (5 or more scores). Before, one make-up score in 5th Period was the course's F count minus the classes',
+    and "5th Period vs all accelerated" showed both. The same rule for each course in Both, and on a line over time.
+  - **Privacy, IXL and a test.** A point needs 5 students (was 3), as every Focus number on the board does. The course's
+    point at a range is left off when the students no class line shows there number 1 to 4, in every view alike, and
+    the caption says so ("Left off the course's line: 0–5").
+  - **Privacy, a Focus line over time.** A class's point needs 5 scores that day, and the course's point counts only the
+    classes that have one. A gradebook import now keeps each assignment's count (`n` in `gradeHistory`); older imports
+    count the students not marked missing.
+  - **The wake lock.** Entering full screen signals twice, so two locks were asked for and one was never let go; Exit
+    before Chrome answered kept one. Now one request at a time, and a lock that arrives after full screen ended is let
+    go at once (`lbWant`, `lbLockAsk`).
+  - **The bar.** Options left open, then IXL and a test (no Options there) or the Race, kept the bar up for good.
+    Options closes when its button is gone; a menu holding the focus lets the bar go after 20 still seconds.
+  - **Stuck choices.** One class left in a course reads as each class (the Compare menu is gone, so a saved "vs"
+    could not be undone). "vs:__proto__" in a file crashed the board; keys are checked before use. A renamed file's
+    class key (spaces, dots) now survives a reload. A class with nothing for the data set shows "No scores for this yet"
+    in its place instead of the rows falling back to each class under a subtitle naming it.
+  - **A Board save.** No IXL and a test there (its Focus columns are shuffled one by one, so no student's IXL sits beside
+    their test; it said "No student has both" instead); the Compare choice now travels in it.
+  - **The saved Data Lab page** drew a dot per student for a Focus assignment in Both (the dots followed the wrong
+    pick). `labMarkup` turns them off itself now.
+  - **Math.** A skill's pie counts at goal by each class's own goal, and the key says "each class's goal" when they
+    differ. The same assignment out of different totals in different classes is shown in percent. A unit of 1 or 2
+    skills gets one range per count (it read "0, 1, 1, 2"). Extra credit over 100% raises the axis. "Unit 3 Pretest" or
+    a retake is never taken for the unit's test.
+  - **Layout.** The pie grid fills the board under the heading: its rows share the height left and each pie takes what
+    its card leaves, so stats under the pies, ten classes by course or a two-line bar no longer overflow (the room kept
+    for the bar is measured, `--barH`). Five across put the counts under each pie; a phone shows one pie across at full
+    width (the board's 62vw cap on a circle graph had left it 242 px); a tablet on its end two across. With no gradebook
+    in Tally the units are one plain group.
+  New suite `tests/lab-hardening.js` (40 checks; 35 fail on the build before). `tests/lab-board.js` (91) recounts IXL
+  and a test by the new rules, with 3rd Period's Unit 1 split so a class line exists and the course's 0–5 point is
+  left off.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
