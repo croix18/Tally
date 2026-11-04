@@ -62,7 +62,7 @@ const BANNED = [/IXL → Focus/, /How it works/i, /\bTap a (class|unit|student|s
   await p.click('[data-tab="lab"]'); await p.waitForTimeout(500);
   for (const prep of ['acc','on']) { await p.click(`.lbFocus [data-prep="${prep}"]`); await p.waitForTimeout(300);
     for (const kind of ['box','dots','hist','stem','bar','circle','line']) { await p.selectOption('#labKind',kind); await p.waitForTimeout(300); await look('Data Lab, '+prep+', '+kind);
-      if (kind!=='box') check(await p.locator('#lb .labLegend').count()===0 && await p.locator('#lb .labHint').count()===0,'Data Lab '+kind+' ('+prep+'): the title, the facts line, then the plots'); } }
+      if (kind!=='box') check(await p.locator('#lb .labLegend:not(.labPieLegend)').count()===0 && await p.locator('#lb .labHint').count()===0 && (kind==='circle' || await p.locator('#lb .labPieLegend').count()===0),'Data Lab '+kind+' ('+prep+'): the title, the facts line, then the plots (circle graphs: one key for the slices, 4 Nov 2026)'); } }
   await p.selectOption('#labKind','stem'); await p.waitForTimeout(300); const key=await p.locator('#lb .stem + .ghint').first().textContent().catch(()=>''); check(/^Key: 1 \| 3 means 13$/.test(key.trim()),'stem-and-leaf keeps the key a stem-and-leaf plot is drawn with: "'+key.trim()+'"');
   await p.selectOption('#labKind','box'); await p.waitForTimeout(300); check(/median/.test(await p.textContent('#lb .labLegend')),'the box plot keeps its key');
   // the explanations that left the screens are in the Guide

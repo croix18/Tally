@@ -1007,6 +1007,49 @@ per-section-file era and many items in them are now done).
   report fixes: the full suite failed once on "orchard avocado speak speak put". The five words were drawn with
   replacement, so about one suggestion in 200 repeated a word or ran under 24 characters, and the strength check refused
   Tally's own suggestion. It now draws five different words that pass the same check. `tests/sync.js` +1 (3000 draws).
+- **4 Nov 2026 — The Data Lab for the room.** Croix: "I love the tab where I can show the students the comparison
+  between classes of stuff done", and five asks:
+  1. **Full screen, the screen kept on** ("a full screen mode that request chrome to stay on and not black out"). A
+     Full screen button on the board (Race and Data Lab) calls `requestFullscreen({ navigationUI: 'hide' })` and asks for
+     a screen wake lock (`navigator.wakeLock.request('screen')`). Chrome lets the lock go whenever the tab is hidden, so
+     it is asked for again when the board is back in view (`visibilitychange`). Both end together: the button, Esc, or
+     Hold to exit. In full screen the bar fades after 3½ still seconds (not while Options is open or a menu has focus)
+     and comes back with any touch, click or key; the room kept for it at the bottom drops from 96 to 28 px. A refused
+     lock (battery saver, a policy) still gives full screen. The lock holds only while Chrome shows the page: the panel's
+     own power settings still apply. `lbFull`, `lbWake`, `lbFullSync`, `lbPoke`; `body.lbFull`, `body.lbShowTools`.
+  2. **Bigger pies** ("my favorite of the comparisons but it views as kinda small on the board"). Circle graphs are a
+     grid of pies (`chartPie`: no key inside) under one shared key, each card with its counts beside the pie ("6–11: 3"),
+     1, 2 or 3 across (4 as 2×2, 5–6 as 3×2, more 4 across), each as tall as its share of the screen allows. At
+     1920×1080 with five classes a pie is 233 px across; the circle graphs it replaces drew 92. Two classes: 412.
+  3. **IXL and a test** (Show as; his example: Unit 3 IXL and the Unit 3 assessment "on a line chart"). Students are
+     grouped by how much of the unit they have at goal (four ranges, a quarter of the unit each, in skills: "0–5 …
+     18–23" of 23), and each point is that group's average on the test, so the line climbs when more IXL goes with
+     higher scores. A point stands for 3 or more students (`CORR_MIN`): no one's score is on the board, as with every
+     Focus set there. r is worked out over every student with both (8 or more) and said in words ("no clear
+     relationship", "a moderate tendency for students with more of the IXL at goal to score higher"). One line per
+     class with the course dashed, the course alone, or a class beside the course (both r's). Two pickers: the unit (in
+     Focus / not yet) and the test; a new unit brings its own test (an assessment, test or exam first, then a quiz); a
+     unit with no test in Focus yet is set beside the course grade. One course at a time, remembered per course
+     (`labCorr`). A scatter of single students stays on the Grades screen, for the teacher.
+  4. **Compare** ("all of a7 or all of m7 compared to a specific class"): one course: Each class · All accelerated
+     together · "3rd Period vs all accelerated"; Both: Each course · Each class · a class vs all of the other course.
+     Every graph follows it: box and dot plots (the course row stacks its dots on its own, so the class's stay
+     readable), histograms and bars in percent of each row's students when the rows differ in size, pies, class
+     averages, the line graph (a course's line takes each class as of its latest import on or before the day) and IXL
+     and a test. `labCmp` per course, `labRows` for Both (now also `vs:<key>`); a class that is gone, or a bad value in a
+     file, reads as each class. A class too small to draw (under 5) now keeps its place, in its course's group and
+     beside the course it is compared with, instead of moving to the end.
+  5. **IXL units not in Focus yet** ("students should be finished with their unit 5 ixls by Thurs in a7 but I don't
+     have it in the grade book yet"). The data list groups IXL units as "in Focus" (the gradebook has its column,
+     `gbUnitFor`) and "not in Focus yet". Both are Tally's own count, so both work in every graph. A single unit now has
+     a line graph: each class's average share of the unit at goal at each IXL import, from the history snapshots
+     (`pu`, `ua`), so Unit 5 shows its week before its column is in Focus.
+  Also: line graphs on the board are taller (380 of 900, 300 on a phone); IXL and a test says "IXL as of Sep 26,
+  Focus as of Nov 4" when the two imports are from different days; two thin slices meeting at the top or bottom of a
+  pie (an A and an F) have their labels moved apart. New suite `tests/lab-board.js` (89 checks, every number recounted
+  from the raw state; on the previous build it fails at the first new feature it reaches). `colors.js`,
+  `lab-average.js`, `command-center.js`, `plain.js` and `gradebook-import.js` follow the pie grid and the longer Show as
+  list.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

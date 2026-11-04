@@ -299,3 +299,9 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   points Focus doesn't; one missing count; "listed below" only over a list; part-done IXL says so; "make up" a quiz;
   the family's words; IXL skill IDs; the next assessment across the table; Start here within 15 of goal; other
   retakes by name and a plan box that points only at what is there. New suite `tests/review-nov3.js` (20 checks).
+
+- 4 Nov 2026: the Data Lab for the room (NOTES.md, "The Data Lab for the room"): full screen with a screen wake lock
+  and a bar that fades; circle graphs as a grid of large pies under one key; "IXL and a test" (a unit's IXL in four
+  ranges against the average on its test, groups of 3 or more, r in words); a Compare menu (each class, the whole
+  course, or a class beside a whole course); IXL units grouped in Focus / not in Focus yet, and a single unit's line
+  over time. New suite `tests/lab-board.js` (89 checks).

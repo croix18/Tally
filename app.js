@@ -74,8 +74,8 @@ function hydrate(s) {
 function adopt(s) { const keep = state; state = s; try { migrate(); } catch (e) { state = keep; throw e; } return state; }
 function migrate() {
   const st = state.settings || {};
-  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, duplex: st.duplex !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : st.labPrep === 'both' ? 'both' : 'acc', labPick: { acc: st.labPick && typeof st.labPick.acc === 'string' ? st.labPick.acc.slice(0, 200) : '', on: st.labPick && typeof st.labPick.on === 'string' ? st.labPick.on.slice(0, 200) : '' }, labRows: st.labRows === 'class' ? 'class' : 'course', labPairs: st.labPairs && typeof st.labPairs === 'object' ? Object.fromEntries(Object.entries(st.labPairs).filter(([k, v]) => SAFE_KEY(k) && typeof v === 'string').slice(0, 200)) : {}, labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
-    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line', 'avg'].includes(st.labKind) ? st.labKind : 'box', labAvg: !!st.labAvg, labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
+  state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, duplex: st.duplex !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : st.labPrep === 'both' ? 'both' : 'acc', labPick: { acc: st.labPick && typeof st.labPick.acc === 'string' ? st.labPick.acc.slice(0, 200) : '', on: st.labPick && typeof st.labPick.on === 'string' ? st.labPick.on.slice(0, 200) : '' }, labRows: st.labRows === 'class' ? 'class' : typeof st.labRows === 'string' && /^vs:[\w-]{1,80}$/.test(st.labRows) ? st.labRows : 'course', labCmp: Object.fromEntries(['acc', 'on'].map(c => [c, st.labCmp && typeof st.labCmp[c] === 'string' && /^(class|pool|vs:[\w-]{1,80})$/.test(st.labCmp[c]) ? st.labCmp[c] : 'class'])), labCorr: Object.fromEntries(['acc', 'on'].map(c => { const o = st.labCorr && st.labCorr[c]; const str = v => typeof v === 'string' && v.length < 300 ? v : undefined; return [c, o && typeof o === 'object' ? { x: str(o.x), y: str(o.y) } : {}]; })), labPairs: st.labPairs && typeof st.labPairs === 'object' ? Object.fromEntries(Object.entries(st.labPairs).filter(([k, v]) => SAFE_KEY(k) && typeof v === 'string').slice(0, 200)) : {}, labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
+    skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line', 'avg', 'corr'].includes(st.labKind) ? st.labKind : 'box', labAvg: !!st.labAvg, labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
     currentUnit: { acc: st.currentUnit && Number.isInteger(st.currentUnit.acc) ? st.currentUnit.acc : null, on: st.currentUnit && Number.isInteger(st.currentUnit.on) ? st.currentUnit.on : null },
     curUnitTouched: { acc: !!(st.curUnitTouched && st.curUnitTouched.acc), on: !!(st.curUnitTouched && st.curUnitTouched.on) },
     autosave: [0, 5, 10, 15, 30].includes(st.autosave) ? st.autosave : 10,   // minutes, where the page keeps nothing (Google Sites)
@@ -733,7 +733,7 @@ const LB_CSS = `
    (25 px there, 18 px on a laptop); tags and stat labels are about 1 bu. */
 .lbWrap{--bu0:clamp(11px,min(1vw,1.7778vh),40px);--bu:var(--bu0)}
 .lbLeagues:not(.two){--bu:calc(var(--bu0)*1.3)}   /* one league has the whole width: its cards are a third larger */
-.lbWrap{min-height:100%;display:flex;flex-direction:column;gap:calc(var(--bu)*.85);padding:calc(var(--bu)*1.1) calc(var(--bu)*1.6) 96px;max-width:min(96vw,2600px);margin:0 auto;width:100%}
+.lbWrap{--padB:96px;min-height:100%;display:flex;flex-direction:column;gap:calc(var(--bu)*.85);padding:calc(var(--bu)*1.1) calc(var(--bu)*1.6) var(--padB);max-width:min(96vw,2600px);margin:0 auto;width:100%}
 .lbHead{display:flex;flex-direction:column;gap:calc(var(--bu)*.2)}
 .lbTitle{margin:0;font-weight:var(--w-heavy);font-size:calc(var(--bu)*2.5);color:var(--navy);line-height:1.15}
 .lbSub{margin:0;font-weight:var(--w-med);color:var(--ink-soft);font-size:calc(var(--bu)*1.3);line-height:1.3}
@@ -813,8 +813,15 @@ function labDatasets(prep) {
   const secs = state.order.map(k => state.sections[k]).filter(s => s.prep === prep && !s.placeholder && s.students.length);
   const groups = [];
   const add = (group, id, label) => { let g = groups.find(x => x.group === group); if (!g) { g = { group, items: [] }; groups.push(g); } if (!g.items.some(x => x.id === id)) g.items.push({ id, label }); };
-  secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden && u.total) add('IXL units (points)', 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')); }));
-  add('IXL units (points)', 'unit:__all__', 'All assigned units · skills at goal');
+  // IXL units in two groups (Croix, 4 Nov 2026: "students should be finished with their unit 5 ixls by Thurs … but I
+  // don't have it in the grade book yet. Id still like to display the classes progress"): the units Focus has a column
+  // for, then the ones it doesn't yet. Every one of them is Tally's own count, so both work in every graph.
+  const inFocus = new Set(); secs.forEach(s => (s.grades ? s.grades.assignments : []).forEach(a => { const u = gbUnitFor(s, a); if (u) inFocus.add(u.name); }));
+  const IXL_IN = 'IXL units in Focus (points)', IXL_NOT = 'IXL units not in Focus yet (points)';
+  const units = []; secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden && u.total && !units.some(x => x.name === u.name)) units.push(u); }));
+  units.filter(u => inFocus.has(u.name)).forEach(u => add(IXL_IN, 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')));
+  add(inFocus.size ? IXL_IN : IXL_NOT, 'unit:__all__', 'All assigned units · skills at goal');
+  units.filter(u => !inFocus.has(u.name)).forEach(u => add(IXL_NOT, 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')));
   if (secs.some(hasOpenGrades)) add('Focus course grade', 'grade:course', 'Course grade · ' + Q_NAMES[liveQ() - 1]);
   secs.forEach(s => { const cats = {}; (s.grades ? s.grades.assignments : []).forEach(a => { cats[catOf(s.prep, a.name, a)] = 1; }); Object.keys(cats).sort().forEach(c => (s.grades.assignments.filter(a => catOf(s.prep, a.name, a) === c)).forEach(a => add(c, 'gb:' + a.name, a.name))); });
   state.custom.filter(c => c.prep === prep).forEach(c => add('Our own data', 'custom:' + c.id, c.label));
@@ -894,16 +901,20 @@ function labPlot(kind, x, scale, id, o) {
   if (kind === 'hist') return chartHist(vals, max, o.bin || 0, mk);
   if (kind === 'stem') return chartStem(vals, max);
   if (kind === 'bar') return chartFreq(vals, max, mk);
-  if (kind === 'circle') {
-    if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return chartCircle([{ label: 'At goal (' + x.thr + '+)', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', value: x.missing, color: NEUTRAL_FILL }]); }
-    if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return chartCircle(['A', 'B', 'C', 'D', 'F'].map((k, i) => ({ label: k, short: k, value: b[k], color: LETTER_COLORS[k] }))); }
-    const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1;
-    if (x.pct) return chartCircle([0, 1, 2, 3].map(i => ({ label: ['Under 25%', '25–49%', '50–74%', '75–100%'][i], value: q[i], color: QUARTER_COLORS[i] })));
-    // Quarter i holds whole-number scores from ceil(m·i/4) up to the next quarter's start, so no score sits in two ranges.
-    const edge = i => Math.ceil(m * i / 4); const rng = i => { const lo = edge(i), hi = i === 3 ? m : edge(i + 1) - 1; return hi < lo ? 'no whole score' : lo === hi ? `${lo}` : `${lo}–${hi}`; };
-    return chartCircle([0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${rng(i)} of ${m})`, value: q[i], color: QUARTER_COLORS[i] })));
-  }
+  if (kind === 'circle') return chartCircle(pieParts(x));
   return boxSVG(x.st, scale, CW(800), o);
+}
+// A row's circle-graph slices: at goal / below / not started for a skill, letter grades for Focus scores, else four
+// quarters of the maximum, red to green. `chip` is the short name under a pie in the grid, beside its count.
+function pieParts(x) {
+  const vals = x.values.filter(v => v != null);
+  if (x.kind === 'skill') { const at = vals.filter(v => v >= x.thr).length, below = vals.length - at; return [{ label: 'At goal (' + x.thr + '+)', chip: 'At goal', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', chip: 'Below', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', chip: 'Not started', value: x.missing, color: NEUTRAL_FILL }]; }
+  if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return ['A', 'B', 'C', 'D', 'F'].map(k => ({ label: k, short: k, chip: k, value: b[k], color: LETTER_COLORS[k] })); }
+  const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1;
+  if (x.pct) return [0, 1, 2, 3].map(i => ({ label: ['Under 25%', '25–49%', '50–74%', '75–100%'][i], chip: ['0–24%', '25–49%', '50–74%', '75–100%'][i], value: q[i], color: QUARTER_COLORS[i] }));
+  // Quarter i holds whole-number scores from ceil(m·i/4) up to the next quarter's start, so no score sits in two ranges.
+  const edge = i => Math.ceil(m * i / 4); const rng = i => { const lo = edge(i), hi = i === 3 ? m : edge(i + 1) - 1; return hi < lo ? 'no whole score' : lo === hi ? `${lo}` : `${lo}–${hi}`; };
+  return [0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${rng(i)} of ${m})`, chip: rng(i), value: q[i], color: QUARTER_COLORS[i] }));
 }
 // The Board's heading. The title is the thing being shown; the line under it is an ordinary phrase — who, what is
 // measured, as of when — not a chain of fragments.
@@ -911,9 +922,9 @@ const boardHead = (title, facts) => { const line = facts.filter(Boolean).join(',
 const dsTitle = label => String(label).replace(/\s+·\s+/g, ': ');   // "Unit 3 · Exponents" reads "Unit 3: Exponents" as a title
 const unitSpan = names => names.length > 1 && names.every((n, i) => /^Unit \d+$/.test(n) && (i === 0 || +n.slice(5) === +names[i - 1].slice(5) + 1)) ? `Units ${names[0].slice(5)}–${names[names.length - 1].slice(5)}` : names.join(', ');
 // What each graph type shows, as a sentence a seventh grader can read from the back of the room.
-const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph'], ['avg', 'Class averages']];
+const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph'], ['avg', 'Class averages'], ['corr', 'IXL and a test']];
 // Focus data (an assignment's scores, the course grade) stays aggregate on the Board: these forms only, never one mark per student.
-const FOCUS_KINDS = ['box', 'hist', 'circle', 'line', 'avg']; const focusSet = id => /^(gb|grade):/.test(id || '');
+const FOCUS_KINDS = ['box', 'hist', 'circle', 'line', 'avg', 'corr']; /* IXL and a test draws groups of 3 or more, never a student */ const focusSet = id => /^(gb|grade):/.test(id || '');
 const labAsOf = (secs, focus) => secs.map(s => focus ? (s.grades && s.grades.importedAt ? localDayOf(s.grades.importedAt) : null) : s.date).filter(Boolean).sort().pop();   // a Focus data set is as of its gradebook, not the IXL export
 const fmtAvg = x => x.st.mean.toFixed(1) + (x.pct ? '%' : '');   // a class average, one decimal, everywhere it is shown
 const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
@@ -941,14 +952,33 @@ function labPickFor(c) {
   const pk = (st.labPick || {})[c]; if (ok(pk)) return pk;
   return list[0].id;
 }
-// Pool a course's classes into one row: every student in the course on one plot.
-function labPool(c, series) {
+// Pool a course's classes into one row: every student in the course on one plot. `name` overrides the course's name
+// ("All accelerated" when the row stands beside one of its own classes).
+function labPool(c, series, name) {
   if (!series.length) return null; const values = series.flatMap(x => x.values); const st = stats(values) || { n: 0 };
-  return { ...series[0], name: COURSE_NAMES[c], course: c, values, st, total: values.length, missing: series.reduce((a, x) => a + (x.missing || 0), 0), excused: series.reduce((a, x) => a + (x.excused || 0), 0), max: Math.max(...series.map(x => x.max)), sec: null, color: COURSE_COLORS[c], classes: series.map(x => labShort(x.name)) };
+  return { ...series[0], name: name || COURSE_NAMES[c], course: c, pool: true, values, st, total: values.length, missing: series.reduce((a, x) => a + (x.missing || 0), 0), excused: series.reduce((a, x) => a + (x.excused || 0), 0), max: Math.max(...series.map(x => x.max)), sec: null, secs: series.map(x => x.sec), color: COURSE_COLORS[c], classes: series.map(x => labShort(x.name)) };
+}
+/* What the rows are (Croix, 4 Nov 2026: "a way to display all of a prep so like all of a7 or all of m7 compared to a
+   specific class"). One course: each class (the default), the whole course together, or one class beside the whole
+   course. Both courses: each course together, each class, or one class beside the whole of the other course. */
+const allCourse = c => 'All ' + COURSE_NAMES[c].toLowerCase();   // "All accelerated", "All on-level"
+function labCmpFor(prep) {
+  const st = state.settings; const v = prep === 'both' ? st.labRows : (st.labCmp || {})[prep];
+  if (/^vs:/.test(v || '')) { const s = state.sections[v.slice(3)]; if (s && !s.placeholder && s.students.length && (prep === 'both' || s.prep === prep)) return v; }
+  if (prep === 'both') return v === 'class' ? 'class' : 'course';
+  return v === 'pool' ? 'pool' : 'class';
+}
+// The words for the rows in the board's subtitle.
+function labCmpWords(prep, cmp) {
+  if (/^vs:/.test(cmp)) { const s = state.sections[cmp.slice(3)]; const other = prep === 'both' ? (s.prep === 'acc' ? 'on' : 'acc') : s.prep; return `${labShort(s.team || s.label)} and all ${COURSE_NAMES[other].toLowerCase()} classes`; }
+  if (prep === 'both') return cmp === 'class' ? 'each class' : 'each course together';
+  return cmp === 'pool' ? `all ${COURSE_NAMES[prep].toLowerCase()} classes together` : `${COURSE_NAMES[prep].toLowerCase()} classes`;
 }
 function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow) {
   statsLevel = +statsLevel || 0; let kind = kindNow || state.settings.labKind || 'box';
-  const both = prep === 'both'; const rowsBy = state.settings.labRows === 'class' ? 'class' : 'course';
+  const both = prep === 'both'; const cmp = labCmpFor(prep); const vs = /^vs:/.test(cmp) ? cmp.slice(3) : null;
+  if (kind === 'corr') { if (!both) return labCorrMarkup(prep, cmp); kind = 'box'; }
+  const rowsBy = vs ? 'vs' : both ? cmp : 'class';   // 'course' | 'class' | 'vs' (one class beside a whole course)
   let seriesAll, secs, title, ids, units;
   if (both) {
     ids = { acc: labPickFor('acc'), on: labPickFor('on') }; const L = c => (labDatasets(c).list.find(d => d.id === ids[c]) || {}).label || '';
@@ -957,14 +987,18 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     const raw = { acc: labSeries('acc', ids.acc), on: labSeries('on', ids.on) };
     const all = [...raw.acc, ...raw.on]; const pctNeeded = all.some(x => !x.pct && x.unit !== 'SmartScore') && (new Set(all.map(x => x.max)).size > 1 || new Set(all.map(x => x.unit)).size > 1);
     const ser = pctNeeded ? { acc: labSeries('acc', ids.acc, true), on: labSeries('on', ids.on, true) } : raw;
-    seriesAll = rowsBy === 'course' ? ['acc', 'on'].map(c => labPool(c, ser[c])).filter(Boolean) : [...ser.acc.map(x => ({ ...x, course: 'acc' })), ...ser.on.map(x => ({ ...x, course: 'on' }))];
+    const pools = () => ['acc', 'on'].map(c => labPool(c, ser[c])).filter(Boolean);
+    seriesAll = rowsBy === 'course' ? pools() : rowsBy === 'vs' ? (() => { const c1 = state.sections[vs].prep === 'acc' ? 'acc' : 'on', c2 = c1 === 'acc' ? 'on' : 'acc'; const one = ser[c1].find(x => x.sec.key === vs);
+        return one ? [{ ...one, course: c1 }, labPool(c2, ser[c2], allCourse(c2))].filter(Boolean) : pools(); })()
+      : [...ser.acc.map(x => ({ ...x, course: 'acc' })), ...ser.on.map(x => ({ ...x, course: 'on' }))];
     title = labNorm(L('acc')) === labNorm(L('on')) ? L('acc') : `${L('acc')} vs ${L('on')}`;
     units = { acc: L('acc'), on: L('on') };
   } else {
     const ds0 = labDatasets(prep); secs = ds0.secs;
     if (!secs.length) return `<div class="lbEmpty">No ${prep === 'acc' ? 'accelerated' : 'on-level'} classes imported yet.</div>`;
     if (!ds0.list.some(d => d.id === unitName)) unitName = ds0.list[0].id;
-    seriesAll = labSeries(prep, unitName); title = ds0.list.find(d => d.id === unitName).label;
+    const raw = labSeries(prep, unitName); title = ds0.list.find(d => d.id === unitName).label;
+    seriesAll = cmp === 'pool' ? [labPool(prep, raw, allCourse(prep))].filter(Boolean) : vs ? (() => { const one = raw.find(x => x.sec.key === vs); return one ? [one, labPool(prep, raw, allCourse(prep))] : raw; })() : raw;
   }
   const anyId = both ? ids.acc : unitName;
   const series = seriesAll.filter(x => x.st.n >= MIN_N), thin = seriesAll.filter(x => x.st.n < MIN_N);
@@ -975,16 +1009,32 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
   if (gbSet && !fullSuite) { valuesOn = false; tukey = false; if (!FOCUS_KINDS.includes(kind)) kind = 'box'; }   // shown as a box plot, his choice kept for the next data set
   const course = both ? 'accelerated and on-level' : prep === 'acc' ? 'accelerated' : 'on-level'; const avgOn = !!state.settings.labAvg;
   const color = x => x.color || classColor(x.sec);
-  const lineSecs = both ? secs : secs;
-  if (kind === 'line') {   // every class on one chart: the comparison is the point
-    const lineSeries = both ? [...labSeries('acc', ids.acc), ...labSeries('on', ids.on)].filter(x => x.st.n >= MIN_N) : series;
-    const asOfL = labAsOf(lineSecs, gbSet); let body = '';
-    const lineId = both ? (ids.acc === ids.on || labNorm(ids.acc) === labNorm(ids.on) ? ids.acc : null) : unitName;
-    if (lineId === 'unit:__all__') { const dates = [...new Set(lineSeries.flatMap(x => (x.sec.history || []).map(h => h.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), lineSeries.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const h = (x.sec.history || []).find(h => h.date === d); if (!h) return null; const v = snapTotals(x.sec, h); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { aria: 'class average of skills at goal by import', h: 300, w: 900, labelW: 200 }); }
-    else if (both ? (ids.acc.startsWith('gb:') && ids.on.startsWith('gb:')) : unitName.startsWith('gb:')) { const nmOf = x => (both ? ids[x.sec.prep === 'acc' ? 'acc' : 'on'] : unitName).slice(3); const dates = [...new Set(lineSeries.flatMap(x => (x.sec.gradeHistory || []).filter(z => z.assignments.some(a => a.name === nmOf(x))).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs this assignment in at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), lineSeries.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).find(z => z.date === d); const a = z && z.assignments.find(a => a.name === nmOf(x)); return a ? a.avg : null; }) })), { pct: true, min: 0, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average on this assignment by import' }); }
-    else if (lineId === 'grade:course') { const dates = [...new Set(lineSeries.flatMap(x => (x.sec.gradeHistory || []).map(z => z.date)))].sort(); if (dates.length < 2) body = '<div class="labNotYet">Needs at least two gradebook imports on different days.</div>'; else body = chartLines(dates.map(fmtDate), lineSeries.map(x => ({ name: labShort(x.name), color: classColor(x.sec), values: dates.map(d => { const z = (x.sec.gradeHistory || []).filter(z => z.date === d).pop(); if (!z) return null; const v = z.grade.filter(g => g != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) })), { pct: true, min: 40, max: 100, h: 300, w: 900, labelW: 200, aria: 'class average course grade by import' }); }
-    else body = '<div class="labNotYet">A line graph needs data over time. Pick <b>All assigned units</b>, the course grade or a Focus assignment.</div>';
-    return `${boardHead(dsTitle(title), [`${course} classes`, 'class average at each import', asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
+  if (kind === 'line') {   // every row on one chart: the comparison is the point
+    // Each row is one line: a class, or a whole course (its students together, each class as of its latest import on or
+    // before the day). A single IXL unit is drawn from Tally's own history, so a unit Focus doesn't have yet (Croix, 4 Nov
+    // 2026: Unit 5, due Thursday) shows each class's progress through the week, in percent of the unit.
+    const rows = (both && rowsBy === 'class' ? [...labSeries('acc', ids.acc).map(x => ({ ...x, course: 'acc' })), ...labSeries('on', ids.on).map(x => ({ ...x, course: 'on' }))] : seriesAll).filter(x => x.st.n >= MIN_N);
+    const idOf = x => both ? ids[x.course || (x.sec.prep === 'acc' ? 'acc' : 'on')] : unitName;
+    const lkOf = id => id === 'unit:__all__' ? 'all' : /^unit:/.test(id) ? 'unit' : /^gb:/.test(id) ? 'gb' : id === 'grade:course' ? 'grade' : null;
+    const lks = [...new Set(rows.map(x => lkOf(idOf(x))))]; const lk = lks.length === 1 ? lks[0] : null; const ixlLine = lk === 'all' || lk === 'unit';
+    const secsOf = x => x.pool ? x.secs : [x.sec];
+    const hist = (s, x) => ixlLine ? (s.history || []) : (s.gradeHistory || []).filter(z => lk === 'grade' || z.assignments.some(a => a.name === idOf(x).slice(3)));
+    const dates = lk ? [...new Set(rows.flatMap(x => secsOf(x).flatMap(s => hist(s, x).map(h => h.date))))].sort() : [];
+    const valueAt = (x, d) => { let sum = 0, n = 0;
+      secsOf(x).forEach(s => { const H = hist(s, x); const h = x.pool ? H.filter(z => z.date <= d).pop() : H.filter(z => z.date === d).pop(); if (!h) return;
+        if (lk === 'all') snapTotals(s, h).forEach(v => { sum += v; n++; });
+        else if (lk === 'unit') { const nm = idOf(x).slice(5); const pu = (h.pu || {})[nm], tot = (h.ua || {})[nm]; if (pu && tot) Object.values(pu).forEach(v => { sum += v / tot * 100; n++; }); }
+        else if (lk === 'grade') h.grade.forEach(g => { if (g != null) { sum += g; n++; } });
+        else { const a = h.assignments.find(a => a.name === idOf(x).slice(3)); if (a && a.avg != null) { const w = x.pool ? Math.max(1, (h.students || []).length - (a.missing || 0)) : 1; sum += a.avg * w; n += w; } } });   // a course's average on an assignment: its classes' averages, each by the students it counts
+      return n ? sum / n : null; };
+    const asOfL = labAsOf(secs, gbSet); let body = '';
+    if (!lk) body = '<div class="labNotYet">A line graph needs data over time. Pick an IXL unit, <b>All assigned units</b>, the course grade or a Focus assignment.</div>';
+    else if (dates.length < 2) body = `<div class="labNotYet">${ixlLine ? 'Needs at least two imports on different days.' : lk === 'gb' ? 'Needs this assignment in at least two gradebook imports on different days.' : 'Needs at least two gradebook imports on different days.'}</div>`;
+    else { const mixed = rows.some(x => x.pool) && rows.some(x => !x.pool);   // a whole course beside a class: the course's line is dashed
+      body = chartLines(dates.map(fmtDate), rows.map(x => ({ name: labShort(x.name), color: x.pool ? x.color : classColor(x.sec), ref: mixed && !!x.pool, values: dates.map(d => valueAt(x, d)) })),
+        lk === 'all' ? { aria: 'average of skills at goal by import', h: LINE_H(), w: 900, labelW: 200 } : { pct: true, min: lk === 'grade' ? 40 : 0, max: 100, h: LINE_H(), w: 900, labelW: 200, aria: lk === 'unit' ? 'average share of the unit at goal by import' : lk === 'grade' ? 'average course grade by import' : 'average on this assignment by import' }); }
+    const what = lk === 'unit' ? 'average share of the unit\'s skills at goal at each import' : rows.every(x => !x.pool) ? 'class average at each import' : 'average at each import';
+    return `${boardHead(dsTitle(title), [labCmpWords(prep, cmp), what, asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
       <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot">${body}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
@@ -994,40 +1044,129 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
   const unitLabel = mixedMax ? 'the maximum' : seriesAll.length ? seriesAll[0].unit : 'points';
   const asOf = labAsOf(secs, gbSet);
   const isGrade = anyId === 'grade:course'; const isPct = !!(seriesAll[0] && seriesAll[0].pct);
-  const facts = [both ? `${rowsBy === 'course' ? 'each course together' : 'each class'}` : `${course} classes`];
+  const facts = [labCmpWords(prep, cmp)];
+  const pooled = seriesAll.some(x => x.pool); const perWord = seriesAll.every(x => x.pool) ? 'course' : pooled ? 'row' : 'class';
   if (both && units && labNorm(units.acc) !== labNorm(units.on)) facts.push(`accelerated: ${units.acc}; on-level: ${units.on}`);
   if (kind === 'avg') {   // one bar per row, in period order (the Race ranks; this compares)
     const what = isGrade ? 'course grade' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')}` : unitLabel;
-    const bars = series.length ? chartBars(series.map(x => ({ label: labShort(x.name), value: x.st.mean, color: color(x), hint: 'n = ' + x.st.n })), { max: scale, pct: isPct, fmt: v => v.toFixed(1) + (isPct ? '%' : ''), w: 760, labelW: 170, rowH: 46, barH: 26, ticks: (() => { const st = scale > 60 ? 25 : scale > 30 ? 10 : scale > 12 ? 5 : scale > 6 ? 2 : 1; const a = []; for (let v = 0; v <= scale + 1e-9; v += st) a.push(v); return a; })(), aria: 'average, one bar per ' + (both && rowsBy === 'course' ? 'course' : 'class') }) : '<div class="labNotYet">No class has enough scores for an average yet.</div>';
-    return `${boardHead(dsTitle(title), [...facts, `average ${what} per ${both && rowsBy === 'course' ? 'course' : 'class'}`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+    const bars = series.length ? chartBars(series.map(x => ({ label: labShort(x.name), value: x.st.mean, color: color(x), hint: 'n = ' + x.st.n })), { max: scale, pct: isPct, fmt: v => v.toFixed(1) + (isPct ? '%' : ''), w: 760, labelW: 170, rowH: 46, barH: 26, ticks: (() => { const st = scale > 60 ? 25 : scale > 30 ? 10 : scale > 12 ? 5 : scale > 6 ? 2 : 1; const a = []; for (let v = 0; v <= scale + 1e-9; v += st) a.push(v); return a; })(), aria: 'average, one bar per ' + perWord }) : '<div class="labNotYet">No class has enough scores for an average yet.</div>';
+    return `${boardHead(dsTitle(title), [...facts, perWord === 'row' ? `average ${what}` : `average ${what} per ${perWord}`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
       <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labAvgBars">${bars}${thin.length ? `<div class="labNotYet">${esc(thin.map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}</div></div></div>`;
   }
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
+  const statsOf = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return statsLevel > 0 ? `<div class="labStats">
+        ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
+        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)}, too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
+      </div>` : ''; };
+  const nameSmall = x => `<b>n = ${x.st.n}</b>${x.classes ? ` · ${x.classes.length > 3 ? x.classes.length + ' classes' : esc(x.classes.join(', '))}` : ''}${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}`;
+  const perStudent = isGrade ? 'course grade per student, in percent' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`;
+  /* Circle graphs as a grid of large pies with one key above them (Croix, 4 Nov 2026: "bigger pies that's my favorite
+     of the comparisons but it views as kinda small on the board"): one per row, as many columns as fill the screen,
+     each pie as tall as its share of the height allows. Under each pie, its counts in the key's order. */
+  if (kind === 'circle') {
+    const pies = series.map(x => ({ x, parts: pieParts(x) })); const key = pies.length ? pies[0].parts : [];
+    const n = pies.length + thin.length; const cols = n <= 1 ? 1 : n === 2 ? 2 : n === 3 ? 3 : n === 4 ? 2 : n <= 6 ? 3 : 4;
+    const grouped = both && rowsBy === 'class'; const rowsN = Math.ceil(n / cols) + (grouped ? 1 : 0);
+    const card = q => `<div class="labPie" style="--cc:${color(q.x)}"><div class="labPieHead"><span class="labName">${esc(labShort(q.x.name))}</span><small>${nameSmall(q.x)}</small>${avgOn ? `<span class="labAvg"><b>${fmtAvg(q.x)}</b><span>average</span></span>` : ''}</div>
+        <div class="labPieBody"><div class="labPieArt">${chartPie(q.parts, { aria: 'circle graph, ' + labShort(q.x.name) })}</div>
+        <div class="labPieKey">${q.parts.map(p => `<span title="${esc(p.label)}: ${p.value}"><i style="background:${p.color}"></i>${esc(p.chip)}: <b>${p.value}</b></span>`).join('')}</div></div>${statsOf(q.x)}${valuesOn ? valuesMarkup(q.x.st, tukey, q.x.pct) : ''}</div>`;
+    // every row in its place (a class too small to draw keeps its spot beside the course it is compared with)
+    const thinCard = x => `<div class="labPie thin" style="--cc:${color(x)}"><div class="labPieHead"><span class="labName">${esc(labShort(x.name))}</span><small>n = ${x.st.n || 0}</small></div><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div>`;
+    let cards = '', at = null; seriesAll.forEach(x => { if (grouped && x.course !== at) { at = x.course; cards += `<div class="labGroupHead" style="--cc:${COURSE_COLORS[at]}">${COURSE_NAMES[at]}</div>`; } cards += x.st.n >= MIN_N ? card(pies.find(q => q.x === x)) : thinCard(x); });
+    return `${boardHead(dsTitle(title), [...facts, perStudent, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+      ${key.length ? `<div class="labLegend labPieLegend">${key.map(p => `<span><i style="background:${p.color}"></i>${esc(p.label)}</span>`).join('')}</div>` : ''}
+      <div class="labPies" style="--pc:${cols};--pr:${rowsN}">${cards}${!seriesAll.length ? '<div class="lbEmpty">No class has data for that yet.</div>' : ''}</div>`;
+  }
   const marks = avgOn && ['box', 'dots', 'hist', 'bar'].includes(kind);   // the forms that can carry a mark at the average; the others show the number only
   // every row stacks its dots to the same height, so every row is drawn to one scale (audit: a taller stack in one class
   // squeezed that row's axis, and the classes could not be compared by eye)
-  const stackAll = Math.max(1, ...series.map(x => { const c = {}; let m = 0; x.values.forEach(v => { if (v != null) { c[v] = (c[v] || 0) + 1; if (c[v] > m) m = c[v]; } }); return m; }));
+  const stackOf = x => { const c = {}; let m = 0; x.values.forEach(v => { if (v != null) { c[v] = (c[v] || 0) + 1; if (c[v] > m) m = c[v]; } }); return m; };
+  const ownStack = pooled && series.some(x => !x.pool);   // a whole course beside a class: the course stacks on its own (80 students would shrink the class's dots to specks)
+  const stackAll = Math.max(1, ...series.filter(x => !ownStack || !x.pool).map(stackOf));
   // histograms and bar graphs share one height across rows; rows of different sizes (two whole courses) are drawn as a
   // percent of the row's students, so the bars compare fairly
-  const share = both && rowsBy === 'course' && new Set(series.map(x => x.st.n)).size > 1;
+  const share = (pooled || both && rowsBy === 'course') && new Set(series.map(x => x.st.n)).size > 1;   // a whole course beside a class: bars as a percent of each row's students
   const binOf = gbSet && !fullSuite ? Math.max(5, state.settings.labBin || 5) : state.settings.labBin;
   const topAll = ['hist', 'bar'].includes(kind) ? Math.max(1, ...series.map(x => histTop(kind, x.values, Math.max(scale, 1), binOf, share))) : null;
-  const row = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return `${both && rowsBy === 'class' && x === series.find(y => y.course === x.course) ? `<div class="labGroupHead" style="--cc:${COURSE_COLORS[x.course]}">${COURSE_NAMES[x.course]}</div>` : ''}<div class="labRow${x.course && rowsBy === 'course' && both ? ' course' : ''}" style="--cc:${color(x)}">
-      <div class="labSide"><div class="labName">${esc(labShort(x.name))}<small><b>n = ${x.st.n}</b>${x.classes ? ` · ${esc(x.classes.join(', '))}` : ''}${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}</small></div>${avgOn ? `<div class="labAvg"><b>${fmtAvg(x)}</b><span>average</span></div>` : ''}</div>
-      <div class="labPlot">${labPlot(kind, x, scale, anyId, { stack: stackAll, top: topAll, share, full: fullSuite, stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 || avgOn, avg: avgOn, bin: binOf, pct: x.pct })}</div>
+  const head = x => both && rowsBy === 'class' && x === seriesAll.find(y => y.course === x.course) ? `<div class="labGroupHead" style="--cc:${COURSE_COLORS[x.course]}">${COURSE_NAMES[x.course]}</div>` : '';
+  const row = x => `${head(x)}<div class="labRow${x.pool ? ' course' : ''}" style="--cc:${color(x)}">
+      <div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>${nameSmall(x)}</small></div>${avgOn ? `<div class="labAvg"><b>${fmtAvg(x)}</b><span>average</span></div>` : ''}</div>
+      <div class="labPlot">${labPlot(kind, x, scale, anyId, { stack: ownStack && x.pool ? stackOf(x) : stackAll, top: topAll, share, full: fullSuite, stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 || avgOn, avg: avgOn, bin: binOf, pct: x.pct })}</div>
       ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
-      ${statsLevel > 0 ? `<div class="labStats">
-        ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
-        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)}, too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
-      </div>` : ''}
-    </div>`; };
-  const thinRow = x => `<div class="labRow thin" style="--cc:${color(x)}"><div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
+      ${statsOf(x)}
+    </div>`;
+  const thinRow = x => `${head(x)}<div class="labRow thin${x.pool ? ' course' : ''}" style="--cc:${color(x)}"><div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div></div><div class="labPlot"><div class="labNotYet">Not enough students yet (needs ${MIN_N})</div></div></div>`;
   // two whole courses side by side: one line on how their centers and spreads compare (MA.7.DP.1.2)
-  const versus = both && rowsBy === 'course' && series.length === 2 && statsLevel > 1 ? (() => { const [a, b] = series; const U = isPct ? ' percentage points' : ' points'; const d = Math.abs(a.st.median - b.st.median); return `<div class="labVersus">Medians ${fmtN(d)}${U} apart · IQR ${fmtN(a.st.iqr)} vs ${fmtN(b.st.iqr)}${isPct ? '' : ''}</div>`; })() : '';
+  const versus = (both && rowsBy === 'course' || rowsBy === 'vs') && series.length === 2 && statsLevel > 1 ? (() => { const [a, b] = series; const U = isPct ? ' percentage points' : ' points'; const d = Math.abs(a.st.median - b.st.median); return `<div class="labVersus">Medians ${fmtN(d)}${U} apart · IQR ${fmtN(a.st.iqr)} vs ${fmtN(b.st.iqr)}${isPct ? '' : ''}</div>`; })() : '';
   const meanKey = '<span><i class="lgMean"></i>average (mean)</span>';
-  return `${boardHead(dsTitle(title), [...facts, isGrade ? 'course grade per student, in percent' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`, share && ['hist', 'bar'].includes(kind) ? 'bars show the percent of each course\'s students' : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
+  return `${boardHead(dsTitle(title), [...facts, perStudent, share && ['hist', 'bar'].includes(kind) ? `bars show the percent of ${perWord === 'course' ? 'each course\'s students' : 'the students in each row'}` : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
     ${kind !== 'box' ? (marks ? `<div class="labLegend">${meanKey}</div>` : '') : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 || avgOn ? meanKey : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
-    ${versus}<div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}${kind !== 'box' && !marks ? ';--lhead:9.5' : ''}">${series.map(row).join('')}${thin.map(thinRow).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class has data for that yet.</div>' : ''}</div>`;
+    ${versus}<div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}${kind !== 'box' && !marks ? ';--lhead:9.5' : ''}">${seriesAll.map(x => x.st.n >= MIN_N ? row(x) : thinRow(x)).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class has data for that yet.</div>' : ''}</div>`;   // every row in its place, a class too small to draw included
+}
+/* ---------- IXL and a test (Croix, 4 Nov 2026: "A line chart to show correlation between an ixl skill and its test
+   grades so like unit 3 ixl and unit 3 assessment on a line chart") ----------
+   Students are grouped by how much of the IXL unit they have at goal (four ranges, a quarter of the unit each), and each
+   point is a group's average score on the test, so the line climbs when more IXL goes with higher scores. A point
+   stands for 3 or more students, so the board shows no one's score (Focus scores stay aggregate on the board); r is
+   worked out over every student with both. One line per class with the whole course dashed, the course alone, or one
+   class beside the course. */
+const CORR_MIN = 3;
+const LINE_H = () => PHONE() ? 300 : 380;   // a line graph on the board fills the room under the heading; on a phone it stays short
+const corrXs = prep => labDatasets(prep).groups.filter(g => /^IXL units/.test(g.group)).map(g => ({ group: g.group.replace(/ \(points\)$/, ''), items: g.items.filter(d => /^unit:/.test(d.id)) })).filter(g => g.items.length);
+const corrYs = prep => labDatasets(prep).groups.filter(g => !/^IXL /.test(g.group) && g.group !== 'Our own data').map(g => ({ group: g.group, items: g.items.filter(d => d.id === 'grade:course' || (/^gb:/.test(d.id) && !/\bixl\b/i.test(d.id))) })).filter(g => g.items.length);
+// The pair showing: what he picked for this course, else the unit being worked in (or the main pick) and its own test.
+function corrPick(prep) {
+  const st = state.settings; const xs = corrXs(prep).flatMap(g => g.items), ys = corrYs(prep).flatMap(g => g.items); const saved = (st.labCorr || {})[prep] || {};
+  const cur = (st.currentUnit || {})[prep]; const curU = cur ? xs.find(d => new RegExp('^unit:Unit ' + cur + '(\\b|$)').test(d.id)) : null;
+  const x = xs.some(d => d.id === saved.x) ? saved.x : xs.some(d => d.id === st.labUnit && st.labPrep === prep) ? st.labUnit : curU ? curU.id : (xs[0] || {}).id || null;
+  const num = x ? (/^unit:Unit (\d+)/.exec(x) || [])[1] : null;
+  // the unit's own test: an assessment, test or exam first, then a quiz, then anything else named for the unit
+  const rank = d => /assess|test|exam/i.test(d.id) ? 2 : /quiz/i.test(d.id) ? 1 : 0;
+  const own = num ? ys.filter(d => /^gb:/.test(d.id) && new RegExp('\\bunit\\s*' + num + '\\b', 'i').test(d.id)).sort((a, b) => rank(b) - rank(a))[0] : null;
+  // a unit Focus has no test for yet (Unit 5 before its test) is set beside the course grade
+  const y = ys.some(d => d.id === saved.y) && saved.x === x ? saved.y : own ? own.id : ys.some(d => d.id === saved.y) ? saved.y : ys.some(d => d.id === 'grade:course') ? 'grade:course' : (ys.find(d => /^gb:/.test(d.id)) || ys[0] || {}).id || null;
+  return { x, y };
+}
+// One class's students with both: the share of the IXL at goal (each student's own list) and the score in percent.
+function corrPairs(s, xId, yId) {
+  const gb = s.grades; if (!gb || !xId || !yId) return [];
+  const units = unitsOf(s); const xu = xId === 'unit:__all__' ? units.filter(u => u.assigned) : units.filter(u => 'unit:' + u.name === xId); if (!xu.length) return [];
+  let ys;
+  if (yId === 'grade:course') { const o = openSec(s); if (!o || !o.grades || !o.grades.assignments.length) return []; ys = gradeAll(o).map(r => r && r.rounded != null ? r.rounded : null); }
+  else { const a = gb.assignments.find(a => 'gb:' + a.name === yId); if (!a || !(a.max > 0)) return []; ys = gb.students.map((_, i) => (a.status ? a.status[i] === 'score' : a.values[i] != null) && a.values[i] != null ? a.values[i] / a.max * 100 : null); }
+  const rows = gbRows(s);
+  return gb.students.map((_, i) => { const r = rows[i]; if (!r || r.ixl == null || ys[i] == null) return null; let p = 0, t = 0; xu.forEach(u => { p += points(s, u, r.ixl); t += activeFor(s, u, r.ixl).length; }); return t ? { f: p / t, y: ys[i] } : null; }).filter(Boolean);
+}
+const corrWords = r => Math.abs(r) < 0.3 ? 'no clear relationship' : `${Math.abs(r) < 0.5 ? 'a weak' : Math.abs(r) < 0.7 ? 'a moderate' : 'a strong'} tendency for students with more of the IXL at goal to score ${r > 0 ? 'higher' : 'lower'}`;
+function labCorrMarkup(prep, cmp) {
+  const { x, y } = corrPick(prep); const secs = labDatasets(prep).secs;
+  const xd = corrXs(prep).flatMap(g => g.items).find(d => d.id === x), yd = corrYs(prep).flatMap(g => g.items).find(d => d.id === y);
+  const xShort = !xd ? 'IXL' : x === 'unit:__all__' ? 'All assigned units' : xd.label.split(' · ')[0] + ' IXL', yName = yd ? yd.label.replace(/ · /g, ', ') : '';
+  const title = xd && yd ? `${xShort} and ${yName}` : 'IXL and a test';
+  if (!xd || !yd) return `${boardHead(title, [labCmpWords(prep, cmp)])}<div class="lbEmpty">${!xd ? 'No IXL units in this course yet.' : 'Import a Focus gradebook to set IXL beside a test.'}</div>`;
+  const per = secs.map(s => ({ s, pairs: corrPairs(s, x, y) })).filter(c => c.pairs.length); const all = per.flatMap(c => c.pairs);
+  const vs = /^vs:/.test(cmp) ? cmp.slice(3) : null; const course = { name: allCourse(prep), color: COURSE_COLORS[prep], pairs: all };
+  const one = c => ({ name: labShort(c.s.team || c.s.label), color: classColor(c.s), pairs: c.pairs });
+  const mineC = vs ? per.filter(c => c.s.key === vs).map(one) : [];
+  const groups = cmp === 'pool' ? [course] : vs ? [...mineC, { ...course, ref: mineC.length > 0 }] : [...per.map(one), ...(per.length > 1 ? [{ ...course, ref: true }] : [])];
+  const noneVs = vs && !mineC.length ? labShort(state.sections[vs].team || state.sections[vs].label) : null;   // the class he picked has no student with both yet
+  // the four ranges, in skills when every class counts the same number (a quarter of the unit each), else in percent
+  const totals = new Set(secs.map(s => (x === 'unit:__all__' ? unitsOf(s).filter(u => u.assigned) : unitsOf(s).filter(u => 'unit:' + u.name === x)).reduce((a, u) => a + u.total, 0)).filter(Boolean)); const m = totals.size === 1 ? [...totals][0] : null;
+  const edge = i => Math.ceil(m * i / 4); const labels = [0, 1, 2, 3].map(i => { if (!m) return ['0–24%', '25–49%', '50–74%', '75–100%'][i]; const lo = edge(i), hi = i === 3 ? m : edge(i + 1) - 1; return lo >= hi ? `${lo}` : `${lo}–${hi}`; });
+  const band = f => Math.min(3, Math.floor(f * 4 + 1e-9));
+  const lines = groups.map(g => { const sum = [0, 0, 0, 0], n = [0, 0, 0, 0]; g.pairs.forEach(p => { const b = band(p.f); sum[b] += p.y; n[b]++; });
+    return { ...g, n, values: n.map((k, i) => k >= CORR_MIN ? sum[i] / k : null), r: g.pairs.length >= 8 ? pearson(g.pairs.map(p => p.f), g.pairs.map(p => p.y)) : null }; });
+  const drawn = lines.filter(l => l.values.filter(v => v != null).length >= 2), short = lines.filter(l => !drawn.includes(l) && l.pairs.length);
+  const body = drawn.length ? chartLines(labels, drawn.map(l => ({ name: l.name, color: l.color, ref: !!l.ref, values: l.values, tips: l.n.map(k => k >= CORR_MIN ? plural(k, 'student') : '') })), { pct: true, min: 0, max: 100, h: LINE_H(), w: 960, labelW: 230, padX: 46, pointLabels: drawn.length <= 2, aria: `average ${yName} score by ${xShort} skills at goal` })
+    : `<div class="labNotYet">${all.length ? `Not enough students in each range yet: a point needs ${CORR_MIN} or more.` : `No student has both a score on ${esc(yName)} and ${esc(xShort)} yet.`}</div>`;
+  const main = lines.find(l => l.ref || cmp === 'pool') || lines[0]; const mine = vs ? lines.find(l => !l.ref) : null;
+  const rLine = main && main.r != null ? `r = ${main.r.toFixed(2)} for the ${main.pairs.length} ${lines.length > 1 || cmp === 'pool' ? COURSE_NAMES[prep].toLowerCase() + ' ' : ''}students with both: ${corrWords(main.r)}.${mine && mine.r != null ? ` ${esc(mine.name)}'s ${mine.pairs.length}: r = ${mine.r.toFixed(2)}.` : ''}` : '';
+  const ixlAt = labAsOf(secs, false), gbAt = labAsOf(secs, true);   // the IXL export and the gradebook can be from different days: say both
+  const asOfC = ixlAt && gbAt && ixlAt !== gbAt ? `IXL as of ${fmtDate(ixlAt)}, Focus as of ${fmtDate(gbAt)}` : (ixlAt || gbAt) ? 'as of ' + fmtDate(ixlAt || gbAt) : '';
+  return `${boardHead(title, [labCmpWords(prep, cmp), `average score on ${yName} by how much of ${xShort} is at goal`, asOfC])}
+    <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labCorr">${body}
+      <p class="labAxis"><b>Across:</b> ${esc(xShort)} skills at goal${m ? ` (of ${m})` : ''}. <b>Up:</b> the average on ${esc(yName)} of the students in each range, ${CORR_MIN} or more to a point.${rLine ? ` ${rLine}` : ''}</p>
+      ${short.length ? `<p class="labAxis">${esc(short.map(l => l.name).join(', '))}: not enough students in each range yet for a line.</p>` : ''}${noneVs ? `<p class="labAxis">${esc(noneVs)}: no student has both a score on ${esc(yName)} and ${esc(xShort)} yet.</p>` : ''}</div></div></div>`;
 }
 // Every chart for Focus scores only when comparing whole courses, each row 15 students or more.
 function labFullSuite(prep, ids, rowsBy, series) { return prep === 'both' && rowsBy === 'course' && series.length > 0 && series.every(x => x.st.n >= 15); }
@@ -1086,16 +1225,64 @@ const LAB_ONLY_CSS = `
 .labStats{gap:4px 6px;padding:6px 0 2px} .labStats div{padding:4px 4px;gap:1px}
 .lbTools{background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(6px);border-radius:var(--r-l);padding:6px 8px;box-shadow:var(--shadow-1)}
 @media (max-width:800px){.labRow{grid-template-columns:1fr}.labStats{grid-template-columns:repeat(3,1fr)}.labStats div.wide{grid-column:span 3}}
+/* the pie grid: each pie as tall as its share of the screen allows (header, key, the bottom bar and each card's own lines taken out) */
+.labPieLegend{font-size:calc(var(--bu)*1.3);gap:calc(var(--bu)*.5) calc(var(--bu)*1.4)}.labPieLegend i{width:calc(var(--bu)*1.05);height:calc(var(--bu)*1.05);vertical-align:-.12em;border:1px solid rgba(22,33,58,.35)}
+.labPies{display:grid;grid-template-columns:repeat(var(--pc,3),minmax(0,1fr));gap:calc(var(--bu)*.9)}
+.labPies>.labGroupHead{grid-column:1/-1;margin:0 0 -6px 4px}.labPies>.lbEmpty{grid-column:1/-1}
+.labPie{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);border-top:calc(var(--bu)*.45) solid var(--cc,var(--turq));padding:calc(var(--bu)*.6) calc(var(--bu)*1) calc(var(--bu)*.6);display:flex;flex-direction:column;align-items:center;gap:calc(var(--bu)*.25);min-width:0}
+.labPie.thin{opacity:.75}
+.labPieHead{align-self:stretch;display:flex;align-items:baseline;gap:4px calc(var(--bu)*.8);flex-wrap:wrap}
+.labPieHead .labName{font-size:calc(var(--bu)*1.8)}.labPieHead small{font-size:calc(var(--bu)*1.15);font-weight:var(--w-bold);color:var(--teal)}.labPieHead small b{font-weight:var(--w-black)}.labPieHead .labAvg{margin-left:auto}
+.labPieBody{align-self:stretch;display:flex;align-items:center;justify-content:center;gap:calc(var(--bu)*.8);min-width:0}
+.labPieArt{flex:1 1 auto;min-width:0;display:flex;justify-content:center}
+.labPieArt .chart.pie{width:100%;max-width:none;height:auto;max-height:min(74vh,calc((100vh - var(--bu)*10.5 - var(--padB) - var(--bu)*.9*(var(--pr,1) - 1)) / var(--pr,1) - var(--bu)*4))}
+.labPieKey{flex:none;display:flex;flex-direction:column;gap:calc(var(--bu)*.35);font-weight:var(--w-bold);font-size:calc(var(--bu)*1.3);color:var(--navy);white-space:nowrap}
+.labPieKey i{display:inline-block;width:.8em;height:.8em;border-radius:var(--r-xs);margin-right:.35em;vertical-align:-.05em;border:1px solid rgba(22,33,58,.35)}.labPieKey b{font-weight:var(--w-black)}
+.labPie .labStats,.labPie .labValues{align-self:stretch}
+.labAxis{margin:.5em 0 0;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.2);color:var(--ink-soft);line-height:1.4}.labAxis b{color:var(--navy)}
+.labCorr .chart{max-height:min(62vh,calc(100vh - var(--bu)*16 - var(--padB)))}
 `;
 const LAB_CSS = CHART_CSS + LAB_ONLY_CSS;
 // One copy of the board's styles: the app injects it here, and the saved Race / Data Lab pages embed the same strings.
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: LB_CSS + LAB_ONLY_CSS }));
 function dotsDefault(id) { return !focusSet(id); }
 const parseNums = txt => String(txt || '').split(/[\s,;]+/).filter(x => x !== '').map(Number).filter(Number.isFinite);   // an empty box is no numbers, not one zero
+/* ---------- Full screen on the board, the screen kept on (Croix, 4 Nov 2026: "can I get a full screen mode that
+   request chrome to stay on and not black out") ----------
+   Full screen hides the browser's bars; a screen wake lock asks the browser not to dim or sleep while the board shows.
+   Chrome lets the lock go whenever the tab is hidden, so it is asked for again when the board is back in view. It goes
+   with full screen (Esc, the button, or leaving the board). In full screen the bar fades after a few still seconds and
+   comes back with any touch, click or key. */
+let lbLock = null, lbFsMine = false, lbIdleT = null, lbFullWas = false;
+const lbFsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+const lbFsOK = () => !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+async function lbWake(on) {
+  if (!on) { const l = lbLock; lbLock = null; try { if (l) await l.release(); } catch (e) {} return; }
+  if (lbLock || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+  try { const l = await navigator.wakeLock.request('screen'); lbLock = l; l.addEventListener('release', () => { if (lbLock === l) lbLock = null; }); } catch (e) { lbLock = null; }   // refused (battery saver, a policy): full screen still works
+}
+async function lbFull(on) {
+  const d = document.documentElement;
+  try { if (on && !lbFsEl()) { lbFsMine = true; await (d.requestFullscreen ? d.requestFullscreen({ navigationUI: 'hide' }) : d.webkitRequestFullscreen()); }
+    else if (!on && lbFsEl()) await (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen()); } catch (e) { if (on) lbFsMine = false; }
+  lbFullSync();
+}
+// The page follows the browser: Esc leaves full screen without asking the page.
+function lbFullSync() {
+  const on = !!lbFsEl() && !!state.settings.leaderboard; if (!lbFsEl()) lbFsMine = false;
+  document.body.classList.toggle('lbFull', on); if (!on) document.body.classList.remove('lbShowTools');
+  lbWake(on);
+  const b = $('#lbFull'); if (b) { b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'Exit full screen' : 'Full screen'; }
+  if (on && !lbFullWas) lbPoke(); lbFullWas = on;   // the bar shows on the way in, then fades; a redraw of the board leaves it as it is
+}
+function lbPoke() { if (!document.body.classList.contains('lbFull')) return; document.body.classList.add('lbShowTools'); clearTimeout(lbIdleT); lbIdleT = setTimeout(() => { if (!lbOptsOpen && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('.lbTools select'))) document.body.classList.remove('lbShowTools'); }, 3500); }
+document.addEventListener('fullscreenchange', lbFullSync); document.addEventListener('webkitfullscreenchange', lbFullSync);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && document.body.classList.contains('lbFull')) lbWake(true); });
+['pointermove', 'pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, lbPoke, { passive: true }));
 function renderLeaderboard() {
   const el = $('#lb'); const on = !!state.settings.leaderboard;
   el.classList.toggle('hidden', !on); document.body.classList.toggle('lbMode', on);
-  if (!on) { el.innerHTML = ''; return; }
+  if (!on) { el.innerHTML = ''; if (lbFsEl() && lbFsMine) lbFull(false); else lbFullSync(); return; }   // leaving the board leaves full screen and lets the screen sleep again
   const st = state.settings; const f = st.lbFocus || 'both'; const data = leaderboardData(); const hasBoth = data.some(r => r.prep === 'acc') && data.some(r => r.prep === 'on');
   const lab = st.lbTab === 'lab';
   // One course choice for both tabs (audit, 23 Oct 2026: the Race and the Data Lab each kept their own and disagreed).
@@ -1108,10 +1295,11 @@ function renderLeaderboard() {
   if (lab && cur && st.labUnit) st.labPick = { ...(st.labPick || {}), [cur]: st.labUnit };
   const pickA = both ? labPickFor('acc') : null, pickO = both ? labPickFor('on') : null;
   const anyFocus = both ? (focusSet(pickA) || focusSet(pickO)) : focusSet(st.labUnit);
-  const fullSuite = both && st.labRows !== 'class' && ['acc', 'on'].every(c => labSeries(c, c === 'acc' ? pickA : pickO).reduce((a, x) => a + x.st.n, 0) >= 15);
+  const fullSuite = both && labCmpFor('both') === 'course' && ['acc', 'on'].every(c => labSeries(c, c === 'acc' ? pickA : pickO).reduce((a, x) => a + x.st.n, 0) >= 15);
   // the chart he picked comes back with the next data set: a Focus set narrows what is offered without saving over it
-  const kinds = LAB_KINDS.filter(([k]) => !anyFocus || fullSuite || FOCUS_KINDS.includes(k)); const kindNow = kinds.some(([k]) => k === st.labKind) ? st.labKind : 'box';
-  const one = kindNow === 'line' || kindNow === 'avg';   // every class on one chart: the per-class controls don't apply
+  const corrOK = !!(cur && corrXs(cur).length && corrYs(cur).length);   // IXL and a test: one course, with a gradebook
+  const kinds = LAB_KINDS.filter(([k]) => (k !== 'corr' || corrOK) && (!anyFocus || fullSuite || FOCUS_KINDS.includes(k))); const kindNow = kinds.some(([k]) => k === st.labKind) ? st.labKind : 'box';
+  const one = kindNow === 'line' || kindNow === 'avg' || kindNow === 'corr';   // every row on one chart: the per-row controls don't apply
   const dotKey = both ? 'both|' + pickA + '|' + pickO : st.labUnit;
   const dotsOn = anyFocus && !fullSuite ? false : (st.labDots[dotKey] != null ? !!st.labDots[dotKey] : dotsDefault(both ? pickA : st.labUnit));   // Focus scores are never one dot per student on a projected screen, unless two whole courses are compared
   // The data-set list is units, gradebook assignments and the class's own sets; the 200-odd single skills sit behind one choice.
@@ -1124,11 +1312,18 @@ function renderLeaderboard() {
   const sidePicker = (c, id, label) => { const G = labDatasets(c).groups; return `<select id="lab${c === 'acc' ? 'A' : 'O'}" class="labSelect side" aria-label="${label} data set">${G.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => opt(d, id)).join('')}</optgroup>`).join('')}</select>`; };
   const bothPicker = () => `<span class="labVs">${sidePicker('acc', pickA, 'Accelerated')}<b>vs</b>${sidePicker('on', pickO, 'On-level')}</span>`;
   const courseSeg = hasBoth ? `<div class="seg lbFocus">${[['acc', 'Accelerated'], ['on', 'On-level'], ['both', 'Both']].map(([k, n]) => `<button data-prep="${k}" class="${st.labPrep === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '';
-  const pickers = both ? bothPicker() : `
+  // IXL and a test: the unit (across) and the assignment (up), remembered per course
+  const corrPickers = () => { const c = corrPick(cur); return `<span class="labVs"><select id="labCx" class="labSelect side" aria-label="IXL unit">${corrXs(cur).map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => opt(d, c.x)).join('')}</optgroup>`).join('')}</select><b>and</b><select id="labCy" class="labSelect side" aria-label="Test or assignment">${corrYs(cur).map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => opt(d, c.y)).join('')}</optgroup>`).join('')}</select></span>`; };
+  // Compare: each class, the whole course, or one class beside a whole course (the other course's, when both show)
+  const cmpNow = labCmpFor(both ? 'both' : cur); const other = c => c === 'acc' ? 'on' : 'acc';
+  const cmpClasses = state.order.map(k => state.sections[k]).filter(s => s && !s.placeholder && s.students.length && (both || s.prep === cur));
+  const cmpOpts = both ? [['course', 'Each course'], ['class', 'Each class'], ...cmpClasses.map(s => ['vs:' + s.key, `${labShort(s.team || s.label)} vs ${allCourse(other(s.prep)).toLowerCase()}`])]
+    : [['class', 'Each class'], ['pool', allCourse(cur) + ' together'], ...cmpClasses.map(s => ['vs:' + s.key, `${labShort(s.team || s.label)} vs ${allCourse(cur).toLowerCase()}`])];
+  const cmpSel = lab && (both || cmpClasses.length > 1) ? `<select id="labCmp" class="labSelect" aria-label="Compare">${cmpOpts.map(([v, t]) => `<option value="${esc(v)}" ${v === cmpNow ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>` : '';
+  const pickers = kindNow === 'corr' ? corrPickers() : both ? bothPicker() : `
        <select id="labUnit" class="labSelect" aria-label="Data set">${mainGroups.map(g => `<optgroup label="${esc(g.group)}">${g.items.map(d => opt(d, st.labUnit)).join('')}</optgroup>`).join('')}${skillGroups.length ? `<option value="__skill__" ${isSkill ? 'selected' : ''}>A single skill…</option>` : ''}</select>
        ${isSkill ? `<select id="labSkill" class="labSelect" aria-label="Skill">${skillGroups.map(g => `<optgroup label="${esc(g.group.replace(/^IXL skills \(SmartScore\),? ?—? ?/, ''))}">${g.items.map(d => `<option value="${esc(d.id)}" ${d.id === st.labUnit ? 'selected' : ''}>${esc(d.label.replace(/^Unit \d+ · /, ''))}</option>`).join('')}</optgroup>`).join('')}</select>` : ''}`;
-  const toggles = `${both ? `<div class="seg small" id="labRows">${[['course', 'By course'], ['class', 'By class']].map(([k, n]) => `<button data-rows="${k}" class="${(st.labRows || 'course') === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
-       ${kindNow === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${(anyFocus && !fullSuite ? [5, 10] : [1, 2, 5, 10]).map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
+  const toggles = kindNow === 'corr' ? '' : `${kindNow === 'hist' ? `<select id="labBin" class="labSelect" aria-label="Bin size"><option value="0">auto bins</option>${(anyFocus && !fullSuite ? [5, 10] : [1, 2, 5, 10]).map(b => `<option value="${b}" ${st.labBin === b ? 'selected' : ''}>bins of ${b}</option>`).join('')}</select>` : ''}
        ${one ? '' : `<button class="pill small" id="labStats" aria-pressed="${st.labStats > 0}">${revealLabel}</button>`}
        ${one ? '' : `<button class="pill small" id="labAvg" aria-pressed="${!!st.labAvg}" title="Each row's average, beside its name and marked on its plot">Average</button>`}
        ${kindNow === 'box' && (!anyFocus || fullSuite) ? `<button class="pill small" id="labDots" aria-pressed="${dotsOn}">Dots</button>` : ''}
@@ -1137,10 +1332,10 @@ function renderLeaderboard() {
        ${kindNow === 'box' && (!anyFocus || fullSuite) ? `<button class="pill small" id="labTukey" aria-pressed="${!!st.labTukey}">Outliers</button>` : ''}`;
   const nOpts = (toggles.match(/<(button|select|div class="seg)/g) || []).length;
   const controls = lab
-    ? `${courseSeg}${pickers}<select id="labKind" class="labSelect" aria-label="Show as">${kinds.map(([k, n]) => `<option value="${k}" ${kindNow === k ? 'selected' : ''}>${n}</option>`).join('')}</select>${nOpts ? `<button class="pill small" id="lbOpts" aria-pressed="${lbOptsOpen}" aria-expanded="${lbOptsOpen}">Options</button><div class="lbOptsBox">${toggles}</div>` : ''}`
+    ? `${courseSeg}${cmpSel}${pickers}<select id="labKind" class="labSelect" aria-label="Show as">${kinds.map(([k, n]) => `<option value="${k}" ${kindNow === k ? 'selected' : ''}>${n}</option>`).join('')}</select>${nOpts ? `<button class="pill small" id="lbOpts" aria-pressed="${lbOptsOpen}" aria-expanded="${lbOptsOpen}">Options</button><div class="lbOptsBox">${toggles}</div>` : ''}`
     : (hasBoth ? `<div class="seg lbFocus">${[['both', 'Both'], ['acc', 'Accelerated'], ['on', 'On-level']].map(([k, n]) => `<button data-focus="${k}" class="${f === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : '');
   el.innerHTML = `<div class="lbWrap">${lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues, kindNow) : lbMarkup(data, f)}</div>
-    <div class="lbTools ${lbOptsOpen ? 'open' : ''}">${tabs}${controls}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
+    <div class="lbTools ${lbOptsOpen ? 'open' : ''}">${tabs}${controls}${lbFsOK() ? `<button class="pill small" id="lbFull" aria-pressed="${!!lbFsEl()}" title="Full screen, and the screen stays on while the board shows">${lbFsEl() ? 'Exit full screen' : 'Full screen'}</button>` : ''}<button class="pill small exitPill" id="lbExit" title="Press and hold for 1½ seconds to exit"><span class="ring"></span>Hold to exit</button></div>`;
   const lo = el.querySelector('#lbOpts'); if (lo) lo.onclick = () => { lbOptsOpen = !lbOptsOpen; el.querySelector('.lbTools').classList.toggle('open', lbOptsOpen); lo.setAttribute('aria-expanded', lbOptsOpen); lo.setAttribute('aria-pressed', lbOptsOpen); };   /* the toggles fold behind Options; the card stays open while the chart is changed */
   el.querySelectorAll('[data-focus]').forEach(b => b.onclick = () => { st.lbFocus = b.dataset.focus; if (st.lbFocus !== 'both') st.labPrep = st.lbFocus; save(); renderLeaderboard(); });
   el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { st.lbTab = b.dataset.tab; save(); renderLeaderboard(); });
@@ -1151,7 +1346,11 @@ function renderLeaderboard() {
     if (to === 'both') { /* each side keeps its own last pick */ }
     else { const m = from !== 'both' ? labMatch(from, st.labUnit) : null; st.labUnit = m || (st.labPick || {})[to] || ''; }
     st.labPrep = to; save(); renderLeaderboard(); });
-  el.querySelectorAll('[data-rows]').forEach(b => b.onclick = () => { st.labRows = b.dataset.rows; save(); renderLeaderboard(); });
+  const lc = $('#labCmp'); if (lc) lc.onchange = () => { if (both) st.labRows = lc.value; else st.labCmp = { ...(st.labCmp || {}), [cur]: lc.value }; save(); renderLeaderboard(); };
+  const cx = $('#labCx'); if (cx) cx.onchange = () => { st.labCorr = { ...(st.labCorr || {}), [cur]: { x: cx.value } }; save(); renderLeaderboard(); };   // a new unit brings its own test
+  const cy = $('#labCy'); if (cy) cy.onchange = () => { st.labCorr = { ...(st.labCorr || {}), [cur]: { x: corrPick(cur).x, y: cy.value } }; save(); renderLeaderboard(); };
+  const fb = $('#lbFull'); if (fb) fb.onclick = () => lbFull(!lbFsEl());
+  lbFullSync();
   const pa = $('#labA'); if (pa) pa.onchange = () => { st.labPick = { ...(st.labPick || {}), acc: pa.value }; save(); renderLeaderboard(); };
   const po = $('#labO'); if (po) po.onchange = () => { st.labPick = { ...(st.labPick || {}), on: po.value }; save(); renderLeaderboard(); };
   const sel = $('#labUnit'); if (sel) sel.onchange = () => { if (sel.value === '__skill__') { const cur = (state.settings.currentUnit || {})[st.labPrep]; const g = skillGroups.find(x => cur && new RegExp('[,—] Unit ' + cur + '$').test(x.group)) || skillGroups[0]; st.labUnit = g.items[0].id; } else st.labUnit = sel.value; save(); renderLeaderboard(); };

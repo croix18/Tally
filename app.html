@@ -487,6 +487,8 @@ body.lbMode #top,body.lbMode #app{visibility:hidden}
 .lbTools .labSelect{border:1px solid var(--grid);border-radius:var(--r-pill);padding:8px 12px;background:var(--white);font-weight:var(--w-bold);font-size:clamp(13px,.8vw,17px);max-width:320px;min-height:var(--h-m);box-shadow:var(--shadow-2)}
 .lbTools{flex-wrap:wrap;justify-content:flex-end;max-width:96vw;align-items:center}
 .lbTools .pill[aria-pressed="false"]{background:var(--paleturq);color:var(--navy)}
+body.lbFull .lbWrap{--padB:28px}   /* full screen: the bar fades after a few still seconds, so the board takes its room */
+body.lbFull .lbTools{opacity:0;pointer-events:none;transition:opacity .35s ease}body.lbFull.lbShowTools .lbTools{opacity:1;pointer-events:auto}body.lbFull:not(.lbShowTools) #lb{cursor:none}
 #lbExit{position:relative;overflow:hidden;opacity:1;background:var(--white);color:var(--navy);border:2px solid var(--navy);-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
 #lbExit *{pointer-events:none}
 #lbExit .ring{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(22,33,58,.18)}

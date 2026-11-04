@@ -273,3 +273,24 @@ fail on the build before the fix), computed from the gradebook and the IXL expor
   only for a unit with more skills than the column counts.
 - Before printing, the question now also names students whose IXL points Focus doesn't have yet and students not matched
   to an IXL account. Copying the IXL into Focus and exporting again before printing makes the first line go away.
+
+## The Data Lab for the room (4 Nov 2026)
+
+Five asks from Croix (NOTES.md, "The Data Lab for the room"): full screen with the screen kept on, bigger pies, IXL and
+a test on a line, a class beside a whole course, and IXL units Focus doesn't have yet.
+
+### Fixed on the way
+1. A class with fewer than 5 students was moved to the end of the rows and the pies, out of its course's group: it keeps
+   its place now, beside the course it is compared with.
+2. A histogram of one class beside a whole course said "bars show the percent of each course's students": "of the
+   students in each row".
+
+### Noted, not changed
+- An IXL class export for a period Tally already has goes into that period's class even when the file names the other
+  course, if that is the only class with the period (`periodTwin`, 22 Oct: one class per period). Right for Croix's
+  schedule; two courses in one period would need the course to decide.
+
+### For Croix
+- Full screen keeps the screen on only while Chrome shows the board. Esc or Exit full screen ends both. If the panel
+  still dims, its own power settings are the next place to look.
+- IXL and a test draws groups, not students: each point is the average of 3 or more, so no one's score is on the board.

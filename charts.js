@@ -52,11 +52,12 @@ function chartStacked(rows, keys, o) {
 }
 // Line chart over labelled x steps: series [{ name, values: [y|null] }], labels [x]. Direct labels at the line ends + legend.
 function chartLines(labels, series, o) {
-  o = o || {}; const w = CW(o.w || 640), h = o.h || 220, l = 44, t = 12, b = 30;
+  o = o || {}; const w = CW(o.w || 640), h = o.h || 220, l = o.pct ? 58 : 44, t = 12, b = 30;   // a percent axis needs room for "100%" in the board's larger type
   const longest = Math.max(0, ...series.map(x => String(phoneLabel(x.name)).length)) + 6; const r = PHONE() ? Math.min(w * 0.34, longest * 6.8 + 24) : Math.max(o.labelW || 170, Math.min(w * 0.45, longest * 6.8 + 24));   // room for the longest direct label
   const ys = series.flatMap(x => x.values).filter(v => v != null); if (!ys.length) return '<div class="lbEmpty">Nothing to plot yet.</div>';
   const lo = o.min != null ? o.min : Math.max(0, Math.floor(Math.min(...ys) / 10) * 10 - 10), hi = o.max != null ? o.max : niceMax(Math.max(...ys), 10);
-  const X = i => l + (labels.length > 1 ? i / (labels.length - 1) : 0.5) * (w - l - r), Y = v => h - b - (v - lo) / (hi - lo || 1) * (h - t - b);
+  const px = o.padX || 0;   // o.padX: room between the axis and the first and last points (ranges, not dates)
+  const X = i => l + px + (labels.length > 1 ? i / (labels.length - 1) : 0.5) * (w - l - r - 2 * px), Y = v => h - b - (v - lo) / (hi - lo || 1) * (h - t - b);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'line chart')}">`;
   const ticks = 4; for (let i = 0; i <= ticks; i++) { const v = lo + (hi - lo) * i / ticks; s += `<line x1="${l}" y1="${Y(v)}" x2="${w - r}" y2="${Y(v)}" class="gl"/><text x="${l - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; }
   // Optional x labels thinned so dates don't collide; optional marks = vertical dividers before index i (quarter boundaries).
@@ -64,10 +65,13 @@ function chartLines(labels, series, o) {
   labels.forEach((lb, i) => { if (i % every && i !== labels.length - 1) return; s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle" class="tl">${esc(lb)}</text>`; });
   (o.marks || []).forEach(mk => { if (!(mk.i > 0 && mk.i < labels.length)) return; const x = (X(mk.i - 1) + X(mk.i)) / 2; s += `<line x1="${x}" y1="${t}" x2="${x}" y2="${h - b}" class="qmark"/><text x="${x + 4}" y="${h - b - 6}" class="tl qmarkl">${esc(mk.label)}</text>`; });
   const ends = [];
+  // o.pointLabels: each point's value above it (two lines or fewer, so they stay clear); sr.tips[i]: more for a point's tooltip
   series.forEach((sr, j) => { const c = sr.color || (series.length === 1 ? 'var(--teal)' : seriesColor(j)); let d = '', last = null, pen = false;
     sr.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; pen = true; last = [i, v]; });
     s += `<path d="${d}" class="ln${sr.ref ? ' ref' : ''}" style="stroke:${c}"/>`;
-    sr.values.forEach((v, i) => { if (v != null) s += `<circle cx="${X(i)}" cy="${Y(v)}" r="4" style="fill:${c}"><title>${esc(sr.name)} · ${esc(labels[i])}: ${o.pct ? Math.round(v) + '%' : fmtV(v)}</title></circle>`; });
+    sr.values.forEach((v, i) => { if (v == null) return; const val = o.pct ? Math.round(v) + '%' : fmtV(v); s += `<circle cx="${X(i)}" cy="${Y(v)}" r="${o.pointLabels ? 6 : 4}" style="fill:${c}"><title>${esc(sr.name)} · ${esc(labels[i])}: ${val}${sr.tips && sr.tips[i] ? ' · ' + esc(sr.tips[i]) : ''}</title></circle>`;
+      if (o.pointLabels && i !== last[0]) { const others = series.filter((x, k) => k !== j && x.values[i] != null).map(x => x.values[i]); const below = others.some(u => u > v || (u === v && j > 0));   // the side away from the other line
+        s += `<text x="${X(i)}" y="${Y(v) + (below ? 26 : -13)}" text-anchor="middle" class="val">${val}</text>`; } });   // the end point's value is in its direct label
     if (last) ends.push({ x: X(last[0]), y: Y(last[1]), want: Y(last[1]), name: sr.name, v: last[1], c }); });
   // Direct labels at the line ends, nudged apart so two classes that finish close together stay readable.
   ends.sort((a, b) => a.want - b.want); const gap = 15;
@@ -146,6 +150,29 @@ function chartCircle(parts, o) {
   s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/>`;
   const ly = cy - parts.length * pitch / 2 + 6;   // the legend sits level with the middle of the circle
   parts.forEach((p, i) => { s += `<rect x="${lx}" y="${ly + i * pitch}" width="17" height="17" rx="4" style="fill:${p.color || seriesColor(i)}" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/><text x="${lx + 25}" y="${ly + 15.5 + i * pitch}" class="lbl" ${fl}>${esc(p.label)} <tspan class="tl" ${fs}>${p.value}</tspan></text>`; });
+  return s + '</svg>';
+}
+/* A circle graph without its key, for a grid of them that share one (Croix, 4 Nov 2026: "bigger pies that's my favorite
+   of the comparisons but it views as kinda small on the board"). The same slices and outside labels as chartCircle; the
+   drawing is nearly square, so it fills its card at any size. Labels on one side are nudged apart when two thin slices
+   sit together. */
+function chartPie(parts, o) {
+  o = o || {}; const tot = parts.reduce((a, p) => a + p.value, 0); if (!tot) return '<div class="lbEmpty">Nothing to plot yet.</div>';
+  const W = 410, H = 320, cx = W / 2, cy = H / 2, R = 122, FS = 26;
+  let a0 = -Math.PI / 2; let s = `<svg class="chart circle pie" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria || 'circle graph')}">`; const labs = [];
+  parts.forEach((p, i) => { if (!p.value) return; const a1 = a0 + p.value / tot * 2 * Math.PI; const big = a1 - a0 > Math.PI ? 1 : 0;
+    const x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0), x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
+    const d = p.value === tot ? `M${cx - R} ${cy}A${R} ${R} 0 1 1 ${cx + R} ${cy}A${R} ${R} 0 1 1 ${cx - R} ${cy}` : `M${cx} ${cy}L${x0} ${y0}A${R} ${R} 0 ${big} 1 ${x1} ${y1}Z`;
+    s += `<path d="${d}" style="fill:${p.color || seriesColor(i)}" stroke="#fff" stroke-width="2.5"><title>${esc(p.label)}: ${p.value} (${Math.round(p.value / tot * 100)}%)</title></path>`;
+    const am = (a0 + a1) / 2, c = Math.cos(am), sn = Math.sin(am); const side = c > 0.3 ? 'start' : c < -0.3 ? 'end' : 'middle'; const out = R + 10;
+    if (p.value / tot >= 0.06) { const t = `${p.short ? p.short + ' ' : ''}${Math.round(p.value / tot * 100)}%`; labs.push({ x: cx + out * c, y: cy + out * sn + (side === 'middle' ? (sn > 0 ? FS * .8 : -4) : FS * .32 + sn * 8), side, top: sn < 0, w: t.length * FS * .6, t: esc(t) }); }
+    a0 = a1; });
+  ['start', 'end'].forEach(sd => { const L = labs.filter(l => l.side === sd).sort((a, b) => a.y - b.y); for (let i = 1; i < L.length; i++) if (L[i].y - L[i - 1].y < FS * 1.05) L[i].y = L[i - 1].y + FS * 1.05; });
+  // two thin slices meeting at the top or the bottom (an A and an F, say): their labels move apart sideways
+  [true, false].forEach(top => { const L = labs.filter(l => l.side === 'middle' && l.top === top).sort((a, b) => a.x - b.x);
+    for (let i = 1; i < L.length; i++) { const need = (L[i - 1].w + L[i].w) / 2 + 8, gap = L[i].x - L[i - 1].x; if (gap < need) { L[i - 1].x -= (need - gap) / 2; L[i].x += (need - gap) / 2; } } });
+  labs.forEach(l => { s += `<text x="${l.x.toFixed(1)}" y="${Math.min(H - 4, l.y).toFixed(1)}" text-anchor="${l.side}" class="val" style="font-size:${FS}px">${l.t}</text>`; });
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/>`;
   return s + '</svg>';
 }
 const CHART_CSS = `
