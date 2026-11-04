@@ -63,6 +63,8 @@ const PASS = 'Lantern cobalt rhubarb orbit mosaic';
     check(/five different words/i.test(await lap.textContent('#syMsg')), `a weak passphrase ("${weak}") is refused before anything is sent`); }
   await lap.click('#sySuggest'); const sug = await lap.inputValue('#syPass');
   check(sug.split(' ').length === 5 && await T(lap, s => window.__tally.syncPassOk(s), sug), `Suggest one gives five words (${sug})`);
+  const many = await lap.evaluate(() => { const T = window.__tally; let bad = []; for (let k = 0; k < 3000; k++) { const s = T.syncSuggest(); const w = s.split(' '); if (w.length !== 5 || new Set(w).size !== 5 || !T.syncPassOk(s)) bad.push(s); } return bad; });
+  check(many.length === 0, `3000 suggestions: each five different words that pass the passphrase check (one in 200 used to repeat a word or run short)${many.length ? ': ' + many.slice(0, 3).join(' | ') : ''}`);
   check(store.puts === 0, 'nothing was sent');
   await lap.fill('#syPass', PASS); await lap.click('#syGo'); await lap.waitForSelector('#syAgainF:not(.hidden)', { timeout: 15000 });
   check(await lap.isVisible('#sySetupF'), 'an empty store asks for the passphrase again, and the setup code');

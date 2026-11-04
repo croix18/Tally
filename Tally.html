@@ -7234,7 +7234,9 @@ const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 const syncNorm = p => String(p || '').normalize('NFKC').toLowerCase().split(/[\s\-_.,]+/).filter(Boolean).join(' ');
 // At least five different words of three letters or more, 24 characters in all (the school's name is four words), or a long, varied phrase.
 function syncPassOk(p) { const n = syncNorm(p), w = n.split(' ').filter(x => x.length >= 3); return (new Set(w).size >= 5 && n.length >= 24) || (n.length >= 32 && new Set(n.replace(/ /g, '')).size >= 12); }
-function syncSuggest() { const r = crypto.getRandomValues(new Uint16Array(5)); return [...r].map(x => SYNC_WORDS[x % 2048]).join(' '); }
+// Five different words that pass the same check a typed passphrase must (3 Nov 2026: about one draw in 200 repeated a
+// word or ran short, and Tally refused its own suggestion). 65536 is a multiple of 2048, so every word is equally likely.
+function syncSuggest() { let p = ''; for (let k = 0; k < 100; k++) { const w = [...crypto.getRandomValues(new Uint16Array(5))].map(x => SYNC_WORDS[x % 2048]); p = w.join(' '); if (new Set(w).size === 5 && syncPassOk(p)) break; } return p; }
 function syncLoadCfg() { try { const o = JSON.parse(localStorage.getItem(SYNC_KEY) || 'null'); return o && typeof o.k === 'string' && typeof o.a === 'string' ? o : null; } catch (e) { return null; } }
 function syncStoreCfg(o) { try { if (o) localStorage.setItem(SYNC_KEY, JSON.stringify(o)); else localStorage.removeItem(SYNC_KEY); } catch (e) {} }
 const syncOn = () => !!(SY && SY.ready && SY.cfg && SY.key);

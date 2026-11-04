@@ -1003,6 +1003,10 @@ per-section-file era and many items in them are now done).
   (23), `audit-oct25.js` and `grades.js` updated for the new words, `round6.js` for the next-assessment row (compared
   from the same baseline), `whatif-audit.js` with its Unit 1 set up for Focus (two skills short are short under either
   rule). The print menu's "Owe work" counts missing work the same way.
+- **3 Nov 2026 — Sync: "Suggest one" never offers a passphrase Tally would refuse.** Found while checking the weekly
+  report fixes: the full suite failed once on "orchard avocado speak speak put". The five words were drawn with
+  replacement, so about one suggestion in 200 repeated a word or ran under 24 characters, and the strength check refused
+  Tally's own suggestion. It now draws five different words that pass the same check. `tests/sync.js` +1 (3000 draws).
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
