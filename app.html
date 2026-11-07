@@ -233,6 +233,12 @@ body.home #chead,body.grades #chead{background:transparent;padding-left:0;paddin
 #topMenu [aria-checked="true"] .sw{background:var(--teal)}#topMenu [aria-checked="true"] .sw::after{transform:translateX(18px)}
 #search{background:transparent;border:2px solid var(--sand);color:var(--white);border-radius:var(--r-pill);padding:6px 16px;width:240px;flex:0 1 240px;min-width:110px;outline:none;font-weight:var(--w-reg)}
 #search::placeholder{color:var(--sand)}
+/* the finder: the list under the search box (phase 5, 7 Nov 2026) */
+.findWrap{position:relative;display:flex;flex:0 1 300px;min-width:110px}.findWrap:has(#search.hidden){display:none}body.has .findWrap{margin-right:auto}.findWrap #search{width:100%;flex:1 1 auto}#top .findWrap #search.hidden{display:none}
+#finder{position:absolute;top:calc(100% + 8px);left:0;width:min(420px,calc(100vw - 32px));max-height:min(60vh,520px);overflow:auto;background:var(--white);color:var(--navy);border-radius:var(--r);box-shadow:var(--shadow-2);padding:6px;z-index:60;display:flex;flex-direction:column;gap:2px}#finder.hidden{display:none}
+#finder button{display:grid;grid-template-columns:52px 1fr;grid-template-areas:"k l" "k s";align-items:center;column-gap:10px;row-gap:2px;line-height:1.25;text-align:left;background:none;border:none;border-radius:var(--r-s);padding:7px 10px;font:inherit;color:var(--navy);min-height:var(--h-m)}
+#finder button[aria-selected="true"],#finder button:hover{background:var(--paleturq)}#finder .fk{grid-area:k;font-size:var(--t-xs);font-weight:var(--w-black);letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}#finder .fl{grid-area:l;font-weight:var(--w-bold);font-size:var(--t-m)}#finder .fs{grid-area:s;font-size:var(--t-s);color:var(--ink-soft);font-weight:var(--w-med);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}#finder .fl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#finder .fnone{padding:10px 12px;font-size:var(--t-s);color:var(--ink-soft);font-weight:var(--w-med)}
 #search:focus{border-color:var(--turq)}
 .pill{background:var(--turq);color:var(--navy);border:none;font-weight:var(--w-bold);font-size:var(--t-m);padding:8px 18px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:8px;white-space:nowrap;min-height:var(--h-m)}
 .pill.pale{background:var(--paleturq);color:var(--teal)}
@@ -643,7 +649,7 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
   #top .brand{grid-column:1}#top .brand h1{font-size:17px}
   #top .spacer{display:none}
   #btnHide{grid-column:2;grid-row:1}#btnGuide0{grid-column:2/4;grid-row:1}
-  #search{grid-column:1/-1;grid-row:2;width:100%;min-width:0;flex:none}
+  .findWrap{grid-column:1/-1;grid-row:2;width:100%;min-width:0;flex:none}
   #btnImport{grid-column:3;grid-row:1;min-height:var(--h-touch);padding:0 14px;font-size:var(--t-s)}
   #btnImport svg{width:18px;height:18px}
   body.lbMode #btnImport{display:none}
@@ -756,7 +762,7 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
 @media (max-height:500px) and (pointer:coarse){
   body{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
   #top{grid-template-columns:auto 1fr auto auto}
-  #search{grid-column:2;grid-row:1}#btnHide{grid-column:3}#btnImport{grid-column:4;min-height:var(--h-m)}
+  .findWrap{grid-column:2;grid-row:1}#btnHide{grid-column:3}#btnImport{grid-column:4;min-height:var(--h-m)}
   #toast,body:has(#modal:not(.hidden)) #toast{bottom:calc(56px + env(safe-area-inset-bottom))}
 }
 </style>
@@ -770,7 +776,7 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
 <div id="top">
   <div class="brand"><h1>Tally</h1></div>
   <div class="spacer"></div>
-  <input id="search" type="search" placeholder="Find a student…" aria-label="Find a student" class="hidden">
+  <div class="findWrap"><input id="search" type="search" placeholder="Find a student, unit or action" aria-label="Find a student, a class, a unit, a page or an action" class="hidden" autocomplete="off" aria-autocomplete="list" aria-controls="finder" title="Ctrl+K or ⌘K"><div id="finder" class="hidden" role="listbox" aria-label="Matches"></div></div>
   <button class="pill ghost" id="btnGuide0" title="A printable guide: the weekly flow and what the words mean">Guide</button>
   <button class="ibtn hidden" id="btnHide" aria-pressed="true" aria-label="Student names"></button>
   <button class="pill" id="btnImport">

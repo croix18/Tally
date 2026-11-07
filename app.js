@@ -2300,7 +2300,7 @@ h2{font-size:11.5pt;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.0
 ol,ul{margin:4px 0;padding-left:20px}
 li{margin:3px 0}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:0 26px}
-.words{columns:2;column-gap:26px;font-size:10pt}
+.words{columns:2;column-gap:26px;font-size:9.6pt}
 .words p{margin:0 0 6px;break-inside:avoid}
 .box{border:1.5px solid #000;padding:8px 12px;margin-top:10px}
 .page2{break-before:page}
@@ -2348,24 +2348,25 @@ li{margin:3px 0}
 <p><b>Goal</b>: the SmartScore a skill must reach to earn its point.</p>
 <p><b>Skip</b>: a skill that doesn't count: for the course (tap the skill in the unit view) or for one student (tap their cell).</p>
 <p><b>Working in</b>: the unit each course is on (class bar). Until you pick one yourself it follows Focus's latest IXL column; your own pick is never changed. Units up to it are the grid's columns and count toward the Race and the Focus check.</p>
-<p><b>Ahead</b>: the grid's last column: skills at goal past the current unit, only for students who have some. Tap <b>Ahead</b> to open a later unit; <b>Not assigned → Assigned</b> there counts it early.</p>
+<p><b>Ahead</b>: the grid's last column: skills at goal past the current unit, for students who have some. Tap it to open a later unit; <b>Not assigned → Assigned</b> there counts it early.</p>
 <p><b>Assigned</b>: a unit's button (open the unit). It overrides the rule for that unit, either way, for the whole course. A unit you unassign leaves the grid; the "N unassigned unit" button on the class bar brings it back. On-level's first unit is review and never counts (Settings → Course).</p>
 <p><b>Best</b>: a score from an earlier export that was higher than today's. A point once earned is kept.</p>
-<p><b>Copied</b>: a receipt of exactly what went to Focus, and when. Tap it to see who has moved since.</p>
+<p><b>Copied</b>: a receipt of what went to Focus, and when. Tap it to see who has moved since.</p>
 <p><b>Focus ${ico('check', 'check')} / off</b>: whether the Focus column matches what Tally counts today.</p>
-<p><b>Grades</b>: with a Focus gradebook loaded: the real course grade (weighted categories, missing work as zero, excused work left out; proved against Focus's Grade column), the change since the last import, and what-ifs that each change one thing. <b>Sliding</b>: grade down 3 points or more, or more missing work, since the last import.</p>
+<p><b>Grades</b>: with a Focus gradebook loaded: the real course grade (weighted categories, missing work as zero, excused work left out; proved against Focus's Grade column), the change since the last import, and what-ifs. <b>Sliding</b>: grade down 3 points or more, or more missing work, since the last import.</p>
 <p><b>Students</b>: a class's tab, or every class's under All classes. Tap one for their page: grades by quarter, missing work, IXL still owed, the quickest way to the next letter. <b>Show student</b> turns the screen toward them.</p>
 <p><b>Quarters</b>: when a quarter ends (2026–27: Oct 9, Dec 18, Mar 4, May 28) close it from the Overview. An assignment belongs to the quarter its Focus due date falls in. Tally keeps that quarter's gradebook and stops raising its missing work and Focus checks; open it under Grades → Q1. If the next quarter's export arrives first, the old quarter is kept automatically.</p>
-<p><b>Seating</b>: draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher copy and a student copy.</p>
+<p><b>Seating</b>: draw the room once, then generate a chart for a class from flags, keep-apart links and standing. Tap a student to see why they're there, lock them, or swap. Prints a teacher and a student copy.</p>
 <p><b>Reports</b> (a class's tab, and All classes'): weekly reports, FAST reports and the IXL still owed, for one class or all, with whose signed report is back beside them. Two-sided printing starts every student on a new sheet. The weekly report names the next test (Settings → Course).</p>
 <p><b>Retake</b>: a student may retake an assessment when nothing is missing and every IXL skill in the unit the course is working in is at goal. The Students list, the student's page and Show student say "eligible" or what stands in the way.</p>
 <p><b>Conference form</b>: on a student's page. Tally fills in the school's parent conference form (grades, FAST, missing work, assessments under 70%, retakes) and drafts Strengths and Concerns. Edit anything, then Print; edits are kept.</p>
 <p><b>Notes and Family</b>: on a student's page: dated notes, parent contacts, a contact log, a box per weekly report to tick when it comes back signed (the Reports tab lists who is still out). Hidden when names are hidden, never on the Board.</p>
-<p><b>FAST and PDFs</b>: import the Focus FAST report like any file; scores show on the student's page and the conference form. The state's score report PDF adds percentiles and reporting categories; IXL's Students Quickview PDF adds questions, time and last practice by skill.</p>
-<p><b>Google Site</b>: the page forgets everything when you leave, so open your newest Full save each visit. Tally autosaves one after 10 minutes of changes and when you switch away; Ctrl+S saves.</p>
+<p><b>FAST and PDFs</b>: import the Focus FAST report like any file; scores show on the student's page and the conference form. The state's score report PDF adds percentiles and categories; IXL's Students Quickview PDF adds questions, time and last practice by skill.</p>
+<p><b>Google Site</b>: the page forgets everything when you leave, so open your newest Full save each visit. Tally autosaves one after 10 minutes of changes; Ctrl+S saves.</p>
 <p><b>Board</b>: the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade, with class averages). Names never show. Hold the exit button to leave.</p>
+<p><b>Find</b> (the box at the top, or Ctrl+K): a student, class, unit, tab or action; Enter takes the first match.</p>
 <p><b>Names</b>: the eye button in the header. Crossed out = initials only, for projecting.</p>
-<p><b>The rail</b>: All classes, every class under its course; at the foot the Board, Details view, Sync, Settings, this Guide, Full save. <b>Actions</b> (class header): Copy, What changed this week, quarters, Board save, Class settings.</p>
+<p><b>The rail</b>: All classes, every class under its course; at the foot the Board, Details view, Sync, Settings, this Guide, Full save. <b>Actions</b> (class header): Copy, What changed, quarters, Board save, Class settings.</p>
 </div>
 </div>
 </body></html>`;
@@ -2914,8 +2915,66 @@ function phoneTables() {
 var phoneT = 0; const phoneObs = new MutationObserver(() => { cancelAnimationFrame(phoneT); phoneT = requestAnimationFrame(phoneTables); });
 ['#gridwrap', '#modal'].forEach(id => { const el = $(id); if (el) phoneObs.observe(el, { childList: true, subtree: true }); });
 requestAnimationFrame(phoneTables);
-$('#search').oninput = e => { search = e.target.value; if (view.mode === 'home' || view.mode === 'students' || view.mode === 'student') { view = { mode: 'students', unit: null }; render(); return; }   // from the Overview, "Find a student" searches every class
-  if (view.mode === 'grades' || view.mode === 'seating' || view.mode === 'reports' || view.mode === 'settings') { if (!state.active) return; if (pageGuard) { nav(() => { view = { mode: 'units', unit: null }; render(); }); return; } view = { mode: 'units', unit: null }; render(); return; } renderGrid(); };
+$('#search').oninput = e => { search = e.target.value; if (search.trim()) finderShow(); else finderHide();   // the finder lists what matches; the grid and the Students list also filter their rows (other pages stay put: the finder is the way on)
+  if (view.mode === 'units' || view.mode === 'unit') renderGrid(); else if (view.mode === 'students') render(); };
+/* ---------- The finder (phase 5 of the navigation redesign, 7 Nov 2026: "It's difficult to tell sometimes how to navigate
+   or find something") ----------
+   The search box is also the way anywhere: type a student, a class, a unit, a page or an action and pick it from the
+   list under the box (Enter takes the first). Ctrl+K or ⌘K puts the cursor in the box; with nothing typed the list is
+   the places and actions of the class you are on. Students stay out of the list while names are hidden. */
+let finderSel = 0;
+const fnorm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();   // norm() drops digits; "unit 5" needs its 5
+function finderItems(q) {
+  const out = []; const add = (kind, label, sub, go, keys) => out.push({ kind, label, sub: sub || '', go, text: fnorm(label + ' ' + (sub || '') + ' ' + (keys || '')) });
+  const all = allScope(); const s = state.sections[state.active]; const here = !all && s ? s : null; const where = here ? labShort(here.label) : '';
+  const qn = fnorm(q); const hit = it => !qn || it.text.includes(qn);
+  const toClass = k => nav(() => { state.active = k; view = { mode: 'units', unit: null }; noticesOpen = false; save(); render(); });
+  const inClass = fn => { if (here) fn(here); else { const k = state.order[0]; if (!k) return; state.active = k; fn(state.sections[k]); } };
+  // students: this class first, then every class (only while names show)
+  if (qn && !state.settings.hideNames) { const seen = new Set(); const keys = here ? [here.key, ...state.order.filter(k => k !== here.key)] : state.order;
+    keys.forEach(k => { const sec = state.sections[k]; classStudents(sec).forEach(nm => { const id = k + '|' + nm; if (seen.has(id) || !fnorm(nm).includes(qn)) return; seen.add(id); add('student', niceName(nm), labShort(sec.label), () => openProfile(k, nm), nm); }); }); }
+  state.order.forEach(k => { const x = state.sections[k]; if (!here || k !== here.key) add('class', labShort(x.label), x.prep === 'acc' ? 'Accelerated' : x.prep === 'on' ? 'On-level' : '', () => toClass(k), 'class period'); });
+  if (here) unitsOf(here).filter(u => !u.hidden || state.settings.showAllUnits).forEach(u => add('unit', u.short, u.title, () => nav(() => { view = { mode: 'unit', unit: u.name }; render(); }), 'unit ' + u.num));
+  const page = (label, sub, go, keys) => add('page', label, sub, go, keys);
+  page('Overview', 'All classes', () => nav(() => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); }), 'home all classes needs attention');
+  if (here) { page('Grid', where, () => nav(() => { view = { mode: 'units', unit: null }; render(); }), 'units skills points'); if (here.grades) page('Grades', where, () => nav(() => { view = { mode: 'grades', unit: null }; render(); }), 'gradebook focus');
+    page('Students', where, () => nav(() => { stuClass = here.key; view = { mode: 'students', unit: null }; render(); }), 'roster'); page('Seating', where, () => nav(() => { view = { mode: 'seating', unit: null, sub: 'chart' }; seatSel = null; seatPending = null; render(); }), 'chart desks'); }
+  else page('Students', 'every class', () => nav(() => { stuClass = ''; view = { mode: 'students', unit: null }; render(); }), 'roster');
+  page('Reports', here ? where : 'every class', () => nav(() => openPrintMenu(here, !here)), 'print weekly report fast report still owed slips signed reports');
+  page('Settings', here ? where : 'Tally', () => nav(() => openSettings(here ? here.key : undefined)), 'roster goal course files clear data autosave');
+  page('Board', 'Race and Data Lab', () => enterProjected(), 'student screen projector');
+  page('Guide', 'printable', () => openGuide(), 'help words');
+  const act = (label, sub, go, keys) => add('action', label, sub, go, keys);
+  const qd = quarterDue(); act(qd ? `Close ${Q_NAMES[qd - 1]}` : 'Quarters', qd ? 'ended ' + fmtDate(quarters().ends[qd - 1]) : 'dates and closed quarters', () => openQuarters(), 'close quarter end');
+  if (here) { const u = unitsOf(here).find(u => u.current); if (u && !here.placeholder) act(`Copy ${u.short} to Focus`, where, () => copyUnit(here, u), 'clipboard points');
+    act('What changed this week', where, () => openDigest(here), 'digest'); act('Signed reports', `${where} · Reports`, () => { retEditing = null; openPrintMenu(here, false); }, 'back out'); act('Test dates', here.prep === 'acc' ? 'accelerated' : 'on-level', () => openTestDates(here.prep, () => render()), 'assessment'); }
+  act('Board save', 'no names', () => saveBoardFile(), 'file panel'); act('Full save', 'everything, for Drive', () => saveFull(), 'backup download');
+  act('Import', 'IXL and Focus exports', () => $('#file').click(), 'open file drop');
+  act(state.settings.hideNames ? 'Show names' : 'Hide names', 'the eye button', () => $('#btnHide').click(), 'initials project'); act(state.settings.details ? 'Details view off' : 'Details view on', 'every count and legend', () => { state.settings.details = !state.settings.details; save(); render(); }, 'dense');
+  if (typeof SY !== 'undefined' && SY && SY.ready) act('Sync', 'every computer', () => openSync(), 'passphrase');
+  if (!qn) { const rank = { page: 0, action: 1, class: 2 }; return out.filter(it => it.kind in rank).sort((a, b) => rank[a.kind] - rank[b.kind]); }   // nothing typed: where you can go and what you can do, not the whole unit list
+  const starts = it => fnorm(it.label).startsWith(qn) ? 0 : 1;
+  return out.filter(hit).map((it, i) => [it, i]).sort((a, b) => starts(a[0]) - starts(b[0]) || a[1] - b[1]).map(x => x[0]);   // a label that begins with what was typed comes first; otherwise the order above
+}
+function finderShow() {
+  const f = $('#finder'); if (!f || !state.order.length || state.board) return;
+  const q = $('#search').value; const items = finderItems(q).slice(0, qn(q) ? 9 : 12); f._items = items; finderSel = 0;
+  if (!items.length) { f.innerHTML = `<div class="fnone">Nothing called "${esc(q.trim())}". Try a name, a unit number, a tab or an action.</div>`; f.classList.remove('hidden'); return; }
+  const KIND = { student: 'Student', class: 'Class', unit: 'Unit', page: 'Go to', action: 'Do' };
+  f.innerHTML = items.map((it, i) => `<button role="option" data-fi="${i}" aria-selected="${i === finderSel}"><span class="fk">${KIND[it.kind]}</span><span class="fl">${esc(it.label)}</span>${it.sub ? `<span class="fs">${esc(it.sub)}</span>` : ''}</button>`).join('');
+  f.classList.remove('hidden'); f.querySelectorAll('[data-fi]').forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => finderGo(+b.dataset.fi); });
+  function qn(x) { return fnorm(x).length > 0; }
+}
+function finderHide() { const f = $('#finder'); if (f) { f.classList.add('hidden'); f.innerHTML = ''; f._items = null; } }
+function finderGo(i) { const f = $('#finder'); const it = f && f._items && f._items[i]; if (!it) return; finderHide(); search = ''; $('#search').value = ''; $('#search').blur(); it.go(); }
+function finderMove(d) { const f = $('#finder'); if (!f || f.classList.contains('hidden') || !f._items || !f._items.length) return; finderSel = (finderSel + d + f._items.length) % f._items.length; f.querySelectorAll('[data-fi]').forEach((b, i) => { b.setAttribute('aria-selected', String(i === finderSel)); if (i === finderSel) b.scrollIntoView({ block: 'nearest' }); }); }
+$('#search').onkeydown = e => { const f = $('#finder'); const open = f && !f.classList.contains('hidden');
+  if (e.key === 'ArrowDown') { e.preventDefault(); if (!open) finderShow(); else finderMove(1); } else if (e.key === 'ArrowUp') { e.preventDefault(); finderMove(-1); }
+  else if (e.key === 'Enter') { if (open && f._items && f._items.length) { e.preventDefault(); finderGo(finderSel); } }
+  else if (e.key === 'Escape') { if (open) { e.preventDefault(); e.stopPropagation(); finderHide(); } else if ($('#search').value) { search = ''; $('#search').value = ''; $('#search').oninput({ target: $('#search') }); finderHide(); } } };
+$('#search').onfocus = () => { if ($('#search').value || !coarse()) finderShow(); };
+$('#search').onblur = () => setTimeout(() => { if (document.activeElement !== $('#search')) finderHide(); }, 120);
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k' && state.order.length && !state.board && !document.body.classList.contains('lbMode') && !document.body.classList.contains('showMode')) { e.preventDefault(); const sb = $('#search'); sb.focus(); sb.select(); finderShow(); } });
 let dragDepth = 0;
 document.addEventListener('dragenter', e => { e.preventDefault(); if (document.body.classList.contains('lbMode')) return; dragDepth++; document.body.classList.add('dragging'); });
 document.addEventListener('dragleave', e => { e.preventDefault(); if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });

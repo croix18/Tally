@@ -39,7 +39,8 @@ const { chromium, fs, path, exe, check, done, tmp, pick, more, APP , fullSave, l
   check(kept.thr===67 && kept.label==='1st Period · Accelerated' && kept.cm!=='ids' && kept.skip===0 && kept.prep==='acc','…and a discarded change is discarded, not applied: '+JSON.stringify(kept));
   // 3c. the tabs, All classes and the search box ask too
   await seeTab(p,'#thr'); await p.fill('#thr','80'); dialogs=[]; answer=false; await p.click('#openGrid'); await p.waitForTimeout(250); await p.click('#btnHome'); await p.waitForTimeout(250); await p.fill('#search','z'); await p.waitForTimeout(250);
-  check(dialogs.length===3 && (await where()).mode==='settings' && await p.inputValue('#thr')==='80','the Grid tab, All classes and the search box each ask before leaving unsaved edits, and declining keeps them');
+  check(dialogs.length===2 && (await where()).mode==='settings' && await p.inputValue('#thr')==='80','the Grid tab and All classes each ask before leaving unsaved edits, and declining keeps them; typing in the search box opens the finder without leaving');
+  await p.keyboard.press('Escape');
   await p.fill('#search',''); answer=true; await p.click('#openGrid'); await p.waitForTimeout(300); check((await where()).mode==='units' && await p.evaluate(()=>window.__tally.state.sections['period-1'].threshold)===67,'…accepting leaves, dropping the edit');
   // 3d. flipping the course on the page: "This course" follows it
   await more(p,'#btnSettings'); await p.waitForTimeout(250);

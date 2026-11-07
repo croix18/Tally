@@ -1156,6 +1156,21 @@ per-section-file era and many items in them are now done).
   - The Guide describes the rail, the tabs, Actions, Reports and Settings. `tests/shell.js` +6 (47); `tests/settings.js` rewritten for the page
     (38); `header`, `shell`, `print-duplex`, `family`, `command-center`, `grid`, `best-score-and-receipts` and the suites
     that pressed Print or Signed reports follow (`act(p, '#btnPrint')` → `p.click('#openReports')`).
+- **7 Nov 2026 — Phase 5: the finder.** The search box is also the way anywhere (`finderItems` / `finderShow` in
+  app.js, `#finder` under the box in app.html): students (this class first, then every class; none while names are
+  hidden), classes, the class's units, pages (Overview, Grid, Grades, Students, Seating, Reports, Settings, Board,
+  Guide) and actions (Quarters / Close Qn, Copy the unit to Focus, What changed this week, Signed reports, Test dates,
+  Board save, Full save, Import, Show/Hide names, Details view, Sync). Ctrl+K / ⌘K puts the cursor in the box; nothing
+  typed lists pages and actions; a label that begins with what was typed comes first; Enter takes the selected row,
+  arrows move, Escape closes. Matching keeps digits (`fnorm`; `norm()` drops them, so "unit 5" needs its own). Typing no
+  longer moves pages: the grid and the Students list still filter their rows, every other page stays put and the finder
+  is the way on (before: typing on the Overview opened the Students list, typing on Grades went to the grid).
+  `tests/shell.js` +12 (59); `round5`, `students-quarters`, `contract` follow.
+- **7 Nov 2026 — Blank backs carry one faint line.** Croix: "I printed all of the progress reports and the tracker page
+  kicked the next class off the correct page sequencing." The blank back after a one-page checklist (or any report that
+  ends on a front) was an empty page; a printer or driver set to skip empty pages drops it and the next class starts on
+  a back. Every blank back now prints "This side is left blank so the next page starts on a new sheet." in 7pt grey at
+  its foot, so nothing can skip it. `tests/print-duplex.js` +1 (24).
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

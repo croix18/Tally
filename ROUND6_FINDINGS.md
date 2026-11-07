@@ -327,3 +327,7 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 7 Nov 2026: phase 4 of the navigation redesign: Reports is a tab page (the print choices, the signed-reports list and
   the saved pages side by side; for All classes too) and Settings is a page on the class spine (the rail picks the class;
   no class picker; Cancel, Escape, Save and Back return to the page that was open; leaving unsaved edits asks first).
+
+- 7 Nov 2026: phase 5: the finder (the search box lists students, classes, units, pages and actions; Ctrl+K). Typing no
+  longer moves pages. Blank backs in a two-sided print carry a faint line so a printer that skips empty pages keeps the
+  sequence (the tracker page had pushed the next class onto a back).

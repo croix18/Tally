@@ -43,6 +43,7 @@ const K1 = '1205050-7T1A', K2 = '1205050-7T2B';
   check(L.divs===P.n && L.over===0,'the laid-out pages are the printed pages ('+L.divs+' boxes, '+P.n+' pages in the PDF), none cut short');
   const odd=startsOdd(L); check(odd.length===0,'every report and each checklist starts on a front (an odd page), so no sheet holds two students'+(odd.length?': '+odd.slice(0,5).join(','):''));
   check(L.secs.slice(0,-1).every(s=>s.pages%2===0) && L.secs.every(s=>s.blank<=1) && L.secs.some(s=>s.blank===1),'a report that ends on a front gets one blank back; none gets two');
+  check(P.pages.filter(pg=>/^This side is left blank so the next page starts on a new sheet\.$/.test(pg.t.trim())).length===L.secs.reduce((n,s)=>n+s.blank,0) && P.pages.every(pg=>pg.t.trim()),'every blank back prints one faint line, so a printer set to skip empty pages cannot push the next class onto a back (Croix, 7 Nov 2026: "the tracker page kicked the next class off the correct page sequencing")');
   const heads=P.pages.map((pg,i)=>/WEEKLY PROGRESS REPORT/.test(pg.t)?i+1:0).filter(Boolean);
   check(heads.length===46 && heads.every(n=>n%2===1) && P.pages.filter(pg=>/REPORTS OUT AND BACK/i.test(pg.t)).length===2,'in the PDF, all 46 reports begin on odd pages and the two checklists print');
   const back=P.pages.findIndex((pg,i)=>i%2===1 && pg.t.trim()); const front=P.pages[back-1];
@@ -61,7 +62,7 @@ const K1 = '1205050-7T1A', K2 = '1205050-7T2B';
   await p.evaluate(K1=>{ const T=window.__tally; T.openPrintMenu(T.state.sections[K1]); },K1); await p.waitForTimeout(300);
   const [fp]=await Promise.all([ctx.waitForEvent('page'), p.click('#rpFast')]); await paged(fp);
   const LF=await layoutOf(fp); const PF=await pdfOf(fp);
-  check(LF.secs.length===46 && startsOdd(LF).length===0 && LF.divs===PF.n && PF.pages.filter((pg,i)=>i%2===1).every(pg=>!pg.t.trim()),'46 FAST reports for both classes, each one page with a blank back ('+PF.n+' pages)');
+  check(LF.secs.length===46 && startsOdd(LF).length===0 && LF.divs===PF.n && PF.pages.filter((pg,i)=>i%2===1).every(pg=>/^This side is left blank/.test(pg.t.trim())),'46 FAST reports for both classes, each one page with a blank back that carries its one faint line ('+PF.n+' pages)');
   await fp.close();
   // 5. IXL still owed for every class: a slip per student on its own sheet; a list per class, each starting on a front
   await p.evaluate(K1=>window.__tally.openPrintMenu(window.__tally.state.sections[K1]),K1); await p.waitForTimeout(300);

@@ -56,7 +56,7 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
   };
   const pl=await measure(1400,900,'laptop',14,10);
   // 2. F chip is coral on the student page; Copy in the unit view is not white on white
-  await pl.click('#btnHome'); await pl.waitForTimeout(300); await pl.fill('#search','a'); await pl.waitForTimeout(300);
+  await pl.click('#btnHome'); await pl.waitForTimeout(300); await pl.click('#btnStudents'); await pl.waitForTimeout(300); await pl.fill('#search','a'); await pl.waitForTimeout(300);
   const fRow=await pl.evaluate(()=>{ const rows=[...document.querySelectorAll('.sdir tr[data-stu], .sdir [data-open], .sdir tr')]; const f=rows.find(r=>/\bF\b/.test(r.textContent)); return f? (f.dataset.stu||f.textContent.trim().slice(0,40)) : null; });
   const chip=await pl.evaluate(()=>{ const em=document.querySelector('.gcard b em.lt.F, .shGrade em.lt.F'); if (em) return getComputedStyle(em).backgroundColor; const e2=document.createElement('div'); e2.className='profile'; e2.innerHTML='<div class="gcard"><b>52% <em class="lt F">F</em></b></div>'; document.body.appendChild(e2); const v=getComputedStyle(e2.querySelector('em')).backgroundColor; e2.remove(); return v; });
   check(chip!=='rgb(214, 243, 240)' && /rgb/.test(chip) && ratio(chip,'rgb(214, 243, 240)')>1.05,'an F chip is not the pale "fine" colour ('+chip+')');

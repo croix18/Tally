@@ -43,8 +43,9 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(/storage is full|Could not save/.test(await p.textContent('#toast')) && await p.locator('#toast.err').count()===1,'the quota error stays on screen instead of "Saved"');
   await p.evaluate(()=>{ localStorage.setItem=window.__origSet; });
   // 5. Overview search opens the Students list properly (was the class grid before Students existed)
-  await p.click('#btnHome'); await p.waitForTimeout(300); await p.fill('#search','a'); await p.waitForTimeout(300);
-  check(await p.locator('body.home').count()===0 && await p.locator('.sdir').count()===1 && await p.locator('#btnStudents[aria-selected="true"]').count()===1,'typing in search on the Overview opens the Students list (every class) on its tab');
+  await p.click('#btnHome'); await p.waitForTimeout(300); await p.focus('#search'); await p.type('#search','a'); await p.waitForTimeout(300);
+  check(await p.locator('body.home').count()===1 && await p.locator('#finder:not(.hidden) [data-fi]').count()>0 && await p.locator('#finder .fk:has-text("Student")').count()>0,'typing in search on the Overview opens the finder with matching students (phase 5: the page stays put)');
+  await p.keyboard.press('Escape');
   await p.fill('#search',''); await p.waitForTimeout(200);
   // 6. pool replacement guard: a file with barely-overlapping students asks first
   const rows=fs.readFileSync(path.resolve('fixtures',acc),'utf8').split('\n'); const hdrI=rows.findIndex(r=>/skill name/i.test(r));

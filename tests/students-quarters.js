@@ -30,8 +30,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   await p.click('[data-sort="grade"]'); await p.waitForTimeout(200);
   const firstG=await p.evaluate(()=>[...document.querySelectorAll('.sdir .gchip')].slice(0,3).map(x=>parseInt(x.textContent)));
   check(firstG[0]<=firstG[1] && firstG[1]<=firstG[2],'Lowest grade sort puts the lowest first');
-  await p.click('#btnHome'); await p.waitForTimeout(200); await p.fill('#search','micah'); await p.waitForTimeout(300);
-  check(await p.locator('.sdir tr[data-open]').count()===1,'Find a student from the Overview searches the Students list');
+  await p.click('#btnHome'); await p.waitForTimeout(200); await p.click('#btnStudents'); await p.waitForTimeout(200); await p.fill('#search','micah'); await p.waitForTimeout(300);
+  check(await p.locator('.sdir tr[data-open]').count()===1,'Find a student on the Students list filters it');
   await p.fill('#search',''); await p.waitForTimeout(200);
 
   // 3. A student's page
