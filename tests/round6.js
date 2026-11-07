@@ -1,6 +1,6 @@
 // Round 6, Build 2: alerts that can be cleared ("No IXL account" is a state), one attention line per cause above the
 // cards, the notice band as a count in the class bar, the backup line, Working in defaulted from Focus's IXL columns.
-const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
+const { act, chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900},acceptDownloads:true}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -124,7 +124,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   const owed=await rep.evaluate(()=>{ const T=window.opener && window.opener.__tally; return [...document.querySelectorAll('section.rep')].slice(0,1).map(sec=>({ sk:sec.querySelectorAll('.sk').length, zero:sec.querySelectorAll('.sk b.zero').length, scored:[...sec.querySelectorAll('.sk b:not(.zero)')].map(b=>b.textContent) }))[0]; });
   check(owed && owed.sk>0 && owed.zero>0 && owed.scored.every(t=>/^\(\d+\)$/.test(t)) && !/Not started \(\d+\):/.test(rtxt),'IXL still owed lists every owed skill with a box and the SmartScore in parentheses, 0 when not begun (Croix, 24 Oct): '+JSON.stringify(owed));
   await rep.close();
-  await q.click('#back'); await q.waitForTimeout(300); await q.click(`[data-k="${RK}"]`); await q.waitForTimeout(300); await q.click('#btnPrint'); await q.waitForTimeout(300);
+  await q.click('#back'); await q.waitForTimeout(300); await q.click(`[data-k="${RK}"]`); await q.waitForTimeout(300); await act(q,'#btnPrint'); await q.waitForTimeout(300);
   const [all]=await Promise.all([ctx2.waitForEvent('page'), q.click('#rpWeekly')]); await all.waitForLoadState(); await all.waitForTimeout(600);
   const secs=await all.evaluate(()=>document.querySelectorAll('.rep').length); const pp=pages(await all.pdf({format:'Letter'}));
   check(secs>=20 && pp>=secs && pp<=secs*2,'the whole class prints one or two pages per student, each starting a new page ('+secs+' students, '+pp+' pages)'); await all.close();

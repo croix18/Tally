@@ -1112,6 +1112,22 @@ per-section-file era and many items in them are now done).
   minimums by two (the class header's two rows); `ahead`, `board-file`, `grid`, `phone`, `round5`, `round6`,
   `reminders-lab-guide`, `settings`, `students-quarters`, `contract` and the suites that pressed `#btnStudents` or
   `#back` from Grades or Seating follow the new places.
+- **7 Nov 2026 — Phase 2: one Actions menu per class, one Attention inbox.**
+  - **Actions** (`#actBtn`, on the class header): Copy <the unit being worked in> to Focus (with when it was last
+    copied), What changed this week, Signed reports, Print…, Close Quarter N / Quarters, Board save, Class settings.
+    All classes: Quarters, Board save, Full save, Settings. The grid bar keeps Working in (and Show/Hide unassigned
+    units); its Print button and ⋯ menu are gone. The old ids (`btnPrint`, `mDigest`, `mReturns`) live in the menu;
+    `tests/lib.js` has `act(p, sel)`.
+  - **The inbox:** `attentionItems` now carries, per item, `detail` (the fuller sentence, names when they show) and
+    `act` (the button that fixes it: roster, import, gbroster). The class page's notice band is gone; `renderNotices`
+    draws the same items as a list (`#nAtt`, warnings first, each with its fix: Fix roster, Import, Use the gradebook's
+    list, Grades, Open, Settings, dismiss). It opens from the count in the bar (`#nToggle`, "2 to fix · 1 note"), is
+    open in Details view or when the grid has nothing to show. The Overview's list and the rail's All classes count
+    are the same count (`fixCount`: one line per cause across classes, a quarter past its end, a full browser);
+    each class on the rail shows its own warnings. Two notices only the band had (the loose-match names, a roster older
+    than the export) are items now; the "Focus matches Tally" line is gone (the unit badges say it).
+  `tests/shell.js` +11 (41); `command-center`, `grid`, `hardening`, `family`, `plain`, `round6` and the suites that
+  pressed Print or ⋯ follow.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

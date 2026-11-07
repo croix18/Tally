@@ -20,7 +20,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   await p.fill('#rpText', 'Student Name\n12345\n'); await p.waitForTimeout(100); rep=await p.textContent('#rpReport'); check(/Couldn't read/.test(rep),'unreadable roster flagged');
   await p.fill('#rpText', roster); await p.click('#rpSave'); await p.waitForTimeout(300);
   check(await p.locator('table.grid').count()===1,'grid after roster save');
-  check(await p.locator('.notice.soft').count()===1 && /Taylor, Ben → Benjamin Taylor/.test(await p.textContent('.notice.soft')),'loose-match notice');
+  check(await p.locator('#nAtt .hatt li.info').count()>=1 && /Taylor, Ben → Benjamin Taylor/.test(await p.textContent('#nAtt')),'loose-match note in the inbox (open in Details view)');
   // ignore flag then un-ignore
   // not-on-roster flag opens a new-or-gone chooser; "Re-paste roster" lands in Settings on the roster box; "Skip" ignores
   await p.click('button.flag[data-ignore]'); await p.waitForTimeout(250);
@@ -47,7 +47,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   await p.fill('#search','zzzz'); await p.waitForTimeout(150); check(await p.locator('tr.nomatch').count()===1,'no-match row');
   await p.click('[data-k="1205050-7T3A"]'); await p.waitForTimeout(150); check((await p.inputValue('#search'))==='','search cleared on tab switch');
   // copy without roster on 7T3A -> names included
-  await p.click('#rpSkip'); await p.waitForTimeout(200); check(/No roster\./.test(await p.textContent('#notices')),'skip roster shows info notice');
+  await p.click('#rpSkip'); await p.waitForTimeout(200); check(/No roster: rows are sorted by last name/.test(await p.textContent('#notices')),'skip roster shows its note');
   await p.click('th.unit .copy'); await p.waitForTimeout(250); let clip=await p.evaluate(()=>navigator.clipboard.readText());
   check(clip.split('\n').every(l=>l.includes('\t')),'no-roster copy always includes names');
   await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(150);

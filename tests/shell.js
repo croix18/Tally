@@ -26,10 +26,10 @@ let B = null;
   const tabs = () => p.evaluate(() => [...document.querySelectorAll('#ctabs button')].map(x => x.firstChild.textContent.trim() + (x.getAttribute('aria-selected') === 'true' ? '*' : '')).join(' '));
   const where = () => p.evaluate(() => ({ h2: document.querySelector('#chead h2').textContent.trim(), rail: (document.querySelector('#rail button.on .lbl') || {}).textContent, tab: (document.querySelector('#ctabs [aria-selected="true"]') || { firstChild: { textContent: '' } }).firstChild.textContent.trim(), mode: window.__tally.view.mode }));
   const warns = await p.evaluate(() => { const T = window.__tally; const o = {}; T.state.order.forEach(k => { o[k] = T.attentionItems(T.state.sections[k]).filter(i => i.level === 'warn').length; }); return o; });
-  const sumW = Object.values(warns).reduce((a, b) => a + b, 0);
+  const sumW = await p.evaluate(() => { const T = window.__tally; return T.fixCount(T.state.order.map(k => T.state.sections[k])); });   // the Overview's count: one line per cause across classes, a quarter past its end
   // ---- the rail ----------------------------------------------------------------------------------------------------
   check(await p.locator('body.has').count() === 1 && await p.locator('#rail:not(.hidden)').count() === 1 && !(await p.locator('#top .brand').isVisible()) && await p.locator('#rail .brand').isVisible(), 'after the import: the rail, with the wordmark; the header keeps search, the names switch, the menu and Import');
-  check(await rail() === `All classes(${sumW})* [Accelerated] 1st Period(${warns['1205050-7T1A']}) 2nd Period(${warns.p2}) [On-level] 5th Period(${warns.p5})`, 'All classes first, then every class under its course, each with how many things to fix: ' + await rail());
+  check(await rail() === `All classes(${sumW})* [Accelerated] 1st Period(${warns['1205050-7T1A']}) 2nd Period(${warns.p2}) [On-level] 5th Period(${warns.p5})`, 'All classes (with the Overview\'s count), then every class under its course with how many things to fix: ' + await rail());
   check(await p.$$eval('#rail .foot button', bs => bs.map(x => [...x.childNodes].filter(n => n.nodeType === 3 || n.classList).map(n => n.textContent.trim()).filter(Boolean).join(' ')).join(' | ')) === 'Board | Settings | Guide | Full save never', 'at the foot: Board, Settings, Guide, Full save and when it last was');
   check(await p.locator('#nav, #tabs, .tab, #btnStudents:not(#ctabs button), #stuClass').count() === 0, 'the old places are gone: no top tabs, no pill row, no Class menu');
   // ---- All classes --------------------------------------------------------------------------------------------------
@@ -63,6 +63,29 @@ let B = null;
   // the Reports tab, for this class
   await p.click('#openReports'); await p.waitForTimeout(400);
   check(/Print · 2nd Period/.test(await p.textContent('#modal')) && await p.locator('#modal .seg button[aria-pressed="true"]:has-text("2nd Period")').count() === 1, 'Reports opens printing for this class'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  // ---- phase 2: one Actions menu per class, one inbox ------------------------------------------------------------
+  await p.click('#openGrid'); await p.waitForTimeout(300);
+  check(await p.locator('#bar #btnPrint, #bar #moreBtn, #bar #openGrades').count() === 0 && await p.locator('#chead #actBtn').count() === 1, 'the grid bar keeps only Working in; everything else is behind Actions on the class header');
+  await p.click('#actBtn'); await p.waitForTimeout(200);
+  const menu = await p.$$eval('#actMenu button', bs => bs.map(b => b.firstChild.textContent.trim()));
+  check(menu.join(' | ') === 'Copy Unit 3 to Focus | What changed this week | Signed reports | Print… | Quarters | Board save | Class settings' || menu.join(' | ').replace(/Close Quarter \d/, 'Quarters') === 'Copy Unit 3 to Focus | What changed this week | Signed reports | Print… | Quarters | Board save | Class settings', 'Actions: Copy the unit being worked in, What changed, Signed reports, Print, the quarters, Board save, Class settings: ' + menu.join(' | '));
+  await p.click('#mDigest'); await p.waitForTimeout(400); check(/What changed/.test(await p.textContent('#modal')), 'What changed opens from it'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  await p.click('#actBtn'); await p.waitForTimeout(150); await p.click('#mSettings'); await p.waitForTimeout(400); check(await p.locator('#modal:not(.hidden) #stabs').count() === 1 && await p.locator('#stabs [data-stab="class"].on, #stabs button.on').count() >= 1, 'Class settings opens Settings on this class'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  await p.click('#btnHome'); await p.waitForTimeout(300); await p.click('#actBtn'); await p.waitForTimeout(200);
+  const menuAll = await p.$$eval('#actMenu button', bs => bs.map(b => b.firstChild.textContent.trim()).join(' | ').replace(/Close Quarter \d/, 'Quarters'));
+  check(menuAll === 'Quarters | Board save | Full save | Settings', 'All classes has the Tally-wide actions: ' + menuAll); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  // the inbox: the Overview's list, the rail's counts and the class's own list are one list
+  const ov = await p.evaluate(() => [...document.querySelectorAll('#hAtt .hatt li.warn')].length);
+  check(ov === sumW && await p.locator('#rail #btnHome .n').textContent() === String(sumW), 'the Overview lists ' + ov + ' things to fix, the number on the rail');
+  await p.click('[data-k="p2"]'); await p.waitForTimeout(400);
+  { const chip = await p.textContent('#nToggle'); check(new RegExp('^' + warns.p2 + ' to fix').test(chip.trim()) && await p.locator('#notices #nAtt').count() === 0, 'a class: the count in the bar, the inbox folded: ' + chip.trim()); }
+  await p.click('#nToggle'); await p.waitForTimeout(300);
+  { const li = await p.$$eval('#nAtt .hatt li', es => es.map(e => ({ warn: e.classList.contains('warn'), text: e.querySelector('b').textContent, fix: (e.querySelector('.hfix') || {}).textContent || '' })));
+    const items = await p.evaluate(() => window.__tally.attentionItems(window.__tally.state.sections.p2).map(i => i.text));
+    check(li.filter(x => x.warn).length === warns.p2 && li.length === items.length && li.every((x, i) => items.some(t => t.charAt(0).toUpperCase() + t.slice(1) === x.text)), 'open: the same items the Overview and the rail count, warnings first (' + li.length + ')');
+    check(li.some(x => /IXL export is \d+ days old/.test(x.text) && x.fix === 'Import') && li.some(x => /on the roster not in IXL/.test(x.text) && /LOWELL CALDER/.test(x.text + ' ') === false), 'each row carries its fix: the old export has Import'); }
+  check(/LOWELL CALDER/.test(await p.textContent('#nAtt')), 'the names are in the row\'s detail (names showing)');
+  await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#nAtt').count() === 0, 'tapping the count folds it again');
   // switching class keeps the Grid; All classes › Students then a class's Students are two lists
   await p.click('[data-k="p5"]'); await p.waitForTimeout(400);
   { const w = await where(); check(w.rail === '5th Period' && w.tab === 'Grid' && /^5th Period/.test(w.h2) && /On-level/.test(await p.textContent('#chead .meta')), 'another class on the rail opens its Grid'); }

@@ -48,7 +48,7 @@ const { chromium, fs, path, exe, check, done, dense, APP, pick } = require('./li
   check(rs.n===23 && rs.first==='SUTTER, HAYDEN SKYLER' && rs.id==='1111860421' && rs.ok===16,'roster has the 23 gradebook students with IDs, in Focus order, matched to IXL: '+JSON.stringify(rs));
   await p4.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.roster=s.roster.split('\n').slice(0,20).join('\n')+'\nNEWKID, SOMEONE'; T.save(); T.render(); });
   await dense(p4); await p4.waitForTimeout(300); const nt=await p4.textContent('#notices');
-  check(/class list differs from the pasted roster/.test(nt) && /3 students in the gradebook but not on the roster/.test(nt) && /1 student on the roster but not in the gradebook/.test(nt),'differing roster → notice with counts');
+  check(/Gradebook list differs from the roster \(3 new, 1 gone\)/.test(nt) && /In the gradebook but not on the roster/.test(nt) && /On the roster but not in the gradebook/.test(nt) && /Use the gradebook's list/.test(nt),'differing roster → an inbox row with the counts, the names and the fix');
   await p4.click('[data-gbroster]'); await p4.waitForTimeout(400);
   check((await p4.evaluate(()=>window.__tally.parseRosterText(Object.values(window.__tally.state.sections)[0].roster).length))===23 && !/class list differs/.test(await p4.textContent('#notices')),'"Use the gradebook\'s list" replaces the roster and clears the notice');
   await p4.close();

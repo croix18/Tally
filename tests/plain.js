@@ -47,7 +47,7 @@ const BANNED = [/IXL → Focus/, /How it works/i, /\bTap a (class|unit|student|s
   await p.click('th.unit .ulink'); await p.waitForTimeout(400); await look('unit view');
   check(await p.locator('.ukey span').count()===4 && await p.locator('.ukey small').count()===0,'the unit view keeps its four-colour key and drops the sentence under it');
   await p.click('#back'); await p.waitForTimeout(300);
-  await p.click('#moreBtn'); await p.waitForTimeout(200); const owed=p.locator('#moreMenu [data-act="owed"], #openOwed').first(); if (await owed.count()) { await owed.click(); await p.waitForTimeout(300); await look('Still owed dialog'); await p.keyboard.press('Escape'); await p.waitForTimeout(200); } else { await p.keyboard.press('Escape'); }
+  await p.click('#actBtn'); await p.waitForTimeout(200); const owed=p.locator('#actMenu [data-act="owed"], #openOwed').first(); if (await owed.count()) { await owed.click(); await p.waitForTimeout(300); await look('Still owed dialog'); await p.keyboard.press('Escape'); await p.waitForTimeout(200); } else { await p.keyboard.press('Escape'); }
   await p.click('#openGrades'); await p.waitForTimeout(500); const gr=await look('Grades');
   check(await p.locator('#bar .legend').count()===0 && /Matches the Focus Grade column/.test(gr),'Grades: no caption under the bar; the proof against Focus stays (it is a result)');
   await p.locator('.gstu tr[data-stu]').first().click(); await p.waitForTimeout(500); await look('student page');

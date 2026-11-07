@@ -260,6 +260,12 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 
 /* ---- notices ---- */
 #notices:empty{padding:0}
+/* the class's inbox above the grid, and the Actions menu on the class header */
+#notices .hneeds.inbox{margin:0;border:none;box-shadow:none;padding:0;background:transparent}#notices .hneeds.inbox>summary{padding:4px 0}#notices .hneeds.inbox .nsum{color:var(--ink-soft);font-weight:var(--w-bold);font-size:var(--t-s)}
+.hatt li .hline{display:flex;align-items:center;gap:10px;padding:6px 4px;font-size:var(--t-m)}.hatt li .hline span{flex:1;min-width:0}.hatt li .hline span small{display:block;color:var(--ink-soft);font-weight:var(--w-med);font-size:var(--t-s);line-height:1.4;margin-top:1px}
+.hatt li .hfix{flex:none;width:auto;border:1px solid var(--grid);background:var(--white);border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:var(--w-heavy);font-size:var(--t-s);color:var(--navy);min-height:var(--h-s);cursor:pointer;white-space:nowrap}.hatt li .hfix:hover{background:var(--cream)}
+#chead .ch .spacer{flex:1}#chead .actWrap .menu{min-width:260px}#chead .actWrap .menu button{display:flex;align-items:center;gap:12px;min-height:var(--h-m);font-size:var(--t-m);width:100%}#chead .actWrap .menu button small{margin-left:auto;font-weight:var(--w-med);color:var(--ink-soft);font-size:var(--t-s)}#chead .actWrap .menu hr{border:none;border-top:1px solid var(--grid);margin:6px 8px}
+#chead #actBtn{background:var(--white);color:var(--navy);border:1px solid var(--grid);padding:4px 12px 4px 14px;min-height:var(--h-s);font-size:var(--t-s);font-weight:var(--w-bold);display:inline-flex;align-items:center;gap:4px}#chead #actBtn[aria-expanded="true"]{background:var(--navy);color:var(--white)}
 .notice{padding:9px 16px;border-radius:var(--r-m);background:var(--coral);color:var(--navy);border:1px solid rgba(217,68,47,.25);font-weight:var(--w-reg);font-size:var(--t-m);display:flex;gap:10px;align-items:center;}
 .notice b{font-weight:var(--w-black)}
 .cfEdited{margin:3px 0 0;font-size:var(--t-s);color:var(--ink-soft)}.cfEdited b{color:var(--navy)}

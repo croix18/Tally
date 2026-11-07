@@ -22,14 +22,14 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(await p.locator('table.grid').count()===1 && await p.locator('.rc.on').count()===1,'tapping an attention item opens that class');
   // --- calm grid
   check(await p.locator('#bar #nToggle.nchip').count()===1 && await p.locator('#notices .notice').count()===0 && /to fix/.test(await p.textContent('#nToggle')) && (await p.evaluate(()=>document.querySelector('#notices').getBoundingClientRect().height))<14,'notices are a count in the class bar, not a band above it');
-  await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#notices .nfold .notice').count()>=1 && (await p.getAttribute('#nToggle','aria-expanded'))==='true','tapping the count shows the notices');
-  await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#notices .notice').count()===0,'and tapping it again folds them');
-  check(await p.locator('#printOwed').isHidden() && await p.locator('#moreBtn').count()===1 && await p.locator('#btnPrint').count()===1,'secondary controls live behind the ⋯ menu; printing has its own button');
-  await p.click('#moreBtn'); await p.waitForTimeout(200); check(await p.locator('#moreMenu:not(.hidden) #mDigest').count()===1,'menu opens with What changed this week');
-  await p.mouse.click(600, 700); await p.waitForTimeout(200); check(await p.locator('#moreMenu.hidden').count()===1 && await p.locator('body.details').count()===0 && await p.locator('#menuOverlay').count()===0,'a tap outside only dismisses the menu (nothing underneath fires)');
-  await p.click('#moreBtn'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(100); check(await p.locator('#moreMenu.hidden').count()===1 && await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='moreBtn','Escape closes the menu and returns focus to ⋯');
+  await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#nAtt .hatt li').count()>=1 && (await p.getAttribute('#nToggle','aria-expanded'))==='true','tapping the count opens the inbox');
+  await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#nAtt').count()===0,'and tapping it again folds it');
+  check(await p.locator('#printOwed').isHidden() && await p.locator('#actBtn').count()===1 && await p.locator('#bar #btnPrint, #bar #moreBtn').count()===0,'the class\'s actions live behind one Actions button on its header');
+  await p.click('#actBtn'); await p.waitForTimeout(200); check(await p.locator('#actMenu:not(.hidden) #mDigest').count()===1 && await p.locator('#actMenu #btnPrint').count()===1,'the menu opens with What changed this week and Print');
+  await p.mouse.click(600, 700); await p.waitForTimeout(200); check(await p.locator('#actMenu.hidden').count()===1 && await p.locator('body.details').count()===0 && await p.locator('#menuOverlay').count()===0,'a tap outside only dismisses the menu (nothing underneath fires)');
+  await p.click('#actBtn'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(100); check(await p.locator('#actMenu.hidden').count()===1 && await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='actBtn','Escape closes the menu and returns focus to Actions');
   await more(p,'#btnDetails'); await p.waitForTimeout(400);
-  check(await p.locator('#nToggle').count()===0 && await p.locator('.notice').count()>=1,'Details view shows the full notices');
+  check(await p.locator('#nToggle').count()===0 && await p.locator('#nAtt .hatt li').count()>=1,'Details view shows the inbox open');
   await more(p,'#btnDetails'); await p.waitForTimeout(300); check(await p.locator('#nToggle').count()===1,'and Calm folds them again');
   await p.click('#btnHome'); await p.waitForTimeout(300); check(await p.locator('#gridwrap .home').count()===1,'Overview button returns home');
   // --- What changed digest (fabricate last week for the first class)
@@ -42,7 +42,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(/class average/.test(dg) && /missing assignments/.test(dg) && /Sliding:/.test(dg) && /Newly missing work/.test(dg) && /New assignments/.test(dg),'Focus section: average, missing, sliding, newly missing, new assignments');
   check(await p.evaluate(()=>document.getElementById('modal').classList.contains('private')),'digest backdrop is private (names on screen)');
   await p.click('#mCancel'); await p.waitForTimeout(200);
-  await p.click('.hcard'); await p.waitForTimeout(400); await p.click('#moreBtn'); await p.waitForTimeout(200); check(await p.locator('#mDigest').count()===1,'digest also in the class ⋯ menu');
+  await p.click('.hcard'); await p.waitForTimeout(400); await p.click('#actBtn'); await p.waitForTimeout(200); check(await p.locator('#mDigest').count()===1,'digest also in the class Actions menu');
   await p.click('#mDigest'); await p.waitForTimeout(300); check(/What changed/.test(await p.textContent('#modal')),'…and opens from there'); await p.click('#mCancel'); await p.waitForTimeout(200);
   await p.click('#btnHome'); await p.waitForTimeout(300);
   // --- Data Lab graph types

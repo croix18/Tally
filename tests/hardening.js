@@ -1,7 +1,7 @@
 // Round-3 hardening: numbers that must not drift (snapshots vs skips, class average, neededOn, plural, duplicate
 // skill rows, "nearly all"), pool/storage edges (same-name pool students, empty roster, old backups, old saves),
 // and the touch/keyboard manners (menu overlay, dialog focus, undo toast).
-const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, legacyOf } = require('./lib');
+const { act, chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, legacyOf } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:900}}); const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
@@ -59,7 +59,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   // 9. empty roster on a pool class → no students, notice; not all 91
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster',''); await p.click('#mSave'); await p.waitForTimeout(400);
   const empt=await p.evaluate(K=>{ const s=window.__tally.state.sections[K]; return s.students.length; }, K);
-  check(empt===0 && /No roster, so no students/.test(await p.textContent('#notices')),'emptying a pool class roster leaves it empty with a notice (not the whole course): '+empt);
+  check(empt===0 && /No roster yet/.test(await p.textContent('#notices')) && /picks the class out of the course-wide IXL export/.test(await p.textContent('#notices')),'emptying a pool class roster leaves it empty with a notice (not the whole course): '+empt);
   const gbNames=await p.evaluate(K=>window.__tally.state.sections[K].grades.students.join('\n'), K);
   await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster', gbNames); await p.click('#mSave'); await p.waitForTimeout(400);
   check(await p.evaluate(K=>window.__tally.state.sections[K].students.length, K)>=20,'pasting the roster back re-carves the class');
@@ -90,7 +90,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   await p.click('#btnHome'); await p.waitForTimeout(400);
   check(await p.locator('button.hdigest[data-digest]').count()===2 && await p.locator('.hcard button').count()===0,'What changed is a button beside the card, not a span inside it');
   // 15. student report (2nd period still has its gradebook; step 11 dropped 1st period's): one page per student, grade + what moves it + IXL still owed; class chooser in the ⋯ menu
-  const K2='period-2'; await p.click('[data-k="period-2"]'); await p.waitForTimeout(300); await p.click('#btnPrint'); await p.waitForTimeout(300);
+  const K2='period-2'; await p.click('[data-k="period-2"]'); await p.waitForTimeout(300); await act(p,'#btnPrint'); await p.waitForTimeout(300);
   check(await p.locator('[data-who="all"]').count()===1 && await p.locator('[data-who="owes"]').count()===1 && await p.locator('[data-who="letters"]').count()===1,'Print: everyone / owe work / by grade');
   const [rep]=await Promise.all([ctx.waitForEvent('page'), p.click('#rpWeekly')]); await rep.waitForLoadState(); await rep.waitForTimeout(400);
   const rn=await rep.locator('section.rep:not(.teach)').count(); const rtxt=await rep.evaluate(()=>document.body.innerText);

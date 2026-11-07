@@ -2,7 +2,7 @@
 // print all classes in one go"). Chrome ignores `break-before: right`, so a print page lays itself out in page-sized
 // boxes and gives a report that ends on a front a blank back: each student starts on a new sheet. Checked against the
 // PDF Chrome itself prints: the boxes are the pages, every report starts on an odd page, backs mirror the punch margin.
-const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
+const { act, chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
 const K1 = '1205050-7T1A', K2 = '1205050-7T2B';
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1300,height:1000}}); const p=await ctx.newPage();
@@ -26,7 +26,7 @@ const K1 = '1205050-7T1A', K2 = '1205050-7T2B';
   const startsOdd=lay=>{ let at=0; const bad=[]; lay.secs.forEach((s,i)=>{ if (at%2) bad.push(i); at+=s.pages; }); return bad; };
 
   // 1. the menu: this class or every class, and two-sided printing on unless unticked
-  await p.click('#btnPrint'); await p.waitForTimeout(300);
+  await act(p,'#btnPrint'); await p.waitForTimeout(300);
   const m1=await p.evaluate(()=>({ scope:[...document.querySelectorAll('#rpScope button')].map(b=>b.textContent.replace(/\s+/g,' ').trim()+':'+b.getAttribute('aria-pressed')), dup:document.querySelector('#rpDuplex').checked, every:document.querySelector('[data-who="all"] small').textContent, title:document.querySelector('#modal h2').textContent }));
   check(m1.scope.length===2 && /1st Period · Accelerated:true/.test(m1.scope[0]) && /All classes 2:false/.test(m1.scope[1]) && m1.dup && m1.every==='23' && /Print · 1st Period/.test(m1.title),'Print offers this class or all classes, with two-sided printing ticked: '+JSON.stringify(m1));
   await p.click('[data-scope="all"]'); await p.waitForTimeout(300);

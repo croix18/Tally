@@ -316,3 +316,7 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 7 Nov 2026: the shell, phase 1 of the navigation redesign (NOTES.md, "The shell: one spine"). A rail of classes with
   to-fix counts, one tab strip for every class (Grid · Grades · Students · Seating · Reports), Grades a tab, Students
   per class, the top tabs and the pill row gone. New suite `tests/shell.js` (30 checks).
+
+- 7 Nov 2026: phase 2 of the navigation redesign: one Actions menu on the class header and one Attention inbox (the
+  Overview's list, the rail's counts and the class's own list are one list, each row with its fix). `tests/shell.js`
+  (41 checks).

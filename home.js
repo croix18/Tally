@@ -20,14 +20,20 @@ const hashStr = t => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h 
 // Everything a class could need a look at, one line each, in priority order.
 function attentionItems(sec) {
   if (attCache.has(sec.key)) return attCache.get(sec.key);
-  const out = []; attCache.set(sec.key, out); const rows = buildRows(sec); const rs = rosterState(sec);
-  if (sec.pool && sec.awaitingPool) out.push({ level: 'warn', text: `waiting for the ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export`, go: 'import', shared: true });
-  if (sec.placeholder) out.push({ level: 'warn', text: 'IXL export has no student names', go: 'grid' });
-  else if (sec.allBlank) out.push({ level: 'warn', text: 'the IXL export has no scores in it', go: 'grid' });
-  if (!rs.hasText && !rs.count && !sec.skipRoster && !(sec.pool && sec.awaitingPool)) out.push({ level: 'warn', text: 'no roster yet', go: 'grid' });
-  const ro = rows.filter(r => r.status === 'rosterOnly').length, am = rows.filter(r => r.status === 'ambiguous').length, io = rows.filter(r => r.status === 'ixlOnly').length;
-  if ((ro || am || io) && !(sec.pool && sec.awaitingPool)) out.push({ level: 'warn', text: [ro ? `${ro} on the roster not in IXL` : '', am ? `${am} with two IXL matches` : '', io ? `${io} in IXL not on the roster` : ''].filter(Boolean).join(' · '), go: 'grid' });
-  if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings' });
+  // Each item: `text` (one line, the Overview's), and for the class's own inbox `detail` (the fuller sentence, names when
+  // they show) and `act` (the button that fixes it: roster, import, gbroster). The same list everywhere (7 Nov 2026).
+  const out = []; attCache.set(sec.key, out); const rows = buildRows(sec); const rs = rosterState(sec); const H = state.settings.hideNames;
+  const names = arr => H || !arr.length ? '' : ': ' + arr.join('; ');
+  if (sec.pool && sec.awaitingPool) out.push({ level: 'warn', text: `waiting for the ${sec.prep === 'acc' ? 'accelerated' : 'on-level'} IXL export`, go: 'import', shared: true, act: 'import', detail: `This class was made from its Focus gradebook; import the course-wide IXL Score Grid and its ${plural(parseRosterText(sec.roster).length, 'student')} will be matched from it.` });
+  if (sec.placeholder) out.push({ level: 'warn', text: 'IXL export has no student names', go: 'grid', detail: 'This export had no student names in its header row, so Copy is disabled. Re-export from IXL with names included.' });
+  else if (sec.allBlank) out.push({ level: 'warn', text: 'the IXL export has no scores in it', go: 'grid', detail: 'Every cell is empty. If IXL shows scores for this class, the file may be in a format Tally doesn\'t recognize; try the .csv export.' });
+  if (!rs.hasText && !rs.count && !sec.skipRoster && !(sec.pool && sec.awaitingPool)) out.push({ level: 'warn', text: 'no roster yet', go: 'grid', act: 'roster', detail: sec.pool ? 'Import this period\'s Focus gradebook or paste the roster; Tally picks the class out of the course-wide IXL export by name.' : 'Rows are in IXL order, which is probably not Focus order. Paste the roster from Focus and the rows follow it.' });
+  else if (!rs.count && sec.skipRoster && !sec.pool) out.push({ level: 'info', text: 'no roster: rows are sorted by last name', go: 'grid', act: 'roster', detail: 'Copy includes names so you can check the order.' });
+  const ro = rows.filter(r => r.status === 'rosterOnly'), am = rows.filter(r => r.status === 'ambiguous'), io = rows.filter(r => r.status === 'ixlOnly');
+  if ((ro.length || am.length || io.length) && !(sec.pool && sec.awaitingPool)) out.push({ level: 'warn', text: [ro.length ? `${ro.length} on the roster not in IXL` : '', am.length ? `${am.length} with two IXL matches` : '', io.length ? `${io.length} in IXL not on the roster` : ''].filter(Boolean).join(' · '), go: 'grid',
+    detail: `${ro.length ? `On the roster but not in IXL${names(ro.map(r => r.display))}. ` : ''}${am.length ? `Two IXL matches${names(am.map(r => r.display))}. ` : ''}${io.length ? `In IXL but not on the roster${names(io.map(r => r.display))}: left out of copies; tap their flag, then re-paste the roster for a new student or skip one who left. ` : ''}Tap a flag on the grid to fix it. Blank rows are copied for roster students missing from IXL so the column stays aligned.` });
+  if (rs.hasText && !rs.count) out.push({ level: 'warn', text: 'the pasted roster couldn\'t be read', go: 'settings', act: 'roster', detail: 'No names were found in it. Rows are in IXL order, which is probably not Focus order.' });
+  const loose = rows.filter(r => r.tier === 'loose'); if (loose.length) out.push({ level: 'info', text: `${plural(loose.length, 'name')} matched loosely (a nickname or an extra name)`, go: 'grid', detail: `${H ? '' : loose.map(r => r.display + ' → ' + r.ixlName).join('; ') + '. '}Check once; tap the name on the grid to change it.` });
   /* IXL practice from the Quickview: who hasn't practiced in a week, by name up to three, and one student's line opens
      their page. Nothing in Tally fixes it, so it can be dismissed; it comes back when a newer Quickview finds someone
      idle (Croix, 25 Oct 2026: "I can't make these notifications go away"; the line named no one and led to the grid). */
@@ -38,7 +44,7 @@ function attentionItems(sec) {
       const names = ws.length > 3 ? '' : ws.length === 1 ? ws[0].says : ws.slice(0, -1).map(w => w.says).join(', ') + ' and ' + ws[ws.length - 1].says;
       const one = idle.length === 1 ? practiceOf(sec, idle[0]) : null;
       out.push({ level: 'info', text: one ? `${names} has not practiced IXL since ${fmtDate(one.last)} (Quickview of ${fmtDate(asOf)})` : `${names || plural(idle.length, 'student')} have not practiced IXL in a week or more (Quickview of ${fmtDate(asOf)})`, go: one ? 'student' : 'grid', stu: one ? ws[0].d : null, dkey }); } }
-  if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ level: 'warn', text: 'Focus doesn\'t match Tally: ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid', shared: off.every(c => !c.maxOK) });
+  if (sec.grades) { const checks = reconcile(sec); const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK); if (off.length) out.push({ detail: 'Tap the unit\'s Focus badge on the grid to see who.', level: 'warn', text: 'Focus doesn\'t match Tally: ' + off.map(c => `${c.unit.short}: ${!c.maxOK ? 'points differ' : plural(c.counts.differ + c.counts.missing, 'student')}`).join(', '), go: 'grid', shared: off.every(c => !c.maxOK) });
     const stale = off.length ? [] : checks.filter(c => c.counts.stale > 0); if (stale.length) out.push({ level: 'info', text: 'moved up since you copied: ' + stale.map(c => `${c.unit.short}: ${plural(c.counts.stale, 'student')}`).join(' · ') + ': copy again', go: 'grid' });
     const fit = hasOpenGrades(sec) && openSec(sec) === sec ? fitCategories(sec) : null; const disN = fit ? Object.values(fit.disagree || {}).filter(Boolean).length : 0;
     if (disN) out.push({ level: 'warn', text: `${disN} ${disN === 1 ? 'category' : 'categories'} you set ${disN === 1 ? 'disagrees' : 'disagree'} with Focus's grades`, go: 'grades', shared: true });
@@ -47,10 +53,11 @@ function attentionItems(sec) {
       if (odd.length) out.push({ level: 'info', text: odd.length === 1 ? `"${odd[0].name}" is in ${g.map[odd[0].name]}, not Assessments` : `${odd.length} tests or quizzes are not in Assessments`, go: 'grades', shared: true }); } if (!sec.grades.overall && hasOpenGrades(sec)) { const n = catGuesses(sec).length; if (n) out.push({ level: 'info', text: `check ${n === 1 ? '1 category' : n + ' categories'}: the gradebook has no Grade column`, go: 'grades', shared: true }); } }   // only while a guess is unchecked (Croix, 25 Oct 2026: it stayed after he set them)
   // No "Working in" unit (it is set by the first import, so this is a plan that has numbered units but lost its pick): nothing counts until one is chosen.
   if (!sec.placeholder && sec.students.length && !(state.settings.currentUnit || {})[sec.prep] && sec.skills.some(sk => /^Unit\s+\d+/i.test(sk.unit))) out.push({ level: 'info', text: 'pick the unit you\'re working in: no unit counts until you do', go: 'grid', shared: true });
-  const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid' });
-  const od = overdue(sec); if (od) out.push({ level: 'info', text: `IXL export is ${plural(od, 'day')} old`, go: 'import', shared: true });
-  if (sec.grades && state.settings.remindDays && ageDays(localDayOf(sec.grades.importedAt)) > state.settings.remindDays) out.push({ level: 'info', text: `Focus gradebook is ${plural(ageDays(localDayOf(sec.grades.importedAt)), 'day')} old`, go: 'import', shared: true });
-  if (!sec.grades && !sec.awaitingPool) out.push({ level: 'info', text: 'no Focus gradebook yet', go: 'import', shared: true });
+  const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid', act: 'gbroster', detail: `${rvg.added.length ? `In the gradebook but not on the roster${names(rvg.added)}. ` : ''}${rvg.gone.length ? `On the roster but not in the gradebook${names(rvg.gone)}.` : ''}` });
+  const od = overdue(sec); if (od) out.push({ level: 'info', text: `IXL export is ${plural(od, 'day')} old`, go: 'import', shared: true, act: 'import', detail: `${fmtDate(dataDate(sec))}. You asked to be reminded after ${state.settings.remindDays} days: export a fresh copy and import it.` });
+  if (sec.grades && state.settings.remindDays && ageDays(localDayOf(sec.grades.importedAt)) > state.settings.remindDays) out.push({ level: 'info', text: `Focus gradebook is ${plural(ageDays(localDayOf(sec.grades.importedAt)), 'day')} old`, go: 'import', shared: true, act: 'import', detail: `${fmtDate(localDayOf(sec.grades.importedAt))}. Export a fresh gradebook and import it.` });
+  if (rs.count && sec.rosterAt && sec.date && sec.rosterAt.slice(0, 10) < sec.date && (Date.now() - new Date(sec.rosterAt)) > 21 * 86400000) out.push({ level: 'info', text: `roster pasted ${fmtDate(sec.rosterAt.slice(0, 10))}, older than this export`, go: 'settings', act: 'roster', detail: 'If anyone enrolled or left since, re-paste it before you copy.' });
+  if (!sec.grades && !sec.awaitingPool) out.push({ level: 'info', text: 'no Focus gradebook yet', go: 'import', shared: true, act: 'import' });
   return out;
 }
 // One line per cause: the same line from several classes is said once ("Every class", "Accelerated", or the periods), warnings first.
@@ -62,6 +69,8 @@ function attentionGroups(secs) {
     g.each = !g.shared && n > 1 ? g.secs.map(s => ({ key: s.key, label: short(s), color: classColor(s) })) : null; });   // a class's own problem (its roster) keeps a way into each class
   return [...groups.filter(g => g.level === 'warn'), ...groups.filter(g => g.level !== 'warn')];
 }
+// How many things to fix the Overview lists: one line per cause across classes, a quarter past its end, a full browser.
+function fixCount(secs) { return attentionGroups(secs).filter(g => g.level === 'warn').length + (quarterDue() ? 1 : 0) + (storageUse().pct >= 80 ? 1 : 0); }
 function renderHome() {
   const qd = quarterDue(); const cq = currentQuarter();
   const secs = state.order.map(k => state.sections[k]); const race = leaderboardData(); const byKey = new Map(race.map(r => [r.key, r]));
