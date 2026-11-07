@@ -22,7 +22,7 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
       const owed = T.owedWork(s, o, i, ixlIdx).owed; const work = owed.filter(a => !/\bixl\b/i.test(a.name)); const allIn = {}; work.forEach(a => allIn[a.name] = a.max); const allG = T.computeGrade(o, i, { ...pend, ...allIn });
       const panels = [...d.querySelectorAll('.panel .ph')].map(txt);
       return { name, grade: r && r.rounded, b0: b0 && b0.rounded, b0L: b0 && b0.letter, copies: copies.length, owed: owed.length, work: work.length, allG: allG && allG.rounded, allL: allG && allG.letter,
-        gline: txt(d.querySelector('.gline')), withixl: !!d.querySelector('.withixl'), all: txt(d.body), panels,
+        gline: !!d.querySelector('.gline'), mainHead: txt(d.querySelector('.panel.main .ph')), withixl: !!d.querySelector('.withixl'), copyPts: copies.reduce((n, c) => n + Math.max(0, c.to - (c.a.status[i] === 'missing' ? 0 : Number(c.a.values[i]) || 0)), 0), all: txt(d.body), panels,
         tiles: [...d.querySelectorAll('.board small')].map(txt), stepHead: [...d.querySelectorAll('.panel.main .steps th')].map(txt), steps: [...d.querySelectorAll('.panel.main .steps tbody tr')].map(tr => ({ step: txt(tr.children[1]), after: txt(tr.children[2]) })),
         tots: [...d.querySelectorAll('.panel.main .tot')].map(txt), 
         back: [...d.querySelectorAll('.panel.miss .missT tbody tr')].map(tr => ({ name: txt(tr.children[1]), cell: txt(tr.children[3]) })), backHead: [...d.querySelectorAll('.panel.miss .missT th')].map(txt), note: txt(d.querySelector('.panel.miss .note')),
@@ -31,12 +31,12 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
   const S = all.filter(x => x.grade != null);
   check(S.length > 10, S.length + ' graded students');
   // 1. one grade, one sentence
-  check(S.every(x => /^This is the grade in Focus today\./.test(x.gline)) && S.every(x => !x.withixl), 'every report opens with "This is the grade in Focus today." and the old "once your IXL is in Focus" line is gone');
+  check(S.every(x => !x.gline && !x.withixl), 'nothing under the big grade but the category bars (the sentence went at Croix\'s word, 7 Nov 2026)');
   const moved = S.filter(x => x.copies && x.b0 !== x.grade);
-  check(moved.length > 0 && moved.every(x => new RegExp('go(es)? in at the next grade update, which makes it ' + x.b0 + '%\\. Everything below starts from ' + x.b0 + '\\.$').test(x.gline)), 'with IXL points waiting for Focus, the sentence gives the grade they make and says every number below starts from it (' + moved.length + ' students)');
+  check(moved.length > 0 && moved.every(x => new RegExp(x.b0 + '% once the ' + x.copyPts + ' IXL points? already earned (is|are) in Focus').test(x.mainHead)), 'with IXL points waiting for Focus, the Do this week hint names the grade the steps start from and the points that make it (' + moved.length + ' students)');
   check(S.every(x => !/Your IXL points go into Focus/.test(x.all)), 'the points are said once: the old lead line in Do this week is gone');
   // 2. each fact once: tiles, totals, no "What would move the grade"
-  check(S.every(x => x.tiles.join('|') === 'Missing work|IXL at goal|Retake a test?'), 'three tiles: Missing work, IXL at goal, Retake a test?');
+  check(S.every(x => x.tiles.join('|') === 'Missing work|IXL at goal|Retake a test?') && S.every(x => !/all on the back|come first|skills in Units/.test(x.all)), 'three tiles: Missing work, IXL at goal, Retake a test?, each a label and a number');
   check(S.every(x => !x.panels.some(t => /What would move the grade|next assessment/i.test(t))) && S.some(x => x.panels.some(t => /^IXL and the grade$/.test(t))) && S.every(x => !/The next test is worth/.test(x.all)) && S.every(x => x.panels.some(t => /^Next test$/.test(t))), 'no "What would move the grade" box; "IXL and the grade" says what finishing each IXL column does; the Next test box carries the date and unit only (Croix, 7 Nov 2026)');
   const withSteps = S.filter(x => x.steps.length);
   check(withSteps.length > 0 && withSteps.every(x => x.stepHead.join('|') === '|Step|Grade after'), 'the steps are a table with a "Grade after" column (' + withSteps.length + ' students)');
@@ -50,16 +50,16 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
   check(backed.every(x => x.backHead.join('|') === '|Assignment|Was due|Grade after, in this order'), 'the missing-assignments table has Assignment, Was due and "Grade after, in this order"');
   const cumOK = backed.every(x => { const vals = x.back.map(r => /^(\d+)%/.exec(r.cell)).filter(Boolean).map(m => +m[1]); return vals.length === x.work && vals.every((v, k) => !k || v >= vals[k - 1]) && vals[vals.length - 1] === x.allG; });
   check(cumOK, 'each row\'s grade counts the rows above it: never down, and the last row is the all-in total from the front');
-  const frontFirst = backed.filter(x => x.steps.length).every(x => { const fronts = x.steps.map(s => (/Turn in (.+?) \d+ pts|Make up (.+?) \d+ pts/.exec(s.step) || [])[1]).filter(Boolean); return fronts.every((n, k) => x.back[k] && x.back[k].name.startsWith(n)) && (!fronts.length || new RegExp('^The first ' + (fronts.length === 1 ? 'one is the step' : fronts.length + ' are the steps') + ' on the front\\.').test(x.note)); });
-  check(frontFirst, 'the front\'s steps come first on the back, in their order, and the note says so');
+  const frontFirst = backed.filter(x => x.steps.length).every(x => { const fronts = x.steps.map(s => (/Turn in (.+?) \d+ pts|Make up (.+?) \d+ pts/.exec(s.step) || [])[1]).filter(Boolean); return fronts.every((n, k) => x.back[k] && x.back[k].name.startsWith(n)) && !x.note; });
+  check(frontFirst, 'the front\'s steps come first on the back, in their order (no note under the table: Croix struck it)');
   // 4. the IXL list
   const withIxl = S.filter(x => x.units.length);
-  check(withIxl.length > 0 && withIxl.every(x => /goal: SmartScore \d+ · \(your score now\)/.test(x.ixlHead) && /grey code typed into IXL's search box opens that skill/.test(x.ixlHead) && /unit bar: at goal started/.test(x.ixlHead)), 'the IXL header says the goal, what the parentheses are, what the codes do, and what the unit bar shows');
+  check(withIxl.length > 0 && withIxl.every(x => /goal: SmartScore \d+ · \(your score now\)/.test(x.ixlHead) && !/search box/.test(x.ixlHead) && /unit bar: at goal started/.test(x.ixlHead)), 'the IXL header says the goal, what the parentheses are and what the unit bar shows (the codes sentence struck by Croix)');
   const orderOK = withIxl.every(x => x.units.every(u => { const sc = u.scores; const firstZero = sc.indexOf(0); const started = firstZero < 0 ? sc : sc.slice(0, firstZero); return started.every((v, k) => !k || v <= started[k - 1]) && (firstZero < 0 || sc.slice(firstZero).every(v => v === 0)); }));
   check(orderOK, 'inside each unit the started skills come first, closest to goal at the top, then the skills not begun');
   // 5. family words
   check(S.every(x => !x.nhi), 'no report says "NHI"');
-  check(S.filter(x => x.steps.length || x.owed).every(x => /^Words on this page: Grade after is the grade once that step and the ones above it are done\./.test(x.words)), '"Words on this page" explains Grade after under the signatures');
+  check(S.every(x => !x.words && !/Since the last report/.test(x.all)), 'no "Words on this page" line and no "Since the last report" strip (both struck by Croix, 7 Nov 2026)');
   // 6. the sample student with the most owed prints on two sheets, the plan box on the front
   const idx = await p.evaluate(() => { const T = window.__tally; const s = T.state.sections[T.state.active]; const o = T.openSec(s); const rows = T.gbRows(s); let best = -1, bi = 0; s.grades.students.forEach((_, i) => { const n = T.owedWork(s, o, i, rows[i] && rows[i].ixl != null ? rows[i].ixl : null).owed.length; if (n > best && rows[i] && rows[i].ixl != null) { best = n; bi = i; } }); return bi; });
   const [w] = await Promise.all([ctx.waitForEvent('page'), p.evaluate(i => { const T = window.__tally; T.printStudentReports(T.state.sections[T.state.active], [i], 'One'); }, idx)]);

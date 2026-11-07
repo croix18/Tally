@@ -63,12 +63,12 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   check(logged,'printing a report logs the grade, missing count and IXL skills for the next report\'s "since" strip');
   await p.evaluate(()=>{ const s=Object.values(window.__tally.state.sections)[0]; const L=s.reportLog; const k=Object.keys(L)[0]; L[k]=[{ date:'2026-10-10', grade:L[k][0].grade-5, missing:L[k][0].missing+2, ixl:L[k][0].ixl }]; window.__tally.save(); });
   const [pop2]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop2.waitForLoadState(); await pop2.waitForTimeout(300); const pt2=await pop2.evaluate(()=>document.body.innerText);
-  check(/Since the last report/.test(pt2) && /Oct 10/.test(pt2) && /\+5/.test(pt2) && /−2/.test(pt2),'the next report says what moved since the last one (grade +5, missing −2)');
+  check(!/Since the last report/.test(pt2),'the next report carries no "Since the last report" strip (struck by Croix, 7 Nov 2026)');
   check(/My plan from Oct 10/.test(pt2) && !/Last week's plan/.test(pt2),'the plan from the last report is checked under its own date when that report was not last week'); await pop2.close();
   // audit (24 Oct): the strip says when the exports haven't changed since then; a report from another quarter is not the one to move from; the copy step is a note, not a box
   await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const L=s.reportLog; const k=Object.keys(L)[0]; const e=L[k][L[k].length-1]; L[k]=[{ date:'2026-10-10', q:e.q, gb:e.gb, ix:e.ix, grade:e.grade-5, missing:e.missing+2, ixl:e.ixl }]; T.save(); });
   const [pop3]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop3.waitForLoadState(); await pop3.waitForTimeout(300); const pt3=await pop3.evaluate(()=>document.body.innerText);
-  check(/Focus and IXL exports unchanged since then/.test(pt3),'when neither export has been re-imported since the last report, the strip says so'); 
+  check(!/exports unchanged since then/.test(pt3),'nor an "exports unchanged" line'); 
   check(await pop3.locator('.steps tbody tr').count()===await pop3.evaluate(()=>[...document.querySelectorAll('.steps tbody tr')].filter(li=>!/goes into Focus/.test(li.textContent)).length),'the "goes into Focus" step is not a box for the student'); await pop3.close();
   await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const L=s.reportLog; const k=Object.keys(L)[0]; L[k]=[{ date:'2026-10-10', q:4, grade:10, missing:9, ixl:0 }]; T.save(); });
   const [pop4]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop4.waitForLoadState(); await pop4.waitForTimeout(300); const pt4=await pop4.evaluate(()=>document.body.innerText);

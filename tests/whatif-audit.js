@@ -98,7 +98,7 @@ const round = p => Math.round(p + 1e-9);
   const line=await p.evaluate(()=>(document.querySelector('#show .rtLine')||{textContent:''}).textContent); check(new RegExp('^To retake: finish 2 IXL skills in '+shaped.unit+'\\.$').test(line.trim()),'Show student tells the student what to do first: "'+line.trim()+'"');
   await p.reload(); await p.waitForTimeout(600);
   const rep=await p.evaluate(({K,nm})=>{ const T=window.__tally; const s=T.state.sections[K]; const i=s.grades.students.indexOf(nm); return T.studentReportSection(s,i,null); },{K,nm:shaped.B});
-  check(rep.includes('Retakes:</b> not yet. A retake opens once you turn in '+shaped.mB+'.'),'the printed report carries the same line, naming the work (3 Nov 2026)');
+  check(!/Retakes:<\/b> not yet/.test(rep) && /Retake a test\?<\/small><b>Not yet<\/b>/.test(rep),'the printed report says Not yet in the retake tile and carries no "not yet" sentence (Croix struck it, 7 Nov 2026); the student page keeps the line naming the work');
   check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();
 })();

@@ -1173,10 +1173,11 @@ per-section-file era and many items in them are now done).
   its foot, so nothing can skip it. `tests/print-duplex.js` +1 (24).
 - **7 Nov 2026 — The weekly progress report, redesigned for the people who read it.** Croix: "I want them perfect and
   easy to understand and read." Audit and mock-ups on the canvas "Tally weekly report redesign"; built as drawn.
-  - **One grade, one sentence** (`gradeLineOf`): "This is the grade in Focus today. The N IXL points Micah already
-    earned go in at the next grade update, which makes it 48%. Everything below starts from 48." The `.withixl` line
-    and the copy line that opened Do this week are gone; the categories are three bars (`.catbar`: name, weight, bar,
-    percent; points in the title).
+  - **One grade, nothing under it but the bars.** The `.withixl` line and the copy line that opened Do this week are
+    gone; a sentence under the grade ("This is the grade in Focus today…") lasted an hour: Croix had it removed. When
+    IXL points wait for Focus, the Do this week hint carries the baseline instead ("the steps that lift the grade most,
+    from 48% once the 2 IXL points already earned are in Focus"). The categories are three bars (`.catbar`: name,
+    weight, bar, percent; points in the title).
   - **Each fact once.** Tiles: Missing work (N, "assignments, 50 points: all on the back"), IXL at goal, Retake a test?
     (Not yet, "missing work and IXL come first"). Do this week is a table (`.steps`) with a **Grade after** column; the
     letter is written only when a step crosses into a new one (`letterAfter`: 53%, 58%, 63% D) and always on the
@@ -1197,6 +1198,13 @@ per-section-file era and many items in them are now done).
     back; the front keeps the plan box and signatures.
   `tests/report-redesign.js` (18); `review-nov3`, `audit-oct25`, `grades`, `hardening`, `print-duplex`, `round6` follow
   the new words (the "continued" check became "every report is one sheet" for the fixture).
+- **7 Nov 2026 — Croix's strike-throughs on the printed pages.** Gone: the "Since the last report" strip (the log still
+  keeps one entry per week for the signed-reports list and the last-plan line); the sentence under the grade; the line
+  under each tile (label and number only; a word stays only where the number alone would mislead: "done, not in Focus
+  yet", "not on this report"); the "Retakes: not yet…" sentence (the tile says Not yet; the eligible line and the HOWL
+  boxes stay); "Words on this page"; on the back, "tick each one as you turn it in", the note under the missing table
+  and the codes sentence in the IXL header. The Do this week hint carries the baseline when IXL points wait for Focus
+  ("from 48% once the 2 IXL points already earned are in Focus"). The suites above follow.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

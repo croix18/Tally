@@ -75,7 +75,7 @@ const K = '1205050-7T1A';
   check(D.lay.length===2 && D.lay.every(x=>x.onFront && x.last && x.gap>=0 && x.gap<=4 && x.border===0 && x.next),'two-sided: each report\'s signatures are the last thing on its front, at the bottom edge, with no box: '+JSON.stringify(D.lay.map(x=>({ gap:x.gap, border:x.border }))));
   check(D.lay.every(x=>x.lines.length===4 && x.lines.every(h=>h>=28) && x.wide>=400),'room to sign: four lines at least 28 px tall, the signature lines '+D.lay[0].wide+' px wide: '+JSON.stringify(D.lay[0].lines));
   const fronts=D.pages.filter(pg=>/WEEKLY PROGRESS REPORT/.test(pg.t));
-  check(fronts.length===2 && fronts.every(pg=>/NEXT TEST/.test(pg.t) && /Student signature/.test(pg.t) && pg.sigY!=null && pg.sigY<100 && /Words on this page/.test(pg.t)) && D.info.over===0,'in the PDF each front carries the next test and ends with the signatures at the foot of the page, the "Words on this page" line under them (the parent line\'s label '+fronts.map(pg=>Math.round(pg.sigY)).join(', ')+' pt from the bottom)');
+  check(fronts.length===2 && fronts.every(pg=>/NEXT TEST/.test(pg.t) && /Student signature/.test(pg.t) && pg.sigY!=null && pg.sigY<70 && !/Words on this page/.test(pg.t)) && D.info.over===0,'in the PDF each front carries the next test and ends with the signatures at the foot of the page (the parent line\'s label '+fronts.map(pg=>Math.round(pg.sigY)).join(', ')+' pt from the bottom)');
   check(D.info.backs>0 && D.info.left,'two-sided keeps the mirrored margin on the backs');
   const O=await printed(false);
   check(O.lay.every(x=>x.onFront && x.last && x.gap>=0 && x.gap<=4 && x.border===0),'one-sided: the same front, the signatures at its foot: '+JSON.stringify(O.lay.map(x=>x.gap)));

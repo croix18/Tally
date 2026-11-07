@@ -22,7 +22,7 @@ const K = '1205050-7T1A';
       look:(i,row)=>{ const s=T.state.sections[K]; const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,row===undefined?T.gbRows(s)[i]:row); const panelOf=re=>[...d.querySelectorAll('.panel')].find(x=>re.test(txt(x.querySelector('.ph'))));
         const tile=re=>[...d.querySelectorAll('.board > div')].find(x=>re.test(txt(x.querySelector('small'))));
         const mv=panelOf(/IXL and the grade/i);   // the IXL columns as sentences (7 Nov 2026); the missing-work totals sit under the steps (.tot)
-        return { all:txt(d), big:txt(d.querySelector('.big')), sub:txt(d.querySelector('.gline')), main:txt(d.querySelector('.panel.main')), lead:[...d.querySelectorAll('.panel.main .pbody > p.lead')].map(txt),
+        return { all:txt(d), big:txt(d.querySelector('.big')), sub:txt(d.querySelector('.panel.main .ph .hs')), main:txt(d.querySelector('.panel.main')), lead:[...d.querySelectorAll('.panel.main .pbody > p.lead')].map(txt),
           steps:[...d.querySelectorAll('.panel.main .steps tbody tr')].map(txt), tots:[...d.querySelectorAll('.panel.main .tot')].map(txt), rt:txt(d.querySelector('.panel.main .rt')), howl:txt(d.querySelector('.howl')),
           missN:txt(tile(/Missing/).querySelector('b')), missSpan:txt(tile(/Missing/).querySelector('span')), ixlSpan:txt(tile(/IXL/).querySelector('span')), rtSpan:txt(tile(/Retake/).querySelector('span')),
           moves:mv?[...mv.querySelectorAll('.words p')].map(pp=>({ t:txt(pp) })):[],
@@ -47,22 +47,22 @@ const K = '1205050-7T1A';
     return out; });
   check(base.length>=3,'the fixture has students whose IXL points Focus doesn\'t have yet: '+base.map(x=>x.n.split(',')[0]+' '+x.c.map(c=>c.name+' '+c.from+'→'+c.to).join(', ')).join(' | '));
   const moved=base.filter(x=>x.want.split('%')[0]!==x.big.split('%')[0]);
-  check(moved.length>0 && moved.every(x=>new RegExp('which makes it '+x.want.split('%')[0]+'%\\. Everything below starts from '+x.want.split('%')[0]+'\\.$').test(x.sub) && x.afterBig.replace(/\s/g,'')===x.want.replace(/\s/g,'')),'under the grade, the grade once the IXL is in Focus, in a sentence: the grade Focus shows after the copy: '+moved.map(x=>x.big+' → "'+x.sub+'"').join(' | '));
+  check(moved.length>0 && moved.every(x=>new RegExp(x.want.split('%')[0]+'% once the \\d+ IXL points? already earned (is|are) in Focus').test(x.sub) && x.afterBig.replace(/\s/g,'')===x.want.replace(/\s/g,'')),'the Do this week hint names the grade the steps start from once the IXL is in Focus: the grade Focus shows after the copy: '+moved.map(x=>x.big+' → "'+x.sub+'"').join(' | '));
   check(base.every(x=>x.same),'every step, row and retake line reads the same before and after the teacher copies the IXL points: one baseline'+(base.filter(x=>!x.same).map(x=>' | '+x.n+': '+JSON.stringify(x.b).slice(0,300)+' vs '+JSON.stringify(x.a).slice(0,300)).join('')));
-  check(base.every(x=>/^This is the grade in Focus today\. The \d+ IXL points? .+ already earned goe?s? in at the next grade update/.test(x.sub) && !/Your IXL points go into Focus/.test(x.lead.join(' '))) && base.every(x=>/^This is the grade in Focus today\.( Nothing is missing.*)?$/.test(x.afterSub||'This is the grade in Focus today.')),'the points that go in are said once, under the grade, and the sentence goes once they are in: '+base.map(x=>x.sub).join(' | ').slice(0,400));
+  check(base.every(x=>!/Your IXL points go into Focus|This is the grade in Focus/.test(x.all)) && base.every(x=>!/already earned/.test(x.afterSub||'')),'the old lead line and the sentence under the grade are gone, and nothing says "already earned" once the points are in: '+base.map(x=>x.sub).join(' | ').slice(0,400));
 
   // ---- 2. One missing count: the tile, the strip, the back, the retake line, the log and the checklist agree ----
   const cnt=await p.evaluate(()=>{ const T=window.__tally, R=window.__R; const s=R.s(); const gb=s.grades; const rows=T.gbRows(s); const bad=[]; let n=0, named=0;
     const undo=[R.setCell(3,'Unit 2 IXL',null), R.setCell(6,'Unit 2 IXL',null), R.setCell(9,'Unit 1 IXL',null)];   // an IXL column done in IXL (Easton, 17 of 17), two part done (Whitlock 16 of 17, Dorsey 3 of 15)
     s.reportLog={}; gb.students.forEach(nm=>{ s.reportLog[T.norm(nm)]=[{ date:'2026-09-14', q:null, gb:'', ix:'', grade:70, missing:1, ixl:null }]; });
     gb.students.forEach((nm,i)=>{ const L=R.look(i); const want=R.owed(i); n++;
-      const strip=(L.since.match(/Missing 1 → (\d+)/)||[])[1]; const head=(L.missHead.match(/(\d+) assignments?/)||[])[1]||'0';
-      if (L.missN!==(want.length?String(want.length):'None') || strip!==String(want.length) || head!==String(want.length)) bad.push(nm+': tile '+L.missN+', strip '+strip+', back '+head+', owed '+want.length);
-      const rt=T.retakeStatus(s,nm); if (!rt.ok && rt.missing.length) { named++; const all=new RegExp('(turn in|make up|turn in or make up) all '+rt.missing.length+' missing assignments').test(L.rt); if (!(all ? rt.missing.length===want.length : rt.missing.slice(0,2).every(x=>L.rt.includes(x)))) bad.push(nm+': retake line "'+L.rt+'" for '+rt.missing.join(', ')); }
+      const head=(L.missHead.match(/(\d+) assignments?/)||[])[1]||'0';
+      if (L.missN!==(want.length?String(want.length):'None') || head!==String(want.length)) bad.push(nm+': tile '+L.missN+', back '+head+', owed '+want.length);
+      const rt=T.retakeStatus(s,nm); if (!rt.ok && rt.missing.length) { named++; if (L.rt) bad.push(nm+': a "not yet" retake line is back: "'+L.rt+'"'); }
       T.logReport(s,i,rows[i]); const e=s.reportLog[T.norm(nm)].slice(-1)[0]; if (e.missing!==want.length) bad.push(nm+': logged '+e.missing+', owed '+want.length); });
     const easton=R.look(3); undo.forEach(f=>f());
     return { bad, n, named, easton:{ missN:easton.missN, missSpan:easton.missSpan, miss:easton.miss, main:easton.main } }; });
-  check(cnt.bad.length===0 && cnt.named>0,'for all '+cnt.n+' students the tile, "Since the last report", the back\'s header and the log count the same missing work; the retake line names it ('+cnt.named+' students)'+(cnt.bad.length?': '+cnt.bad.slice(0,4).join(' | '):''));
+  check(cnt.bad.length===0 && cnt.named>0,'for all '+cnt.n+' students the tile, the back\'s header and the log count the same missing work; no "not yet" retake sentence ('+cnt.named+' students not yet eligible; the tile says so)'+(cnt.bad.length?': '+cnt.bad.slice(0,4).join(' | '):''));
   check(cnt.easton.missN==='None' && cnt.easton.missSpan==='Unit 2 IXL done, not in Focus yet' && cnt.easton.miss.length===1 && !cnt.easton.miss[0].box && /^Unit 2 IXL 17 pts\s*done in IXL, not in Focus yet$/.test(cnt.easton.miss[0].t),'an IXL column Focus marks NHI with every skill done in IXL is not missing work: the tile reads 0 and names it, and the back notes it without a box: '+JSON.stringify(cnt.easton).slice(0,300));
 
   // ---- 3 and 4. An IXL column says where its skills are: listed below (and how far along), in IXL, or done ----
@@ -85,10 +85,10 @@ const K = '1205050-7T1A';
   // ---- 6. The family's words: no "not linked", "assigned units", "check your IXL account"; the units by name ----
   const words=await p.evaluate(()=>{ const T=window.__tally, R=window.__R; const s=R.s(); const rows=T.gbRows(s); const bad=[]; let unl=0;
     s.grades.students.forEach((nm,i)=>{ const L=R.look(i); if (/not linked|assigned units|check your IXL account/i.test(L.all)) bad.push(nm+': '+(L.all.match(/.{30}(not linked|assigned units|check your IXL account).{0,30}/i)||[''])[0]);
-      if (rows[i]&&rows[i].ixl==null) { unl++; if (L.ixlSpan!=='not on this report') bad.push(nm+': IXL tile "'+L.ixlSpan+'"'); if (L.rt && !/ask Mr\. Shaffer to check your IXL/.test(L.rt)) bad.push(nm+': retake "'+L.rt+'"'); }
-      else if (L.ixlSpan!=='skills in Units 1, 2 and 3') bad.push(nm+': IXL tile "'+L.ixlSpan+'"'); });
+      if (rows[i]&&rows[i].ixl==null) { unl++; if (L.ixlSpan!=='not on this report') bad.push(nm+': IXL tile "'+L.ixlSpan+'"'); }
+      else if (L.ixlSpan!=='') bad.push(nm+': IXL tile "'+L.ixlSpan+'"'); });
     return { bad, unl }; });
-  check(words.bad.length===0 && words.unl>0,'no report uses Tally\'s words: the IXL tile says "skills in Units 1, 2 and 3", or "not on this report" for the '+words.unl+' students not matched to IXL, whose retake line says to ask Mr. Shaffer'+(words.bad.length?': '+words.bad.slice(0,3).join(' | '):''));
+  check(words.bad.length===0 && words.unl>0,'no report uses Tally\'s words: the IXL tile is the number alone, or "not on this report" for the '+words.unl+' students not matched to IXL'+(words.bad.length?': '+words.bad.slice(0,3).join(' | '):''));
   // before printing: the students whose IXL points Focus doesn't have, and the students not matched to IXL ("No IXL account" is an answer)
   const pre=await p.evaluate(()=>{ const T=window.__tally, R=window.__R; const s=R.s(); const rows=T.gbRows(s); const nm=s.grades.students; const unl=nm.filter((_,i)=>!rows[i]||rows[i].ixl==null); const beh=nm.filter((_,i)=>R.copies(i).length && T.computeGrade(T.openSec(s),i));
     s.aliases=s.aliases||{}; const none=rows.find(r=>r&&r.ixl==null); s.aliases[none.display]='#none'; s.grades.exportedAt=new Date().toISOString(); s.grades.importedAt=s.grades.exportedAt; s._dateKeep=s.date; s.date=T.todayISO(); T.save();
@@ -107,7 +107,7 @@ const K = '1205050-7T1A';
     s.grades.students.forEach((nm,i)=>{ if (!rows[i]||rows[i].ixl==null) return; const L=R.look(i); const by={}; L.sk.forEach(x=>{ const nmOnly=x.name.replace(new RegExp(' '+x.sid+'$'),''); (by[nmOnly]=by[nmOnly]||[]).push(x.sid); }); const twins=Object.entries(by).filter(([,v])=>v.length>1);
       const known=new Set(s.skills.map(k=>k.id)); if (!best || twins.length>best.twins.length) best={ nm, n:L.sk.length, withId:L.sk.filter(x=>x.sid && known.has(x.sid)).length, twins, head:L.ixlPanel.slice(0,160) }; });
     return best; });
-  check(ids && ids.n>0 && ids.withId===ids.n && ids.twins.length>0 && ids.twins.every(([,v])=>new Set(v).size===v.length) && /grey code typed into IXL's search box opens that skill/.test(ids.head),'every owed skill carries its IXL skill ID, so two skills with one name can be told apart: '+JSON.stringify(ids.twins.slice(0,2)));
+  check(ids && ids.n>0 && ids.withId===ids.n && ids.twins.length>0 && ids.twins.every(([,v])=>new Set(v).size===v.length) && /\(your score now\)/.test(ids.head),'every owed skill carries its IXL skill ID, so two skills with one name can be told apart: '+JSON.stringify(ids.twins.slice(0,2)));
 
   // ---- 8. The next assessment across the table; "Both"; "every missing assignment but" the IXL column the tile counts ----
   const tb=await p.evaluate(()=>{ const T=window.__tally, R=window.__R; const s=R.s(); const bad=[]; let next=0; s.grades.students.forEach((nm,i)=>{ const L=R.look(i); if (/Next assessment|The next test is worth/.test(L.all)) next++; });

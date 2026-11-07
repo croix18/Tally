@@ -36,7 +36,7 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
       back(); }
     return null; },K);
   const a1t=a1?a1.txt:'';
-  check(a1 && /Still missing: 2\.03 Worksheet\. Turn it in this week\./.test(a1t) && !/Nothing missing/.test(a1t) && /This is the grade in Focus today\. The \d+ IXL points? .+ already earned goe?s? in at the next grade update/.test(a1t),'a plan the IXL copy alone completes still names the missing work, and the grade sentence names the points going in: '+(a1t.match(/DO THIS WEEK.{0,260}/i)||[''])[0]);
+  check(a1 && /Still missing: 2\.03 Worksheet\. Turn it in this week\./.test(a1t) && !/Nothing missing/.test(a1t) && !/Your IXL points go into Focus|This is the grade in Focus/.test(a1t),'a plan the IXL copy alone completes still names the missing work, with no sentence about the points under the grade (7 Nov 2026): '+(a1t.match(/DO THIS WEEK.{0,260}/i)||[''])[0]);
   // A2: the tests-and-quizzes figure counts an NHI as 0, as the student page does (since 25 Oct it heads the Tests &
   // quizzes panel; the tile that said "5 gradeds" is gone, so A7 went with it)
   const a2=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s); const quiz=gb.assignments.find(a=>a.name==='Squares and Cubes Quiz'); const i=quiz.status.indexOf('missing');
@@ -60,7 +60,7 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
     function text(h){ const d=document.createElement('div'); d.innerHTML=h; return d.textContent.replace(/\s+/g,' '); }
     return { since:since&&since[0], n:l.length, last:l[l.length-1], first:l[0], today:T.todayISO(), lastMon, thisMon }; },K);
   check(a3.n===2 && a3.last.date===a3.today && a3.last.back===a3.thisMon && a3.first.date===a3.lastMon,'a second print in the same week replaces that week\'s entry and keeps its "back, signed" tick: '+JSON.stringify({ n:a3.n, last:a3.last, first:a3.first.date }));
-  check(/Grade 50% →/.test(a3.since||''),'"Since the last report" moves from last week\'s report, not from an earlier print this week: '+a3.since);
+  check(!a3.since,'no "Since the last report" strip on the report (Croix struck it on 7 Nov 2026; the log still keeps one entry per week for the signed-reports list)');
   // A4: the report and the reminder date Focus by when the file was written; "unchanged since then" compares that time
   const a4=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s); const i=1; const nm=gb.students[i]; const keep=gb.exportedAt;
     gb.exportedAt=new Date(Date.now()-2*864e5).toISOString(); const two=T.fmtDate(T.localDayOf(gb.exportedAt));
@@ -69,7 +69,7 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
     const r1=tx(T.studentReportSection(s,i,rows[i])); l[0].gbAt='2026-01-01T00:00:00.000Z'; const r2=tx(T.studentReportSection(s,i,rows[i])); gb.exportedAt=keep;
     return { two, head:(r1.match(/Focus as of [A-Z][a-z]+ \d+/)||[''])[0], same:/Focus export unchanged since then/.test(r1), changed:/Focus export unchanged/.test(r2) }; },K);
   check(a4.head==='Focus as of '+a4.two,'the report dates Focus by the file, written two days ago: "'+a4.head+'" (want '+a4.two+')');
-  check(a4.same && !a4.changed,'"Focus export unchanged since then" compares the file\'s own time, so a new export with the same import day is not called unchanged');
+  check(!a4.same && !a4.changed,'no "export unchanged since then" line either: the strip is gone');
   // A5: "eligible … IXL at goal" names only the units the check looked at (the unit being worked in may have no Focus column yet)
   const a5=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s);
     const withCol=new Set(gb.assignments.map(a=>(T.gbUnitFor(s,a)||{}).name).filter(Boolean)); const u=T.unitsOf(s).find(x=>x.num && !withCol.has(x.name)); const i=rows.findIndex(r=>r && r.ixl!=null);
