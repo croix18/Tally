@@ -34,7 +34,7 @@ const K = '1205050-7T1A';
     T.state.settings.teacherName='Mr. Shaffer'; T.save(); const rows=T.gbRows(s); const linked=rows.map((r,i)=>r&&r.ixl!=null?i:-1).filter(i=>i>=0); const unlinked=rows.findIndex(r=>!r||r.ixl==null);
     return { a:linked[0], c:linked[2], unlinked, d3:day(3), d1:day(1), d2:day(2), d10:day(10) }; },K);
   const report=i=>p.evaluate(({K,i})=>{ const T=window.__tally; const s=T.state.sections[K]; const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,T.gbRows(s)[i]); document.body.appendChild(d);
-    const txt=x=>x?x.textContent.replace(/\s+/g,' ').trim():''; const nt=d.querySelector('.panel.next'); const col=d.querySelector('.two > .col');
+    const txt=x=>x?x.textContent.replace(/\s+/g,' ').trim():''; const nt=d.querySelector('.panel.next'); const col=nt&&nt.parentElement;
     const u4=[...d.querySelectorAll('.panel.ixl .u')].find(u=>/^Unit 4\b/.test(txt(u.querySelector('.uh'))));
     const out={ next:txt(nt), when:txt(nt&&nt.querySelector('.ntd')), unit:txt(nt&&nt.querySelector('.ntu')), ixl:txt(nt&&nt.querySelector('.ntx')), col:col?[...col.children].map(x=>x.className).join(','):'', back:u4?txt(u4.querySelector('.uh > b')):'',
       sigs:[...d.querySelectorAll('.sigs small')].map(x=>x.textContent).join(' | '), sigBoxed:!!d.querySelector('.pledge .sigs, .pledge .sig'), sigLast:(()=>{ const kids=[...d.querySelector('section.rep').children]; const k=kids.findIndex(x=>x.classList.contains('sigs')); return kids[k-1]&&kids[k-1].className+'>'+(kids[k+1]&&kids[k+1].className); })() };
@@ -42,7 +42,7 @@ const K = '1205050-7T1A';
   const fmt=d=>p.evaluate(d=>window.__tally.testDays({ from:d, to:'' }),d);
   // 2. the front names the next test, under the tests and quizzes; a name left blank takes the IXL unit's
   const A=await report(who.a);
-  check(A.when===await fmt(who.d3) && A.unit==='Unit 4 Solving Problems with Rational Numbers' && /^panel\s+,panel next$|panel ,panel next/.test(A.col) && !A.ixl,'the next test prints in its own panel under "Tests & quizzes": '+A.next+' ('+A.col+')');
+  check(A.when===await fmt(who.d3) && A.unit==='Unit 4 Solving Problems with Rational Numbers' && /panel next$/.test(A.col) && !A.ixl,'the next test prints in its own panel, the last in its column (under "IXL and the grade" since 7 Nov 2026): '+A.next+' ('+A.col+')');
   // 3. with Unit 4 on the IXL list, where the student stands on it, the same count as the back
   await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; T.state.assigned.acc[T.unitsOf(s).find(u=>u.num===4).name]=true; T.save(); },K);
   const A2=await report(who.a); const [at,of]=(A2.back.match(/(\d+) \/ (\d+)/)||[]).slice(1).map(Number);
@@ -55,7 +55,7 @@ const K = '1205050-7T1A';
   // 5. nothing ahead: no panel
   await p.evaluate(({K})=>{ const T=window.__tally; T.state.testDates.acc=T.state.testDates.acc.slice(0,1); },{K});
   const A4=await report(who.a);
-  check(!A4.next && A4.col==='panel ','with no test ahead, the front has no test panel: '+JSON.stringify(A4.col));
+  check(!A4.next && A4.col==='','with no test ahead, the front has no test panel: '+JSON.stringify(A4.col));
   // 6. the signatures: their own block after the plan, out of any box, two lines each
   check(A4.sigs==='Student signature | Date | Parent or guardian signature | Date' && !A4.sigBoxed && /^pledge>panel miss/.test(A4.sigLast),'the signatures: student and parent or guardian, each with a date, after the plan box and outside it: '+A4.sigs+' · '+A4.sigLast);
   await p.evaluate(({K,who})=>{ const T=window.__tally; T.state.testDates.acc=[{ unit:'Unit 4', title:'', from:who.d3, to:'' }, { unit:'Unit 5', title:'Multi-Step Proportional Relationships', from:who.d10, to:'' }]; T.save(); },{K,who});
@@ -75,7 +75,7 @@ const K = '1205050-7T1A';
   check(D.lay.length===2 && D.lay.every(x=>x.onFront && x.last && x.gap>=0 && x.gap<=4 && x.border===0 && x.next),'two-sided: each report\'s signatures are the last thing on its front, at the bottom edge, with no box: '+JSON.stringify(D.lay.map(x=>({ gap:x.gap, border:x.border }))));
   check(D.lay.every(x=>x.lines.length===4 && x.lines.every(h=>h>=28) && x.wide>=400),'room to sign: four lines at least 28 px tall, the signature lines '+D.lay[0].wide+' px wide: '+JSON.stringify(D.lay[0].lines));
   const fronts=D.pages.filter(pg=>/WEEKLY PROGRESS REPORT/.test(pg.t));
-  check(fronts.length===2 && fronts.every(pg=>/NEXT TEST/.test(pg.t) && /Student signature/.test(pg.t) && pg.sigY!=null && pg.sigY<70) && D.info.over===0,'in the PDF each front carries the next test and ends with the signatures at the foot of the page (the parent line\'s label '+fronts.map(pg=>Math.round(pg.sigY)).join(', ')+' pt from the bottom)');
+  check(fronts.length===2 && fronts.every(pg=>/NEXT TEST/.test(pg.t) && /Student signature/.test(pg.t) && pg.sigY!=null && pg.sigY<100 && /Words on this page/.test(pg.t)) && D.info.over===0,'in the PDF each front carries the next test and ends with the signatures at the foot of the page, the "Words on this page" line under them (the parent line\'s label '+fronts.map(pg=>Math.round(pg.sigY)).join(', ')+' pt from the bottom)');
   check(D.info.backs>0 && D.info.left,'two-sided keeps the mirrored margin on the backs');
   const O=await printed(false);
   check(O.lay.every(x=>x.onFront && x.last && x.gap>=0 && x.gap<=4 && x.border===0),'one-sided: the same front, the signatures at its foot: '+JSON.stringify(O.lay.map(x=>x.gap)));

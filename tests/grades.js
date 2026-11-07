@@ -57,8 +57,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   check(/missing work were turned in/i.test(card) && /retaken/i.test(card) && /next assessment scored/i.test(card) && /→ \d+/.test(card),'page has missing, retakes, next-assessment what-ifs');
   await p.fill('.wiMax','50'); await p.waitForTimeout(150); check((await p.getAttribute('.wiPts','max'))==='50','next-assessment slider follows points possible');
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop.waitForLoadState(); await pop.waitForTimeout(300); const ptxt=await pop.evaluate(()=>document.body.innerText);
-  check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /What would move the grade/i.test(ptxt) && !/weighted Assessments/.test(ptxt),'print page: one student, no formula footnote (the page is the student\'s)');
-  check(/Do this week/i.test(ptxt) && /My plan this week/.test(ptxt) && !/Last week's plan|My plan from/.test(ptxt) && !/First report|Since the last report/.test(ptxt) && await pop.locator('.todo li .box').count()>=1 && await pop.locator('section.teach').count()===0,'the weekly report has the checklist, the plan box and signature lines; a first report carries no since-box and no last plan to check (there was none); one student\'s print has no teacher page'); await pop.close();
+  check(ptxt.includes(first) && others.filter(n=>n!==first).every(n=>!ptxt.includes(n)) && /Do this week/i.test(ptxt) && !/What would move the grade/i.test(ptxt) && !/weighted Assessments/.test(ptxt),'print page: one student, no formula footnote, no "What would move the grade" box (the page is the student\'s)');
+  check(/Do this week/i.test(ptxt) && /My plan this week/.test(ptxt) && !/Last week's plan|My plan from/.test(ptxt) && !/First report|Since the last report/.test(ptxt) && await pop.locator('.steps tbody .box').count()>=1 && await pop.locator('section.teach').count()===0,'the weekly report has the checklist, the plan box and signature lines; a first report carries no since-box and no last plan to check (there was none); one student\'s print has no teacher page'); await pop.close();
   const logged=await p.evaluate(()=>{ const s=Object.values(window.__tally.state.sections)[0]; const L=s.reportLog||{}; const k=Object.keys(L)[0]; return k && L[k].length===1 && L[k][0].grade!=null && typeof L[k][0].missing==='number'; });
   check(logged,'printing a report logs the grade, missing count and IXL skills for the next report\'s "since" strip');
   await p.evaluate(()=>{ const s=Object.values(window.__tally.state.sections)[0]; const L=s.reportLog; const k=Object.keys(L)[0]; L[k]=[{ date:'2026-10-10', grade:L[k][0].grade-5, missing:L[k][0].missing+2, ixl:L[k][0].ixl }]; window.__tally.save(); });
@@ -69,7 +69,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const L=s.reportLog; const k=Object.keys(L)[0]; const e=L[k][L[k].length-1]; L[k]=[{ date:'2026-10-10', q:e.q, gb:e.gb, ix:e.ix, grade:e.grade-5, missing:e.missing+2, ixl:e.ixl }]; T.save(); });
   const [pop3]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop3.waitForLoadState(); await pop3.waitForTimeout(300); const pt3=await pop3.evaluate(()=>document.body.innerText);
   check(/Focus and IXL exports unchanged since then/.test(pt3),'when neither export has been re-imported since the last report, the strip says so'); 
-  check(await pop3.locator('.todo li').count()===await pop3.evaluate(()=>[...document.querySelectorAll('.todo li')].filter(li=>!/goes into Focus/.test(li.textContent)).length),'the "goes into Focus" step is not a box for the student'); await pop3.close();
+  check(await pop3.locator('.steps tbody tr').count()===await pop3.evaluate(()=>[...document.querySelectorAll('.steps tbody tr')].filter(li=>!/goes into Focus/.test(li.textContent)).length),'the "goes into Focus" step is not a box for the student'); await pop3.close();
   await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; const L=s.reportLog; const k=Object.keys(L)[0]; L[k]=[{ date:'2026-10-10', q:4, grade:10, missing:9, ixl:0 }]; T.save(); });
   const [pop4]=await Promise.all([ctx.waitForEvent('page'), p.click('#pPrint')]); await pop4.waitForLoadState(); await pop4.waitForTimeout(300); const pt4=await pop4.evaluate(()=>document.body.innerText);
   check(!/Since the last report/.test(pt4),'a report logged in another quarter is not the one to move from'); await pop4.close();
@@ -110,8 +110,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const fri=await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date().toISOString(); s.grades.exportedAt=new Date(Date.now()-3*864e5).toISOString(); return T.staleExports(s,[0]).join('; '); });
   check(/Focus gradebook in Tally is from .*3 days ago/.test(fri),'a gradebook imported today from a file written three days ago is named as three days old: '+fri);
   await p.evaluate(()=>{ const T=window.__tally; const s=Object.values(T.state.sections)[0]; s.grades.importedAt=new Date().toISOString(); s.grades.exportedAt=s.grades.importedAt; T.save(); });
-  // hidden names mask the overview and the card
-  await p.click('#btnHide'); await p.waitForTimeout(400);
+  // hidden names mask the overview and the card (back on the Grades tab: the Reports tab was open for the print checks)
+  await p.click('#openGrades'); await p.waitForTimeout(300); await p.click('#btnHide'); await p.waitForTimeout(400);
   check(!(await p.textContent('.gstu')).includes(first),'Names off masks the students table');
   await p.click('#btnHide'); await p.waitForTimeout(400);
   // 6. history: a second import on another date → trend, Δ column, sliding

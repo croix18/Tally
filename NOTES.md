@@ -1171,6 +1171,32 @@ per-section-file era and many items in them are now done).
   ends on a front) was an empty page; a printer or driver set to skip empty pages drops it and the next class starts on
   a back. Every blank back now prints "This side is left blank so the next page starts on a new sheet." in 7pt grey at
   its foot, so nothing can skip it. `tests/print-duplex.js` +1 (24).
+- **7 Nov 2026 — The weekly progress report, redesigned for the people who read it.** Croix: "I want them perfect and
+  easy to understand and read." Audit and mock-ups on the canvas "Tally weekly report redesign"; built as drawn.
+  - **One grade, one sentence** (`gradeLineOf`): "This is the grade in Focus today. The N IXL points Micah already
+    earned go in at the next grade update, which makes it 48%. Everything below starts from 48." The `.withixl` line
+    and the copy line that opened Do this week are gone; the categories are three bars (`.catbar`: name, weight, bar,
+    percent; points in the title).
+  - **Each fact once.** Tiles: Missing work (N, "assignments, 50 points: all on the back"), IXL at goal, Retake a test?
+    (Not yet, "missing work and IXL come first"). Do this week is a table (`.steps`) with a **Grade after** column; the
+    letter is written only when a step crosses into a new one (`letterAfter`: 53%, 58%, 63% D) and always on the
+    totals under the steps (`.tot`: "All 5 missing assignments turned in → 73% C", "…and the IXL in Unit 1 and Unit 2
+    finished (35 skills) → 90% A"; with an IXL column owed too, "Every missing assignment but the IXL"). The "What
+    would move the grade" table is gone: the IXL columns are sentences in **IXL and the grade** ("Unit 1 IXL: 3 of 23
+    skills at goal. Finishing it lifts the grade to 56%."); the next-assessment sentence is gone at Croix's word ("I
+    don't need that info"), the **Next test** box stays, date and unit only, under it. Retakes: "not yet. A retake
+    opens once you …". The HOWL boxes read "I plan to come Wednesday / Thursday" (Croix: "like in the future").
+  - **Family words.** "not handed in" for NHI; "Words on this page" under the signatures (Grade after, IXL at goal, a
+    missing assignment counts as zero, a retake can be taken more than once); the A case: "Keep every assignment in on
+    time and Unit 3's IXL at goal. Two skills in Unit 3 are still below goal; they are listed on the back."
+  - **The back on one sheet.** Missing assignments: Assignment · Was due · "Grade after, in this order", the front's
+    steps first and each row cumulative (`cumRows`), a note "The first 3 are the steps on the front. Each line's grade
+    counts the lines above it too." IXL still owed in three columns (`.sks` grid), started skills first inside each
+    unit (closest to goal at the top), the header saying "goal: SmartScore 67 · (your score now) · a grey code typed
+    into IXL's search box opens that skill · unit bar: at goal / started". Micah's 59 skills and 5 assignments fit the
+    back; the front keeps the plan box and signatures.
+  `tests/report-redesign.js` (18); `review-nov3`, `audit-oct25`, `grades`, `hardening`, `print-duplex`, `round6` follow
+  the new words (the "continued" check became "every report is one sheet" for the fixture).
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

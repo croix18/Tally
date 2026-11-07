@@ -331,3 +331,7 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 7 Nov 2026: phase 5: the finder (the search box lists students, classes, units, pages and actions; Ctrl+K). Typing no
   longer moves pages. Blank backs in a two-sided print carry a faint line so a printer that skips empty pages keeps the
   sequence (the tracker page had pushed the next class onto a back).
+
+- 7 Nov 2026: the weekly progress report redesigned for its readers: one grade sentence, each fact once, a "Grade after"
+  column with the letter only when it changes, family words, the back on one sheet in three columns; the next-assessment
+  sentence dropped and the retake boxes in the future tense at Croix's word. `tests/report-redesign.js` (18).

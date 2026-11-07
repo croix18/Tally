@@ -61,7 +61,7 @@ const { act, chromium, fs, path, exe, check, done, tmp, APP, pick, more } = requ
       const w=line.match(/won't reach (an? [a-d])/); if (w) { wont++; if (na.can.length) bad.push(name+': says won\'t reach, but can'); if (w[1]!==na.cant[na.cant.length-1].toLowerCase()) bad.push(name+': wrong letter'); }
       if (/won't change the letter/.test(line)) bad.push(name+': "won\'t change the letter"'); if (na.keep && !/keeps the [a-d]/.test(line)) bad.push(name+': keep clause dropped'); }); });
     return { bad, dReach, wont, n }; });
-  check(truthP.bad.length===0 && truthP.dReach>0,'the report\'s next-assessment line is true for all '+truthP.n+' synthetic students: '+truthP.dReach+' F students are told the score that makes a D; '+truthP.wont+' are told one assessment won\'t reach the next letter'+(truthP.bad.length?': '+truthP.bad.slice(0,3).join(' | '):''));
+  check(truthP.bad.length===0 && truthP.dReach===0 && truthP.wont===0 && truthP.n>0,'the report carries no next-assessment line any more (7 Nov 2026: the Next test box is the date and unit only), for all '+truthP.n+' synthetic students');
   // 3. one line per cause: a cause shared by the course or the file is said once
   await p.evaluate(()=>{ const T=window.__tally; const d=new Date(Date.now()-30*86400000).toISOString().slice(0,10); ['acc','on'].forEach(k=>{ T.state.pools[k].date=d; }); T.state.order.forEach(k=>{ T.state.sections[k].date=d; }); T.state.settings.remindDays=7; T.save(); T.render(); });
   await p.click('#btnHome'); await p.waitForTimeout(400);
@@ -120,7 +120,7 @@ const { act, chromium, fs, path, exe, check, done, tmp, APP, pick, more } = requ
       const wont=line.match(/won't reach (an? [A-D])/); if (wont && na.can.length) bad.push(name+': says won\'t reach but can'); if (wont && wont[1]!==na.cant[na.cant.length-1]) bad.push(name+': names the wrong letter');
       if (na.keep) { keeps++; if (!/keeps the [A-D]/.test(line)) bad.push(name+': keep clause dropped'); } });
     return { bad, dReach, keeps, n:s.grades.students.length }; },RK);
-  check(truth.bad.length===0 && truth.keeps>0,'every student\'s next-assessment line matches what is computed: reachable letters (a D included) are named, "won\'t reach" only when none is, and what keeps the current letter stays ('+truth.n+' students, '+truth.keeps+' keep clauses, '+truth.dReach+' can reach a D)'+(truth.bad.length?': '+truth.bad.slice(0,3).join(' | '):''));
+  check(truth.bad.length===0 && truth.dReach===0 && truth.keeps===0,'no next-assessment sentence on any report (the Next test box carries the date and unit only; 7 Nov 2026)');
   const owed=await rep.evaluate(()=>{ const T=window.opener && window.opener.__tally; return [...document.querySelectorAll('section.rep')].slice(0,1).map(sec=>({ sk:sec.querySelectorAll('.sk').length, zero:sec.querySelectorAll('.sk b.zero').length, scored:[...sec.querySelectorAll('.sk b:not(.zero)')].map(b=>b.textContent) }))[0]; });
   check(owed && owed.sk>0 && owed.zero>0 && owed.scored.every(t=>/^\(\d+\)$/.test(t)) && !/Not started \(\d+\):/.test(rtxt),'IXL still owed lists every owed skill with a box and the SmartScore in parentheses, 0 when not begun (Croix, 24 Oct): '+JSON.stringify(owed));
   await rep.close();
