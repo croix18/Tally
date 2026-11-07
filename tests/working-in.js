@@ -87,7 +87,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, more, APP , fullSave, l
   check(pure.ph==='1:started','a class imported without names (placeholder) still gets a Working in: '+pure.ph);
   await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['period-1']; T.state.settings.currentUnit={ acc:null, on:null }; T.save(); const raw=JSON.parse(localStorage.getItem('tally.v1')); raw.sections['period-1'].importedAt=undefined; raw.sections['period-1'].date=undefined; localStorage.setItem('tally.v1', JSON.stringify(raw)); });
   await p.reload(); await p.waitForTimeout(900);
-  check(await p.locator('#tabs .tab').count()===2 && await p.locator('#app:not(.hidden)').count()===1,'a class with no dates cannot blank the page at start-up: the app still opens');
+  check(await p.locator('#rail .rc').count()===2 && await p.locator('#app:not(.hidden)').count()===1,'a class with no dates cannot blank the page at start-up: the app still opens');
   check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();
 })();

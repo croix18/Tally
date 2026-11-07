@@ -45,7 +45,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, more, APP , fullSave, l
   await p.keyboard.press('Escape'); await p.waitForTimeout(200); await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('th.unit .ulink'); await p.waitForTimeout(300);
   const where0=await p.evaluate(()=>document.querySelector('#bar').textContent.slice(0,60)+'|'+window.__tally.state.active);
   await more(p,'#btnSettings'); await p.waitForTimeout(250); await p.selectOption('#setClass','period-2'); await p.waitForTimeout(250); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
-  check(await p.evaluate(()=>document.querySelector('#bar').textContent.slice(0,60)+'|'+window.__tally.state.active)===where0 && await p.locator('.tab.active[data-k="period-1"]').count()===1,'from 1st Period\'s unit view: pick 2nd Period in Settings, Cancel: still 1st Period\'s unit view');
+  check(await p.evaluate(()=>document.querySelector('#bar').textContent.slice(0,60)+'|'+window.__tally.state.active)===where0 && await p.locator('.rc.on[data-k="period-1"]').count()===1,'from 1st Period\'s unit view: pick 2nd Period in Settings, Cancel: still 1st Period\'s unit view');
   await p.click('#back'); await p.waitForTimeout(200); await p.click('#btnHome'); await p.waitForTimeout(200); await more(p,'#btnSettings'); await p.waitForTimeout(300); await p.selectOption('#setClass','period-1').catch(()=>{}); await p.waitForTimeout(200);
   // 4. saving still reaches the right scope
   await seeTab(p,'#thr'); await p.fill('#thr','70'); await seeTab(p,'#copyMode [data-cm="ids"]'); await p.click('#copyMode [data-cm="ids"]'); await p.click('#mSave'); await p.waitForTimeout(400);

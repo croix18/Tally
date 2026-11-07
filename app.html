@@ -164,6 +164,41 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 .hidden{display:none!important}
 .pill:active,.chip:active,.tab:active,.copy:active,.ulink:active{transform:translateY(1px) scale(.97)}
 
+/* ---- the rail and the shell ---- */
+body.has{display:grid;grid-template-columns:var(--railW,232px) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;align-content:start;height:auto;min-height:100%;overflow:visible}   /* the document scrolls when the window is too short; #gridwrap is the scroller otherwise */
+body.has>#rail{grid-column:1;grid-row:1/-1}
+body.has>#top,body.has>#keep,body.has>#empty,body.has>#app{grid-column:2}
+body.has>#app{grid-row:4;align-self:stretch;min-height:auto}
+#rail{background:var(--navy);color:var(--white);display:flex;flex-direction:column;gap:3px;padding:18px 14px calc(14px + env(safe-area-inset-bottom));position:sticky;top:0;height:100vh;height:100dvh;overflow-y:auto;scrollbar-width:thin;border-radius:0 0 var(--r-l) 0}
+#rail .brand{font-size:22px;font-weight:var(--w-black);letter-spacing:.14em;color:var(--turq);text-transform:uppercase;padding:4px 12px 12px;margin:0}
+#rail .sec{font-size:var(--t-xs);font-weight:var(--w-heavy);letter-spacing:.1em;text-transform:uppercase;color:#9AA3B2;padding:14px 12px 4px}
+#rail button{display:flex;align-items:center;gap:10px;min-height:var(--h-m);padding:0 12px;border-radius:var(--r-pill);color:var(--white);font:inherit;font-weight:var(--w-bold);font-size:var(--t-l);background:none;border:none;text-align:left;cursor:pointer;width:100%}
+#rail button:hover{background:rgba(255,255,255,.08)}#rail button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
+#rail button.on{background:var(--white);color:var(--navy)}
+body.has #top .brand,body.has #top .spacer{display:none}body.has #search{margin-right:auto}   /* the wordmark is on the rail; the search leads the top bar */
+#rail button .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#rail button .dot{width:10px;height:10px;border-radius:50%;background:var(--cc,var(--grid));flex:none}
+#rail button svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#rail .n{margin-left:auto;font-size:var(--t-s);font-weight:var(--w-heavy);background:var(--coral);color:var(--bad);border-radius:var(--r-pill);padding:1px 8px}
+#rail button.on .n{background:var(--coral)}
+#rail .foot{margin-top:auto;display:flex;flex-direction:column;gap:3px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14)}
+#rail .foot button{font-weight:var(--w-med);font-size:var(--t-m);min-height:var(--h-m);color:#D7DBE3}
+#rail .foot .age{margin-left:auto;font-size:var(--t-xs);font-weight:var(--w-heavy);color:#9AA3B2}#rail .foot .age.due{color:var(--coral)}
+/* the class header: its name, its facts, and one tab strip for every class (Grid · Grades · Students · Seating · Reports) */
+#chead{display:flex;flex-direction:column;gap:2px;padding:9px 22px 0;background:var(--white)}
+body.home #chead,body.grades #chead{background:transparent;padding-left:0;padding-right:0}body.home #chead .tabrow #bar,body.grades #chead .tabrow #bar{background:transparent}
+#chead .ch{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+#chead h2{margin:0;font-weight:var(--w-black);font-size:20px;letter-spacing:0;display:flex;align-items:center;gap:10px;line-height:1.2}
+#chead h2 .dot{width:14px;height:14px;border-radius:50%;background:var(--cc,var(--grid))}
+#chead .meta{font-weight:var(--w-bold);font-size:var(--t-m);color:var(--ink-soft)}
+#chead .tabrow{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;border-bottom:2px solid var(--grid)}   /* the tabs, then the tab's own controls on the same line */
+#chead .tabrow #bar{flex:1 1 320px;min-width:0;border-bottom:none;background:transparent;padding:4px 0 6px 8px;justify-content:flex-end}
+#ctabs{display:flex;gap:2px;flex:0 1 auto;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:none}
+#chead #bar.own{margin:0 -22px;padding:8px 22px;border-bottom:1px solid var(--grid)}body.grades #chead #bar.own{margin:0;padding:8px 0}
+#ctabs button{flex:none;background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;padding:5px 14px 7px;font:inherit;font-weight:var(--w-bold);font-size:var(--t-l);color:var(--ink-soft);cursor:pointer;border-radius:var(--r-s) var(--r-s) 0 0}
+#ctabs button:hover{color:var(--navy);background:var(--sand)}
+#ctabs button[aria-selected="true"]{color:var(--navy);border-bottom-color:var(--turq)}
+#ctabs button small{font-weight:var(--w-heavy);font-size:var(--t-xs);background:var(--coral);color:var(--bad);border-radius:var(--r-pill);padding:1px 7px;margin-left:6px;vertical-align:1px}
 /* ---- header card ---- */
 #top{
   margin:20px 28px 0;background:linear-gradient(135deg,#16213A,#1F3A5F);border-radius:var(--r);box-shadow:var(--shadow-2);
@@ -173,9 +208,6 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 #top .brand h1{color:var(--turq);font-weight:var(--w-black);letter-spacing:.14em;font-size:22px;text-transform:uppercase}
 #top .spacer{flex:1}
 /* the three places: one segmented control, the current one filled */
-#top .nav{display:flex;background:rgba(255,255,255,.12);border-radius:var(--r-pill);padding:4px;gap:2px;margin-left:10px;flex:none}
-#top .nav button{border:none;background:none;color:var(--white);font:inherit;font-weight:var(--w-bold);font-size:var(--t-m);padding:6px 20px;border-radius:var(--r-pill);cursor:pointer;white-space:nowrap;min-height:calc(var(--h-touch) - 8px)}   /* the track (4px padding each side) is as tall as the round buttons beside it */
-#top .nav .tabIco{display:none}#top .nav button:hover{background:rgba(255,255,255,.1)}#top .nav button.on{background:var(--white);color:var(--navy)}
 /* round icon buttons: the names switch (filled = names showing) and More */
 #top .ibtn{flex:none;width:var(--h-touch);height:var(--h-touch);border-radius:50%;border:2px solid var(--sand);background:none;color:var(--white);display:grid;place-items:center;cursor:pointer;padding:0}
 #top .ibtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}#top .ibtn svg.dots{fill:currentColor;stroke:none}
@@ -198,7 +230,7 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 .pill.ghost[aria-pressed="true"]{background:var(--white);color:var(--navy);border-color:var(--white)}
 .pill.ghost[aria-pressed="false"]{color:var(--sand)}
 .pill.danger{background:var(--white);color:var(--bad);border:2px solid var(--bad);padding:6px 16px}
-.pill:focus-visible{outline:3px solid var(--navy);outline-offset:2px}#top .pill:focus-visible,#top .nav button:focus-visible,#top .ibtn:focus-visible,#top #search:focus-visible,#modal header button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
+.pill:focus-visible{outline:3px solid var(--navy);outline-offset:2px}#top .pill:focus-visible,#top .ibtn:focus-visible,#top .ibtn:focus-visible,#top #search:focus-visible,#modal header button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
 button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
 #menuOverlay{position:fixed;inset:0;z-index:29;background:transparent}.more .menu{z-index:30}
 .tundo{margin-left:10px;background:var(--white);color:var(--navy);border:none;border-radius:var(--r-pill);padding:4px 12px;font-weight:var(--w-heavy);font:inherit;cursor:pointer;pointer-events:auto}
@@ -210,7 +242,6 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 #ask{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(22,33,58,.45)}#ask .askBox{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:22px 24px 18px;max-width:520px;width:100%}#ask p{margin:0 0 18px;font-size:var(--t-m);line-height:1.45;color:var(--navy)}#ask .askRow{display:flex;gap:10px;justify-content:flex-end}
 #keep{margin:12px 28px 0;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 18px;border-radius:var(--r-m);background:var(--g-c-wash);color:var(--navy);font-size:var(--t-m);line-height:1.35}#keep span{flex:1}#keep .pill{flex:none}#keep.ok{background:var(--g-a-wash)}#keep.late{background:var(--g-d-wash);box-shadow:inset 4px 0 0 var(--g-d)}#keep .keepKey{font-size:var(--t-xs);color:var(--ink-soft);font-weight:var(--w-bold);white-space:nowrap}@media (max-width:700px){#keep .keepKey{display:none}}
 @media (max-width:900px){#keep{margin:12px 14px 0}}
-#tabs{display:flex;gap:12px;padding:20px 28px 0;flex-wrap:wrap;align-items:center;flex-shrink:0}
 .tab{
   background:var(--white);color:var(--navy);border:1px solid var(--grid);border-radius:var(--r-pill);box-shadow:var(--shadow-1);
   padding:8px 18px 8px 14px;display:inline-flex;align-items:center;gap:10px;font-weight:var(--w-bold);font-size:var(--t-l);text-align:left;position:relative;min-height:var(--h-touch);
@@ -504,13 +535,14 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
 #toast b{color:var(--turq)}
 #toast.err b{color:var(--navy)}
 @media (max-width:1420px){#top{gap:10px;padding:12px 18px}}
+@media (max-width:1100px){body.has{--railW:196px}#rail button{font-size:var(--t-m)}}
 /* a short window (a 1080p laptop at Windows' 150 % scale is 720 px tall; the Chromebox is 768): give the table the room */
-@media (max-height:800px) and (min-width:760px){#top{margin-top:12px}#tabs{padding-top:12px}#board{margin-top:12px;margin-bottom:14px}}
+@media (max-height:800px) and (min-width:760px){#top{margin-top:12px}#board{margin-top:12px;margin-bottom:14px}}
 /* …and a browser window on that laptop is shorter still (taskbar, tab strip, address bar): about 600 px at 150 % */
-@media (max-height:680px) and (min-width:760px){:root{--board-min:min(400px,calc(100vh - 16px))}#top{margin-top:8px;padding-top:8px;padding-bottom:8px}#tabs{padding-top:8px}#board{margin-top:8px;margin-bottom:10px}#bar{min-height:var(--h-l);padding-top:6px;padding-bottom:6px}}
+@media (max-height:680px) and (min-width:760px){:root{--board-min:min(400px,calc(100vh - 16px))}body.has>#app{min-height:max-content}body.has #board{overflow:visible}body.has #gridwrap{min-height:min(300px,60vh)}   /* a short window: the page scrolls as one, so the grid is never squeezed to a sliver under the bar and the notices */#top{margin-top:8px;padding-top:8px;padding-bottom:8px}#board{margin-top:8px;margin-bottom:10px}#bar{min-height:var(--h-l);padding-top:6px;padding-bottom:6px}}
 @media (min-width:760px){#top{flex-wrap:nowrap}}   /* one row from the smallest tablet up: the search field gives way first; below that it wraps */
-@media (max-width:840px){#search{padding:6px 12px}#top .nav button{padding:6px 11px}}
-@media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px;gap:8px}#tabs{padding-left:14px;padding-right:14px}#board{margin:14px 14px 24px}#top .nav{margin-left:4px}#top .nav button{padding:6px 13px}}
+@media (max-width:840px){#search{padding:6px 12px}}
+@media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px;gap:8px}#board{margin:14px 14px 24px}}
 /* ---- seating ---- */
 .seat{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:14px 16px 24px;align-items:start}
 @media (max-width:1000px){.seat{grid-template-columns:1fr}}
@@ -569,7 +601,7 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
   table.grid td{height:44px}
   .gasg select,.gstu td button,.gstu td .nm{min-height:var(--h-touch)}
   #search{min-height:var(--h-touch)}
-  #top .nav button{min-height:var(--h-touch)}#topMenu button{min-height:var(--h-l)}th.ahead .ulink{min-height:var(--h-touch);justify-content:center}
+  #topMenu button{min-height:var(--h-l)}th.ahead .ulink{min-height:var(--h-touch);justify-content:center}
   .more .menu button,.menu.floating button{min-height:var(--h-l)}
   .nchip{min-height:var(--h-touch);padding:8px 16px}.ib{min-width:44px;min-height:var(--h-touch)}.mini{min-height:var(--h-touch)}.seg.tiny button{min-width:38px;min-height:var(--h-m)}.ft{min-width:40px;min-height:var(--h-m)}.seatOpen{min-height:var(--h-touch)}.notice button{min-height:var(--h-touch)}.seatSide summary{min-height:var(--h-touch);display:flex;align-items:center}.chip.rel{min-height:var(--h-touch)}
 }
@@ -585,31 +617,28 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
    screen; inputs are 16 px so iPhone doesn't zoom; the iPhone's home bar and notch are kept clear. */
 @media (max-width:640px),(max-height:500px) and (pointer:coarse){
   html{height:auto}
-  body{display:block;height:auto;min-height:100%;overflow-y:visible;padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(72px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
+  body{display:block;height:auto;min-height:100%;overflow-y:visible;padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(16px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
   body.lbMode{padding-bottom:0}
   input,select,textarea{font-size:16px!important}
   /* header: one row (wordmark · names · more), search under it on the screens that search */
-  #top{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;margin:8px 8px 0;padding:8px 10px 8px 14px;border-radius:var(--r-l)}
+  #top{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:8px;margin:8px 8px 0;padding:8px 10px 8px 14px;border-radius:var(--r-l)}
   #top .brand{grid-column:1}#top .brand h1{font-size:17px}
   #top .spacer{display:none}
   #btnHide{grid-column:2;grid-row:1}#topMore{grid-column:3;grid-row:1}#btnGuide0{grid-column:2/4;grid-row:1}
   #search{grid-column:1/-1;grid-row:2;width:100%;min-width:0;flex:none}
-  /* the tab bar */
-  #top .nav{position:fixed;left:0;right:0;bottom:0;z-index:35;margin:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-radius:0;
-    background:var(--navy);padding:6px 6px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px rgba(22,33,58,.18);padding-right:calc(25% + 6px)}
-  #top .nav{grid-template-columns:repeat(3,1fr)}
-  #top:has(.nav.hidden) #btnImport{position:static;width:auto;flex-direction:row;min-height:var(--h-touch);grid-column:2/4;grid-row:1;padding:0 16px}
-  #top .nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;min-height:calc(var(--h-touch) + 8px);font-size:12px;font-weight:var(--w-bold);color:var(--sand);border-radius:var(--r-m);background:none}
-  #top .nav button.on{background:rgba(255,255,255,.1);color:var(--turq)}
-  #top .nav .tabIco{display:block;width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-  #btnImport{position:fixed;right:6px;bottom:calc(6px + env(safe-area-inset-bottom));z-index:36;width:calc(25% - 12px);min-height:calc(var(--h-touch) + 8px);flex-direction:column;gap:2px;padding:4px 2px;font-size:12px;border-radius:var(--r-m)}
-  #btnImport svg{width:22px;height:22px}
+  #btnImport{grid-column:4;grid-row:1;min-height:var(--h-touch);padding:0 14px;font-size:var(--t-s)}
+  #btnImport svg{width:18px;height:18px}
   body.lbMode #btnImport{display:none}
   #keep{margin:8px 8px 0}
-  /* class tabs: one row that stays at the top while the page scrolls */
-  #tabs{flex-wrap:nowrap;overflow-x:auto;padding:8px 8px 6px;gap:8px;scrollbar-width:none}
-  #tabs:empty{display:none}
-  #tabs::-webkit-scrollbar{display:none}#tabs>*{flex:none}
+  /* the rail on a phone: one scrolling strip of classes under the header; Board, Settings, Guide and saving on a second */
+  body.has{display:flex;flex-direction:column}body.has>#top{order:0}body.has>#rail{order:1}body.has>#keep,body.has>#empty{order:2}body.has>#app{order:3}   /* the header first, the strip of classes under it */
+  #rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:6px;padding:8px 8px 4px;background:transparent;border-radius:0;overflow:visible}
+  #rail .brand,#rail .sec{display:none}body.has #top .brand{display:flex}
+  #rail button{width:auto;min-height:var(--h-m);padding:0 12px;background:var(--white);color:var(--navy);border:1px solid var(--grid);font-size:var(--t-s)}
+  #rail button.on{background:var(--navy);color:var(--white);border-color:var(--navy)}
+  #rail .foot{margin:0;flex-direction:row;flex-wrap:wrap;gap:6px;padding:4px 0 0;border:none;flex-basis:100%}
+  #rail .foot button{color:var(--navy);min-height:var(--h-s)}#rail .foot .age{margin-left:4px}
+  #chead{padding:10px 12px 0}#chead h2{font-size:var(--t-xl)}#ctabs button{padding:6px 12px 8px;font-size:var(--t-m)}
   #notices{padding-left:10px;padding-right:10px}
   #app{display:block}
   #board{margin:6px 8px 16px;min-height:0;overflow:visible;flex:none}
@@ -691,9 +720,9 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
   .qdates{grid-template-columns:1fr 1fr!important}
   /* messages: a slim bar above the tab bar (above a dialog's buttons when one is open) */
   #toast{pointer-events:none!important;left:8px;right:8px;width:auto;max-width:none;bottom:calc(74px + env(safe-area-inset-bottom));padding:10px 14px;font-size:14px;border-radius:var(--r-m);text-align:left}
-  body:has(#modal:not(.hidden)) #toast{top:auto;left:8px;right:8px;bottom:calc(72px + env(safe-area-inset-bottom))}
+  body:has(#modal:not(.hidden)) #toast{top:auto;left:8px;right:8px;bottom:calc(16px + env(safe-area-inset-bottom))}
   #toast button{pointer-events:auto}
-  body.lbMode #toast{top:auto;bottom:calc(72px + env(safe-area-inset-bottom))}
+  body.lbMode #toast{top:auto;bottom:calc(16px + env(safe-area-inset-bottom))}
   /* the Board: the chart gets the screen, the controls are one row along the bottom */
   #lb .lbTools{position:sticky;bottom:0;right:auto;max-width:none;flex-wrap:wrap;justify-content:flex-start;margin:0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-radius:0;gap:8px}
   #lb .lbTools>*{flex:none;max-width:100%}
@@ -707,26 +736,21 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
 }
 /* a phone on its side: little height, so the header is one row and the tab bar is thin */
 @media (max-height:500px) and (pointer:coarse){
-  body{padding-bottom:calc(54px + env(safe-area-inset-bottom))}
-  #top{grid-template-columns:auto 1fr auto auto}
-  #search{grid-column:2;grid-row:1}#btnHide{grid-column:3}#topMore{grid-column:4}
-  #top .nav button,#btnImport{flex-direction:row;gap:8px;min-height:var(--h-m)}
-  #btnImport{bottom:calc(5px + env(safe-area-inset-bottom))}
-  #top .nav{padding-top:4px;padding-bottom:calc(4px + env(safe-area-inset-bottom))}
+  body{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  #top{grid-template-columns:auto 1fr auto auto auto}
+  #search{grid-column:2;grid-row:1}#btnHide{grid-column:3}#topMore{grid-column:4}#btnImport{grid-column:5;min-height:var(--h-m)}
   #toast,body:has(#modal:not(.hidden)) #toast{bottom:calc(56px + env(safe-area-inset-bottom))}
 }
 </style>
 </head>
 <body>
 
+<!-- The rail (Croix, 7 Nov 2026: "Moving from menu to menu is clunky"): one spine, Tally → a class → a tab. It lists
+     All classes and every class by course, with its to-fix count; Board, Settings, Guide and the save status at its
+     foot. Rendered by renderRail(); hidden until the first import. -->
+<nav id="rail" class="hidden" aria-label="Classes"></nav>
 <div id="top">
   <div class="brand"><h1>Tally</h1></div>
-  <!-- Three places and one action. Classes = the Overview and everything inside a class; Board = Race and Data Lab. -->
-  <nav class="nav hidden" id="nav" aria-label="Go to">
-    <button id="btnHome" title="Every class at a glance — and every class from there"><svg class="tabIco" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span>Classes</span></button>
-    <button id="btnStudents" title="Every student: grades, trends, what-ifs (teacher only)"><svg class="tabIco" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.1 4.4 1.8 5 4.9"/></svg><span>Students</span></button>
-    <button id="btnLb" title="Student screen: Race and Data Lab"><svg class="tabIco" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8 20.5h8M12 16.5v4M7 12.5l3-3 2.5 2 4.5-4"/></svg><span>Board</span></button>
-  </nav>
   <div class="spacer"></div>
   <input id="search" type="search" placeholder="Find a student…" aria-label="Find a student" class="hidden">
   <button class="pill ghost" id="btnGuide0" title="A printable guide: the weekly flow and what the words mean">Guide</button>
@@ -762,9 +786,8 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
 </div>
 
 <div id="app" class="hidden">
-  <div id="tabs" role="tablist"></div>
   <div id="board">
-    <div id="bar"></div>
+    <div id="chead"></div>
     <div id="notices"></div>
     <div id="gridwrap"></div>
   </div>

@@ -36,7 +36,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
   check(await p.locator('#lb.hidden').count()===1,'hold exits');
   check(await p.locator('body.home').count()===1,'exit lands on the Overview, not the last teacher view');
-  await p.click('#tabs .tab'); await p.waitForTimeout(300);
+  await p.click('#rail .rc'); await p.waitForTimeout(300);
   check(/^[A-Z]\. [A-Z]\.$/.test((await p.textContent('tbody td.stu .nm')).trim()),'after exit the grid shows initials, not names');
   await p.click('#btnHide'); await p.waitForTimeout(150);
   await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-focus="on"]'); await p.waitForTimeout(300);

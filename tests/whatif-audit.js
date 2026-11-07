@@ -83,7 +83,7 @@ const round = p => Math.round(p + 1e-9);
   check(!rt[1].ok && rt[1].missing.join()===shaped.mB && !rt[1].short.length,'not eligible with one NHI ('+shaped.mB+') even though IXL is done');
   check(!rt[2].ok && !rt[2].missing.length && rt[2].short.length===2,'not eligible with two '+shaped.unit+' skills under goal even though nothing is missing');
   // on the Students list: a column and a sort
-  await p.click('#btnStudents'); await p.waitForTimeout(500);
+  await p.click('#btnHome'); await p.click('#btnStudents'); await p.waitForTimeout(500);
   const dir=await p.evaluate(({shaped})=>{ const row=nm=>[...document.querySelectorAll('.sdir tr[data-name]')].find(tr=>tr.dataset.name===nm); const cell=nm=>{ const tr=row(nm); const tds=[...tr.children]; return tds[tds.length-2].textContent.trim(); }; return { A:cell(shaped.A), B:cell(shaped.B), C:cell(shaped.C), head:[...document.querySelectorAll('.sdir thead th')].map(t=>t.textContent).join('|'), sort:!!document.querySelector('[data-sort="retake"]') }; },{shaped});
   check(/Retake/.test(dir.head) && dir.sort,'the Students list has a Retake column and a Retake sort');
   check(/retake/.test(dir.A) && /1 missing/.test(dir.B) && !/IXL/.test(dir.B) && new RegExp('2 IXL skills in '+shaped.unit).test(dir.C) && !/missing/.test(dir.C),'each row says why or that they may: "'+dir.A+'" / "'+dir.B+'" / "'+dir.C+'"');

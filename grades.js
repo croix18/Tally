@@ -219,7 +219,7 @@ function renderGradesBar(s0) {
   const n = gradesQuarter(s0); const s = gradesView(s0, n); const gb = s.grades; const prev = prevGradeSnap(s);
   const qs = classQuarters(s0); const cur = currentQuarter(); if (!qs.includes(cur)) qs.push(cur);
   const seg = qs.length > 1 || anyClosed() ? `<div class="seg small qseg" role="group" aria-label="Quarter">${qs.map(q => `<button data-gq="${q}" class="${q === n ? 'on' : ''}" aria-pressed="${q === n}">Q${q}${qClosed(q) ? ' · final' : ''}</button>`).join('')}</div>` : '';
-  return `<div class="crumb"><button id="back">‹ ${esc(s0.label)}</button><h2>Grades</h2></div>${seg}<span class="meta">${s._closed ? `${esc(Q_NAMES[n - 1])} · closed ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))} · ` : s._arch ? `${esc(Q_NAMES[n - 1])} · kept, not closed yet · ` : ''}${gb && gb.assignments.length ? `Focus gradebook of ${esc(fmtDate(localDayOf(gb.importedAt)))} · ${plural(gb.assignments.length, 'assignment')} · ${plural(gb.students.length, 'student')}${prev ? ` · previous import ${esc(fmtDate(prev.date))}` : ''}` : `no ${esc(Q_NAMES[n - 1])} gradebook yet`}</span>
+  return `${seg}<span class="meta">${s._closed ? `${esc(Q_NAMES[n - 1])} · closed ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))} · ` : s._arch ? `${esc(Q_NAMES[n - 1])} · kept, not closed yet · ` : ''}${gb && gb.assignments.length ? `Focus gradebook of ${esc(fmtDate(localDayOf(gb.importedAt)))} · ${plural(gb.assignments.length, 'assignment')} · ${plural(gb.students.length, 'student')}${prev ? ` · previous import ${esc(fmtDate(prev.date))}` : ''}` : `no ${esc(Q_NAMES[n - 1])} gradebook yet`}</span>
       <div class="spacer"></div>
       <button class="pill toggle" id="gradesWeights" title="Category weights: ${gradingFor(s0.prep).cats.map(c => `${esc(c.name)} ${c.w}%`).join(', ')}">Weights <small>${gradingFor(s0.prep).cats.map(c => `${esc(c.name.slice(0, 1))} ${c.w}`).join(' · ')}</small></button>
       ${s._arch ? '' : '<button class="pill toggle" id="gradesCats" title="Check or move assignment categories">Categories</button>'}
@@ -688,8 +688,8 @@ function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.studen
    class (each class's reports, then its checklist), and remembers two-sided printing (on unless he unticks it). */
 var reportWho = { mode: 'all', letters: ['C', 'D', 'F'], scope: 'class' };
 const printClasses = () => state.order.map(k => state.sections[k]).filter(x => x && !x.board && !x.placeholder);
-function openPrintMenu(s) {
-  const classes = printClasses(); const many = classes.length > 1; if (!many) reportWho.scope = 'class';
+function openPrintMenu(s, all) {
+  const classes = printClasses(); const many = classes.length > 1; if (!many) reportWho.scope = 'class'; else if (all != null) reportWho.scope = all ? 'all' : 'class';   // opened from All classes: every class
   const allMode = reportWho.scope === 'all'; const secs = allMode ? classes : [s];
   const open = sec => unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u));
   const info = secs.map(sec => { const gb = sec.grades; if (!gb || !hasOpenGrades(sec)) return { sec, have: false };

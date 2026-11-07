@@ -312,3 +312,7 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   wake lock is asked for once and always let go; the full-screen bar always fades. Stuck or hostile Compare settings,
   a Board save, the saved page's dots, goals and totals that differ by class, tiny units, extra credit, pretests, and
   the pie grid on a phone, a tablet and with stats or ten classes. New suite `tests/lab-hardening.js` (40 checks).
+
+- 7 Nov 2026: the shell, phase 1 of the navigation redesign (NOTES.md, "The shell: one spine"). A rail of classes with
+  to-fix counts, one tab strip for every class (Grid · Grades · Students · Seating · Reports), Grades a tab, Students
+  per class, the top tabs and the pill row gone. New suite `tests/shell.js` (30 checks).

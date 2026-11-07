@@ -30,11 +30,11 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await more(p,'#btnSettings'); await p.waitForTimeout(200); await seeTab(p,'[data-editc="c1"]'); await p.click('[data-editc="c1"], #editCustom, [data-edit="c1"]').catch(()=>{}); await p.waitForTimeout(300);
   check(!(await p.evaluate(()=>!!window.__x5)) && /\[5\]/.test(pol.vals),'custom values are numbers only; the editor can\'t be scripted: '+pol.vals);
   await p.keyboard.press('Escape'); await p.waitForTimeout(200); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  await p.reload(); await p.waitForTimeout(700); check(await p.locator('#tabs .tab').count()===2 && errs.length===0,'app boots clean afterwards');
+  await p.reload(); await p.waitForTimeout(700); check(await p.locator('#rail .rc').count()===2 && errs.length===0,'app boots clean afterwards');
   // 3. course change while a unit view is open
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('th.unit .ulink'); await p.waitForTimeout(300);
   await more(p,'#btnSettings'); await p.waitForTimeout(200); await p.click('#prepSeg [data-prep="on"], [data-prep="on"]'); await p.click('#mSave'); await p.waitForTimeout(500);
-  check(errs.length===0 && await p.locator('#bar h2').count()===1,'changing the course with a unit open falls back to the grid, no throw');
+  check(errs.length===0 && await p.locator('#openGrid[aria-selected="true"]').count()===1 && await p.locator('table.grid').count()===1,'changing the course with a unit open falls back to the grid, no throw');
   await more(p,'#btnSettings'); await p.waitForTimeout(200); await seeTab(p,'[data-prep="acc"]'); await p.click('[data-prep="acc"]'); await p.click('#mSave'); await p.waitForTimeout(500);
   check((await p.evaluate(()=>window.__tally.state.settings.skipFirst.on))===1,'switching a class\'s course does not drag the review-unit count across courses');
   // 4. a failed save is not hidden by the success toast
@@ -44,7 +44,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.evaluate(()=>{ localStorage.setItem=window.__origSet; });
   // 5. Overview search opens the Students list properly (was the class grid before Students existed)
   await p.click('#btnHome'); await p.waitForTimeout(300); await p.fill('#search','a'); await p.waitForTimeout(300);
-  check(await p.locator('body.home').count()===0 && await p.locator('.sdir').count()===1 && /Students/.test(await p.textContent('#bar h2')),'typing in search on the Overview opens the Students list (every class) with its bar');
+  check(await p.locator('body.home').count()===0 && await p.locator('.sdir').count()===1 && await p.locator('#btnStudents[aria-selected="true"]').count()===1,'typing in search on the Overview opens the Students list (every class) on its tab');
   await p.fill('#search',''); await p.waitForTimeout(200);
   // 6. pool replacement guard: a file with barely-overlapping students asks first
   const rows=fs.readFileSync(path.resolve('fixtures',acc),'utf8').split('\n'); const hdrI=rows.findIndex(r=>/skill name/i.test(r));
@@ -56,7 +56,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   // 7. view changes start at the top
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.evaluate(()=>{ document.querySelector('#gridwrap').scrollTop=400; });
   await p.click('#openGrades'); await p.waitForTimeout(400); check(await p.evaluate(()=>document.querySelector('#gridwrap').scrollTop)===0,'opening Grades starts at the top of the page');
-  await p.click('#back'); await p.waitForTimeout(300);
+  await p.click('#openGrid'); await p.waitForTimeout(300);
   // 8. Working in never lists the review unit; single-unit wording
   await p.click('[data-k="period-2"]'); await p.waitForTimeout(300);
   const opts=await p.evaluate(()=>[...document.querySelectorAll('#curUnit option')].map(o=>o.value).filter(Boolean).map(Number));

@@ -14,12 +14,12 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   check(await p.evaluate(()=>window.__tally.ageText(new Date().toISOString().slice(0,10)))==='today','ageText: today');
   let notices=await p.textContent('#notices');
   check(/IXL export is \d+ days old/.test(notices) && /reminded after 7 days/.test(notices),'old export raises the reminder notice');
-  check(await p.locator('.tab .age').count()===0,'the class tab stays a plain name (the age is on the bar and in the notice)');
+  check(await p.locator('#rail .rc .age').count()===0,'the class tab stays a plain name (the age is on the bar and in the notice)');
   check(/\(\d+ (days|weeks) ago\)/.test(await p.textContent('#bar')),'bar shows how old the export is');
   await p.screenshot({path:path.join(tmp,'shot25.png')});
   // turn the reminder off → notice gone; 30 days → still fine for a 25-day-old file
   await more(p,'#btnSettings'); await seeTab(p,'[data-remind="0"]'); await p.click('[data-remind="0"]'); await p.click('#mSave'); await p.waitForTimeout(300);
-  check(!/days old/.test(await p.textContent('#notices')) && await p.locator('.tab .age').count()===0,'reminder Off silences the notice');
+  check(!/days old/.test(await p.textContent('#notices')) && await p.locator('#rail .rc .age').count()===0,'reminder Off silences the notice');
   await more(p,'#btnSettings'); await seeTab(p,'[data-remind="30"]'); await p.click('[data-remind="30"]'); await p.click('#mSave'); await p.waitForTimeout(300);
   check(!/days old/.test(await p.textContent('#notices')),'30-day reminder does not fire for a 25-day-old export');
   await more(p,'#btnSettings'); await seeTab(p,'[data-remind="7"]'); await p.click('[data-remind="7"]'); await p.click('#mSave'); await p.waitForTimeout(300);

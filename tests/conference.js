@@ -69,7 +69,7 @@ function fastCsv(rows) {
   await open(3); const byName=await p.evaluate(()=>document.querySelectorAll('#pTests .ftab:not(.targets) tr').length); check(byName===2,'the student without an ID in the report is found by name');
   await open(2); const fl=await p.evaluate(()=>({ flags:[...document.querySelectorAll('#pTests .fflag')].map(x=>x.textContent), all:[...document.querySelectorAll('#pTests .fall dt')].map(x=>x.textContent) }));
   check(fl.flags.join(' | ')==='Lowest 30% | 504 | ELL (LY)' && ['Race','L30','ELL','504','Percentile','Scale growth PM1','Teacher'].every(k=>fl.all.includes(k)),'the student page shows the flags (L30 first) and, folded, everything the report said: '+fl.flags.join(' | '));
-  await p.click('#btnStudents'); await p.waitForTimeout(400); await p.click('#stuL30'); await p.waitForTimeout(300);
+  await p.click('#btnHome'); await p.click('#btnStudents'); await p.waitForTimeout(400); await p.click('#stuL30'); await p.waitForTimeout(300);
   const l30=await p.evaluate(()=>({ n:document.querySelectorAll('.sdir tr[data-name]').length, meta:document.querySelector('#bar .meta').textContent, chips:document.querySelectorAll('.sdir .fflag.l30').length }));
   check(l30.n===2 && l30.chips===2 && /2 students in the lowest 30%/.test(l30.meta),'Students has an L30 button that lists only the lowest-30% students, each tagged: "'+l30.meta+'"');
   await p.click('#stuL30'); await p.waitForTimeout(200);

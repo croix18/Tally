@@ -355,30 +355,29 @@ function renderStudentsView() {
   let rows = []; secs.forEach(s => classStudents(s).forEach(n => { if (!q || norm(n).includes(q) || norm(niceName(n)).includes(q)) { const r = studentSummary(s, n); r.retake = retakeStatus(s, n); r.l30 = isL30(s, n); rows.push(r); } }));
   const anyL30 = rows.some(r => r.l30); if (stuL30 && anyL30 && !H) rows = rows.filter(r => r.l30);   // the lower quartile is its own bucket on the school grade
   const g = r => r.grade && r.grade.rounded != null ? r.grade.rounded : 999;
-  if (stuSort === 'grade') rows.sort((a, b) => g(a) - g(b) || a.name.localeCompare(b.name));
-  else if (stuSort === 'missing') rows.sort((a, b) => b.missing - a.missing || g(a) - g(b));
-  else if (stuSort === 'sliding') rows.sort((a, b) => (b.sliding ? 1 : 0) - (a.sliding ? 1 : 0) || (a.d ?? 0) - (b.d ?? 0) || g(a) - g(b));
-  else if (stuSort === 'name') rows.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
-  else if (stuSort === 'retake') rows.sort((a, b) => (b.retake.ok ? 1 : 0) - (a.retake.ok ? 1 : 0) || (a.retake.missing.length + a.retake.short.length) - (b.retake.missing.length + b.retake.short.length) || g(a) - g(b));
+  const sortNow = stuClass && stuSort === 'class' ? 'name' : stuSort;   // one class: "by class" is A–Z
+  if (sortNow === 'grade') rows.sort((a, b) => g(a) - g(b) || a.name.localeCompare(b.name));
+  else if (sortNow === 'missing') rows.sort((a, b) => b.missing - a.missing || g(a) - g(b));
+  else if (sortNow === 'sliding') rows.sort((a, b) => (b.sliding ? 1 : 0) - (a.sliding ? 1 : 0) || (a.d ?? 0) - (b.d ?? 0) || g(a) - g(b));
+  else if (sortNow === 'name') rows.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
+  else if (sortNow === 'retake') rows.sort((a, b) => (b.retake.ok ? 1 : 0) - (a.retake.ok ? 1 : 0) || (a.retake.missing.length + a.retake.short.length) - (b.retake.missing.length + b.retake.short.length) || g(a) - g(b));
   const cq = liveQ(); const closedQs = [1, 2, 3, 4].filter(n => qClosed(n)); const mixedQ = secs.some(x => x.grades && liveQuarter(x) !== cq);   // one class already on Q2 while another is on Q1: the grade column says which per row
-  $('#bar').innerHTML = `<h2>Students</h2><span class="meta">${plural(rows.length, 'student')}${stuL30 && anyL30 && !H ? ' in the lowest 30%' : ''}${q ? ` matching “${esc(search)}”` : ''} · grades are ${esc(Q_NAMES[cq - 1])}${closedQs.length ? ` · ${closedQs.map(n => 'Q' + n).join(', ')} closed` : ''}</span><div class="spacer"></div>
-    <label class="curUnit">Class <select id="stuClass"><option value="">Every class</option>${state.order.map(k => `<option value="${esc(k)}" ${k === stuClass ? 'selected' : ''}>${esc(state.sections[k].label)}</option>`).join('')}</select></label>
-    ${anyL30 && !H ? `<button class="pill toggle small ${stuL30 ? 'on' : ''}" id="stuL30" aria-pressed="${stuL30}" title="Only students the FAST report marks as the lowest 30%">L30</button>` : ''}<div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding'], ['retake', 'Retake']].map(([k, l]) => `<button data-sort="${k}" class="${stuSort === k ? 'on' : ''}" aria-pressed="${stuSort === k}">${l}</button>`).join('')}</div>`;
+  $('#bar').innerHTML = `<span class="meta">${plural(rows.length, 'student')}${stuL30 && anyL30 && !H ? ' in the lowest 30%' : ''}${q ? ` matching “${esc(search)}”` : ''} · grades are ${esc(Q_NAMES[cq - 1])}${closedQs.length ? ` · ${closedQs.map(n => 'Q' + n).join(', ')} closed` : ''}</span><div class="spacer"></div>
+    ${anyL30 && !H ? `<button class="pill toggle small ${stuL30 ? 'on' : ''}" id="stuL30" aria-pressed="${stuL30}" title="Only students the FAST report marks as the lowest 30%">L30</button>` : ''}<div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding'], ['retake', 'Retake']].filter(([k]) => k !== 'class' || !stuClass).map(([k, l]) => `<button data-sort="${k}" class="${sortNow === k ? 'on' : ''}" aria-pressed="${sortNow === k}">${l}</button>`).join('')}</div>`;
   $('#bar').classList.add('detail');
   let lastSec = null; let body = '';
   rows.forEach(r => {
-    if (stuSort === 'class' && r.sec !== lastSec) { lastSec = r.sec; body += `<tr class="sgroup"><th colspan="9" style="--cc:${classColor(r.sec)}">${esc(r.sec.label)}</th></tr>`; }
+    if (sortNow === 'class' && r.sec !== lastSec) { lastSec = r.sec; body += `<tr class="sgroup"><th colspan="9" style="--cc:${classColor(r.sec)}">${esc(r.sec.label)}</th></tr>`; }
     const o = openSec(r.sec); const qs = r.grade && r.f.gi >= 0 ? quickestPath(r.sec, o, r.f.gi, r.f.ixl) : null;
     const ix = r.ixl; const fin = r.finals.map(x => `<span class="qfin">Q${x.q} ${x.g}<small>${letterOf(x.g)}</small>${x.closed ? '' : ' <small>kept</small>'}</span>`).join('');
     body += `<tr data-open="${esc(r.sec.key)}" data-name="${esc(r.name)}" class="${r.sliding ? 'sliding' : ''}"><td><button class="nm nmbtn">${nm(r.name)}</button>${r.l30 && !H ? ' <span class="fflag l30 small">L30</span>' : ''}${r.sliding ? ' <span class="gtag">sliding</span>' : ''}</td>
-      <td class="sCls"><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td><td class="sGr">${r.grade ? gradeChip(r.grade) + (mixedQ ? ` <small>Q${liveQuarter(r.sec)}</small>` : '') : '<small>no grade yet</small>'}</td>
+      ${stuClass ? '' : `<td class="sCls"><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td>`}<td class="sGr">${r.grade ? gradeChip(r.grade) + (mixedQ ? ` <small>Q${liveQuarter(r.sec)}</small>` : '') : '<small>no grade yet</small>'}</td>
       <td class="${r.d < 0 ? 'down' : r.d > 0 ? 'up' : ''}" data-l="Since last import">${r.d == null ? '' : signedPts(r.d)}</td><td data-l="Missing">${r.missing || ''}</td>
       <td data-l="IXL">${ix && ix.pct != null ? `${Math.round(ix.pct)}% <small>${ix.done}/${ix.poss}</small>` : '<small>—</small>'}</td><td class="qcol">${quickestShort(qs)}</td><td>${r.retake.hasGrades ? retakeChip(r.retake) : ''}</td><td>${fin}</td></tr>`;
   });
-  $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th><th>Class</th><th>${mixedQ ? 'This quarter' : esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Retake</th><th>Earlier quarters</th></tr></thead><tbody>${body || `<tr><td colspan="9" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet: import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
+  $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th>${stuClass ? '' : '<th>Class</th>'}<th>${mixedQ ? 'This quarter' : esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Retake</th><th>Earlier quarters</th></tr></thead><tbody>${body || `<tr><td colspan="9" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet: import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
   $('#gridwrap').querySelectorAll('tr[data-open]').forEach(tr => tr.onclick = () => openProfile(tr.dataset.open, tr.dataset.name));
   $('#bar').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { stuSort = b.dataset.sort; render(); });
-  const sc = $('#stuClass'); if (sc) sc.onchange = () => { stuClass = sc.value; render(); };
   const l3 = $('#stuL30'); if (l3) l3.onclick = () => { stuL30 = !stuL30; render(); };
 }
 

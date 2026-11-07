@@ -54,7 +54,7 @@ const BANNED = [/IXL → Focus/, /How it works/i, /\bTap a (class|unit|student|s
   await p.click('#pShow'); await p.waitForTimeout(500); const sh=await look('Show student');
   check(await p.locator('.shKey i').count()===1 && /now/.test(await p.textContent('.shKey')),'Show student: the dark "now" line has a one-word key in place of a sentence');
   await p.reload(); await p.waitForTimeout(600);
-  await p.click('#btnStudents'); await p.waitForTimeout(500); await look('Students'); check(await p.locator('#bar .legend').count()===0,'Students: no caption on the bar');
+  await p.click('#btnHome'); await p.click('#btnStudents'); await p.waitForTimeout(500); await look('Students'); check(await p.locator('#bar .legend').count()===0,'Students: no caption on the bar');
   await p.click('#btnHome'); await p.waitForTimeout(300); await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.click('#openSeating'); await p.waitForTimeout(700); await look('Seating');
   check((await p.textContent('.seatHint')).trim()==='' ,'Seating: no standing instruction above the room');
   await p.click('#btnHome'); await p.waitForTimeout(300); await p.click('#btnLb'); await p.waitForTimeout(600); const race=await look('Race');

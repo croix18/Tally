@@ -310,7 +310,7 @@ const SEAT_SVG_CSS = `.chartSvg{width:100%;height:auto;display:block;font-family
 /* ---- Seating view ---- */
 function renderSeatingBar(s) {
   const room = roomOK(); const sub = view.sub === 'room' ? 'room' : 'chart';
-  return `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>Seating</h2></div><span class="meta">${sub === 'room' ? `${plural(room.desks.length, 'desk')} · one room for every class` : (s.seating ? `saved ${esc(fmtDate((s.seating.savedAt || '').slice(0, 10)))}` : 'no saved chart yet')}</span>
+  return `<span class="meta">${sub === 'room' ? `${plural(room.desks.length, 'desk')} · one room for every class` : (s.seating ? `saved ${esc(fmtDate((s.seating.savedAt || '').slice(0, 10)))}` : 'no saved chart yet')}</span>
     <div class="spacer"></div>
     <div class="seg small" id="seatSub"><button data-sub="chart" class="${sub === 'chart' ? 'on' : ''}">Chart</button><button data-sub="room" class="${sub === 'room' ? 'on' : ''}">Room</button></div>
     ${sub === 'chart' ? `<button class="pill toggle" id="seatPrint" ${workFor(s) ? '' : 'disabled'}>Print</button><button class="pill toggle" id="seatWeights" title="What the solver weighs">Priorities</button>` : ''}`;

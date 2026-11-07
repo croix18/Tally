@@ -15,8 +15,8 @@ const { chromium, fs, path, exe, check, done, APP, pick, more } = require('./lib
   await p.click('#btnHome'); await p.waitForTimeout(300); await fits('Overview');
   const top=await p.evaluate(()=>document.querySelector('#top').getBoundingClientRect().height);
   check(top<=120,'the header is one slim row and the search: '+Math.round(top)+'px');
-  const bar=await p.evaluate(()=>{ const n=document.querySelector('#nav').getBoundingClientRect(), i=document.querySelector('#btnImport').getBoundingClientRect(); return { nb:Math.round(n.bottom), nh:Math.round(n.height), ib:Math.round(i.bottom), it:Math.round(i.top), pos:getComputedStyle(document.querySelector('#nav')).position }; });
-  check(bar.pos==='fixed' && bar.nb===844 && bar.ib<=844 && bar.it>=844-bar.nh,'Classes, Students, Board and Import sit in a tab bar at the bottom: '+JSON.stringify(bar));
+  const bar=await p.evaluate(()=>{ const r=document.querySelector('#rail').getBoundingClientRect(), t=document.querySelector('#top').getBoundingClientRect(), i=document.querySelector('#btnImport').getBoundingClientRect(); return { railTop:Math.round(r.top), topBottom:Math.round(t.bottom), importIn:i.top>=t.top && i.bottom<=t.bottom+1, classes:[...document.querySelectorAll('#rail .rc')].length, wide:document.documentElement.scrollWidth<=innerWidth+1 }; });
+  check(bar.railTop>=bar.topBottom-1 && bar.importIn && bar.classes>=1 && bar.wide,'the classes are a strip under the header, Import is in the header, nothing wider than the screen: '+JSON.stringify(bar));
   const inputs=await p.evaluate(()=>[...document.querySelectorAll('input,select')].filter(e=>e.offsetParent).every(e=>parseFloat(getComputedStyle(e).fontSize)>=16));
   check(inputs,'every text box and menu is 16px, so an iPhone doesn\'t zoom in when one is tapped');
   const ch=await p.evaluate(()=>[...document.querySelectorAll('#gridwrap svg.chart')].map(s=>s.viewBox.baseVal.width));
@@ -34,7 +34,7 @@ const { chromium, fs, path, exe, check, done, APP, pick, more } = require('./lib
   const asg=await p.evaluate(()=>{ const td=document.querySelector('.gasg.asCards tbody tr td:nth-child(3)'); return td && td.dataset.l; });
   check(asg==='Due','a card labels each value with its column ("Due")');
 
-  await p.click('#btnStudents'); await p.waitForTimeout(300); await fits('Students');
+  await p.click('#btnHome'); await p.click('#btnStudents'); await p.waitForTimeout(300); await fits('Students');
   const card=await p.evaluate(()=>{ const tr=document.querySelector('.sdir tr[data-open]'); const r=tr.getBoundingClientRect(); return { disp:getComputedStyle(tr).display, w:r.width, head:getComputedStyle(document.querySelector('.sdir thead')).display, name:tr.querySelector('.nm').getBoundingClientRect().width }; });
   check(card.disp==='flex' && card.head==='none' && card.w<=380 && card.name>80,'Students is a list of cards with the name first: '+JSON.stringify(card));
   await p.click('.sdir tr[data-open]'); await p.waitForTimeout(400); await fits('Student page');
@@ -63,8 +63,8 @@ const { chromium, fs, path, exe, check, done, APP, pick, more } = require('./lib
   // a phone on its side
   const q=await (await b.newContext({viewport:{width:844,height:390},isMobile:true,hasTouch:true})).newPage(); q.on('pageerror',e=>errs.push(e.message)); q.on('dialog',d=>d.accept());
   await q.goto('file://'+path.resolve(APP)); await q.setInputFiles('#file',[path.resolve('fixtures',ixl)]); await q.waitForTimeout(500); await q.click('#rpSkip').catch(()=>{}); await q.waitForTimeout(300);
-  const land=await q.evaluate(()=>({ sw:document.documentElement.scrollWidth, top:document.querySelector('#top').getBoundingClientRect().height, bar:document.querySelector('#nav').getBoundingClientRect().height }));
-  check(land.sw<=844 && land.top<=80 && land.bar<=56,'on its side: a one-row header and a thin tab bar: '+JSON.stringify(land));
+  const land=await q.evaluate(()=>({ sw:document.documentElement.scrollWidth, top:document.querySelector('#top').getBoundingClientRect().height, rail:document.querySelector('#rail').getBoundingClientRect().height }));
+  check(land.sw<=844 && land.top<=80 && land.rail<=100,'on its side: a one-row header and the class strip under it: '+JSON.stringify(land));
   console.log('errors:',errs); check(errs.length===0,'no errors');
   await b.close(); done();
 })();

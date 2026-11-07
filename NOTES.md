@@ -1086,6 +1086,32 @@ per-section-file era and many items in them are now done).
   New suite `tests/lab-hardening.js` (40 checks; 35 fail on the build before). `tests/lab-board.js` (91) recounts IXL
   and a test by the new rules, with 3rd Period's Unit 1 split so a class line exists and the course's 0–5 point is
   left off.
+- **7 Nov 2026 — The shell: one spine (phase 1 of the navigation redesign).** Croix: "Moving from menu to menu is clunky.
+  The information is great, but somewhat unorganized. It's difficult to tell sometimes how to navigate or find
+  something." Mockups on the canvas "Tally navigation redesign" (Direction A, his pick); five phases, each shipped on
+  its own: 1 the shell, 2 one Actions menu and one Attention inbox, 3 students inside the class and the ⋯ menu folded
+  into the rail, 4 Reports and Settings as pages, 5 the finder (⌘K). The phone layout is a later round.
+  Phase 1: Tally → a class → a tab.
+  - **The rail** (`#rail`, `renderRail`): All classes, then every class under its course (Accelerated, On-level) with
+    how many things it has to fix, and at its foot the Board (`#btnLb`), Settings, the Guide and Full save with its age.
+    `#btnHome` is All classes; class items are `.rc[data-k]`. The three top tabs and the pill row are gone; the header
+    keeps search (first now), the names switch, the ⋯ menu and Import. The wordmark moves to the rail.
+  - **The class header** (`#chead`, `renderChead`): the class's name, course and dates, then one tab strip every class
+    has: Grid (`#openGrid`, with the to-fix count), Grades, Students, Seating, Reports. All classes has Overview,
+    Students (`#btnStudents`), Reports. Grades and Seating are tabs, not sub-pages: their bars lose the "‹ class" crumb.
+    Each tab's own controls sit on the tab row (`#bar` inside `.tabrow`); a unit's and a student's bar, which carry a
+    crumb and a name, get a row of their own (`#bar.own`). Reports opens the print menu for the class, or for every
+    class from All classes, until phase 4 makes it a page.
+  - **Students** is per class: `stuClass` is the class whose tab is open (no Class menu, no Class column, A–Z instead of
+    By class); All classes › Students is every class. A student stays under the class's Students tab with Prev/Next.
+  - **Layout:** `body.has` is a grid, the rail sticky down the left (232 px; 196 under 1100 px). A short window
+    (≤ 680 px tall) scrolls as one page rather than squeezing the grid to a sliver under the bar and the notices. On
+    a phone the rail is a strip of classes under the header, with Board/Settings/Guide/Full save on a second line;
+    the bottom tab bar is gone.
+  New suite `tests/shell.js` (30 checks). `header.js` rewritten for the rail; `contract.js` lowers the unit view's row
+  minimums by two (the class header's two rows); `ahead`, `board-file`, `grid`, `phone`, `round5`, `round6`,
+  `reminders-lab-guide`, `settings`, `students-quarters`, `contract` and the suites that pressed `#btnStudents` or
+  `#back` from Grades or Seating follow the new places.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

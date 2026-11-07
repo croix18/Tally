@@ -144,7 +144,7 @@ const csvOf = rows => rows.map(r => r.map(v => v == null ? '' : '"' + String(v).
   { const { ctx, p } = await fresh(); await oneClass(p);
     await p.evaluate(K=>{ const s=JSON.parse(localStorage.getItem('tally.v1')); s.sections[K].date='abc'; s.order=['x',K,K]; localStorage.setItem('tally.v1',JSON.stringify(s)); },K);
     await p.reload(); await p.waitForTimeout(700);
-    const ok=await p.evaluate(()=>({ tabs:document.querySelectorAll('#tabs [data-k]').length, cards:document.querySelector('#app').classList.contains('hidden') }));
+    const ok=await p.evaluate(()=>({ tabs:document.querySelectorAll('#rail [data-k]').length, cards:document.querySelector('#app').classList.contains('hidden') }));
     check(ok.tabs===1 && !ok.cards && errs.length===0,'a save with a broken date and a doubled class shows Tally normally (it used to stay blank for good)');
     const csp=fs.readFileSync(APP,'utf8'); check(/http-equiv="Content-Security-Policy"[^>]*connect-src 'self'/.test(csp),'the shipped page carries a Content Security Policy: nothing can be sent anywhere but its own site');
     await ctx.close(); }

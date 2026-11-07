@@ -1,4 +1,4 @@
-// The header: three places (Classes, Students, Board), search, the names switch, a ⋯ menu, and Import.
+// The shell: the rail (All classes, each class, the Board), the class tabs, search, the names switch, a ⋯ menu, and Import.
 const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1366,height:768},acceptDownloads:true}); const p=await ctx.newPage();
@@ -6,21 +6,28 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   await p.goto('file://'+path.resolve(APP));
   const vis=sel=>p.locator(sel).isVisible();
   // 1. before anything is imported: nowhere to go yet
-  check(await vis('#btnGuide0') && await vis('#btnImport') && !(await vis('#nav')) && !(await vis('#btnMore')) && !(await vis('#btnHide')),'landing: the Guide and Import, no places and no menu');
+  check(await vis('#btnGuide0') && await vis('#btnImport') && !(await vis('#rail')) && !(await vis('#btnMore')) && !(await vis('#btnHide')),'landing: the Guide and Import, no rail and no menu');
   const acc=fs.readdirSync('fixtures').find(f=>f.startsWith('course_acc')), on=fs.readdirSync('fixtures').find(f=>f.startsWith('course_on'));
   await p.setInputFiles('#file',[path.resolve('fixtures',acc), path.resolve('fixtures',on)]); await p.waitForTimeout(800);
   for (const [f,per,pr] of [['focus_gradebook_pool_p1.csv','1','acc'],['focus_gradebook_pool_p2.csv','2','on']]) { await p.setInputFiles('#file',[path.resolve('fixtures',f)]); await p.waitForTimeout(600); await pick(p,'[data-sec="__new__"]'); await p.waitForTimeout(200); await p.click(`#ncPeriod [data-p="${per}"]`); await p.click(`#ncPrep [data-prep="${pr}"]`); await p.click('#ncMake'); await p.waitForTimeout(700); const a=await p.$('#askApply'); if (a) { await a.click(); await p.waitForTimeout(300); } }
-  // 2. the places
-  const nav=async()=>p.evaluate(()=>[...document.querySelectorAll('#nav button')].map(x=>x.textContent.trim()+(x.classList.contains('on')?'*':'')+(x.getAttribute('aria-current')==='page'?'!':'')).join(' '));
+  // 2. the rail: one spine (Croix, 7 Nov 2026): All classes, every class under its course, the Board at the foot
+  const rail=async()=>p.evaluate(()=>[...document.querySelectorAll('#rail .lbl, #rail .sec')].map(x=>x.textContent.trim()+(x.closest('button') && x.closest('button').classList.contains('on')?'*':'')+(x.closest('button') && x.closest('button').getAttribute('aria-current')==='page'?'!':'')).join(' | '));
+  const tabs=async()=>p.evaluate(()=>[...document.querySelectorAll('#ctabs button')].map(x=>x.firstChild.textContent.trim()+(x.getAttribute('aria-selected')==='true'?'*':'')).join(' '));
   await p.click('#btnHome'); await p.waitForTimeout(300);
-  check(await nav()==='Classes*! Students Board' && await p.locator('body.home').count()===1,'three places; Classes is the Overview: '+await nav());
+  check(await rail()==='All classes*! | Accelerated | 1st Period | On-level | 2nd Period' && await p.locator('body.home').count()===1,'the rail: All classes, then each class under its course: '+await rail());
+  check(await tabs()==='Overview* Students Reports' && await p.locator('#chead h2').textContent()==='All classes','All classes has Overview, Students and Reports');
+  check(await vis('#btnLb') && await vis('#railSettings') && await vis('#railGuide') && /Full save/.test(await p.textContent('#rail .foot')),'the Board, Settings, the Guide and Full save at its foot');
   check(!(await vis('#btnGuide0')) && await vis('#btnMore') && await vis('#btnHide') && await vis('#search'),'after an import: search, the names switch and the menu; the landing Guide button is gone');
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300);
-  check(await nav()==='Classes*! Students Board','inside a class, Classes is still the current place');
-  await p.click('#btnStudents'); await p.waitForTimeout(300);
-  check(await nav()==='Classes Students*! Board','Students marks itself: '+await nav());
+  check(await rail()==='All classes | Accelerated | 1st Period*! | On-level | 2nd Period' && await tabs()==='Grid* Grades Students Seating Reports','a class lights on the rail and opens on its Grid tab, with the same five tabs every class has: '+await tabs());
+  await p.click('#openGrades'); await p.waitForTimeout(300); check(await tabs()==='Grid Grades* Students Seating Reports' && await p.locator('#gridwrap .grades').count()===1,'Grades is a tab of the class');
+  await p.click('#openStudents'); await p.waitForTimeout(300); check(await tabs()==='Grid Grades Students* Seating Reports' && await p.locator('.sdir').count()===1 && !/2nd Period/.test(await p.textContent('.sdir')) && await p.locator('.sdir th:has-text("Class")').count()===0,'Students is a tab of the class: that class\'s students, no Class column');
+  await p.click('#openSeating'); await p.waitForTimeout(300); check(await tabs()==='Grid Grades Students Seating* Reports','Seating too');
+  await p.click('#openReports'); await p.waitForTimeout(300); check(/Print · 1st Period/.test(await p.textContent('#modal')),'Reports opens the print menu for the class (a page of its own comes later)'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  await p.click('#btnHome'); await p.click('#btnStudents'); await p.waitForTimeout(300);
+  check(await rail()==='All classes*! | Accelerated | 1st Period | On-level | 2nd Period' && await tabs()==='Overview Students* Reports' && /2nd Period/.test(await p.textContent('.sdir')),'All classes › Students: every class, and nothing but All classes lit on the rail');
   await p.click('#btnHome'); await p.waitForTimeout(300);
-  check(await p.locator('body.home').count()===1,'Classes goes back to the Overview from anywhere');
+  check(await p.locator('body.home').count()===1,'All classes goes back to the Overview from anywhere');
   const quiet=await p.evaluate(()=>[...document.querySelectorAll('#top button')].filter(x=>x.offsetParent!==null && x.classList.contains('pill') && !x.classList.contains('ghost')).map(x=>x.id).join());
   check(quiet==='btnImport','Import is the only filled button: '+quiet);
   // 3. the menu
@@ -79,7 +86,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   check(await p.evaluate(()=>{ const s=document.querySelector('#search'); const c=document.createElement('canvas').getContext('2d'); const cs=getComputedStyle(s); c.font=cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily; return c.measureText(s.placeholder).width <= s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) + 1; }),'iPad upright: "Find a student…" is not cut off in the search field');
   // semantics, and a menu never outlives the screen it was opened on
   await p.setViewportSize({width:1366,height:768}); await p.click('#btnHome'); await p.waitForTimeout(200);
-  check(await p.evaluate(()=>!document.querySelector('#btnHome').hasAttribute('aria-pressed') && !document.querySelector('#btnStudents').hasAttribute('aria-pressed') && document.querySelector('#btnHome').getAttribute('aria-current')==='page'),'the places say where you are with aria-current only (no contradictory pressed state)');
+  check(await p.evaluate(()=>!document.querySelector('#btnHome').hasAttribute('aria-pressed') && document.querySelector('#btnHome').getAttribute('aria-current')==='page'),'the places say where you are with aria-current only (no contradictory pressed state)');
   await p.click('#btnMore'); await p.waitForTimeout(150);
   check(await p.evaluate(()=>document.querySelector('#topMenu').getAttribute('role')==='menu' && [...document.querySelectorAll('#topMenu button')].every(x=>/^menuitem/.test(x.getAttribute('role')))),'the menu and its items are announced as a menu');
   await p.keyboard.press('End'); const endId=await p.evaluate(()=>document.activeElement.id); await p.keyboard.press('Home'); check(endId==='btnBoardSave' && await p.evaluate(()=>document.activeElement.id)==='btnDetails','End and Home jump to the last and first item');

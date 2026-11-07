@@ -22,8 +22,8 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   check(same,'with nothing closed, the class is read exactly as before');
 
   // 2. Students directory
-  await p.click('#btnStudents'); await p.waitForTimeout(300);
-  check(await p.locator('.sdir tr[data-open]').count()===23 && /Students/.test(await p.textContent('#bar h2')),'Students lists every student of the class');
+  await p.click('#btnHome'); await p.click('#btnStudents'); await p.waitForTimeout(300);
+  check(await p.locator('.sdir tr[data-open]').count()===23 && await p.locator('#ctabs [aria-selected="true"]').textContent()==='Students','Students lists every student of the class');
   const rowTxt=(await p.textContent('.sdir tr[data-name="'+MICAH+'"]')).replace(/\s+/g,' ');
   const cells=await p.$$eval('.sdir tr[data-name="'+MICAH+'"] td',t=>t.map(x=>x.textContent.trim()));
   check(cells[0]==='Micah Dorsey' && /^47\s*F$/.test(cells[2]) && cells[3]==='+2' && cells[4]==='5','a row reads name, grade, change, missing: '+cells.slice(0,5).join(' | '));
@@ -50,7 +50,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   await p.click('#btnHide'); await p.waitForTimeout(300);
   // from the grid
   await p.click('#back'); await p.waitForTimeout(300);
-  await p.click('.tab'); await p.waitForTimeout(300);
+  await p.click('#rail .rc'); await p.waitForTimeout(300);
   await p.click(`table.grid [data-prof="${MICAH}"]`); await p.waitForTimeout(300);
   check(/Micah Dorsey/.test(await p.textContent('#bar h2')),'tapping a name in the class grid opens their page');
   await p.keyboard.press('Escape'); await p.waitForTimeout(300);
@@ -178,7 +178,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const bkBad=path.join(tmp,'bad.json'); const arch=await q.evaluate(K=>JSON.parse(JSON.stringify(window.__tally.state.sections[K].qArchive)), K); arch['1'].gb.assignments[0].max='<img src=x onerror="window.__pwned=1">'; arch['1'].gb.assignments[0].values[0]='<b>x</b>'; arch['1'].gb.assignments.push({name:'x'});
   fs.writeFileSync(bkBad, JSON.stringify({ tally:4, sections:{ [K]:{ label:'1st Period · Accelerated', qArchive:arch } } }));
   await more(q,'#btnSettings'); await q.waitForTimeout(300); await q.setInputFiles('#cfgFile', bkBad); await q.waitForTimeout(500);
-  await q.click('.tab'); await q.waitForTimeout(200); await q.click('#openGrades'); await q.waitForTimeout(200); const q1b=await q.$('#bar [data-gq="1"]'); if(q1b){ await q1b.click(); await q.waitForTimeout(300); }
+  await q.click('#rail .rc'); await q.waitForTimeout(200); await q.click('#openGrades'); await q.waitForTimeout(200); const q1b=await q.$('#bar [data-gq="1"]'); if(q1b){ await q1b.click(); await q.waitForTimeout(300); }
   check(!(await q.evaluate(()=>window.__pwned)) && await q.evaluate(K=>window.__tally.state.sections[K].qArchive['1'].gb.assignments.length, K)===14,'a backup with markup in an archived gradebook is rejected or coerced (no script runs, record intact)');
   // (e) the digest says nothing about a closed quarter; (f) an open column for a closed unit is still checked
   const e1=await q.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; T.state.quarters.units.acc[T.unitsOf(s)[1].name]=1; T.save(); const rc=T.reconcile(s).map(r=>r.unit.short); return { rc }; }, K);
@@ -191,7 +191,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   // (g) every quarter closed: Grades still opens
   await q.evaluate(()=>{ const T=window.__tally; [2,3,4].forEach(n=>T.closeQuarter(n,{acc:[],on:[]})); T.save(); });
   await q.click('.hcard'); await q.waitForTimeout(200); await q.click('#openGrades'); await q.waitForTimeout(300);
-  check(await q.locator('#bar h2').count()>=1,'with every quarter closed, Grades still opens');
+  check(await q.locator('#openGrades[aria-selected="true"]').count()===1,'with every quarter closed, Grades still opens');
   await q.close();
   // 8. His real setup: course-wide IXL pools carved into periods by Focus gradebooks
   const p3=await ctx.newPage(); p3.on('pageerror',e=>errs.push(e.message)); p3.on('dialog',d=>d.accept()); await p3.goto('file://'+path.resolve(APP)); await p3.evaluate(()=>localStorage.clear()); await p3.reload();
@@ -201,7 +201,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
     await p3.setInputFiles('#file',[path.resolve('fixtures',f)]); await p3.waitForTimeout(600); await pick(p3,'[data-sec="__new__"]'); await p3.waitForTimeout(200);
     await p3.click(`#ncPeriod [data-p="${per}"]`); await p3.click(`#ncPrep [data-prep="${prep}"]`); await p3.click('#ncMake'); await p3.waitForTimeout(800);
     if ((await p3.textContent('#modal')).trim()) { await p3.click('#mCancel').catch(()=>{}); await p3.waitForTimeout(300); } }
-  const t0=Date.now(); await p3.click('#btnStudents'); await p3.waitForSelector('.sdir'); const ms=Date.now()-t0;
+  const t0=Date.now(); await p3.click('#btnHome'); await p3.click('#btnStudents'); await p3.waitForSelector('.sdir'); const ms=Date.now()-t0;
   const n3=await p3.locator('.sdir tr[data-open]').count(); const withIxl=await p3.evaluate(()=>[...document.querySelectorAll('.sdir tr[data-open] td:nth-child(6)')].filter(td=>/%/.test(td.textContent)).length);
   check(n3>=40 && withIxl>=n3-2 && await p3.locator('.sdir tr.sgroup').count()===2,'pool classes: both periods listed, IXL found for almost everyone ('+withIxl+' of '+n3+')');
   check(ms<3000,'the Students list renders quickly ('+ms+' ms)');

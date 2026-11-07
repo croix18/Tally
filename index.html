@@ -164,6 +164,41 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 .hidden{display:none!important}
 .pill:active,.chip:active,.tab:active,.copy:active,.ulink:active{transform:translateY(1px) scale(.97)}
 
+/* ---- the rail and the shell ---- */
+body.has{display:grid;grid-template-columns:var(--railW,232px) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;align-content:start;height:auto;min-height:100%;overflow:visible}   /* the document scrolls when the window is too short; #gridwrap is the scroller otherwise */
+body.has>#rail{grid-column:1;grid-row:1/-1}
+body.has>#top,body.has>#keep,body.has>#empty,body.has>#app{grid-column:2}
+body.has>#app{grid-row:4;align-self:stretch;min-height:auto}
+#rail{background:var(--navy);color:var(--white);display:flex;flex-direction:column;gap:3px;padding:18px 14px calc(14px + env(safe-area-inset-bottom));position:sticky;top:0;height:100vh;height:100dvh;overflow-y:auto;scrollbar-width:thin;border-radius:0 0 var(--r-l) 0}
+#rail .brand{font-size:22px;font-weight:var(--w-black);letter-spacing:.14em;color:var(--turq);text-transform:uppercase;padding:4px 12px 12px;margin:0}
+#rail .sec{font-size:var(--t-xs);font-weight:var(--w-heavy);letter-spacing:.1em;text-transform:uppercase;color:#9AA3B2;padding:14px 12px 4px}
+#rail button{display:flex;align-items:center;gap:10px;min-height:var(--h-m);padding:0 12px;border-radius:var(--r-pill);color:var(--white);font:inherit;font-weight:var(--w-bold);font-size:var(--t-l);background:none;border:none;text-align:left;cursor:pointer;width:100%}
+#rail button:hover{background:rgba(255,255,255,.08)}#rail button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
+#rail button.on{background:var(--white);color:var(--navy)}
+body.has #top .brand,body.has #top .spacer{display:none}body.has #search{margin-right:auto}   /* the wordmark is on the rail; the search leads the top bar */
+#rail button .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#rail button .dot{width:10px;height:10px;border-radius:50%;background:var(--cc,var(--grid));flex:none}
+#rail button svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#rail .n{margin-left:auto;font-size:var(--t-s);font-weight:var(--w-heavy);background:var(--coral);color:var(--bad);border-radius:var(--r-pill);padding:1px 8px}
+#rail button.on .n{background:var(--coral)}
+#rail .foot{margin-top:auto;display:flex;flex-direction:column;gap:3px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14)}
+#rail .foot button{font-weight:var(--w-med);font-size:var(--t-m);min-height:var(--h-m);color:#D7DBE3}
+#rail .foot .age{margin-left:auto;font-size:var(--t-xs);font-weight:var(--w-heavy);color:#9AA3B2}#rail .foot .age.due{color:var(--coral)}
+/* the class header: its name, its facts, and one tab strip for every class (Grid · Grades · Students · Seating · Reports) */
+#chead{display:flex;flex-direction:column;gap:2px;padding:9px 22px 0;background:var(--white)}
+body.home #chead,body.grades #chead{background:transparent;padding-left:0;padding-right:0}body.home #chead .tabrow #bar,body.grades #chead .tabrow #bar{background:transparent}
+#chead .ch{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+#chead h2{margin:0;font-weight:var(--w-black);font-size:20px;letter-spacing:0;display:flex;align-items:center;gap:10px;line-height:1.2}
+#chead h2 .dot{width:14px;height:14px;border-radius:50%;background:var(--cc,var(--grid))}
+#chead .meta{font-weight:var(--w-bold);font-size:var(--t-m);color:var(--ink-soft)}
+#chead .tabrow{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;border-bottom:2px solid var(--grid)}   /* the tabs, then the tab's own controls on the same line */
+#chead .tabrow #bar{flex:1 1 320px;min-width:0;border-bottom:none;background:transparent;padding:4px 0 6px 8px;justify-content:flex-end}
+#ctabs{display:flex;gap:2px;flex:0 1 auto;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:none}
+#chead #bar.own{margin:0 -22px;padding:8px 22px;border-bottom:1px solid var(--grid)}body.grades #chead #bar.own{margin:0;padding:8px 0}
+#ctabs button{flex:none;background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;padding:5px 14px 7px;font:inherit;font-weight:var(--w-bold);font-size:var(--t-l);color:var(--ink-soft);cursor:pointer;border-radius:var(--r-s) var(--r-s) 0 0}
+#ctabs button:hover{color:var(--navy);background:var(--sand)}
+#ctabs button[aria-selected="true"]{color:var(--navy);border-bottom-color:var(--turq)}
+#ctabs button small{font-weight:var(--w-heavy);font-size:var(--t-xs);background:var(--coral);color:var(--bad);border-radius:var(--r-pill);padding:1px 7px;margin-left:6px;vertical-align:1px}
 /* ---- header card ---- */
 #top{
   margin:20px 28px 0;background:linear-gradient(135deg,#16213A,#1F3A5F);border-radius:var(--r);box-shadow:var(--shadow-2);
@@ -173,9 +208,6 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 #top .brand h1{color:var(--turq);font-weight:var(--w-black);letter-spacing:.14em;font-size:22px;text-transform:uppercase}
 #top .spacer{flex:1}
 /* the three places: one segmented control, the current one filled */
-#top .nav{display:flex;background:rgba(255,255,255,.12);border-radius:var(--r-pill);padding:4px;gap:2px;margin-left:10px;flex:none}
-#top .nav button{border:none;background:none;color:var(--white);font:inherit;font-weight:var(--w-bold);font-size:var(--t-m);padding:6px 20px;border-radius:var(--r-pill);cursor:pointer;white-space:nowrap;min-height:calc(var(--h-touch) - 8px)}   /* the track (4px padding each side) is as tall as the round buttons beside it */
-#top .nav .tabIco{display:none}#top .nav button:hover{background:rgba(255,255,255,.1)}#top .nav button.on{background:var(--white);color:var(--navy)}
 /* round icon buttons: the names switch (filled = names showing) and More */
 #top .ibtn{flex:none;width:var(--h-touch);height:var(--h-touch);border-radius:50%;border:2px solid var(--sand);background:none;color:var(--white);display:grid;place-items:center;cursor:pointer;padding:0}
 #top .ibtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}#top .ibtn svg.dots{fill:currentColor;stroke:none}
@@ -198,7 +230,7 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 .pill.ghost[aria-pressed="true"]{background:var(--white);color:var(--navy);border-color:var(--white)}
 .pill.ghost[aria-pressed="false"]{color:var(--sand)}
 .pill.danger{background:var(--white);color:var(--bad);border:2px solid var(--bad);padding:6px 16px}
-.pill:focus-visible{outline:3px solid var(--navy);outline-offset:2px}#top .pill:focus-visible,#top .nav button:focus-visible,#top .ibtn:focus-visible,#top #search:focus-visible,#modal header button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
+.pill:focus-visible{outline:3px solid var(--navy);outline-offset:2px}#top .pill:focus-visible,#top .ibtn:focus-visible,#top .ibtn:focus-visible,#top #search:focus-visible,#modal header button:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
 button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
 #menuOverlay{position:fixed;inset:0;z-index:29;background:transparent}.more .menu{z-index:30}
 .tundo{margin-left:10px;background:var(--white);color:var(--navy);border:none;border-radius:var(--r-pill);padding:4px 12px;font-weight:var(--w-heavy);font:inherit;cursor:pointer;pointer-events:auto}
@@ -210,7 +242,6 @@ button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px s
 #ask{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(22,33,58,.45)}#ask .askBox{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:22px 24px 18px;max-width:520px;width:100%}#ask p{margin:0 0 18px;font-size:var(--t-m);line-height:1.45;color:var(--navy)}#ask .askRow{display:flex;gap:10px;justify-content:flex-end}
 #keep{margin:12px 28px 0;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 18px;border-radius:var(--r-m);background:var(--g-c-wash);color:var(--navy);font-size:var(--t-m);line-height:1.35}#keep span{flex:1}#keep .pill{flex:none}#keep.ok{background:var(--g-a-wash)}#keep.late{background:var(--g-d-wash);box-shadow:inset 4px 0 0 var(--g-d)}#keep .keepKey{font-size:var(--t-xs);color:var(--ink-soft);font-weight:var(--w-bold);white-space:nowrap}@media (max-width:700px){#keep .keepKey{display:none}}
 @media (max-width:900px){#keep{margin:12px 14px 0}}
-#tabs{display:flex;gap:12px;padding:20px 28px 0;flex-wrap:wrap;align-items:center;flex-shrink:0}
 .tab{
   background:var(--white);color:var(--navy);border:1px solid var(--grid);border-radius:var(--r-pill);box-shadow:var(--shadow-1);
   padding:8px 18px 8px 14px;display:inline-flex;align-items:center;gap:10px;font-weight:var(--w-bold);font-size:var(--t-l);text-align:left;position:relative;min-height:var(--h-touch);
@@ -504,13 +535,14 @@ body.lbMode #toast{bottom:auto;top:18px}   /* on the Board the controls live at 
 #toast b{color:var(--turq)}
 #toast.err b{color:var(--navy)}
 @media (max-width:1420px){#top{gap:10px;padding:12px 18px}}
+@media (max-width:1100px){body.has{--railW:196px}#rail button{font-size:var(--t-m)}}
 /* a short window (a 1080p laptop at Windows' 150 % scale is 720 px tall; the Chromebox is 768): give the table the room */
-@media (max-height:800px) and (min-width:760px){#top{margin-top:12px}#tabs{padding-top:12px}#board{margin-top:12px;margin-bottom:14px}}
+@media (max-height:800px) and (min-width:760px){#top{margin-top:12px}#board{margin-top:12px;margin-bottom:14px}}
 /* …and a browser window on that laptop is shorter still (taskbar, tab strip, address bar): about 600 px at 150 % */
-@media (max-height:680px) and (min-width:760px){:root{--board-min:min(400px,calc(100vh - 16px))}#top{margin-top:8px;padding-top:8px;padding-bottom:8px}#tabs{padding-top:8px}#board{margin-top:8px;margin-bottom:10px}#bar{min-height:var(--h-l);padding-top:6px;padding-bottom:6px}}
+@media (max-height:680px) and (min-width:760px){:root{--board-min:min(400px,calc(100vh - 16px))}body.has>#app{min-height:max-content}body.has #board{overflow:visible}body.has #gridwrap{min-height:min(300px,60vh)}   /* a short window: the page scrolls as one, so the grid is never squeezed to a sliver under the bar and the notices */#top{margin-top:8px;padding-top:8px;padding-bottom:8px}#board{margin-top:8px;margin-bottom:10px}#bar{min-height:var(--h-l);padding-top:6px;padding-bottom:6px}}
 @media (min-width:760px){#top{flex-wrap:nowrap}}   /* one row from the smallest tablet up: the search field gives way first; below that it wraps */
-@media (max-width:840px){#search{padding:6px 12px}#top .nav button{padding:6px 11px}}
-@media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px;gap:8px}#tabs{padding-left:14px;padding-right:14px}#board{margin:14px 14px 24px}#top .nav{margin-left:4px}#top .nav button{padding:6px 13px}}
+@media (max-width:840px){#search{padding:6px 12px}}
+@media (max-width:900px){#top{margin:14px 14px 0;padding:12px 16px;gap:8px}#board{margin:14px 14px 24px}}
 /* ---- seating ---- */
 .seat{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:14px 16px 24px;align-items:start}
 @media (max-width:1000px){.seat{grid-template-columns:1fr}}
@@ -569,7 +601,7 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
   table.grid td{height:44px}
   .gasg select,.gstu td button,.gstu td .nm{min-height:var(--h-touch)}
   #search{min-height:var(--h-touch)}
-  #top .nav button{min-height:var(--h-touch)}#topMenu button{min-height:var(--h-l)}th.ahead .ulink{min-height:var(--h-touch);justify-content:center}
+  #topMenu button{min-height:var(--h-l)}th.ahead .ulink{min-height:var(--h-touch);justify-content:center}
   .more .menu button,.menu.floating button{min-height:var(--h-l)}
   .nchip{min-height:var(--h-touch);padding:8px 16px}.ib{min-width:44px;min-height:var(--h-touch)}.mini{min-height:var(--h-touch)}.seg.tiny button{min-width:38px;min-height:var(--h-m)}.ft{min-width:40px;min-height:var(--h-m)}.seatOpen{min-height:var(--h-touch)}.notice button{min-height:var(--h-touch)}.seatSide summary{min-height:var(--h-touch);display:flex;align-items:center}.chip.rel{min-height:var(--h-touch)}
 }
@@ -585,31 +617,28 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
    screen; inputs are 16 px so iPhone doesn't zoom; the iPhone's home bar and notch are kept clear. */
 @media (max-width:640px),(max-height:500px) and (pointer:coarse){
   html{height:auto}
-  body{display:block;height:auto;min-height:100%;overflow-y:visible;padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(72px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
+  body{display:block;height:auto;min-height:100%;overflow-y:visible;padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(16px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
   body.lbMode{padding-bottom:0}
   input,select,textarea{font-size:16px!important}
   /* header: one row (wordmark · names · more), search under it on the screens that search */
-  #top{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;margin:8px 8px 0;padding:8px 10px 8px 14px;border-radius:var(--r-l)}
+  #top{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:8px;margin:8px 8px 0;padding:8px 10px 8px 14px;border-radius:var(--r-l)}
   #top .brand{grid-column:1}#top .brand h1{font-size:17px}
   #top .spacer{display:none}
   #btnHide{grid-column:2;grid-row:1}#topMore{grid-column:3;grid-row:1}#btnGuide0{grid-column:2/4;grid-row:1}
   #search{grid-column:1/-1;grid-row:2;width:100%;min-width:0;flex:none}
-  /* the tab bar */
-  #top .nav{position:fixed;left:0;right:0;bottom:0;z-index:35;margin:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-radius:0;
-    background:var(--navy);padding:6px 6px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px rgba(22,33,58,.18);padding-right:calc(25% + 6px)}
-  #top .nav{grid-template-columns:repeat(3,1fr)}
-  #top:has(.nav.hidden) #btnImport{position:static;width:auto;flex-direction:row;min-height:var(--h-touch);grid-column:2/4;grid-row:1;padding:0 16px}
-  #top .nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;min-height:calc(var(--h-touch) + 8px);font-size:12px;font-weight:var(--w-bold);color:var(--sand);border-radius:var(--r-m);background:none}
-  #top .nav button.on{background:rgba(255,255,255,.1);color:var(--turq)}
-  #top .nav .tabIco{display:block;width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-  #btnImport{position:fixed;right:6px;bottom:calc(6px + env(safe-area-inset-bottom));z-index:36;width:calc(25% - 12px);min-height:calc(var(--h-touch) + 8px);flex-direction:column;gap:2px;padding:4px 2px;font-size:12px;border-radius:var(--r-m)}
-  #btnImport svg{width:22px;height:22px}
+  #btnImport{grid-column:4;grid-row:1;min-height:var(--h-touch);padding:0 14px;font-size:var(--t-s)}
+  #btnImport svg{width:18px;height:18px}
   body.lbMode #btnImport{display:none}
   #keep{margin:8px 8px 0}
-  /* class tabs: one row that stays at the top while the page scrolls */
-  #tabs{flex-wrap:nowrap;overflow-x:auto;padding:8px 8px 6px;gap:8px;scrollbar-width:none}
-  #tabs:empty{display:none}
-  #tabs::-webkit-scrollbar{display:none}#tabs>*{flex:none}
+  /* the rail on a phone: one scrolling strip of classes under the header; Board, Settings, Guide and saving on a second */
+  body.has{display:flex;flex-direction:column}body.has>#top{order:0}body.has>#rail{order:1}body.has>#keep,body.has>#empty{order:2}body.has>#app{order:3}   /* the header first, the strip of classes under it */
+  #rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:6px;padding:8px 8px 4px;background:transparent;border-radius:0;overflow:visible}
+  #rail .brand,#rail .sec{display:none}body.has #top .brand{display:flex}
+  #rail button{width:auto;min-height:var(--h-m);padding:0 12px;background:var(--white);color:var(--navy);border:1px solid var(--grid);font-size:var(--t-s)}
+  #rail button.on{background:var(--navy);color:var(--white);border-color:var(--navy)}
+  #rail .foot{margin:0;flex-direction:row;flex-wrap:wrap;gap:6px;padding:4px 0 0;border:none;flex-basis:100%}
+  #rail .foot button{color:var(--navy);min-height:var(--h-s)}#rail .foot .age{margin-left:4px}
+  #chead{padding:10px 12px 0}#chead h2{font-size:var(--t-xl)}#ctabs button{padding:6px 12px 8px;font-size:var(--t-m)}
   #notices{padding-left:10px;padding-right:10px}
   #app{display:block}
   #board{margin:6px 8px 16px;min-height:0;overflow:visible;flex:none}
@@ -691,9 +720,9 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
   .qdates{grid-template-columns:1fr 1fr!important}
   /* messages: a slim bar above the tab bar (above a dialog's buttons when one is open) */
   #toast{pointer-events:none!important;left:8px;right:8px;width:auto;max-width:none;bottom:calc(74px + env(safe-area-inset-bottom));padding:10px 14px;font-size:14px;border-radius:var(--r-m);text-align:left}
-  body:has(#modal:not(.hidden)) #toast{top:auto;left:8px;right:8px;bottom:calc(72px + env(safe-area-inset-bottom))}
+  body:has(#modal:not(.hidden)) #toast{top:auto;left:8px;right:8px;bottom:calc(16px + env(safe-area-inset-bottom))}
   #toast button{pointer-events:auto}
-  body.lbMode #toast{top:auto;bottom:calc(72px + env(safe-area-inset-bottom))}
+  body.lbMode #toast{top:auto;bottom:calc(16px + env(safe-area-inset-bottom))}
   /* the Board: the chart gets the screen, the controls are one row along the bottom */
   #lb .lbTools{position:sticky;bottom:0;right:auto;max-width:none;flex-wrap:wrap;justify-content:flex-start;margin:0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-radius:0;gap:8px}
   #lb .lbTools>*{flex:none;max-width:100%}
@@ -707,26 +736,21 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
 }
 /* a phone on its side: little height, so the header is one row and the tab bar is thin */
 @media (max-height:500px) and (pointer:coarse){
-  body{padding-bottom:calc(54px + env(safe-area-inset-bottom))}
-  #top{grid-template-columns:auto 1fr auto auto}
-  #search{grid-column:2;grid-row:1}#btnHide{grid-column:3}#topMore{grid-column:4}
-  #top .nav button,#btnImport{flex-direction:row;gap:8px;min-height:var(--h-m)}
-  #btnImport{bottom:calc(5px + env(safe-area-inset-bottom))}
-  #top .nav{padding-top:4px;padding-bottom:calc(4px + env(safe-area-inset-bottom))}
+  body{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  #top{grid-template-columns:auto 1fr auto auto auto}
+  #search{grid-column:2;grid-row:1}#btnHide{grid-column:3}#topMore{grid-column:4}#btnImport{grid-column:5;min-height:var(--h-m)}
   #toast,body:has(#modal:not(.hidden)) #toast{bottom:calc(56px + env(safe-area-inset-bottom))}
 }
 </style>
 </head>
 <body>
 
+<!-- The rail (Croix, 7 Nov 2026: "Moving from menu to menu is clunky"): one spine, Tally → a class → a tab. It lists
+     All classes and every class by course, with its to-fix count; Board, Settings, Guide and the save status at its
+     foot. Rendered by renderRail(); hidden until the first import. -->
+<nav id="rail" class="hidden" aria-label="Classes"></nav>
 <div id="top">
   <div class="brand"><h1>Tally</h1></div>
-  <!-- Three places and one action. Classes = the Overview and everything inside a class; Board = Race and Data Lab. -->
-  <nav class="nav hidden" id="nav" aria-label="Go to">
-    <button id="btnHome" title="Every class at a glance — and every class from there"><svg class="tabIco" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span>Classes</span></button>
-    <button id="btnStudents" title="Every student: grades, trends, what-ifs (teacher only)"><svg class="tabIco" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.1 4.4 1.8 5 4.9"/></svg><span>Students</span></button>
-    <button id="btnLb" title="Student screen: Race and Data Lab"><svg class="tabIco" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8 20.5h8M12 16.5v4M7 12.5l3-3 2.5 2 4.5-4"/></svg><span>Board</span></button>
-  </nav>
   <div class="spacer"></div>
   <input id="search" type="search" placeholder="Find a student…" aria-label="Find a student" class="hidden">
   <button class="pill ghost" id="btnGuide0" title="A printable guide: the weekly flow and what the words mean">Guide</button>
@@ -762,9 +786,8 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
 </div>
 
 <div id="app" class="hidden">
-  <div id="tabs" role="tablist"></div>
   <div id="board">
-    <div id="bar"></div>
+    <div id="chead"></div>
     <div id="notices"></div>
     <div id="gridwrap"></div>
   </div>
@@ -1368,7 +1391,7 @@ function renderGradesBar(s0) {
   const n = gradesQuarter(s0); const s = gradesView(s0, n); const gb = s.grades; const prev = prevGradeSnap(s);
   const qs = classQuarters(s0); const cur = currentQuarter(); if (!qs.includes(cur)) qs.push(cur);
   const seg = qs.length > 1 || anyClosed() ? `<div class="seg small qseg" role="group" aria-label="Quarter">${qs.map(q => `<button data-gq="${q}" class="${q === n ? 'on' : ''}" aria-pressed="${q === n}">Q${q}${qClosed(q) ? ' · final' : ''}</button>`).join('')}</div>` : '';
-  return `<div class="crumb"><button id="back">‹ ${esc(s0.label)}</button><h2>Grades</h2></div>${seg}<span class="meta">${s._closed ? `${esc(Q_NAMES[n - 1])} · closed ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))} · ` : s._arch ? `${esc(Q_NAMES[n - 1])} · kept, not closed yet · ` : ''}${gb && gb.assignments.length ? `Focus gradebook of ${esc(fmtDate(localDayOf(gb.importedAt)))} · ${plural(gb.assignments.length, 'assignment')} · ${plural(gb.students.length, 'student')}${prev ? ` · previous import ${esc(fmtDate(prev.date))}` : ''}` : `no ${esc(Q_NAMES[n - 1])} gradebook yet`}</span>
+  return `${seg}<span class="meta">${s._closed ? `${esc(Q_NAMES[n - 1])} · closed ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))} · ` : s._arch ? `${esc(Q_NAMES[n - 1])} · kept, not closed yet · ` : ''}${gb && gb.assignments.length ? `Focus gradebook of ${esc(fmtDate(localDayOf(gb.importedAt)))} · ${plural(gb.assignments.length, 'assignment')} · ${plural(gb.students.length, 'student')}${prev ? ` · previous import ${esc(fmtDate(prev.date))}` : ''}` : `no ${esc(Q_NAMES[n - 1])} gradebook yet`}</span>
       <div class="spacer"></div>
       <button class="pill toggle" id="gradesWeights" title="Category weights: ${gradingFor(s0.prep).cats.map(c => `${esc(c.name)} ${c.w}%`).join(', ')}">Weights <small>${gradingFor(s0.prep).cats.map(c => `${esc(c.name.slice(0, 1))} ${c.w}`).join(' · ')}</small></button>
       ${s._arch ? '' : '<button class="pill toggle" id="gradesCats" title="Check or move assignment categories">Categories</button>'}
@@ -1837,8 +1860,8 @@ function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.studen
    class (each class's reports, then its checklist), and remembers two-sided printing (on unless he unticks it). */
 var reportWho = { mode: 'all', letters: ['C', 'D', 'F'], scope: 'class' };
 const printClasses = () => state.order.map(k => state.sections[k]).filter(x => x && !x.board && !x.placeholder);
-function openPrintMenu(s) {
-  const classes = printClasses(); const many = classes.length > 1; if (!many) reportWho.scope = 'class';
+function openPrintMenu(s, all) {
+  const classes = printClasses(); const many = classes.length > 1; if (!many) reportWho.scope = 'class'; else if (all != null) reportWho.scope = all ? 'all' : 'class';   // opened from All classes: every class
   const allMode = reportWho.scope === 'all'; const secs = allMode ? classes : [s];
   const open = sec => unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u));
   const info = secs.map(sec => { const gb = sec.grades; if (!gb || !hasOpenGrades(sec)) return { sec, have: false };
@@ -2231,7 +2254,7 @@ function renderHome() {
   const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, dark: LETTER_DARK, labelW: 180, aria: 'letter grades by class' }) : '';
   const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
   const withGb = secs.filter(s => s.grades).length, waitN = anyClosed() ? secs.filter(s => s.grades && !hasOpenGrades(s)).length : 0;
-  $('#bar').innerHTML = `<h2>Overview</h2><span class="meta">${secs.length} ${secs.length === 1 ? 'class' : 'classes'}${asOf ? ' · IXL as of ' + esc(fmtDate(asOf)) : ''} · ${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · saved ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button>`;
+  $('#bar').innerHTML = `<span class="meta">${asOf ? 'IXL as of ' + esc(fmtDate(asOf)) + ' · ' : ''}${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · saved ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button>`;
   $('#bar').classList.remove('detail');
   const li0 = state.lastImport; const curU = state.settings.currentUnit || {};
   const li = li0 ? { ...li0, lines: li0.lines.filter(l => !l.wi || String(curU[l.wi.split(':')[0]]) === l.wi.split(':')[1]) } : null;   // a "Working in set to…" line retires once the teacher picks another unit
@@ -2657,7 +2680,7 @@ const SEAT_SVG_CSS = `.chartSvg{width:100%;height:auto;display:block;font-family
 /* ---- Seating view ---- */
 function renderSeatingBar(s) {
   const room = roomOK(); const sub = view.sub === 'room' ? 'room' : 'chart';
-  return `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>Seating</h2></div><span class="meta">${sub === 'room' ? `${plural(room.desks.length, 'desk')} · one room for every class` : (s.seating ? `saved ${esc(fmtDate((s.seating.savedAt || '').slice(0, 10)))}` : 'no saved chart yet')}</span>
+  return `<span class="meta">${sub === 'room' ? `${plural(room.desks.length, 'desk')} · one room for every class` : (s.seating ? `saved ${esc(fmtDate((s.seating.savedAt || '').slice(0, 10)))}` : 'no saved chart yet')}</span>
     <div class="spacer"></div>
     <div class="seg small" id="seatSub"><button data-sub="chart" class="${sub === 'chart' ? 'on' : ''}">Chart</button><button data-sub="room" class="${sub === 'room' ? 'on' : ''}">Room</button></div>
     ${sub === 'chart' ? `<button class="pill toggle" id="seatPrint" ${workFor(s) ? '' : 'disabled'}>Print</button><button class="pill toggle" id="seatWeights" title="What the solver weighs">Priorities</button>` : ''}`;
@@ -3659,30 +3682,29 @@ function renderStudentsView() {
   let rows = []; secs.forEach(s => classStudents(s).forEach(n => { if (!q || norm(n).includes(q) || norm(niceName(n)).includes(q)) { const r = studentSummary(s, n); r.retake = retakeStatus(s, n); r.l30 = isL30(s, n); rows.push(r); } }));
   const anyL30 = rows.some(r => r.l30); if (stuL30 && anyL30 && !H) rows = rows.filter(r => r.l30);   // the lower quartile is its own bucket on the school grade
   const g = r => r.grade && r.grade.rounded != null ? r.grade.rounded : 999;
-  if (stuSort === 'grade') rows.sort((a, b) => g(a) - g(b) || a.name.localeCompare(b.name));
-  else if (stuSort === 'missing') rows.sort((a, b) => b.missing - a.missing || g(a) - g(b));
-  else if (stuSort === 'sliding') rows.sort((a, b) => (b.sliding ? 1 : 0) - (a.sliding ? 1 : 0) || (a.d ?? 0) - (b.d ?? 0) || g(a) - g(b));
-  else if (stuSort === 'name') rows.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
-  else if (stuSort === 'retake') rows.sort((a, b) => (b.retake.ok ? 1 : 0) - (a.retake.ok ? 1 : 0) || (a.retake.missing.length + a.retake.short.length) - (b.retake.missing.length + b.retake.short.length) || g(a) - g(b));
+  const sortNow = stuClass && stuSort === 'class' ? 'name' : stuSort;   // one class: "by class" is A–Z
+  if (sortNow === 'grade') rows.sort((a, b) => g(a) - g(b) || a.name.localeCompare(b.name));
+  else if (sortNow === 'missing') rows.sort((a, b) => b.missing - a.missing || g(a) - g(b));
+  else if (sortNow === 'sliding') rows.sort((a, b) => (b.sliding ? 1 : 0) - (a.sliding ? 1 : 0) || (a.d ?? 0) - (b.d ?? 0) || g(a) - g(b));
+  else if (sortNow === 'name') rows.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
+  else if (sortNow === 'retake') rows.sort((a, b) => (b.retake.ok ? 1 : 0) - (a.retake.ok ? 1 : 0) || (a.retake.missing.length + a.retake.short.length) - (b.retake.missing.length + b.retake.short.length) || g(a) - g(b));
   const cq = liveQ(); const closedQs = [1, 2, 3, 4].filter(n => qClosed(n)); const mixedQ = secs.some(x => x.grades && liveQuarter(x) !== cq);   // one class already on Q2 while another is on Q1: the grade column says which per row
-  $('#bar').innerHTML = `<h2>Students</h2><span class="meta">${plural(rows.length, 'student')}${stuL30 && anyL30 && !H ? ' in the lowest 30%' : ''}${q ? ` matching “${esc(search)}”` : ''} · grades are ${esc(Q_NAMES[cq - 1])}${closedQs.length ? ` · ${closedQs.map(n => 'Q' + n).join(', ')} closed` : ''}</span><div class="spacer"></div>
-    <label class="curUnit">Class <select id="stuClass"><option value="">Every class</option>${state.order.map(k => `<option value="${esc(k)}" ${k === stuClass ? 'selected' : ''}>${esc(state.sections[k].label)}</option>`).join('')}</select></label>
-    ${anyL30 && !H ? `<button class="pill toggle small ${stuL30 ? 'on' : ''}" id="stuL30" aria-pressed="${stuL30}" title="Only students the FAST report marks as the lowest 30%">L30</button>` : ''}<div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding'], ['retake', 'Retake']].map(([k, l]) => `<button data-sort="${k}" class="${stuSort === k ? 'on' : ''}" aria-pressed="${stuSort === k}">${l}</button>`).join('')}</div>`;
+  $('#bar').innerHTML = `<span class="meta">${plural(rows.length, 'student')}${stuL30 && anyL30 && !H ? ' in the lowest 30%' : ''}${q ? ` matching “${esc(search)}”` : ''} · grades are ${esc(Q_NAMES[cq - 1])}${closedQs.length ? ` · ${closedQs.map(n => 'Q' + n).join(', ')} closed` : ''}</span><div class="spacer"></div>
+    ${anyL30 && !H ? `<button class="pill toggle small ${stuL30 ? 'on' : ''}" id="stuL30" aria-pressed="${stuL30}" title="Only students the FAST report marks as the lowest 30%">L30</button>` : ''}<div class="seg small" role="group" aria-label="Sort">${[['class', 'By class'], ['name', 'A–Z'], ['grade', 'Lowest grade'], ['missing', 'Most missing'], ['sliding', 'Sliding'], ['retake', 'Retake']].filter(([k]) => k !== 'class' || !stuClass).map(([k, l]) => `<button data-sort="${k}" class="${sortNow === k ? 'on' : ''}" aria-pressed="${sortNow === k}">${l}</button>`).join('')}</div>`;
   $('#bar').classList.add('detail');
   let lastSec = null; let body = '';
   rows.forEach(r => {
-    if (stuSort === 'class' && r.sec !== lastSec) { lastSec = r.sec; body += `<tr class="sgroup"><th colspan="9" style="--cc:${classColor(r.sec)}">${esc(r.sec.label)}</th></tr>`; }
+    if (sortNow === 'class' && r.sec !== lastSec) { lastSec = r.sec; body += `<tr class="sgroup"><th colspan="9" style="--cc:${classColor(r.sec)}">${esc(r.sec.label)}</th></tr>`; }
     const o = openSec(r.sec); const qs = r.grade && r.f.gi >= 0 ? quickestPath(r.sec, o, r.f.gi, r.f.ixl) : null;
     const ix = r.ixl; const fin = r.finals.map(x => `<span class="qfin">Q${x.q} ${x.g}<small>${letterOf(x.g)}</small>${x.closed ? '' : ' <small>kept</small>'}</span>`).join('');
     body += `<tr data-open="${esc(r.sec.key)}" data-name="${esc(r.name)}" class="${r.sliding ? 'sliding' : ''}"><td><button class="nm nmbtn">${nm(r.name)}</button>${r.l30 && !H ? ' <span class="fflag l30 small">L30</span>' : ''}${r.sliding ? ' <span class="gtag">sliding</span>' : ''}</td>
-      <td class="sCls"><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td><td class="sGr">${r.grade ? gradeChip(r.grade) + (mixedQ ? ` <small>Q${liveQuarter(r.sec)}</small>` : '') : '<small>no grade yet</small>'}</td>
+      ${stuClass ? '' : `<td class="sCls"><span class="qdot" style="--cc:${classColor(r.sec)}"></span>${esc(r.sec.label)}</td>`}<td class="sGr">${r.grade ? gradeChip(r.grade) + (mixedQ ? ` <small>Q${liveQuarter(r.sec)}</small>` : '') : '<small>no grade yet</small>'}</td>
       <td class="${r.d < 0 ? 'down' : r.d > 0 ? 'up' : ''}" data-l="Since last import">${r.d == null ? '' : signedPts(r.d)}</td><td data-l="Missing">${r.missing || ''}</td>
       <td data-l="IXL">${ix && ix.pct != null ? `${Math.round(ix.pct)}% <small>${ix.done}/${ix.poss}</small>` : '<small>—</small>'}</td><td class="qcol">${quickestShort(qs)}</td><td>${r.retake.hasGrades ? retakeChip(r.retake) : ''}</td><td>${fin}</td></tr>`;
   });
-  $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th><th>Class</th><th>${mixedQ ? 'This quarter' : esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Retake</th><th>Earlier quarters</th></tr></thead><tbody>${body || `<tr><td colspan="9" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet: import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
+  $('#gridwrap').innerHTML = `<div class="grades stuDir"><section class="gsec"><table class="checkTable gstu sdir"><thead><tr><th>Student</th>${stuClass ? '' : '<th>Class</th>'}<th>${mixedQ ? 'This quarter' : esc(Q_NAMES[cq - 1])}</th><th>Since last import</th><th>Missing</th><th>IXL at goal</th><th>Quickest to the next letter</th><th>Retake</th><th>Earlier quarters</th></tr></thead><tbody>${body || `<tr><td colspan="9" class="ghint">${q ? `No student matches “${esc(search)}”.` : 'No students yet: import a Focus gradebook or paste a roster.'}</td></tr>`}</tbody></table></section></div>`;
   $('#gridwrap').querySelectorAll('tr[data-open]').forEach(tr => tr.onclick = () => openProfile(tr.dataset.open, tr.dataset.name));
   $('#bar').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { stuSort = b.dataset.sort; render(); });
-  const sc = $('#stuClass'); if (sc) sc.onchange = () => { stuClass = sc.value; render(); };
   const l3 = $('#stuL30'); if (l3) l3.onclick = () => { stuL30 = !stuL30; render(); };
 }
 
@@ -6417,24 +6439,23 @@ function renderInner() {
   // Header: three places (Classes, Students, Board), search, the names switch, a More menu, Import. Before the first
   // import there is nowhere to go yet, so only the Guide and Import show.
   $('#search').classList.toggle('hidden', !has);
-  $('#nav').classList.toggle('hidden', !has); $('#btnHide').classList.toggle('hidden', !has); $('#topMore').classList.toggle('hidden', !has); $('#btnGuide0').classList.toggle('hidden', has);
+  $('#rail').classList.toggle('hidden', !has); document.body.classList.toggle('has', has); $('#btnHide').classList.toggle('hidden', !has); $('#topMore').classList.toggle('hidden', !has); $('#btnGuide0').classList.toggle('hidden', has);
   renderLeaderboard();
   const hb = $('#btnHide'), hidden = !!state.settings.hideNames;
   hb.setAttribute('aria-pressed', String(!hidden));   // pressed = names showing
   hb.title = hidden ? 'Names are hidden (initials only): tap to show them' : 'Names are showing: tap to hide them before projecting';
   hb.setAttribute('aria-label', hidden ? 'Student names: hidden' : 'Student names: showing');
   hb.innerHTML = hidden ? EYE_OFF : EYE_ON;
-  const inStudents = view.mode === 'students' || view.mode === 'student';
-  [['#btnHome', !inStudents], ['#btnStudents', inStudents], ['#btnLb', false]].forEach(([id, on]) => { const b = $(id); b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   $('#btnDetails').setAttribute('aria-checked', String(!!state.settings.details));
-  { const lb = state.lastBackup, el = $('#topBk'), d = lb ? ageDays(localDay(lb)) : null; el.textContent = lb == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`; el.classList.toggle('due', backupBehind()); }
+  { const lb = state.lastBackup, el = $('#topBk'), d = lb ? ageDays(localDay(lb)) : null; if (el) { el.textContent = lb == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`; el.classList.toggle('due', backupBehind()); } }
   renderKeep();
   if (seatSolving && !(view.mode === 'seating')) seatAbort();
   document.body.classList.toggle('details', !!state.settings.details);
   document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && (view.mode === 'grades' || view.mode === 'students' || view.mode === 'student')); document.body.classList.toggle('seating', has && view.mode === 'seating');
   if (!has) return;
   if (!state.sections[state.active]) state.active = state.order[0];
-  renderTabs();
+  if (view.mode === 'students' && stuClass && !state.sections[stuClass]) stuClass = '';
+  renderRail(); renderChead();
   if (view.mode === 'home') { $('#notices').innerHTML = ''; renderHome(); }
   else if (view.mode === 'students') { $('#notices').innerHTML = ''; renderStudentsView(); }
   else if (view.mode === 'student') { $('#notices').innerHTML = ''; renderProfile(); }
@@ -6444,10 +6465,10 @@ function renderInner() {
 // A Tally that holds a Board file: the Board, and a card to open it from. Nothing else renders — there is nothing else in the file.
 function renderBoardOnly() {
   $('#empty').classList.add('hidden'); $('#app').classList.remove('hidden');
-  ['#search', '#nav', '#btnHide', '#topMore', '#btnGuide0'].forEach(id => $(id).classList.add('hidden'));
-  document.body.classList.remove('home', 'grades', 'seating'); document.body.classList.add('boardOnly');
+  ['#search', '#rail', '#btnHide', '#topMore', '#btnGuide0'].forEach(id => $(id).classList.add('hidden'));
+  document.body.classList.remove('home', 'grades', 'seating', 'has'); document.body.classList.add('boardOnly');
   state.settings.hideNames = true;
-  $('#tabs').innerHTML = ''; $('#notices').innerHTML = ''; $('#bar').innerHTML = '';
+  $('#chead').innerHTML = ''; $('#notices').innerHTML = '';
   const b = state.board; const when = b && b.saved ? fmtDate(b.saved.slice(0, 10)) : '';
   $('#gridwrap').innerHTML = `<div class="boardCard"><h2>Board save</h2><p>${when ? 'Saved ' + esc(when) + ' · ' : ''}${plural(state.order.length, 'class')} · no names</p><button class="pill" id="openBoard">Open the Board</button></div>`;
   $('#openBoard').onclick = () => enterProjected();
@@ -6455,16 +6476,58 @@ function renderBoardOnly() {
 }
 // A tab's dot means "something here you can do today" — the same warnings the Overview lists, nothing else.
 function sectionWarn(s) { return attentionItems(s).some(x => x.level === 'warn'); }
-function renderTabs() {
-  $('#tabs').innerHTML = state.order.map(k => {
-    const s = state.sections[k]; const warn = sectionWarn(s);
-    const active = k === state.active && !['home', 'students'].includes(view.mode);
-    return `<button class="tab ${active ? 'active' : ''} ${warn ? 'warn' : ''}" role="tab" aria-selected="${active}" data-k="${esc(k)}" style="--cc:${classColor(s)}">
-      <span class="n">${esc(s.label)}</span>
-      ${warn ? '<span class="vh"> (needs attention)</span>' : ''}
-    </button>`;
-  }).join('');
-  $('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { state.active = b.dataset.k; view = { mode: 'units', unit: null }; noticesOpen = false; search = ''; $('#search').value = ''; save(); render(); });
+/* ---------- The rail and the class header (Croix, 7 Nov 2026: "It's difficult to tell sometimes how to navigate or find
+   something"; Direction A of the navigation canvas) ----------
+   One spine: Tally → a class → a tab. The rail lists All classes, then every class by course with its to-fix count, and
+   at its foot the Board, Settings, the Guide and when Tally was last saved. Every class has the same tabs: Grid, Grades,
+   Students, Seating, Reports; All classes has Overview, Students, Reports. */
+const allScope = () => view.mode === 'home' || (view.mode === 'students' && !stuClass);   // the Overview and every student: nothing on the rail but All classes is lit
+function renderRail() {
+  const el = $('#rail'); const all = allScope(); const warnAll = state.order.reduce((a, k) => a + attentionItems(state.sections[k]).filter(i => i.level === 'warn').length, 0);
+  const ICO_ALL = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>';
+  const groups = [['acc', 'Accelerated'], ['on', 'On-level']].map(([p, name]) => [name, state.order.filter(k => state.sections[k].prep === p)]).filter(g => g[1].length);
+  const other = state.order.filter(k => !['acc', 'on'].includes(state.sections[k].prep)); if (other.length) groups.push(['Classes', other]);
+  const one = groups.length === 1;   // one course: no heading over it
+  const warnOf = x => attentionItems(x).filter(i => i.level === 'warn').length;
+  const item = k => { const x = state.sections[k]; const warn = warnOf(x); const on = !all && k === state.active;
+    return `<button class="rc ${on ? 'on' : ''}" data-k="${esc(k)}" style="--cc:${classColor(x)}" ${on ? 'aria-current="page"' : ''} title="${esc(x.label)}"><span class="dot"></span><span class="lbl">${esc(labShort(x.label))}</span>${warn ? `<span class="vh"> (${plural(warn, 'thing')} to fix)</span><span class="n">${warn}</span>` : ''}</button>`; };
+  const lb = state.lastBackup, d = lb ? ageDays(localDay(lb)) : null; const age = lb == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days`;
+  el.innerHTML = `<h1 class="brand">Tally</h1>
+    <button id="btnHome" class="${all ? 'on' : ''}" ${all ? 'aria-current="page"' : ''} title="Every class at a glance, every student, reports for everyone">${ICO_ALL}<span class="lbl">All classes</span>${warnAll ? `<span class="n">${warnAll}</span>` : ''}</button>
+    ${groups.map(([name, keys]) => `${one ? '' : `<div class="sec">${esc(name)}</div>`}${keys.map(item).join('')}`).join('')}
+    <div class="foot">
+      <button id="btnLb" title="Student screen: Race and Data Lab"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8 20.5h8M12 16.5v4"/></svg>Board</button>
+      <button id="railSettings" title="Settings: this class, the course, Tally, files"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+      <button id="railGuide" title="A printable guide: the weekly flow and what the words mean"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16l-8-4-8 4z"/></svg>Guide</button>
+      <button id="railSave" title="Everything in Tally, in one file for your school Drive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Full save<span class="age ${backupBehind() ? 'due' : ''}">${esc(age)}</span></button>
+    </div>`;
+  $('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
+  el.querySelectorAll('.rc[data-k]').forEach(b => b.onclick = () => { state.active = b.dataset.k; view = { mode: 'units', unit: null }; noticesOpen = false; search = ''; $('#search').value = ''; save(); render(); });
+  $('#btnLb').onclick = enterProjected; $('#railSettings').onclick = () => openSettings(); $('#railGuide').onclick = openGuide; $('#railSave').onclick = () => saveFull();
+}
+// The class header above the bar: the class (or All classes), its facts, and the tabs.
+function renderChead() {
+  const el = $('#chead'); const all = allScope();
+  const own = view.mode === 'unit' || view.mode === 'student';   // a unit's or a student's bar carries a crumb, a name and its own buttons: a row of its own under the tabs
+  const barEl = own ? '' : '<div id="bar"></div>', barRow = own ? '<div id="bar" class="own"></div>' : '';
+  const tab = (id, label, on, count) => `<button id="${id}" role="tab" aria-selected="${on}" ${on ? 'aria-current="page"' : ''}>${label}${count ? `<small>${count}</small>` : ''}</button>`;
+  if (all) {
+    const n = state.order.length; const studs = state.order.reduce((a, k) => a + classStudents(state.sections[k]).length, 0);
+    el.innerHTML = `<div class="ch"><h2>All classes</h2><span class="meta">${plural(n, 'class')} · ${plural(studs, 'student')}</span></div>
+      <div class="tabrow"><div id="ctabs" role="tablist">${tab('openOverview', 'Overview', view.mode === 'home')}${tab('btnStudents', 'Students', view.mode === 'students')}${tab('openReports', 'Reports', false)}</div>${barEl}</div>${barRow}`;
+  } else {
+    const s = state.sections[state.active]; const warn = attentionItems(s).filter(x => x.level === 'warn').length;
+    const grid = view.mode === 'units' || view.mode === 'unit';
+    el.innerHTML = `<div class="ch"><h2><span class="dot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</h2><span class="meta">${s.prep === 'acc' ? 'Accelerated' : s.prep === 'on' ? 'On-level' : ''} · ${plural(s.students.length, 'student')}${dataDate(s) ? ` · IXL of ${fmtDate(dataDate(s))}` : ''}${s.grades ? ` · Focus of ${fmtDate(localDayOf(s.grades.importedAt))}` : ''}</span></div>
+      <div class="tabrow"><div id="ctabs" role="tablist">${tab('openGrid', 'Grid', grid, warn)}${tab('openGrades', 'Grades', view.mode === 'grades')}${tab('openStudents', 'Students', view.mode === 'students' || view.mode === 'student')}${tab('openSeating', 'Seating', view.mode === 'seating')}${tab('openReports', 'Reports', false)}</div>${barEl}</div>${barRow}`;
+    $('#openGrid').onclick = () => { view = { mode: 'units', unit: null }; render(); };
+    $('#openGrades').onclick = () => { view = { mode: 'grades', unit: null }; render(); };
+    $('#openStudents').onclick = () => { stuClass = state.active; view = { mode: 'students', unit: null }; render(); };
+    $('#openSeating').onclick = () => { view = { mode: 'seating', unit: null, sub: 'chart' }; seatSel = null; seatPending = null; render(); };
+  }
+  const oo = $('#openOverview'); if (oo) oo.onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
+  const bs = $('#btnStudents'); if (bs) bs.onclick = () => { stuClass = ''; view = { mode: 'students', unit: null }; render(); };
+  $('#openReports').onclick = () => openPrintMenu(state.sections[state.active], all);   // until Reports is a page of its own: the print menu, for this class or every class
 }
 function renderNotices() {
   const s = state.sections[state.active]; const rows = buildRows(s); const el = $('#notices'); el.innerHTML = '';
@@ -6508,10 +6571,8 @@ function renderBar() {
   let html = '';
   if (view.mode === 'units') {
     const hid = units.filter(u => u.hidden).length;
-    html = `<h2>${esc(s.label)}</h2>${noticeChip()}<span class="meta det">${units.length} units · ${s.skills.length} skills · ${plural(s.students.length, 'student')} · one point per skill at goal (<b>${t}</b>) · IXL export of ${fmtDate(dataDate(s)) || '?'}${dataDate(s) ? ` (${ageText(dataDate(s))})` : ''}</span>
+    html = `${noticeChip()}<span class="meta det">${units.length} units · ${s.skills.length} skills · ${plural(s.students.length, 'student')} · one point per skill at goal (<b>${t}</b>) · IXL export of ${fmtDate(dataDate(s)) || '?'}${dataDate(s) ? ` (${ageText(dataDate(s))})` : ''}</span>
       <div class="spacer"></div>
-      ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
-      <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
       <label class="curUnit" title="The unit this course is working in: every unit up to it counts; later units are gathered under Ahead">Working in <select id="curUnit">${units.some(u => u.current) ? '' : '<option value="">— pick —</option>'}${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
       <button class="pill toggle soft" id="btnPrint" aria-pressed="true" title="Reports and lists on paper, for this class or every class">Print</button><div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mReturns">Signed reports</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>`;
   } else if (view.mode === 'grades' && s.grades) {
@@ -6522,7 +6583,7 @@ function renderBar() {
     const u = units.find(u => u.name === view.unit);
     if (!u) { view = { mode: 'units', unit: null }; return renderBar(); }
     const ex = u.idx.length - u.active.length;
-    html = `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="vh">Legend: filled cells are at goal, sand cells below goal, a dot is not started, hatched is skipped. Tap a skill to skip it for the course, a cell to skip it for one student.</span><span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
+    html = `<div class="crumb"><button id="back">‹ Grid</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="vh">Legend: filled cells are at goal, sand cells below goal, a dot is not started, hatched is skipped. Tap a skill to skip it for the course, a cell to skip it for one student.</span><span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
       <div class="spacer"></div>
       <button class="pill toggle soft" id="hideUnit" aria-pressed="${u.assigned}" title="Whether this unit counts for the course: tap to change">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
       ${s.receipts[u.name] ? `<button class="pill toggle" id="rcUnit" title="What was copied to Focus, and when">Copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}
@@ -6539,12 +6600,10 @@ function renderBar() {
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
   const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu'); wireMenu(mb, menu);
     const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const bp = $('#btnPrint'); if (bp) bp.onclick = () => openPrintMenu(s); const mrt = $('#mReturns'); if (mrt) mrt.onclick = () => openReturns(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; }
-  const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
   const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.settings.curUnitTouched = { ...(state.settings.curUnitTouched || {}), [s.prep]: true }; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); landOnCurrent = true; render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b>: ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}${(() => { const off = units.filter(u => u.num && u.num <= Number(cuSel.value) && u.num > (state.settings.skipFirst[s.prep] || 0) && state.assigned[s.prep][u.name] === false).map(u => u.num); return off.length ? ` (not Unit ${off.join(', ')}: marked Not assigned)` : ''; })()}; work in later units shows under Ahead.` : 'No current unit: no unit counts until you pick one.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
   $('#bar').querySelectorAll('[data-gq]').forEach(b => b.onclick = () => { view.q = Number(b.dataset.gq); render(); });
   const gqz = $('#gradesQuarters'); if (gqz) gqz.onclick = openQuarters;
-  const os = $('#openSeating'); if (os) os.onclick = () => { view = { mode: 'seating', unit: null, sub: 'chart' }; seatSel = null; seatPending = null; render(); };
   $('#bar').querySelectorAll('#seatSub [data-sub]').forEach(b => b.onclick = () => { view.sub = b.dataset.sub; seatSel = null; render(); });
   const sp = $('#seatPrint'); if (sp) sp.onclick = () => openSeatPrint(s); const sw = $('#seatWeights'); if (sw) sw.onclick = () => openSeatWeights(s);
   const gc = $('#gradesCats'); if (gc) gc.onclick = () => { const t = $('.gasg'); if (t) t.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
@@ -7457,10 +7516,7 @@ $('#btnFullSave').onclick = () => saveFull(); $('#btnBoardSave').onclick = () =>
 $('#launchSync').onclick = () => openSync();
 wireMenu($('#btnMore'), $('#topMenu'), () => keepInside($('#topMenu')));
 $('#btnHide').onclick = () => { state.settings.hideNames = !state.settings.hideNames; save(); render(); };
-$('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
-$('#btnStudents').onclick = () => { view = { mode: 'students', unit: null }; render(); };
 $('#btnDetails').onclick = () => { state.settings.details = !state.settings.details; save(); render(); };
-$('#btnLb').onclick = enterProjected;
 /* Phones: a table wider than its box becomes one card per row (its column headings become each value's label), so
    nothing scrolls sideways. The class grid and the Students list have their own phone layouts. (Croix, 23 Oct 2026.) */
 var lbOptsOpen = false;   // the Board's controls on a phone: folded behind Options until opened

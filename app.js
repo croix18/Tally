@@ -1786,24 +1786,23 @@ function renderInner() {
   // Header: three places (Classes, Students, Board), search, the names switch, a More menu, Import. Before the first
   // import there is nowhere to go yet, so only the Guide and Import show.
   $('#search').classList.toggle('hidden', !has);
-  $('#nav').classList.toggle('hidden', !has); $('#btnHide').classList.toggle('hidden', !has); $('#topMore').classList.toggle('hidden', !has); $('#btnGuide0').classList.toggle('hidden', has);
+  $('#rail').classList.toggle('hidden', !has); document.body.classList.toggle('has', has); $('#btnHide').classList.toggle('hidden', !has); $('#topMore').classList.toggle('hidden', !has); $('#btnGuide0').classList.toggle('hidden', has);
   renderLeaderboard();
   const hb = $('#btnHide'), hidden = !!state.settings.hideNames;
   hb.setAttribute('aria-pressed', String(!hidden));   // pressed = names showing
   hb.title = hidden ? 'Names are hidden (initials only): tap to show them' : 'Names are showing: tap to hide them before projecting';
   hb.setAttribute('aria-label', hidden ? 'Student names: hidden' : 'Student names: showing');
   hb.innerHTML = hidden ? EYE_OFF : EYE_ON;
-  const inStudents = view.mode === 'students' || view.mode === 'student';
-  [['#btnHome', !inStudents], ['#btnStudents', inStudents], ['#btnLb', false]].forEach(([id, on]) => { const b = $(id); b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   $('#btnDetails').setAttribute('aria-checked', String(!!state.settings.details));
-  { const lb = state.lastBackup, el = $('#topBk'), d = lb ? ageDays(localDay(lb)) : null; el.textContent = lb == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`; el.classList.toggle('due', backupBehind()); }
+  { const lb = state.lastBackup, el = $('#topBk'), d = lb ? ageDays(localDay(lb)) : null; if (el) { el.textContent = lb == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`; el.classList.toggle('due', backupBehind()); } }
   renderKeep();
   if (seatSolving && !(view.mode === 'seating')) seatAbort();
   document.body.classList.toggle('details', !!state.settings.details);
   document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && (view.mode === 'grades' || view.mode === 'students' || view.mode === 'student')); document.body.classList.toggle('seating', has && view.mode === 'seating');
   if (!has) return;
   if (!state.sections[state.active]) state.active = state.order[0];
-  renderTabs();
+  if (view.mode === 'students' && stuClass && !state.sections[stuClass]) stuClass = '';
+  renderRail(); renderChead();
   if (view.mode === 'home') { $('#notices').innerHTML = ''; renderHome(); }
   else if (view.mode === 'students') { $('#notices').innerHTML = ''; renderStudentsView(); }
   else if (view.mode === 'student') { $('#notices').innerHTML = ''; renderProfile(); }
@@ -1813,10 +1812,10 @@ function renderInner() {
 // A Tally that holds a Board file: the Board, and a card to open it from. Nothing else renders — there is nothing else in the file.
 function renderBoardOnly() {
   $('#empty').classList.add('hidden'); $('#app').classList.remove('hidden');
-  ['#search', '#nav', '#btnHide', '#topMore', '#btnGuide0'].forEach(id => $(id).classList.add('hidden'));
-  document.body.classList.remove('home', 'grades', 'seating'); document.body.classList.add('boardOnly');
+  ['#search', '#rail', '#btnHide', '#topMore', '#btnGuide0'].forEach(id => $(id).classList.add('hidden'));
+  document.body.classList.remove('home', 'grades', 'seating', 'has'); document.body.classList.add('boardOnly');
   state.settings.hideNames = true;
-  $('#tabs').innerHTML = ''; $('#notices').innerHTML = ''; $('#bar').innerHTML = '';
+  $('#chead').innerHTML = ''; $('#notices').innerHTML = '';
   const b = state.board; const when = b && b.saved ? fmtDate(b.saved.slice(0, 10)) : '';
   $('#gridwrap').innerHTML = `<div class="boardCard"><h2>Board save</h2><p>${when ? 'Saved ' + esc(when) + ' · ' : ''}${plural(state.order.length, 'class')} · no names</p><button class="pill" id="openBoard">Open the Board</button></div>`;
   $('#openBoard').onclick = () => enterProjected();
@@ -1824,16 +1823,58 @@ function renderBoardOnly() {
 }
 // A tab's dot means "something here you can do today" — the same warnings the Overview lists, nothing else.
 function sectionWarn(s) { return attentionItems(s).some(x => x.level === 'warn'); }
-function renderTabs() {
-  $('#tabs').innerHTML = state.order.map(k => {
-    const s = state.sections[k]; const warn = sectionWarn(s);
-    const active = k === state.active && !['home', 'students'].includes(view.mode);
-    return `<button class="tab ${active ? 'active' : ''} ${warn ? 'warn' : ''}" role="tab" aria-selected="${active}" data-k="${esc(k)}" style="--cc:${classColor(s)}">
-      <span class="n">${esc(s.label)}</span>
-      ${warn ? '<span class="vh"> (needs attention)</span>' : ''}
-    </button>`;
-  }).join('');
-  $('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { state.active = b.dataset.k; view = { mode: 'units', unit: null }; noticesOpen = false; search = ''; $('#search').value = ''; save(); render(); });
+/* ---------- The rail and the class header (Croix, 7 Nov 2026: "It's difficult to tell sometimes how to navigate or find
+   something"; Direction A of the navigation canvas) ----------
+   One spine: Tally → a class → a tab. The rail lists All classes, then every class by course with its to-fix count, and
+   at its foot the Board, Settings, the Guide and when Tally was last saved. Every class has the same tabs: Grid, Grades,
+   Students, Seating, Reports; All classes has Overview, Students, Reports. */
+const allScope = () => view.mode === 'home' || (view.mode === 'students' && !stuClass);   // the Overview and every student: nothing on the rail but All classes is lit
+function renderRail() {
+  const el = $('#rail'); const all = allScope(); const warnAll = state.order.reduce((a, k) => a + attentionItems(state.sections[k]).filter(i => i.level === 'warn').length, 0);
+  const ICO_ALL = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>';
+  const groups = [['acc', 'Accelerated'], ['on', 'On-level']].map(([p, name]) => [name, state.order.filter(k => state.sections[k].prep === p)]).filter(g => g[1].length);
+  const other = state.order.filter(k => !['acc', 'on'].includes(state.sections[k].prep)); if (other.length) groups.push(['Classes', other]);
+  const one = groups.length === 1;   // one course: no heading over it
+  const warnOf = x => attentionItems(x).filter(i => i.level === 'warn').length;
+  const item = k => { const x = state.sections[k]; const warn = warnOf(x); const on = !all && k === state.active;
+    return `<button class="rc ${on ? 'on' : ''}" data-k="${esc(k)}" style="--cc:${classColor(x)}" ${on ? 'aria-current="page"' : ''} title="${esc(x.label)}"><span class="dot"></span><span class="lbl">${esc(labShort(x.label))}</span>${warn ? `<span class="vh"> (${plural(warn, 'thing')} to fix)</span><span class="n">${warn}</span>` : ''}</button>`; };
+  const lb = state.lastBackup, d = lb ? ageDays(localDay(lb)) : null; const age = lb == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days`;
+  el.innerHTML = `<h1 class="brand">Tally</h1>
+    <button id="btnHome" class="${all ? 'on' : ''}" ${all ? 'aria-current="page"' : ''} title="Every class at a glance, every student, reports for everyone">${ICO_ALL}<span class="lbl">All classes</span>${warnAll ? `<span class="n">${warnAll}</span>` : ''}</button>
+    ${groups.map(([name, keys]) => `${one ? '' : `<div class="sec">${esc(name)}</div>`}${keys.map(item).join('')}`).join('')}
+    <div class="foot">
+      <button id="btnLb" title="Student screen: Race and Data Lab"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8 20.5h8M12 16.5v4"/></svg>Board</button>
+      <button id="railSettings" title="Settings: this class, the course, Tally, files"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+      <button id="railGuide" title="A printable guide: the weekly flow and what the words mean"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16l-8-4-8 4z"/></svg>Guide</button>
+      <button id="railSave" title="Everything in Tally, in one file for your school Drive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Full save<span class="age ${backupBehind() ? 'due' : ''}">${esc(age)}</span></button>
+    </div>`;
+  $('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
+  el.querySelectorAll('.rc[data-k]').forEach(b => b.onclick = () => { state.active = b.dataset.k; view = { mode: 'units', unit: null }; noticesOpen = false; search = ''; $('#search').value = ''; save(); render(); });
+  $('#btnLb').onclick = enterProjected; $('#railSettings').onclick = () => openSettings(); $('#railGuide').onclick = openGuide; $('#railSave').onclick = () => saveFull();
+}
+// The class header above the bar: the class (or All classes), its facts, and the tabs.
+function renderChead() {
+  const el = $('#chead'); const all = allScope();
+  const own = view.mode === 'unit' || view.mode === 'student';   // a unit's or a student's bar carries a crumb, a name and its own buttons: a row of its own under the tabs
+  const barEl = own ? '' : '<div id="bar"></div>', barRow = own ? '<div id="bar" class="own"></div>' : '';
+  const tab = (id, label, on, count) => `<button id="${id}" role="tab" aria-selected="${on}" ${on ? 'aria-current="page"' : ''}>${label}${count ? `<small>${count}</small>` : ''}</button>`;
+  if (all) {
+    const n = state.order.length; const studs = state.order.reduce((a, k) => a + classStudents(state.sections[k]).length, 0);
+    el.innerHTML = `<div class="ch"><h2>All classes</h2><span class="meta">${plural(n, 'class')} · ${plural(studs, 'student')}</span></div>
+      <div class="tabrow"><div id="ctabs" role="tablist">${tab('openOverview', 'Overview', view.mode === 'home')}${tab('btnStudents', 'Students', view.mode === 'students')}${tab('openReports', 'Reports', false)}</div>${barEl}</div>${barRow}`;
+  } else {
+    const s = state.sections[state.active]; const warn = attentionItems(s).filter(x => x.level === 'warn').length;
+    const grid = view.mode === 'units' || view.mode === 'unit';
+    el.innerHTML = `<div class="ch"><h2><span class="dot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</h2><span class="meta">${s.prep === 'acc' ? 'Accelerated' : s.prep === 'on' ? 'On-level' : ''} · ${plural(s.students.length, 'student')}${dataDate(s) ? ` · IXL of ${fmtDate(dataDate(s))}` : ''}${s.grades ? ` · Focus of ${fmtDate(localDayOf(s.grades.importedAt))}` : ''}</span></div>
+      <div class="tabrow"><div id="ctabs" role="tablist">${tab('openGrid', 'Grid', grid, warn)}${tab('openGrades', 'Grades', view.mode === 'grades')}${tab('openStudents', 'Students', view.mode === 'students' || view.mode === 'student')}${tab('openSeating', 'Seating', view.mode === 'seating')}${tab('openReports', 'Reports', false)}</div>${barEl}</div>${barRow}`;
+    $('#openGrid').onclick = () => { view = { mode: 'units', unit: null }; render(); };
+    $('#openGrades').onclick = () => { view = { mode: 'grades', unit: null }; render(); };
+    $('#openStudents').onclick = () => { stuClass = state.active; view = { mode: 'students', unit: null }; render(); };
+    $('#openSeating').onclick = () => { view = { mode: 'seating', unit: null, sub: 'chart' }; seatSel = null; seatPending = null; render(); };
+  }
+  const oo = $('#openOverview'); if (oo) oo.onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
+  const bs = $('#btnStudents'); if (bs) bs.onclick = () => { stuClass = ''; view = { mode: 'students', unit: null }; render(); };
+  $('#openReports').onclick = () => openPrintMenu(state.sections[state.active], all);   // until Reports is a page of its own: the print menu, for this class or every class
 }
 function renderNotices() {
   const s = state.sections[state.active]; const rows = buildRows(s); const el = $('#notices'); el.innerHTML = '';
@@ -1877,10 +1918,8 @@ function renderBar() {
   let html = '';
   if (view.mode === 'units') {
     const hid = units.filter(u => u.hidden).length;
-    html = `<h2>${esc(s.label)}</h2>${noticeChip()}<span class="meta det">${units.length} units · ${s.skills.length} skills · ${plural(s.students.length, 'student')} · one point per skill at goal (<b>${t}</b>) · IXL export of ${fmtDate(dataDate(s)) || '?'}${dataDate(s) ? ` (${ageText(dataDate(s))})` : ''}</span>
+    html = `${noticeChip()}<span class="meta det">${units.length} units · ${s.skills.length} skills · ${plural(s.students.length, 'student')} · one point per skill at goal (<b>${t}</b>) · IXL export of ${fmtDate(dataDate(s)) || '?'}${dataDate(s) ? ` (${ageText(dataDate(s))})` : ''}</span>
       <div class="spacer"></div>
-      ${s.grades ? `<button class="pill toggle" id="openGrades" title="Focus grades: trends, what-ifs, printable summaries">Grades</button>` : ''}
-      <button class="pill toggle" id="openSeating" title="Seating chart: room layout, generated charts, moves with consequences">Seating</button>
       <label class="curUnit" title="The unit this course is working in: every unit up to it counts; later units are gathered under Ahead">Working in <select id="curUnit">${units.some(u => u.current) ? '' : '<option value="">— pick —</option>'}${units.filter(u => u.num > ((state.settings.skipFirst || {})[s.prep] || 0)).map(u => `<option value="${u.num}" ${u.current ? 'selected' : ''}>${esc(u.short)}</option>`).join('')}</select></label>
       <button class="pill toggle soft" id="btnPrint" aria-pressed="true" title="Reports and lists on paper, for this class or every class">Print</button><div class="more"><button class="pill toggle" id="moreBtn" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">${ico('more')}</button><div class="menu hidden" id="moreMenu"><button id="mDigest">What changed this week</button><button id="mReturns">Signed reports</button>${hid ? `<button id="mToggleAll">${state.settings.showAllUnits ? 'Hide' : 'Show'} ${plural(hid, 'unassigned unit')}</button>` : ''}</div></div>`;
   } else if (view.mode === 'grades' && s.grades) {
@@ -1891,7 +1930,7 @@ function renderBar() {
     const u = units.find(u => u.name === view.unit);
     if (!u) { view = { mode: 'units', unit: null }; return renderBar(); }
     const ex = u.idx.length - u.active.length;
-    html = `<div class="crumb"><button id="back">‹ ${esc(s.label)}</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="vh">Legend: filled cells are at goal, sand cells below goal, a dot is not started, hatched is skipped. Tap a skill to skip it for the course, a cell to skip it for one student.</span><span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
+    html = `<div class="crumb"><button id="back">‹ Grid</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="vh">Legend: filled cells are at goal, sand cells below goal, a dot is not started, hatched is skipped. Tap a skill to skip it for the course, a cell to skip it for one student.</span><span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
       <div class="spacer"></div>
       <button class="pill toggle soft" id="hideUnit" aria-pressed="${u.assigned}" title="Whether this unit counts for the course: tap to change">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
       ${s.receipts[u.name] ? `<button class="pill toggle" id="rcUnit" title="What was copied to Focus, and when">Copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}
@@ -1908,12 +1947,10 @@ function renderBar() {
   const po = $('#printOwed'); if (po) po.onclick = () => openStillOwed(s);
   const mb = $('#moreBtn'); if (mb) { const menu = $('#moreMenu'); wireMenu(mb, menu);
     const dg = $('#mDigest'); if (dg) dg.onclick = () => openDigest(s); const bp = $('#btnPrint'); if (bp) bp.onclick = () => openPrintMenu(s); const mrt = $('#mReturns'); if (mrt) mrt.onclick = () => openReturns(s); const mt = $('#mToggleAll'); if (mt) mt.onclick = () => { state.settings.showAllUnits = !state.settings.showAllUnits; save(); render(); }; }
-  const og = $('#openGrades'); if (og) og.onclick = () => { view = { mode: 'grades', unit: null }; render(); };
   const cuSel = $('#curUnit'); if (cuSel) cuSel.onchange = () => { state.settings.currentUnit = state.settings.currentUnit || { acc: null, on: null }; state.settings.currentUnit[s.prep] = cuSel.value ? Number(cuSel.value) : null; state.settings.curUnitTouched = { ...(state.settings.curUnitTouched || {}), [s.prep]: true }; state.order.map(k => state.sections[k]).filter(x => x.prep === s.prep).forEach(snapshot); save(); landOnCurrent = true; render(); toast(cuSel.value ? `${s.prep === 'acc' ? 'Accelerated' : 'On-level'} classes are working in <b>Unit ${cuSel.value}</b>: ${(state.settings.skipFirst[s.prep] || 0) + 1 === Number(cuSel.value) ? `Unit ${cuSel.value} counts` : `Units ${(state.settings.skipFirst[s.prep] || 0) + 1}–${cuSel.value} count`}${(() => { const off = units.filter(u => u.num && u.num <= Number(cuSel.value) && u.num > (state.settings.skipFirst[s.prep] || 0) && state.assigned[s.prep][u.name] === false).map(u => u.num); return off.length ? ` (not Unit ${off.join(', ')}: marked Not assigned)` : ''; })()}; work in later units shows under Ahead.` : 'No current unit: no unit counts until you pick one.', false, 5000); };
   const gw = $('#gradesWeights'); if (gw) gw.onclick = () => openWeights(s);
   $('#bar').querySelectorAll('[data-gq]').forEach(b => b.onclick = () => { view.q = Number(b.dataset.gq); render(); });
   const gqz = $('#gradesQuarters'); if (gqz) gqz.onclick = openQuarters;
-  const os = $('#openSeating'); if (os) os.onclick = () => { view = { mode: 'seating', unit: null, sub: 'chart' }; seatSel = null; seatPending = null; render(); };
   $('#bar').querySelectorAll('#seatSub [data-sub]').forEach(b => b.onclick = () => { view.sub = b.dataset.sub; seatSel = null; render(); });
   const sp = $('#seatPrint'); if (sp) sp.onclick = () => openSeatPrint(s); const sw = $('#seatWeights'); if (sw) sw.onclick = () => openSeatWeights(s);
   const gc = $('#gradesCats'); if (gc) gc.onclick = () => { const t = $('.gasg'); if (t) t.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
@@ -2826,10 +2863,7 @@ $('#btnFullSave').onclick = () => saveFull(); $('#btnBoardSave').onclick = () =>
 $('#launchSync').onclick = () => openSync();
 wireMenu($('#btnMore'), $('#topMenu'), () => keepInside($('#topMenu')));
 $('#btnHide').onclick = () => { state.settings.hideNames = !state.settings.hideNames; save(); render(); };
-$('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
-$('#btnStudents').onclick = () => { view = { mode: 'students', unit: null }; render(); };
 $('#btnDetails').onclick = () => { state.settings.details = !state.settings.details; save(); render(); };
-$('#btnLb').onclick = enterProjected;
 /* Phones: a table wider than its box becomes one card per row (its column headings become each value's label), so
    nothing scrolls sideways. The class grid and the Students list have their own phone layouts. (Croix, 23 Oct 2026.) */
 var lbOptsOpen = false;   // the Board's controls on a phone: folded behind Options until opened

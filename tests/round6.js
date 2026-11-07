@@ -52,7 +52,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   await p.reload(); await p.waitForTimeout(600); check((await p.evaluate(()=>window.__tally.defaultWorkingIn().length))===0 && (await p.evaluate(()=>window.__tally.state.settings.currentUnit.acc))===2,'and a reload');
   await p.click(`[data-k="${K}"]`); await p.waitForTimeout(300); await p.selectOption('#curUnit','1'); await p.waitForTimeout(300);
   // 2. the tab dot and the Overview say the same thing
-  const agree=await p.evaluate(()=>{ const T=window.__tally; return T.state.order.map(k=>{ const s=T.state.sections[k]; return T.sectionWarn(s)===T.attentionItems(s).some(a=>a.level==='warn') && document.querySelector(`.tab[data-k="${k}"]`).classList.contains('warn')===T.sectionWarn(s); }); });
+  const agree=await p.evaluate(()=>{ const T=window.__tally; return T.state.order.map(k=>{ const s=T.state.sections[k]; return T.sectionWarn(s)===T.attentionItems(s).some(a=>a.level==='warn') && !!document.querySelector(`#rail .rc[data-k="${k}"] .n`)===T.sectionWarn(s); }); });
   check(agree.every(Boolean),'a tab wears a dot exactly when the Overview lists a warning for that class');
   // 2b. the printed next-assessment line is true for every student of both synthetic classes (many F students who can reach a D)
   const truthP=await p.evaluate(()=>{ const T=window.__tally; const bad=[]; let dReach=0, wont=0, n=0;

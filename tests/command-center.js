@@ -10,7 +10,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   // --- Overview
   await p.reload(); await p.waitForTimeout(600);
   check(await p.locator('#gridwrap .home').count()===1 && await p.locator('.hcard').count()===2,'reload opens on the Overview with a card per class');
-  check((await p.getAttribute('#btnHome','aria-current'))==='page' && await p.locator('body.home').count()===1 && await p.locator('.tab.active').count()===0,'on the Overview: Classes is the current place, no class tab active');
+  check((await p.getAttribute('#btnHome','aria-current'))==='page' && await p.locator('body.home').count()===1 && await p.locator('.rc.on').count()===0,'on the Overview: Classes is the current place, no class tab active');
   const ht=await p.textContent('.home');
   check(/IXL work at goal/.test(ht) && /Focus average/.test(ht) && /Missing work/.test(ht) && /Sliding/.test(ht) && /Needs attention/.test(ht),'cards carry the headline numbers and there is a needs-attention list');
   check(await p.locator('.hatt li').count()>=2 && /roster not in IXL/.test(ht),'needs-attention lists the roster mismatch');
@@ -19,7 +19,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(await p.locator('#hAtt:not([open])').count()===1 && Number(await p.textContent('#hAtt .hcount'))>=1,'needs-attention is one closed line with a count until it is opened');
   await p.click('#hAtt > summary'); await p.waitForTimeout(200);
   await p.locator('.hatt li button[data-go], .hatt li .hgo').first().click(); await p.waitForTimeout(400);   /* the first row that opens a class (after Oct 9 the first row is "close Quarter 1") */
-  check(await p.locator('table.grid').count()===1 && await p.locator('.tab.active').count()===1,'tapping an attention item opens that class');
+  check(await p.locator('table.grid').count()===1 && await p.locator('.rc.on').count()===1,'tapping an attention item opens that class');
   // --- calm grid
   check(await p.locator('#bar #nToggle.nchip').count()===1 && await p.locator('#notices .notice').count()===0 && /to fix/.test(await p.textContent('#nToggle')) && (await p.evaluate(()=>document.querySelector('#notices').getBoundingClientRect().height))<14,'notices are a count in the class bar, not a band above it');
   await p.click('#nToggle'); await p.waitForTimeout(200); check(await p.locator('#notices .nfold .notice').count()>=1 && (await p.getAttribute('#nToggle','aria-expanded'))==='true','tapping the count shows the notices');
