@@ -26,11 +26,11 @@ const K1 = '1205050-7T1A', K2 = '1205050-7T2B';
   const startsOdd=lay=>{ let at=0; const bad=[]; lay.secs.forEach((s,i)=>{ if (at%2) bad.push(i); at+=s.pages; }); return bad; };
 
   // 1. the menu: this class or every class, and two-sided printing on unless unticked
-  await act(p,'#btnPrint'); await p.waitForTimeout(300);
-  const m1=await p.evaluate(()=>({ scope:[...document.querySelectorAll('#rpScope button')].map(b=>b.textContent.replace(/\s+/g,' ').trim()+':'+b.getAttribute('aria-pressed')), dup:document.querySelector('#rpDuplex').checked, every:document.querySelector('[data-who="all"] small').textContent, title:document.querySelector('#modal h2').textContent }));
-  check(m1.scope.length===2 && /1st Period · Accelerated:true/.test(m1.scope[0]) && /All classes 2:false/.test(m1.scope[1]) && m1.dup && m1.every==='23' && /Print · 1st Period/.test(m1.title),'Print offers this class or all classes, with two-sided printing ticked: '+JSON.stringify(m1));
+  await p.click('#openReports'); await p.waitForTimeout(300);
+  const m1=await p.evaluate(()=>({ scope:[...document.querySelectorAll('#rpScope button')].map(b=>b.textContent.replace(/\s+/g,' ').trim()+':'+b.getAttribute('aria-pressed')), dup:document.querySelector('#rpDuplex').checked, every:document.querySelector('[data-who="all"] small').textContent, title:document.querySelector('#rpTitle').textContent }));
+  check(m1.scope.length===2 && /1st Period · Accelerated:true/.test(m1.scope[0]) && /All classes 2:false/.test(m1.scope[1]) && m1.dup && m1.every==='23' && /Print · 1st Period/.test(m1.title),'the Reports tab offers this class or all classes, with two-sided printing ticked: '+JSON.stringify(m1));
   await p.click('[data-scope="all"]'); await p.waitForTimeout(300);
-  const m2=await p.evaluate(()=>({ every:document.querySelector('[data-who="all"] small').textContent, weekly:document.querySelector('#rpWeekly small').textContent, fast:document.querySelector('#rpFast small').textContent, title:document.querySelector('#modal h2').textContent, owed:[...document.querySelectorAll('[data-owed]')].map(b=>b.textContent.replace(/\s+/g,' ').trim()) }));
+  const m2=await p.evaluate(()=>({ every:document.querySelector('[data-who="all"] small').textContent, weekly:document.querySelector('#rpWeekly small').textContent, fast:document.querySelector('#rpFast small').textContent, title:document.querySelector('#rpTitle').textContent, owed:[...document.querySelectorAll('[data-owed]')].map(b=>b.textContent.replace(/\s+/g,' ').trim()) }));
   check(m2.title==='Print · All classes' && m2.every==='46' && /^46 students, 2 classes/.test(m2.weekly) && /^46 students/.test(m2.fast) && /A list per class, initials/.test(m2.owed.join('|')),'All classes counts every class\'s students: '+JSON.stringify(m2));
   // 2. the weekly reports for every class, two-sided: each class's reports, then its checklist; every report on a new sheet
   await p.evaluate(K2=>{ const T=window.__tally; const s=T.state.sections[K2]; s.grades.exportedAt=new Date(Date.now()-3*864e5).toISOString(); },K2);

@@ -39,7 +39,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   const gb=await p.evaluate(()=>window.__tally.parseGradebook([['Student','Student ID','Grade Level','Unit 1 Test 100 pts 09/12','IXL Unit 1 23 pts 09/15'],['Doe, Jane','1','7','88','20'],['Withdrawn, Zed (Inactive)','2','7','',''],['Roe, Rick','3','7','70','18']]));
   check(gb.assignments.map(a=>a.name+'|'+a.max).join(';')==='Unit 1 Test|100;IXL Unit 1|23' && gb.students.length===2,'pts before date; Grade Level skipped; inactive row dropped: '+JSON.stringify(gb.assignments.map(a=>[a.name,a.max]))+' '+gb.students.length);
   // language spot checks
-  await more(p,'#btnSettings'); const stxt=await p.textContent('#modal'); await p.click('#mCancel');
+  await more(p,'#btnSettings'); const stxt=await p.textContent('.spage'); await p.click('#mCancel');
   check(/Goal SmartScore/.test(stxt) && /Class name/.test(stxt) && !/Threshold|Team name|period/i.test(stxt.replace(/Period/g,'')),'settings uses goal / class name vocabulary');
   check(await p.evaluate(()=>window.__tally.state.sections['1205050-7T1A'].threshold)===67 && !/Goal/.test(await p.textContent('[data-k="1205050-7T1A"]')),'the class tab is the class name only; the goal lives on the class bar and in Settings');
   check((await p.textContent('#btnLb')).trim()==='Board' && (await p.textContent('#btnImport')).trim()==='Import','header buttons: Board, Import');

@@ -1136,6 +1136,26 @@ per-section-file era and many items in them are now done).
   search, the names switch and Import. `syncUI` no longer needs the button to be on the page (an empty Tally's "Turn on
   sync" showed only because the old menu always had one). Students inside the class was phase 1's work; nothing more
   to fold.
+- **7 Nov 2026 — Phase 4: Reports and Settings are pages, not dialogs.**
+  - **Reports** (`view.mode === 'reports'`, `renderReportsPage` in grades.js): the Reports tab of a class, and of All
+    classes (`view.all`). Three cards: Print (what the Print dialog offered: who, Weekly and FAST, the IXL still owed,
+    two-sided; a class's page keeps the `#rpScope` toggle for printing every class), Reports out and back (the
+    signed-reports list that was behind ⋯, now `returnsHtml` / `wireReturns` in students.js; All classes shows one line
+    per class with the way to its list), and Also (What changed this week, Board save, Save the Race / Data Lab page).
+    `openPrintMenu(s, all)` and `openReturns(s)` keep their names and now open the page (every caller and `openStudentReports`
+    still work); Print… and Signed reports left the Actions menu. A print re-renders the page so the list shows it.
+  - **Settings** (`view.mode === 'settings'`, `renderSettingsPage` in app.js): a page under the class header, the bar's
+    own row carrying ‹ Back, "Settings" and the four tabs (`#stabs`: Class · Course · Tally · Files). The rail is the
+    class picker (`#setClass` is gone): tapping a class on the rail while in Settings opens that class's; All classes ›
+    Settings has Classes (each class under its course, with the way to its Settings and its course's), Tally and Files.
+    `openSettings(key, tab)` navigates; `settingsBack` remembers the page that was open, and Cancel, Escape, Save and
+    ‹ Back return to it (after moving to another class on the rail, to that class's grid). The ids of every control stayed
+    (`#mSave`, `#mCancel`, `#thr`, `#roster`, …). Leaving with unsaved edits asks first: `pageGuard` is checked by `nav()`,
+    which every rail button, tab, the search box and All classes go through; Cancel and Escape ask only about a pasted
+    roster, as the dialog did.
+  - The Guide describes the rail, the tabs, Actions, Reports and Settings. `tests/shell.js` +6 (47); `tests/settings.js` rewritten for the page
+    (38); `header`, `shell`, `print-duplex`, `family`, `command-center`, `grid`, `best-score-and-receipts` and the suites
+    that pressed Print or Signed reports follow (`act(p, '#btnPrint')` → `p.click('#openReports')`).
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

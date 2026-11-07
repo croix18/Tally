@@ -73,6 +73,7 @@ function syncStatus(s) { if (!SY) return; SY.status = s; syncUI(); }
 // Something open that a new copy must not pull the floor out from under.
 function syncBusyHere() {
   const m = $('#modal'), a = $('#ask'); if ((m && !m.classList.contains('hidden')) || (a && !a.classList.contains('hidden'))) return true;
+  if (typeof view !== 'undefined' && view.mode === 'settings') return true;   // the Settings page holds edits until Save (phase 4): a new copy would redraw it
   const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.id !== 'search') return true;
   if (document.body.classList.contains('lbMode') || document.body.classList.contains('showMode')) return true;   // projected: never a question, never a download, while students can see the screen (audit, 24 Oct)
   return document.body.classList.contains('dragging');
@@ -167,7 +168,7 @@ function syncChoose(msg, a, b) {
   });
 }
 
-/* ---------- the Sync sheet (⋯ → Sync, or "Turn on sync" on an empty Tally) ---------- */
+/* ---------- the Sync sheet (Sync on the rail's foot, or "Turn on sync" on an empty Tally) ---------- */
 function syncAgo(iso) { return iso ? whenText(iso) : 'not yet'; }
 function syncUI() {
   const l = $('#launchSync'); if (!SY || !SY.ready) return;

@@ -323,3 +323,7 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 
 - 7 Nov 2026: phase 3 of the navigation redesign: the header's ⋯ menu folded into the rail's foot (Details view,
   Sync, Settings, Guide, Full save); the header is search, the names switch and Import.
+
+- 7 Nov 2026: phase 4 of the navigation redesign: Reports is a tab page (the print choices, the signed-reports list and
+  the saved pages side by side; for All classes too) and Settings is a page on the class spine (the rail picks the class;
+  no class picker; Cancel, Escape, Save and Back return to the page that was open; leaving unsaved edits asks first).

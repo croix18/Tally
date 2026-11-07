@@ -24,15 +24,15 @@ const APP = 'Tally.test.html', SCRUB = 'Scrub.test.html';
 const pick = async (p, sel = '[data-sec]') => { if (!/__new__/.test(sel)) { const e = await p.$('#ncExisting'); if (e) { await e.click(); await p.waitForTimeout(200); } } const d = await p.$(sel); if (d) await d.click(); return !!d; };
 // The Board's toggles (stats, average, dots, values, outliers, points/%, bins, by course) sit behind Options: open it first.
 global.lbOpt = async (p, sel) => { try { const vis = await p.evaluate(sel => { const el = document.querySelector(sel); if (!el) return true; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }, sel); if (!vis && await p.$('#lbOpts')) { await p.click('#lbOpts'); await p.waitForTimeout(120); } } catch (e) {} };
-// Settings is four tabs (Class · Course · Tally · Files): bring the tab that holds a control to the front before using it.
+// Settings is a page of four tabs (Class · Course · Tally · Files; phase 4, 7 Nov 2026): bring the tab that holds a control to the front before using it.
 global.seeTab = async (p, sel) => { try { const tab = await p.evaluate(sel => { const el = document.querySelector(sel); const s = el && el.closest('section.stab'); return s ? s.dataset.stab : null; }, sel); if (tab) { await p.click(`#stabs [data-stab="${tab}"]`); await p.waitForTimeout(80); } } catch (e) {} };
 // Settings, Guide and Details view live in the header's ⋯ menu: open it, then choose.
 // A class's actions (Copy, What changed, Signed reports, Print, quarters, Board save, settings) sit behind the Actions button on the class header (7 Nov 2026).
 const act = async (p, sel) => { await p.click('#actBtn'); await p.waitForTimeout(120); await p.click(sel); };
 // Settings, Guide, Full save and Details view sit on the rail's foot (7 Nov 2026, phase 3); Board save is in the Actions menu.
 const more = async (p, sel) => { if (sel === '#btnBoardSave') { await act(p, '#mBoardSave'); return; } await p.click(sel); };
-// The Full save from Settings, parsed (the only file that carries everything since 21 Oct 2026). Leaves Settings open.
-const fullSave = async p => { if (!(await p.$('#modal:not(.hidden) #exportFull'))) { await more(p, '#btnSettings'); await p.waitForTimeout(250); } await seeTab(p, '#exportFull'); const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#exportFull')]); const f = path.join(tmp, 'full-' + Date.now() + '.json'); await dl.saveAs(f); return { file: f, json: JSON.parse(fs.readFileSync(f, 'utf8')), name: dl.suggestedFilename() }; };
+// The Full save from the Settings page, parsed (the only file that carries everything since 21 Oct 2026). Leaves Settings open.
+const fullSave = async p => { if (!(await p.$('#exportFull'))) { await more(p, '#btnSettings'); await p.waitForTimeout(250); } await seeTab(p, '#exportFull'); const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#exportFull')]); const f = path.join(tmp, 'full-' + Date.now() + '.json'); await dl.saveAs(f); return { file: f, json: JSON.parse(fs.readFileSync(f, 'utf8')), name: dl.suggestedFilename() }; };
 // The settings-only backup Tally wrote until 21 Oct 2026, rebuilt from a Full save's state with the same fields, so the
 // loader those old files still go through stays tested.
 const legacyOf = st => { const s = st.settings || {}; const out = { tally: 4, exported: '2026-10-01T12:00:00.000Z', settings: { copyMode: s.copyMode, useBest: s.useBest, remindDays: s.remindDays, skipFirst: s.skipFirst, skipFirstV2: true, currentUnit: s.currentUnit, curUnitTouched: s.curUnitTouched }, assigned: st.assigned, custom: st.custom, grading: st.grading, room: st.room, seatWeights: st.seatWeights, seatBasis: st.seatBasis, seatPairs: st.seatPairs, quarters: st.quarters, sections: {} };

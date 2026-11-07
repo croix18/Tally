@@ -78,7 +78,11 @@ const { act, chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSa
   await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.focus('#actBtn'); await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='mCopy','the Actions menu opens from the keyboard with focus on its first item');
   await p.keyboard.press('End'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
-  const inModal=await p.evaluate(()=>document.querySelector('#modal').contains(document.activeElement)); check(inModal,'focus moves into the dialog on open');
+  check(await p.evaluate(()=>window.__tally.view.mode==='settings' && !!document.activeElement.closest('#stabs')),'Settings (a page since phase 4) opens with focus on its tabs');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='actBtn','focus returns to the menu button on leaving');
+  await p.focus('#actBtn'); await p.keyboard.press('Enter'); await p.waitForTimeout(200); await p.keyboard.press('End'); await p.keyboard.press('ArrowUp'); await p.keyboard.press('ArrowUp'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
+  const inModal=await p.evaluate(()=>document.querySelector('#modal').contains(document.activeElement)); check(inModal && /Quarter/.test(await p.textContent('#modal')),'focus moves into a dialog on open (Quarters)');
   check(await p.getAttribute('#modal','aria-labelledby')==='mTitle','dialog is named by its own heading');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='actBtn','focus returns to the menu button on close');
@@ -90,7 +94,7 @@ const { act, chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSa
   await p.click('#btnHome'); await p.waitForTimeout(400);
   check(await p.locator('button.hdigest[data-digest]').count()===2 && await p.locator('.hcard button').count()===0,'What changed is a button beside the card, not a span inside it');
   // 15. student report (2nd period still has its gradebook; step 11 dropped 1st period's): one page per student, grade + what moves it + IXL still owed; class chooser in the ⋯ menu
-  const K2='period-2'; await p.click('[data-k="period-2"]'); await p.waitForTimeout(300); await act(p,'#btnPrint'); await p.waitForTimeout(300);
+  const K2='period-2'; await p.click('[data-k="period-2"]'); await p.waitForTimeout(300); await p.click('#openReports'); await p.waitForTimeout(300);
   check(await p.locator('[data-who="all"]').count()===1 && await p.locator('[data-who="owes"]').count()===1 && await p.locator('[data-who="letters"]').count()===1,'Print: everyone / owe work / by grade');
   const [rep]=await Promise.all([ctx.waitForEvent('page'), p.click('#rpWeekly')]); await rep.waitForLoadState(); await rep.waitForTimeout(400);
   const rn=await rep.locator('section.rep:not(.teach)').count(); const rtxt=await rep.evaluate(()=>document.body.innerText);

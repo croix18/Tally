@@ -23,7 +23,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   await p.click('#openGrades'); await p.waitForTimeout(300); check(await tabs()==='Grid Grades* Students Seating Reports' && await p.locator('#gridwrap .grades').count()===1,'Grades is a tab of the class');
   await p.click('#openStudents'); await p.waitForTimeout(300); check(await tabs()==='Grid Grades Students* Seating Reports' && await p.locator('.sdir').count()===1 && !/2nd Period/.test(await p.textContent('.sdir')) && await p.locator('.sdir th:has-text("Class")').count()===0,'Students is a tab of the class: that class\'s students, no Class column');
   await p.click('#openSeating'); await p.waitForTimeout(300); check(await tabs()==='Grid Grades Students Seating* Reports','Seating too');
-  await p.click('#openReports'); await p.waitForTimeout(300); check(/Print · 1st Period/.test(await p.textContent('#modal')),'Reports opens the print menu for the class (a page of its own comes later)'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  await p.click('#openReports'); await p.waitForTimeout(300); check(/Print · 1st Period/.test(await p.textContent('#rpPrint')) && await p.locator('#ctabs #openReports[aria-selected="true"]').count()===1 && await p.locator('#modal.hidden').count()===1,'Reports is a page of the class: the print choices, no dialog'); await p.click('#openGrid'); await p.waitForTimeout(200);
   await p.click('#btnHome'); await p.click('#btnStudents'); await p.waitForTimeout(300);
   check(await rail()==='All classes*! | Accelerated | 1st Period | On-level | 2nd Period' && await tabs()==='Overview Students* Reports' && /2nd Period/.test(await p.textContent('.sdir')),'All classes › Students: every class, and nothing but All classes lit on the rail');
   await p.click('#btnHome'); await p.waitForTimeout(300);
@@ -39,7 +39,7 @@ const { chromium, fs, path, exe, check, done, tmp, pick, APP } = require('./lib'
   const sw=await p.evaluate(()=>getComputedStyle(document.querySelector('#btnDetails .sw')).backgroundColor); check(sw!=='rgb(232, 226, 213)' && await vis('#btnDetails .sw'),'…and its switch shows on');
   await p.click('#btnDetails'); await p.waitForTimeout(200); check(await p.locator('body.details').count()===0,'…and off again');
   await p.click('#btnSettings'); await p.waitForTimeout(300);
-  check(await p.locator('#modal:not(.hidden) #exportFull').count()===1,'Settings opens from the rail'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  check(await p.locator('.spage #exportFull').count()===1 && await p.evaluate(()=>window.__tally.view.mode)==='settings','Settings opens from the rail, as a page'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   check(await p.evaluate(()=>document.activeElement.id)==='btnSettings','closing Settings returns focus to the rail button');
   check((await p.textContent('#btnFullSave .age')).trim()==='never' && await p.locator('#btnFullSave .age.due').count()===1,'Full save says none has been made, and that one is due');
   const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#btnFullSave')]); await p.waitForTimeout(300);

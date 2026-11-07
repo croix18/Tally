@@ -38,7 +38,7 @@ let B = null;
   { const w = await where(); const n = await p.locator('.sdir tr[data-open]').count(); const groups = await p.$$eval('.sdir tr.sgroup th', e => e.map(x => x.textContent.trim()));
     check(w.tab === 'Students' && w.rail === 'All classes' && n === 69 && groups.join('|') === '1st Period|2nd Period|5th Period', 'All classes › Students: every student of every class, by class (' + n + ')'); }
   await p.click('#openReports'); await p.waitForTimeout(400);
-  check(/Print · /.test(await p.textContent('#modal')) && await p.locator('#modal .seg button[aria-pressed="true"]:has-text("All classes")').count() === 1, 'All classes › Reports opens printing for every class'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  check(/Print · All classes/.test(await p.textContent('#rpPrint')) && await p.locator('#rpScope').count() === 0 && (await where()).tab === 'Reports' && await p.locator('#rpBack .retall, #rpBack .ghint').count() >= 1, 'All classes › Reports is a page: printing for every class, and every class\'s signed reports'); await p.click('#openOverview'); await p.waitForTimeout(200);
   // ---- a class --------------------------------------------------------------------------------------------------
   await p.click('[data-k="p2"]'); await p.waitForTimeout(400);
   { const w = await where(); check(/^2nd Period/.test(w.h2) && w.rail === '2nd Period' && w.tab === 'Grid' && await tabs() === 'Grid* Grades Students Seating Reports' && await p.locator('table.grid').count() === 1, 'a class opens on its Grid, lit on the rail: ' + await tabs()); }
@@ -62,15 +62,15 @@ let B = null;
   await p.click('#back'); await p.waitForTimeout(300); check((await where()).mode === 'units' && (await where()).tab === 'Grid', '…which goes back to the grid');
   // the Reports tab, for this class
   await p.click('#openReports'); await p.waitForTimeout(400);
-  check(/Print · 2nd Period/.test(await p.textContent('#modal')) && await p.locator('#modal .seg button[aria-pressed="true"]:has-text("2nd Period")').count() === 1, 'Reports opens printing for this class'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  check(/Print · 2nd Period/.test(await p.textContent('#rpPrint')) && await p.locator('#rpScope button[aria-pressed="true"]:has-text("2nd Period")').count() === 1 && /Reports out and back/.test(await p.textContent('#rpBack')) && (await where()).tab === 'Reports', 'Reports is a page of the class: printing for this class, with its signed reports beside'); await p.click('#openGrid'); await p.waitForTimeout(200);
   // ---- phase 2: one Actions menu per class, one inbox ------------------------------------------------------------
   await p.click('#openGrid'); await p.waitForTimeout(300);
   check(await p.locator('#bar #btnPrint, #bar #moreBtn, #bar #openGrades').count() === 0 && await p.locator('#chead #actBtn').count() === 1, 'the grid bar keeps only Working in; everything else is behind Actions on the class header');
   await p.click('#actBtn'); await p.waitForTimeout(200);
   const menu = await p.$$eval('#actMenu button', bs => bs.map(b => b.firstChild.textContent.trim()));
-  check(menu.join(' | ') === 'Copy Unit 3 to Focus | What changed this week | Signed reports | Print… | Quarters | Board save | Class settings' || menu.join(' | ').replace(/Close Quarter \d/, 'Quarters') === 'Copy Unit 3 to Focus | What changed this week | Signed reports | Print… | Quarters | Board save | Class settings', 'Actions: Copy the unit being worked in, What changed, Signed reports, Print, the quarters, Board save, Class settings: ' + menu.join(' | '));
+  check(menu.join(' | ').replace(/Close Quarter \d/, 'Quarters') === 'Copy Unit 3 to Focus | What changed this week | Quarters | Board save | Class settings', 'Actions: Copy the unit being worked in, What changed, the quarters, Board save, Class settings (Print and Signed reports are the Reports tab): ' + menu.join(' | '));
   await p.click('#mDigest'); await p.waitForTimeout(400); check(/What changed/.test(await p.textContent('#modal')), 'What changed opens from it'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  await p.click('#actBtn'); await p.waitForTimeout(150); await p.click('#mSettings'); await p.waitForTimeout(400); check(await p.locator('#modal:not(.hidden) #stabs').count() === 1 && await p.locator('#stabs [data-stab="class"].on, #stabs button.on').count() >= 1, 'Class settings opens Settings on this class'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  await p.click('#actBtn'); await p.waitForTimeout(150); await p.click('#mSettings'); await p.waitForTimeout(400); check((await where()).mode === 'settings' && await p.locator('#bar #stabs [data-stab="class"]').count() === 1 && await p.locator('.spage #secLabel').count() === 1 && (await where()).rail === '2nd Period', 'Class settings opens the Settings page on this class'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   await p.click('#btnHome'); await p.waitForTimeout(300); await p.click('#actBtn'); await p.waitForTimeout(200);
   const menuAll = await p.$$eval('#actMenu button', bs => bs.map(b => b.firstChild.textContent.trim()).join(' | ').replace(/Close Quarter \d/, 'Quarters'));
   check(menuAll === 'Quarters | Board save | Full save | Settings', 'All classes has the Tally-wide actions: ' + menuAll); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
@@ -91,8 +91,21 @@ let B = null;
   { const w = await where(); check(w.rail === '5th Period' && w.tab === 'Grid' && /^5th Period/.test(w.h2) && /On-level/.test(await p.textContent('#chead .meta')), 'another class on the rail opens its Grid'); }
   await p.click('#openStudents'); await p.waitForTimeout(400); await p.click('#btnHome'); await p.waitForTimeout(300); await p.click('#btnStudents'); await p.waitForTimeout(400);
   check(await p.locator('.sdir tr[data-open]').count() === 69 && (await where()).rail === 'All classes', 'All classes › Students is every class again after a class\'s Students');
+  // ---- phase 4: Reports and Settings are pages ------------------------------------------------------------------
+  await p.click('[data-k="p2"]'); await p.waitForTimeout(300); await p.click('#openReports'); await p.waitForTimeout(400);
+  { const r = await p.evaluate(() => ({ cards: [...document.querySelectorAll('.rpage .gsec h3')].map(h => h.textContent.replace(/\s+/g, ' ').trim()), who: document.querySelectorAll('#rpWho button').length, owed: document.querySelectorAll('[data-owed]').length, also: ['rpDigest', 'rpBoard', 'rpRace', 'rpLab'].every(id => document.getElementById(id)), back: /No weekly reports printed/.test(document.querySelector('#rpBack').textContent), modal: document.querySelector('#modal').classList.contains('hidden') }));
+    check(r.cards.join(' | ') === 'Print · 2nd Period | Reports out and back | Also' && r.who === 3 && r.owed === 3 && r.also && r.back && r.modal, 'a class\'s Reports: the print choices, the signed-reports list (empty until a print) and the saved pages, side by side, no dialog: ' + r.cards.join(' | ')); }
+  { const [w] = await Promise.all([ctx.waitForEvent('page'), p.click('#rpWeekly')]); await w.waitForTimeout(600); await w.close(); await p.waitForTimeout(500);
+    check((await where()).tab === 'Reports' && await p.locator('#rpBack .rettab tbody tr').count() === 23 && /23 reports still out/.test(await p.textContent('#rpBack .rphead')), 'printing the weekly reports lists them as out, on the same page'); }
+  await p.click('#rpBack .rettab tbody tr:first-child [data-rback]'); await p.waitForTimeout(400); check(/22 reports still out/.test(await p.textContent('#rpBack .rphead')) && (await where()).tab === 'Reports', 'a tick marks one back without leaving the page');
+  await p.click('[data-scope="all"]'); await p.waitForTimeout(400); check(/Print · All classes/.test(await p.textContent('#rpTitle')) && (await where()).rail === '2nd Period' && await p.locator('#rpBack .rettab tbody tr').count() === 23, 'All classes in the print card prints every class; the page stays the class\'s'); await p.click('[data-scope="class"]'); await p.waitForTimeout(300);
+  await p.click('#btnHome'); await p.waitForTimeout(300); await p.click('#openReports'); await p.waitForTimeout(400);
+  { const rows = await p.evaluate(() => [...document.querySelectorAll('#rpBack .retall tbody tr')].map(tr => [...tr.cells].map(c => c.textContent.trim()).join(' ')));
+    check(rows.length === 3 && /2nd Period.* \w{3} \d+ 1 of 23 Open ›/.test(rows[1]) && /none printed yet +Reports ›/.test(rows[0]), 'All classes › Reports: one line per class, who is back, and the way to its list: ' + rows.join(' | ')); }
+  await p.click('#rpBack [data-retk="p2"]'); await p.waitForTimeout(400); check((await where()).rail === '2nd Period' && (await where()).tab === 'Reports', '…which opens that class\'s Reports');
+  await p.click('#openGrid'); await p.waitForTimeout(300);
   // the rail's foot
-  await p.click('#btnSettings'); await p.waitForTimeout(400); check(await p.locator('#modal:not(.hidden) #stabs').count() === 1, 'Settings opens from the rail'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  await p.click('#btnSettings'); await p.waitForTimeout(400); check((await where()).mode === 'settings' && await p.locator('#bar #stabs').count() === 1 && await p.locator('#rail #btnSettings.on').count() === 1, 'Settings opens from the rail, as a page, and the rail lights it'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   { const [gd] = await Promise.all([ctx.waitForEvent('page'), p.click('#btnGuide')]); await gd.waitForLoadState(); check(/Full save/.test(await gd.evaluate(() => document.body.textContent)), 'the Guide opens from the rail'); await gd.close(); }
   await p.click('#btnLb'); await p.waitForTimeout(500); check(await p.locator('#lb:not(.hidden)').count() === 1, 'the Board opens from the rail');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1900);

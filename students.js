@@ -275,35 +275,52 @@ function wireFamily(sec, name) {
   root.querySelectorAll('[data-back]').forEach(cb => cb.onchange = () => { markReportBack(sec, name, cb.dataset.back, cb.checked); save(); render(); });
 }
 function familyFormHtml(c = {}) { return `<form class="fform" data-cid="${esc(c.id || '')}"><input name="name" placeholder="Name" value="${esc(c.name || '')}" maxlength="80" aria-label="Name"><input name="rel" list="relList" placeholder="Relationship" value="${esc(c.rel || '')}" maxlength="40" aria-label="Relationship"><datalist id="relList">${RELS.map(r => `<option value="${r}">`).join('')}</datalist><input name="phone" type="tel" placeholder="Phone" value="${esc(c.phone || '')}" maxlength="40" aria-label="Phone"><input name="email" type="email" placeholder="Email" value="${esc(c.email || '')}" maxlength="120" aria-label="Email"><input name="note" placeholder="Note (best time to call, language, …)" value="${esc(c.note || '')}" maxlength="300" aria-label="Note"><div class="fbtns"><button class="pill small" type="submit">${c.id ? 'Save' : 'Add contact'}</button><button class="pill toggle small" type="button" data-fcancel>Cancel</button></div></form>`; }
-// Class level (⋯ → Signed reports): who has the latest weekly report back, who doesn't, and how to reach home.
+// Class level (the Reports tab): who has the latest weekly report back, who doesn't, and how to reach home.
 // Croix, marking a print (25 Oct 2026): "Week of", not the print date; no instructions, just the count; a way to
 // clear the list; and the Home cell opens a card to add or edit the contact right there, or go to the student's page.
 const weekOf = d => { const x = new Date(String(d).slice(0, 10) + 'T12:00:00'); if (isNaN(x)) return String(d || ''); const wd = x.getDay(); x.setDate(x.getDate() + (wd === 6 ? 2 : wd === 0 ? 1 : 1 - wd)); return localDayOf(x.toISOString()); };   // the school week's Monday; a weekend print belongs to the week ahead
-function openReturns(s, editing) {
-  const gb = s.grades; if (!gb) { toast(Object.keys(s.reportLog || {}).length ? 'This class has no Focus gradebook right now. Import it to see who has a report out.' : 'No gradebook yet, so no reports have been printed for this class.', true); return; }
-  const all = gb.students.map(nm => { const l = reportsOf(s, nm); const last = l[l.length - 1] || null; return { nm, last, f: familyOf(s, nm) }; }).filter(r => r.last);
-  if (!all.length) { toast('No weekly reports printed for this class yet.', false, 4000); return; }
+/* The signed-reports list, a card on the class's Reports page (phase 4, 7 Nov 2026; before that a dialog behind ⋯). */
+function returnsRows(s) {
+  const gb = s.grades; if (!gb) return null;
+  return gb.students.map(nm => { const l = reportsOf(s, nm); const last = l[l.length - 1] || null; return { nm, last, f: familyOf(s, nm) }; }).filter(r => r.last);
+}
+function returnsHtml(s, editing) {
+  const head = (sub, extra) => `<div class="rphead"><h3>Reports out and back</h3><span class="meta">${sub}</span>${extra || ''}</div>`;
+  const all = returnsRows(s);
+  if (!all) return head('signed reports, this class') + `<p class="ghint">${Object.keys(s.reportLog || {}).length ? 'This class has no Focus gradebook right now. Import it to see who has a report out.' : 'No gradebook yet, so no reports have been printed for this class.'}</p>`;
+  if (!all.length) return head('signed reports, this class') + '<p class="ghint">No weekly reports printed for this class yet. Each one you print is listed here until it comes back signed.</p>';
   const rows = all.filter(r => !r.last.cleared); const out = rows.filter(r => !r.last.back); const H = state.settings.hideNames;
   const weeks = [...new Set(rows.map(r => weekOf(r.last.date)))].sort();
-  const m = $('#modal'); m.classList.remove('hidden');
   const home = r => { const c = r.f.contacts[0]; return H ? '' : c ? `${esc(c.name)}${c.rel ? ` (${esc(c.rel)})` : ''}${c.phone ? ` · ${esc(c.phone)}` : ''}${c.email ? ` · ${esc(c.email)}` : ''}${r.f.contacts.length > 1 ? ` <small>+${r.f.contacts.length - 1}</small>` : ''}` : '<span class="add">Add a contact</span>'; };
   const row = r => `<tr class="${r.last.back ? 'back' : ''}"><td><label><input type="checkbox" data-rback="${esc(r.nm)}" data-date="${esc(r.last.date)}" ${r.last.back ? 'checked' : ''}> ${esc(H ? mask(r.nm) : r.nm)}</label></td><td>${r.last.back ? `back ${esc(fmtDate(r.last.back))}` : `<b>${ageDays(r.last.date) ? plural(ageDays(r.last.date), 'day') + ' out' : 'printed today'}</b>`}</td><td class="who">${H ? '' : `<button class="linkbtn home" data-home="${esc(r.nm)}">${home(r)}</button>`}</td></tr>${editing === r.nm && !H ? `<tr class="qedit"><td colspan="3"><div class="qcard">${familyFormHtml(r.f.contacts[0] || {})}<button class="linkbtn" data-goto="${esc(r.nm)}">Open ${esc(niceName(r.nm).split(' ')[0])}'s page</button></div></td></tr>` : ''}`;
-  m.innerHTML = `<div class="panel"><header><h2>Signed reports · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one">${rows.length ? `<div class="retHead"><b>Week of ${weeks.map(w => esc(fmtDate(w))).join(', ')}</b><span>${out.length ? `${plural(out.length, 'report')} still out` : 'all back'}</span></div>
-      <table class="rettab"><thead><tr><th>Back signed</th><th></th><th>Home</th></tr></thead><tbody>${out.map(row).join('')}${rows.filter(r => r.last.back).map(row).join('')}</tbody></table>` : '<p class="ghint">Cleared. The next weekly reports you print start a new list.</p>'}
-      <div class="rp-actions">${out.length && !H ? `<button class="pill pale" id="retCopy">Copy the still-out list</button>` : ''}${rows.length ? `<button class="pill toggle" id="retClear">Clear the list</button>` : ''}</div></div></div>`;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; }; m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  m.querySelectorAll('[data-rback]').forEach(cb => cb.onchange = () => { markReportBack(s, cb.dataset.rback, cb.dataset.date, cb.checked); save(); openReturns(s, editing); });
-  m.querySelectorAll('[data-home]').forEach(b => b.onclick = () => openReturns(s, editing === b.dataset.home ? null : b.dataset.home));
-  m.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => { const nm = b.dataset.goto; close(); openProfile(s.key, nm); setTimeout(() => { const f = $('#pFamily'); if (f) f.scrollIntoView({ block: 'start' }); }, 60); });
-  const fm = m.querySelector('.qedit form'); if (fm) { const nm = editing; fm.querySelector('[name=name]').focus();
+  return head(rows.length ? `week of ${weeks.map(w => esc(fmtDate(w))).join(', ')}` : 'signed reports, this class', rows.length ? `<span class="retOut ${out.length ? 'some' : ''}">${out.length ? `${plural(out.length, 'report')} still out` : 'all back'}</span>` : '')
+    + (rows.length ? `<table class="rettab"><thead><tr><th>Back signed</th><th></th><th>Home</th></tr></thead><tbody>${out.map(row).join('')}${rows.filter(r => r.last.back).map(row).join('')}</tbody></table>` : '<p class="ghint">Cleared. The next weekly reports you print start a new list.</p>')
+    + `<div class="rp-actions">${out.length && !H ? `<button class="pill pale" id="retCopy">Copy the still-out list</button>` : ''}${rows.length ? `<button class="pill toggle" id="retClear">Clear the list</button>` : ''}</div>`;
+}
+function wireReturns(s) {
+  const m = $('#rpBack'); if (!m) return; const all = returnsRows(s) || []; const rows = all.filter(r => !r.last.cleared); const out = rows.filter(r => !r.last.back);
+  const again = ed => { retEditing = ed || null; render(); };
+  m.querySelectorAll('[data-rback]').forEach(cb => cb.onchange = () => { markReportBack(s, cb.dataset.rback, cb.dataset.date, cb.checked); save(); again(retEditing); });
+  m.querySelectorAll('[data-home]').forEach(b => b.onclick = () => again(retEditing === b.dataset.home ? null : b.dataset.home));
+  m.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => { const nm = b.dataset.goto; retEditing = null; openProfile(s.key, nm); setTimeout(() => { const f = $('#pFamily'); if (f) f.scrollIntoView({ block: 'start' }); }, 60); });
+  const fm = m.querySelector('.qedit form'); if (fm) { const nm = retEditing; fm.querySelector('[name=name]').focus();
     fm.onsubmit = e => { e.preventDefault(); const d = Object.fromEntries(new FormData(fm).entries()); const id = fm.dataset.cid; const next = { ...familyOf(s, nm) }; const c = { id: id || Date.now().toString(36), name: String(d.name || '').trim(), rel: String(d.rel || '').trim(), phone: String(d.phone || '').trim(), email: String(d.email || '').trim(), note: String(d.note || '').trim() };
       if (!c.name && !c.phone && !c.email) { toast('A contact needs at least a name, a phone or an email.', false, 3000); return; }
-      next.contacts = id ? next.contacts.map(x => x.id === id ? c : x) : next.contacts.concat([c]); setFamily(s, nm, next); save(); openReturns(s, null); };
-    fm.querySelector('[data-fcancel]').onclick = () => openReturns(s, null); }
-  const clr = $('#retClear'); if (clr) clr.onclick = async () => { if (!await ask(`Clear this list? ${out.length ? `${plural(out.length, 'report')} still out will drop off it. ` : ''}Every report stays on its student's page.`, 'Clear')) return; rows.forEach(r => { r.last.cleared = true; }); save(); openReturns(s); };
+      next.contacts = id ? next.contacts.map(x => x.id === id ? c : x) : next.contacts.concat([c]); setFamily(s, nm, next); save(); again(null); };
+    fm.querySelector('[data-fcancel]').onclick = () => again(null); }
+  const clr = $('#retClear'); if (clr) clr.onclick = async () => { if (!await ask(`Clear this list? ${out.length ? `${plural(out.length, 'report')} still out will drop off it. ` : ''}Every report stays on its student's page.`, 'Clear')) return; rows.forEach(r => { r.last.cleared = true; }); save(); again(null); };
   const cp = $('#retCopy'); if (cp) cp.onclick = async () => { const text = out.map(r => { const c = r.f.contacts[0]; return `${r.nm}\t${c ? [c.name, c.rel, c.phone, c.email].filter(Boolean).join(' · ') : ''}`; }).join('\n'); try { await navigator.clipboard.writeText(text); toast('Copied: one line per student, with the first contact.', false, 3000); } catch (e) { toast('Could not copy here.', true); } };
 }
+// All classes › Reports: one line per class, who still has a report out, and the way to that class's list.
+function returnsAllHtml(classes) {
+  const lines = classes.map(sec => { const all = returnsRows(sec); if (!all) return { sec, text: sec.grades ? '' : 'no gradebook' }; const rows = all.filter(r => !r.last.cleared); if (!rows.length) return { sec, text: all.length ? 'list cleared' : 'none printed yet' };
+    const out = rows.filter(r => !r.last.back).length; const wk = [...new Set(rows.map(r => weekOf(r.last.date)))].sort().pop(); return { sec, week: wk, out, n: rows.length }; });
+  const any = lines.some(l => l.n);
+  return `<div class="rphead"><h3>Reports out and back</h3><span class="meta">signed reports, every class</span></div>` + (any
+    ? `<table class="rettab retall"><thead><tr><th>Class</th><th>Week of</th><th>Back</th><th></th></tr></thead><tbody>${lines.map(l => `<tr><td><b>${esc(l.sec.label)}</b></td><td>${l.n ? esc(fmtDate(l.week)) : `<span class="ghint">${esc(l.text)}</span>`}</td><td>${l.n ? `<span class="retOut ${l.out ? 'some' : ''}">${l.out ? `${l.n - l.out} of ${l.n}` : `all ${l.n}`}</span>` : ''}</td><td class="r"><button class="linkbtn" data-retk="${esc(l.sec.key)}">${l.n ? 'Open ›' : 'Reports ›'}</button></td></tr>`).join('')}</tbody></table>`
+    : '<p class="ghint">No weekly reports printed yet. Each class\'s Reports tab lists its own as they come back signed.</p>');
+}
+function wireReturnsAll() { document.querySelectorAll('#rpBack [data-retk]').forEach(b => b.onclick = () => { const s = state.sections[b.dataset.retk]; if (s) openPrintMenu(s, false); }); }
 
 /* ---------- Retake eligibility ----------
    Croix's rule (19 Oct 2026): a student may retake an assessment only when they are completely caught up: nothing not

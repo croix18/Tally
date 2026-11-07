@@ -141,7 +141,7 @@ function renderHome() {
     <section class="gsec"><h3>Focus class average by import</h3>${avgLines}</section>
     <section class="gsec"><h3>Missing assignments by import</h3>${missLines || '<p class="ghint">Appears after a second gradebook import.</p>'}</section>
   </div>`;
-  const hs = $('#hStore'); if (hs) hs.onclick = () => openSettings();
+  const hs = $('#hStore'); if (hs) hs.onclick = () => openSettings(undefined, 'files');
   const hn = $('#hAtt'); if (hn) hn.ontoggle = () => { if (hn.isConnected && !state.settings.details) homeAttOpen = hn.open; };   /* Details view opens it without that counting as his choice */
   const hb = $('#hBackup'); if (hb) hb.onclick = () => saveFull();
   const lh = $('#liHide'); if (lh) lh.onclick = e => { e.preventDefault(); state.lastImport = null; save(); render(); };

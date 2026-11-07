@@ -81,9 +81,9 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   await p.click('#hideUnit'); await p.waitForTimeout(200);
   // Esc + dirty modal
   await more(p,'#btnSettings'); await p.keyboard.press('Escape'); await p.waitForTimeout(150);
-  check(await p.locator('#modal.hidden').count()===1 && await p.locator('#bar.detail').count()===1,'Esc closes modal, keeps detail view');
-  await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster','Zzz, Q'); dialogs=[]; dialogAnswer=false; await p.mouse.click(5,5); await p.waitForTimeout(150);
-  check(dialogs.length===1 && await p.locator('#modal.hidden').count()===0,'dirty roster: backdrop asks');
+  check(await p.evaluate(()=>window.__tally.view.mode)==='unit' && await p.locator('#bar.detail').count()===1,'Esc leaves the Settings page, back to the unit view');
+  await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster','Zzz, Q'); dialogs=[]; dialogAnswer=false; await p.click('#openGrid'); await p.waitForTimeout(150);
+  check(dialogs.length===1 && await p.evaluate(()=>window.__tally.view.mode)==='settings','dirty roster: the Grid tab asks before leaving');
   dialogAnswer=true; await p.keyboard.press('Escape'); await p.waitForTimeout(150); await p.keyboard.press('Escape'); await p.waitForTimeout(150);
   check(await p.locator('#bar.detail').count()===0,'second Esc pops view');
   // threshold per period

@@ -632,7 +632,7 @@ function printWeekly(groups, title) {
     return g.indices.map(i => { const k = failed.length; const h = safeSection(() => studentReportSection(g.s, i, rows[i]), g.s.grades.students[i], failed); if (failed.length === k) made.push([g.s, i, rows[i]]); return h; }).join('')
       + (n > 1 ? safeSection(() => returnChecklist(g.s, g.indices), 'Reports out and back', failed) : ''); }).join('');
   const html = printDoc(title, REPORT_CSS, body, n);
-  const go = () => { made.forEach(([s, i, row]) => logReport(s, i, row)); save(); openPrint(html, (n === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', n === 1);   // one student's report: a file name without the name; the log is written only for a report that opens
+  const go = () => { made.forEach(([s, i, row]) => logReport(s, i, row)); save(); openPrint(html, (n === 1 ? 'Student-report' : title.replace(/[^\w-]+/g, '_')) + '.html', n === 1); if (view.mode === 'reports') render();   // the Reports page's signed-reports list shows the print at once   // one student's report: a file name without the name; the log is written only for a report that opens
     if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(x => shown(x)).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
   const old = groups.length === 1 ? staleExports(groups[0].s, groups[0].indices) : staleAcross(groups);
   const why = [...old, ...(state.settings.hideNames ? [`names are hidden, but the ${n === 1 ? 'report opens with the student\'s full name and grades' : 'reports open with every student\'s full name and grades'} on screen`] : [])];   // projected: say so first (audit)
@@ -688,8 +688,23 @@ function printStudentCard(s, i) { printStudentReports(s, [i], `${s.grades.studen
    class (each class's reports, then its checklist), and remembers two-sided printing (on unless he unticks it). */
 var reportWho = { mode: 'all', letters: ['C', 'D', 'F'], scope: 'class' };
 const printClasses = () => state.order.map(k => state.sections[k]).filter(x => x && !x.board && !x.placeholder);
+/* Phase 4 of the navigation redesign (7 Nov 2026): Reports is a tab of the class, and of All classes, not a dialog. The
+   page holds what the Print dialog offered, the signed-reports list beside it, and the saved pages. openPrintMenu and
+   openReturns keep their names: every button that opened the dialogs now opens the page. `all`: true lands on All
+   classes › Reports; false on this class's, printing this class; undefined keeps the scope last used. */
 function openPrintMenu(s, all) {
-  const classes = printClasses(); const many = classes.length > 1; if (!many) reportWho.scope = 'class'; else if (all != null) reportWho.scope = all ? 'all' : 'class';   // opened from All classes: every class
+  const many = printClasses().length > 1; if (!many) reportWho.scope = 'class'; else if (all != null) reportWho.scope = all ? 'all' : 'class';
+  if (s && state.sections[s.key]) state.active = s.key;
+  view = { mode: 'reports', unit: null, all: !!all && many }; noticesOpen = false; render();
+}
+var retEditing = null;   // the Reports page's signed-reports table: the student whose home contact is being edited in place
+function openReturns(s, editing) {
+  const gb = s.grades; if (!gb) { toast(Object.keys(s.reportLog || {}).length ? 'This class has no Focus gradebook right now. Import it to see who has a report out.' : 'No gradebook yet, so no reports have been printed for this class.', true); return; }
+  retEditing = editing || null; openPrintMenu(s, false);
+}
+function renderReportsPage() {
+  const s = state.sections[state.active]; const classes = printClasses(); const many = classes.length > 1;
+  const allPage = !!view.all && many; if (!many) reportWho.scope = 'class'; if (allPage) reportWho.scope = 'all';
   const allMode = reportWho.scope === 'all'; const secs = allMode ? classes : [s];
   const open = sec => unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u));
   const info = secs.map(sec => { const gb = sec.grades; if (!gb || !hasOpenGrades(sec)) return { sec, have: false };
@@ -702,8 +717,8 @@ function openPrintMenu(s, all) {
   const LETTERS = ['A', 'B', 'C', 'D', 'F', '—'];
   const pick = x => x.letterOf.map((_, i) => i).filter(i => reportWho.mode === 'all' || (reportWho.mode === 'owes' ? x.owes[i] : reportWho.letters.includes(x.letterOf[i])));
   const q = Q_NAMES[currentQuarter() - 1];
-  const scope = many ? `<div class="seg rpScope" id="rpScope"><button data-scope="class" aria-pressed="${!allMode}">${esc(s.label)}</button><button data-scope="all" aria-pressed="${allMode}">All classes <small>${classes.length}</small></button></div>` : '';
-  const perStudent = graded.length ? `<div class="field"><div class="seg" id="rpWho"><button data-who="all" aria-pressed="${reportWho.mode === 'all'}">Everyone <small>${sum(x => x.n)}</small></button><button data-who="owes" aria-pressed="${reportWho.mode === 'owes'}">Owe work <small>${sum(x => x.owes.filter(Boolean).length)}</small></button><button data-who="letters" aria-pressed="${reportWho.mode === 'letters'}">By grade</button></div>
+  const scope = many && !allPage ? `<div class="seg rpScope" id="rpScope" role="group" aria-label="Print for"><button data-scope="class" aria-pressed="${!allMode}">${esc(s.label)}</button><button data-scope="all" aria-pressed="${allMode}">All classes <small>${classes.length}</small></button></div>` : '';
+  const perStudent = graded.length ? `<div class="field"><div class="seg" id="rpWho" role="group" aria-label="Which students"><button data-who="all" aria-pressed="${reportWho.mode === 'all'}">Everyone <small>${sum(x => x.n)}</small></button><button data-who="owes" aria-pressed="${reportWho.mode === 'owes'}">Owe work <small>${sum(x => x.owes.filter(Boolean).length)}</small></button><button data-who="letters" aria-pressed="${reportWho.mode === 'letters'}">By grade</button></div>
       <div class="rpLetters ${reportWho.mode === 'letters' ? '' : 'hidden'}">${LETTERS.map(L => `<button class="chip ${reportWho.letters.includes(L) ? 'on' : ''}" data-letter="${L}" aria-pressed="${reportWho.letters.includes(L)}">${L === '—' ? 'No grade yet' : L} <small>${sum(x => x.letterOf.filter(y => y === L).length)}</small></button>`).join('')}</div></div>
       <div class="rp-actions col"><button class="pill" id="rpWeekly">Weekly report <small></small></button><button class="pill pale" id="rpFast">FAST report <small></small></button></div>${allMode && graded.length < secs.length ? `<p class="ghint">${plural(secs.length - graded.length, 'class')} without ${esc(q)} grades in Tally ${secs.length - graded.length === 1 ? 'is' : 'are'} left out.</p>` : ''}`
     : `<p class="ghint">${allMode ? `No class has ${esc(q)} grades in Tally yet.` : s.grades ? `No ${esc(q)} grades in Tally yet: weekly and FAST reports start with the first ${esc(q)} gradebook.` : 'Import this class\'s Focus gradebook first: the weekly and FAST reports need the grade.'}</p>`;
@@ -712,28 +727,32 @@ function openPrintMenu(s, all) {
         <button class="pill pale" data-owed="slips">Slips to hand out <small>one page per student · full names</small></button>
         <button class="pill pale" data-owed="initials">${allMode ? 'A list per class' : 'One list'}, initials <small>safe to post or project</small></button>
         <button class="pill pale" data-owed="names">${allMode ? 'A list per class' : 'One list'}, full names <small>for you or a co-teacher</small></button></div>` : `<p class="ghint">${allMode ? 'No IXL exports yet.' : 'No IXL export for this class yet.'}</p>`;
-  const m = $('#modal'); m.classList.remove('hidden');
-  m.innerHTML = `<div class="panel narrow"><header><h2>Print · ${allMode ? 'All classes' : esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
-    <div class="body one">${scope}
-      <h3 class="subh">One page per student</h3>${perStudent}
-      <h3 class="subh">IXL still owed</h3>${owed}
-      <label class="rpDuplex"><input type="checkbox" id="rpDuplex" ${duplexOn() ? 'checked' : ''}> Two-sided printing</label></div></div>`;
-  const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
-  m._cancel = close; $('#mClose').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  m.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { if (reportWho.scope === b.dataset.scope) return; reportWho.scope = b.dataset.scope; openPrintMenu(s); });
+  const wrap = $('#gridwrap');
+  wrap.innerHTML = `<div class="rpage">
+    <section class="gsec rpPrint" id="rpPrint" aria-labelledby="rpTitle"><div class="rphead"><h3 id="rpTitle">Print · ${allMode ? 'All classes' : esc(s.label)}</h3>${scope}</div>
+      <h4 class="subh">One page per student</h4>${perStudent}
+      <h4 class="subh">IXL still owed</h4>${owed}
+      <label class="rpDuplex"><input type="checkbox" id="rpDuplex" ${duplexOn() ? 'checked' : ''}> Two-sided printing</label></section>
+    <section class="gsec rpBack" id="rpBack">${allPage ? returnsAllHtml(classes) : returnsHtml(s, retEditing)}</section>
+    <section class="gsec rpMore" id="rpMore"><h3>Also</h3><div class="rp-actions col">${allPage ? '' : '<button class="pill pale" id="rpDigest">What changed this week <small>grades, missing work and IXL since the last report</small></button>'}<button class="pill pale" id="rpBoard">Board save <small>what the Race and Data Lab draw, no names</small></button><button class="pill pale" id="rpRace">Save the Race page</button><button class="pill pale" id="rpLab">Save the Data Lab page</button></div></section>
+  </div>`;
+  const root = $('#rpPrint');
+  root.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { if (reportWho.scope === b.dataset.scope) return; reportWho.scope = b.dataset.scope; render(); });
   $('#rpDuplex').onchange = e => { state.settings.duplex = e.target.checked; save(); };
-  m.querySelectorAll('[data-owed]').forEach(b => b.onclick = () => { const mode = b.dataset.owed; close(); printStillOwed(owedSecs, mode); });
+  root.querySelectorAll('[data-owed]').forEach(b => b.onclick = () => printStillOwed(owedSecs, b.dataset.owed));
+  const dg = $('#rpDigest'); if (dg) dg.onclick = () => openDigest(s); $('#rpBoard').onclick = () => saveBoardFile(); $('#rpRace').onclick = () => downloadLeaderboard('race'); $('#rpLab').onclick = () => downloadLeaderboard('lab');
+  if (allPage) wireReturnsAll(); else wireReturns(s);
   if (!graded.length) return;
   const where = allMode ? 'All classes' : s.label;
   const refresh = () => { const n = sum(x => pick(x).length), f = sum(x => pick(x).filter(i => x.hasFast[i]).length);
     $('#rpWho').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.who === reportWho.mode))); $('.rpLetters').classList.toggle('hidden', reportWho.mode !== 'letters');
-    m.querySelectorAll('[data-letter]').forEach(b => { const on = reportWho.letters.includes(b.dataset.letter); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+    root.querySelectorAll('[data-letter]').forEach(b => { const on = reportWho.letters.includes(b.dataset.letter); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
     $('#rpWeekly').disabled = !n; $('#rpWeekly small').textContent = `${plural(n, 'student')}${allMode ? `, ${plural(graded.filter(x => pick(x).length).length, 'class')}` : ''} · grade, what moved, this week's list, pledge`; $('#rpFast').disabled = !f; $('#rpFast small').textContent = f ? `${plural(f, 'student')}${f < n ? ' with FAST results' : ''} · levels, targets, goal box` : 'no FAST results among them'; };
   $('#rpWho').querySelectorAll('button').forEach(b => b.onclick = () => { reportWho.mode = b.dataset.who; refresh(); });
-  m.querySelectorAll('[data-letter]').forEach(b => b.onclick = () => { const L = b.dataset.letter; reportWho.letters = reportWho.letters.includes(L) ? reportWho.letters.filter(x => x !== L) : [...reportWho.letters, L]; refresh(); });
+  root.querySelectorAll('[data-letter]').forEach(b => b.onclick = () => { const L = b.dataset.letter; reportWho.letters = reportWho.letters.includes(L) ? reportWho.letters.filter(x => x !== L) : [...reportWho.letters, L]; refresh(); });
   const whoWord = () => reportWho.mode === 'all' ? '' : reportWho.mode === 'owes' ? ' (owe work)' : ` (${reportWho.letters.filter(L => L !== '—').join(', ')})`;
-  $('#rpWeekly').onclick = () => { const groups = graded.map(x => ({ s: x.sec, indices: pick(x) })); close(); printWeekly(groups, `Student reports: ${where}${whoWord()}`); };
-  $('#rpFast').onclick = () => { const groups = graded.map(x => ({ sec: x.sec, names: pick(x).filter(i => x.hasFast[i]).map(i => x.sec.grades.students[i]) })); close(); printFast(groups, `FAST reports: ${where}${whoWord()}`); };
+  $('#rpWeekly').onclick = () => { const groups = graded.map(x => ({ s: x.sec, indices: pick(x) })); printWeekly(groups, `Student reports: ${where}${whoWord()}`); };
+  $('#rpFast').onclick = () => { const groups = graded.map(x => ({ sec: x.sec, names: pick(x).filter(i => x.hasFast[i]).map(i => x.sec.grades.students[i]) })); printFast(groups, `FAST reports: ${where}${whoWord()}`); };
   refresh();
 }
 const openStudentReports = openPrintMenu;
