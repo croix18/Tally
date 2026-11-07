@@ -1128,6 +1128,14 @@ per-section-file era and many items in them are now done).
     than the export) are items now; the "Focus matches Tally" line is gone (the unit badges say it).
   `tests/shell.js` +11 (41); `command-center`, `grid`, `hardening`, `family`, `plain`, `round6` and the suites that
   pressed Print or ⋯ follow.
+- **7 Nov 2026 — Phase 3: the ⋯ menu folded into the rail.** The header's ⋯ menu (Details view, Settings, Guide, Full
+  save, Board save, Sync) is gone. The rail's foot holds Board, Details view (a switch), Sync where it exists
+  (`renderRail` draws `#btnSync` once `SY.ready`; `syncBoot` redraws the rail), Settings, Guide and Full save with its
+  age; Board save is in Actions. The ids stayed (`btnDetails`, `btnSettings`, `btnGuide`, `btnFullSave`), so the suites
+  press them where they are; `more(p, sel)` in `tests/lib.js` just clicks (Board save through Actions). The header is
+  search, the names switch and Import. `syncUI` no longer needs the button to be on the page (an empty Tally's "Turn on
+  sync" showed only because the old menu always had one). Students inside the class was phase 1's work; nothing more
+  to fold.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

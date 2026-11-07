@@ -13,9 +13,9 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more, fullSave } =
   await p.setInputFiles('#file',[path.resolve('fixtures/focus_gradebook_scrubbed.csv')]); await p.waitForTimeout(500); await pick(p); await p.waitForTimeout(600);
   const K='1205050-7T1A';
   // ---- 1. only two saves ----------------------------------------------------------------------------------------------------
-  await p.click('#btnMore'); await p.waitForTimeout(150);
-  const items=await p.evaluate(()=>[...document.querySelectorAll('#topMenu button')].map(x=>[...x.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent.trim()).join('')));
-  check(items.join(' | ')==='Details view | Settings | Guide | Full save | Board save','the menu offers Full save and Board save: '+items.join(' | ')); await p.keyboard.press('Escape');
+  await p.click('#btnHome'); await p.waitForTimeout(200); await p.click('#actBtn'); await p.waitForTimeout(150);
+  const items=await p.evaluate(()=>[...document.querySelectorAll('#actMenu button')].map(x=>x.firstChild.textContent.trim()).join(' | ').replace(/Close Quarter \d/,'Quarters'));
+  check(items==='Quarters | Board save | Full save | Settings' && await p.locator('#rail #btnFullSave').count()===1,'the saves are Full save (the rail, Actions) and Board save (Actions): '+items); await p.keyboard.press('Escape');
   await more(p,'#btnSettings'); await p.waitForTimeout(300);
   const st=await p.evaluate(()=>({ cfg:!!document.querySelector('#exportCfg'), row:[...document.querySelector('#exportFull').parentElement.querySelectorAll('button')].map(x=>x.textContent.trim()), saves:[...document.querySelectorAll('#modal button')].map(x=>x.textContent.trim()).filter(t=>/save|backup/i.test(t)), text:document.querySelector('#modal').textContent }));
   check(!st.cfg && st.row.join(' | ')==='Full save | Board save | Open a save' && !/backup/i.test(st.text),'Settings saves with Full save and Board save (and opens a save); the word "backup" is gone: '+st.row.join(' | '));
@@ -28,7 +28,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more, fullSave } =
   // ---- 2. what counts as unsaved work ---------------------------------------------------------------------------------------
   const unsaved=()=>p.evaluate(()=>{ const T=window.__tally; return T.state.savedPrint!==T.workPrint(); });
   check(!(await unsaved()),'right after a Full save there is nothing unsaved');
-  await p.click(`[data-k="${K}"]`); await p.waitForTimeout(300); await p.click('#btnMore'); await p.click('#btnDetails'); await p.waitForTimeout(200); await p.click('#btnMore'); await p.click('#btnDetails'); await p.waitForTimeout(200);
+  await p.click(`[data-k="${K}"]`); await p.waitForTimeout(300); await p.click('#btnDetails'); await p.waitForTimeout(200); await p.click('#btnDetails'); await p.waitForTimeout(200);
   check(!(await unsaved()),'opening a class or switching Details view is not work to save');
   await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; T.addNote(s, s.grades.students[0], 'Moved seats.'); T.save(); },K);
   check(await unsaved(),'a new note is');

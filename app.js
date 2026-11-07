@@ -1786,15 +1786,13 @@ function renderInner() {
   // Header: three places (Classes, Students, Board), search, the names switch, a More menu, Import. Before the first
   // import there is nowhere to go yet, so only the Guide and Import show.
   $('#search').classList.toggle('hidden', !has);
-  $('#rail').classList.toggle('hidden', !has); document.body.classList.toggle('has', has); $('#btnHide').classList.toggle('hidden', !has); $('#topMore').classList.toggle('hidden', !has); $('#btnGuide0').classList.toggle('hidden', has);
+  $('#rail').classList.toggle('hidden', !has); document.body.classList.toggle('has', has); $('#btnHide').classList.toggle('hidden', !has); $('#btnGuide0').classList.toggle('hidden', has);
   renderLeaderboard();
   const hb = $('#btnHide'), hidden = !!state.settings.hideNames;
   hb.setAttribute('aria-pressed', String(!hidden));   // pressed = names showing
   hb.title = hidden ? 'Names are hidden (initials only): tap to show them' : 'Names are showing: tap to hide them before projecting';
   hb.setAttribute('aria-label', hidden ? 'Student names: hidden' : 'Student names: showing');
   hb.innerHTML = hidden ? EYE_OFF : EYE_ON;
-  $('#btnDetails').setAttribute('aria-checked', String(!!state.settings.details));
-  { const lb = state.lastBackup, el = $('#topBk'), d = lb ? ageDays(localDay(lb)) : null; if (el) { el.textContent = lb == null ? 'never' : d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`; el.classList.toggle('due', backupBehind()); } }
   renderKeep();
   if (seatSolving && !(view.mode === 'seating')) seatAbort();
   document.body.classList.toggle('details', !!state.settings.details);
@@ -1812,7 +1810,7 @@ function renderInner() {
 // A Tally that holds a Board file: the Board, and a card to open it from. Nothing else renders — there is nothing else in the file.
 function renderBoardOnly() {
   $('#empty').classList.add('hidden'); $('#app').classList.remove('hidden');
-  ['#search', '#rail', '#btnHide', '#topMore', '#btnGuide0'].forEach(id => $(id).classList.add('hidden'));
+  ['#search', '#rail', '#btnHide', '#btnGuide0'].forEach(id => $(id).classList.add('hidden'));
   document.body.classList.remove('home', 'grades', 'seating', 'has'); document.body.classList.add('boardOnly');
   state.settings.hideNames = true;
   $('#chead').innerHTML = ''; $('#notices').innerHTML = '';
@@ -1844,13 +1842,17 @@ function renderRail() {
     ${groups.map(([name, keys]) => `${one ? '' : `<div class="sec">${esc(name)}</div>`}${keys.map(item).join('')}`).join('')}
     <div class="foot">
       <button id="btnLb" title="Student screen: Race and Data Lab"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8 20.5h8M12 16.5v4"/></svg>Board</button>
-      <button id="railSettings" title="Settings: this class, the course, Tally, files"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
-      <button id="railGuide" title="A printable guide: the weekly flow and what the words mean"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16l-8-4-8 4z"/></svg>Guide</button>
-      <button id="railSave" title="Everything in Tally, in one file for your school Drive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Full save<span class="age ${backupBehind() ? 'due' : ''}">${esc(age)}</span></button>
+      <button id="btnDetails" role="menuitemcheckbox" aria-checked="${!!state.settings.details}" title="Show everything: full notices, counts, legends"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Details view<span class="sw"></span></button>
+      ${typeof SY !== 'undefined' && SY && SY.ready ? '<button id="btnSync" title="The same Tally on every computer, locked with your passphrase"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><polyline points="19 2 19 6.5 14.5 6.5"/><polyline points="5 22 5 17.5 9.5 17.5"/></svg>Sync<span class="age" id="topSync"></span></button>' : ''}
+      <button id="btnSettings" title="Settings: this class, the course, Tally, files"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+      <button id="btnGuide" title="A printable guide: the weekly flow and what the words mean"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16l-8-4-8 4z"/></svg>Guide</button>
+      <button id="btnFullSave" title="Everything in Tally, in one file for your school Drive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Full save<span class="age ${backupBehind() ? 'due' : ''}">${esc(age)}</span></button>
     </div>`;
   $('#btnHome').onclick = () => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); };
   el.querySelectorAll('.rc[data-k]').forEach(b => b.onclick = () => { state.active = b.dataset.k; view = { mode: 'units', unit: null }; noticesOpen = false; search = ''; $('#search').value = ''; save(); render(); });
-  $('#btnLb').onclick = enterProjected; $('#railSettings').onclick = () => openSettings(); $('#railGuide').onclick = openGuide; $('#railSave').onclick = () => saveFull();
+  $('#btnLb').onclick = enterProjected; $('#btnSettings').onclick = () => openSettings(); $('#btnGuide').onclick = openGuide; $('#btnFullSave').onclick = () => saveFull();
+  $('#btnDetails').onclick = () => { state.settings.details = !state.settings.details; save(); render(); };
+  const sy = $('#btnSync'); if (sy) sy.onclick = () => openSync(); if (typeof syncUI === 'function') syncUI();
 }
 // The class header above the bar: the class (or All classes), its facts, and the tabs.
 function renderChead() {
@@ -2858,13 +2860,9 @@ function toast(html, err, ms, fromLb) { if (document.body.classList.contains('lb
 $('#btnImport').onclick = () => $('#file').click();
 $('#launch').onclick = () => $('#file').click();
 $('#file').onchange = e => { importFiles([...e.target.files]); e.target.value = ''; };
-$('#btnSettings').onclick = () => openSettings();
-$('#btnGuide').onclick = openGuide; $('#btnGuide0').onclick = openGuide;
-$('#btnFullSave').onclick = () => saveFull(); $('#btnBoardSave').onclick = () => saveBoardFile();
+$('#btnGuide0').onclick = openGuide;
 $('#launchSync').onclick = () => openSync();
-wireMenu($('#btnMore'), $('#topMenu'), () => keepInside($('#topMenu')));
 $('#btnHide').onclick = () => { state.settings.hideNames = !state.settings.hideNames; save(); render(); };
-$('#btnDetails').onclick = () => { state.settings.details = !state.settings.details; save(); render(); };
 /* Phones: a table wider than its box becomes one card per row (its column headings become each value's label), so
    nothing scrolls sideways. The class grid and the Students list have their own phone layouts. (Croix, 23 Oct 2026.) */
 var lbOptsOpen = false;   // the Board's controls on a phone: folded behind Options until opened

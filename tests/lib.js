@@ -27,7 +27,10 @@ global.lbOpt = async (p, sel) => { try { const vis = await p.evaluate(sel => { c
 // Settings is four tabs (Class · Course · Tally · Files): bring the tab that holds a control to the front before using it.
 global.seeTab = async (p, sel) => { try { const tab = await p.evaluate(sel => { const el = document.querySelector(sel); const s = el && el.closest('section.stab'); return s ? s.dataset.stab : null; }, sel); if (tab) { await p.click(`#stabs [data-stab="${tab}"]`); await p.waitForTimeout(80); } } catch (e) {} };
 // Settings, Guide and Details view live in the header's ⋯ menu: open it, then choose.
-const more = async (p, sel) => { await p.click('#btnMore'); await p.click(sel); };
+// A class's actions (Copy, What changed, Signed reports, Print, quarters, Board save, settings) sit behind the Actions button on the class header (7 Nov 2026).
+const act = async (p, sel) => { await p.click('#actBtn'); await p.waitForTimeout(120); await p.click(sel); };
+// Settings, Guide, Full save and Details view sit on the rail's foot (7 Nov 2026, phase 3); Board save is in the Actions menu.
+const more = async (p, sel) => { if (sel === '#btnBoardSave') { await act(p, '#mBoardSave'); return; } await p.click(sel); };
 // The Full save from Settings, parsed (the only file that carries everything since 21 Oct 2026). Leaves Settings open.
 const fullSave = async p => { if (!(await p.$('#modal:not(.hidden) #exportFull'))) { await more(p, '#btnSettings'); await p.waitForTimeout(250); } await seeTab(p, '#exportFull'); const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#exportFull')]); const f = path.join(tmp, 'full-' + Date.now() + '.json'); await dl.saveAs(f); return { file: f, json: JSON.parse(fs.readFileSync(f, 'utf8')), name: dl.suggestedFilename() }; };
 // The settings-only backup Tally wrote until 21 Oct 2026, rebuilt from a Full save's state with the same fields, so the
@@ -35,6 +38,4 @@ const fullSave = async p => { if (!(await p.$('#modal:not(.hidden) #exportFull')
 const legacyOf = st => { const s = st.settings || {}; const out = { tally: 4, exported: '2026-10-01T12:00:00.000Z', settings: { copyMode: s.copyMode, useBest: s.useBest, remindDays: s.remindDays, skipFirst: s.skipFirst, skipFirstV2: true, currentUnit: s.currentUnit, curUnitTouched: s.curUnitTouched }, assigned: st.assigned, custom: st.custom, grading: st.grading, room: st.room, seatWeights: st.seatWeights, seatBasis: st.seatBasis, seatPairs: st.seatPairs, quarters: st.quarters, sections: {} };
   for (const k of st.order || Object.keys(st.sections)) { const x = st.sections[k]; out.sections[k] = { label: x.label, prep: x.prep, studentSkips: x.studentSkips, threshold: x.threshold, roster: x.roster, rosterAt: x.rosterAt, skipRoster: x.skipRoster, excluded: x.excluded, ignored: x.ignored, aliases: x.aliases, hiddenUnits: x.hiddenUnits, history: x.history, gradeHistory: x.gradeHistory || [], seating: x.seating || null, seatInfo: x.seatInfo || {}, qArchive: x.qArchive || {}, overrides: x.overrides || {} }; }
   return out; };
-// A class's actions (Copy, What changed, Signed reports, Print, quarters, Board save, settings) sit behind the Actions button on the class header (7 Nov 2026).
-const act = async (p, sel) => { await p.click('#actBtn'); await p.waitForTimeout(120); await p.click(sel); };
 module.exports = { act, fullSave, legacyOf, chromium, fs, path, exe, check, done, tmp, need, unskip, dense, pick, more, APP, SCRUB };

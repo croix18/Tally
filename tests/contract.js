@@ -48,7 +48,7 @@ const ratio = (fg, bg) => { const L = c => { const [r, g, b] = c.match(/\d+(\.\d
     const ring=await p.evaluate(()=>{ const b=document.querySelector('#btnHome'); b.focus(); const cs=getComputedStyle(b); return { oc:cs.outlineColor, os:cs.outlineStyle, bg:getComputedStyle(document.querySelector('#top')).backgroundColor, img:getComputedStyle(document.querySelector('#top')).backgroundImage }; });
     // header is a navy gradient; measure the ring against #16213A
     check(ring.os==='solid' && ratio(ring.oc,'rgb(22,33,58)')>=3,label+': header focus ring is drawn and ≥ 3:1 ('+ring.oc+')');
-    const ring2=await p.evaluate(()=>['#btnHide','#btnMore','#btnImport'].map(s=>{ const b=document.querySelector(s); b.focus(); const cs=getComputedStyle(b); return cs.outlineStyle==='solid' ? cs.outlineColor : 'rgb(22,33,58)'; })); check(ring2.every(c=>ratio(c,'rgb(22,33,58)')>=3),label+': …and on the names switch, More and Import');
+    const ring2=await p.evaluate(()=>['#btnHide','#btnImport'].map(s=>{ const b=document.querySelector(s); b.focus(); const cs=getComputedStyle(b); return cs.outlineStyle==='solid' ? cs.outlineColor : 'rgb(22,33,58)'; })); check(ring2.every(c=>ratio(c,'rgb(22,33,58)')>=3),label+': …and on the names switch, More and Import');
     // warning line is a block
     check((await p.evaluate(()=>{ const d=document.createElement('span'); d.className='warnline'; document.body.appendChild(d); const v=getComputedStyle(d).display; d.remove(); return v; }))==='block',label+': .warnline lays out as a block');
     await p.click('#back'); await p.waitForTimeout(300);

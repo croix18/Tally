@@ -30,7 +30,7 @@ let B = null;
   // ---- the rail ----------------------------------------------------------------------------------------------------
   check(await p.locator('body.has').count() === 1 && await p.locator('#rail:not(.hidden)').count() === 1 && !(await p.locator('#top .brand').isVisible()) && await p.locator('#rail .brand').isVisible(), 'after the import: the rail, with the wordmark; the header keeps search, the names switch, the menu and Import');
   check(await rail() === `All classes(${sumW})* [Accelerated] 1st Period(${warns['1205050-7T1A']}) 2nd Period(${warns.p2}) [On-level] 5th Period(${warns.p5})`, 'All classes (with the Overview\'s count), then every class under its course with how many things to fix: ' + await rail());
-  check(await p.$$eval('#rail .foot button', bs => bs.map(x => [...x.childNodes].filter(n => n.nodeType === 3 || n.classList).map(n => n.textContent.trim()).filter(Boolean).join(' ')).join(' | ')) === 'Board | Settings | Guide | Full save never', 'at the foot: Board, Settings, Guide, Full save and when it last was');
+  check(await p.$$eval('#rail .foot button', bs => bs.map(x => [...x.childNodes].filter(n => n.nodeType === 3 || n.classList).map(n => n.textContent.trim()).filter(Boolean).join(' ')).join(' | ')) === 'Board | Details view | Settings | Guide | Full save never', 'at the foot: Board, Details view, Settings, Guide, Full save and when it last was');
   check(await p.locator('#nav, #tabs, .tab, #btnStudents:not(#ctabs button), #stuClass').count() === 0, 'the old places are gone: no top tabs, no pill row, no Class menu');
   // ---- All classes --------------------------------------------------------------------------------------------------
   { const w = await where(); check(w.h2 === 'All classes' && w.rail === 'All classes' && w.tab === 'Overview' && w.mode === 'home' && await tabs() === 'Overview* Students Reports', 'the Overview is All classes › Overview'); }
@@ -92,8 +92,8 @@ let B = null;
   await p.click('#openStudents'); await p.waitForTimeout(400); await p.click('#btnHome'); await p.waitForTimeout(300); await p.click('#btnStudents'); await p.waitForTimeout(400);
   check(await p.locator('.sdir tr[data-open]').count() === 69 && (await where()).rail === 'All classes', 'All classes › Students is every class again after a class\'s Students');
   // the rail's foot
-  await p.click('#railSettings'); await p.waitForTimeout(400); check(await p.locator('#modal:not(.hidden) #stabs').count() === 1, 'Settings opens from the rail'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  { const [gd] = await Promise.all([ctx.waitForEvent('page'), p.click('#railGuide')]); await gd.waitForLoadState(); check(/Full save/.test(await gd.evaluate(() => document.body.textContent)), 'the Guide opens from the rail'); await gd.close(); }
+  await p.click('#btnSettings'); await p.waitForTimeout(400); check(await p.locator('#modal:not(.hidden) #stabs').count() === 1, 'Settings opens from the rail'); await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  { const [gd] = await Promise.all([ctx.waitForEvent('page'), p.click('#btnGuide')]); await gd.waitForLoadState(); check(/Full save/.test(await gd.evaluate(() => document.body.textContent)), 'the Guide opens from the rail'); await gd.close(); }
   await p.click('#btnLb'); await p.waitForTimeout(500); check(await p.locator('#lb:not(.hidden)').count() === 1, 'the Board opens from the rail');
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1900);
   // keyboard: the rail's buttons are real buttons with a visible ring

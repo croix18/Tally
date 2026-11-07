@@ -75,13 +75,13 @@ const { act, chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSa
   const boot=await p.evaluate(()=>{ const T=window.__tally; return {err:!!T.bootError, gb:!!T.state.sections['period-1'].grades, n:T.state.order.length}; });
   check(!boot.err && !boot.gb && boot.n===2,'broken gradebook shape dropped, null section dropped, app boots: '+JSON.stringify(boot));
   // 12. dialog focus: opening Settings moves focus into the panel and Escape returns it
-  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.focus('#btnMore'); await p.keyboard.press('Enter'); await p.waitForTimeout(200);
-  check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='btnDetails','the header menu opens from the keyboard with focus on its first item');
-  await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
+  await p.click('[data-k="period-1"]'); await p.waitForTimeout(300); await p.focus('#actBtn'); await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='mCopy','the Actions menu opens from the keyboard with focus on its first item');
+  await p.keyboard.press('End'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
   const inModal=await p.evaluate(()=>document.querySelector('#modal').contains(document.activeElement)); check(inModal,'focus moves into the dialog on open');
   check(await p.getAttribute('#modal','aria-labelledby')==='mTitle','dialog is named by its own heading');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
-  check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='btnMore','focus returns to the menu button on close');
+  check(await p.evaluate(()=>document.activeElement&&document.activeElement.id)==='actBtn','focus returns to the menu button on close');
   // 13. unit-view cells are keyboard reachable
   await p.click('th.unit .ulink'); await p.waitForTimeout(300);
   check(await p.locator('td.sc[data-cell][tabindex="0"][role="button"]').count()>0 && await p.locator('td.pts[tabindex="0"]').count()===0,'score cells are focusable buttons in the unit view');

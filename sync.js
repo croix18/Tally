@@ -170,7 +170,7 @@ function syncChoose(msg, a, b) {
 /* ---------- the Sync sheet (⋯ → Sync, or "Turn on sync" on an empty Tally) ---------- */
 function syncAgo(iso) { return iso ? whenText(iso) : 'not yet'; }
 function syncUI() {
-  const b = $('#btnSync'), l = $('#launchSync'); if (!b) return;
+  const l = $('#launchSync'); if (!SY || !SY.ready) return;
   if (l) l.classList.toggle('hidden', syncOn() || state.order.length > 0);
   if (SY && SY.waiting && !SY.busy && syncOn() && Date.now() >= SY.snooze) setTimeout(() => { if (SY.waiting && !syncBusyHere()) syncPull(); }, 400);   // a dialog just closed: the copy that waited comes in
   const sm = $('#topSync'); if (sm) { const st = !syncOn() ? 'Off' : SY.status === 'offline' ? 'Offline' : SY.status === 'error' ? 'Trouble' : 'On'; sm.textContent = st; sm.classList.toggle('due', syncOn() && st !== 'On'); }
@@ -325,10 +325,8 @@ async function syncBoot() {
   if (location.protocol !== 'https:' || storageFragile || !(window.crypto && crypto.subtle) || typeof CompressionStream === 'undefined') return;
   try { const r = await syncFetch('/api/sync/ping', null, false, 10000); const j = r.ok ? await r.json() : null; SY.ready = !!(j && j.ok && j.ready); SY.setup = !!(j && j.setup); } catch (e) {}
   if (!SY.ready) return;
-  // the menu item exists only where sync does (a file, GitHub Pages and a Google Site keep the menu as it was)
-  const mb = document.createElement('button'); mb.id = 'btnSync'; mb.title = 'The same Tally on every computer, locked with your passphrase';
-  mb.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><polyline points="19 2 19 6.5 14.5 6.5"/><polyline points="5 22 5 17.5 9.5 17.5"/></svg>Sync<small id="topSync"></small>';
-  mb.onclick = () => { if (closeOpenMenu) closeOpenMenu(); openSync(); }; $('#topMenu').insertBefore(mb, $('#btnBoardSave'));
+  // the rail's Sync button exists only where sync does (a file, GitHub Pages and a Google Site have none): renderRail draws it once SY.ready
+  if (state.order.length && !state.board) renderRail();
   if (SY.cfg) { try { SY.key = await syncKeyOf(SY.cfg.k); } catch (e) { SY.cfg = null; } }
   syncStatus(syncOn() ? 'ok' : 'off');
   if (syncOn()) await syncPull();

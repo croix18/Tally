@@ -184,6 +184,7 @@ body.has #top .brand,body.has #top .spacer{display:none}body.has #search{margin-
 #rail .foot{margin-top:auto;display:flex;flex-direction:column;gap:3px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14)}
 #rail .foot button{font-weight:var(--w-med);font-size:var(--t-m);min-height:var(--h-m);color:#D7DBE3}
 #rail .foot .age{margin-left:auto;font-size:var(--t-xs);font-weight:var(--w-heavy);color:#9AA3B2}#rail .foot .age.due{color:var(--coral)}
+#rail .foot .sw{margin-left:auto;flex:none;width:34px;height:20px;border-radius:var(--r-pill);background:rgba(255,255,255,.22);position:relative}#rail .foot .sw::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--white);transition:transform .12s}#rail .foot [aria-checked="true"] .sw{background:var(--turq)}#rail .foot [aria-checked="true"] .sw::after{transform:translateX(14px)}
 /* the class header: its name, its facts, and one tab strip for every class (Grid · Grades · Students · Seating · Reports) */
 #chead{display:flex;flex-direction:column;gap:2px;padding:9px 22px 0;background:var(--white)}
 body.home #chead,body.grades #chead{background:transparent;padding-left:0;padding-right:0}body.home #chead .tabrow #bar,body.grades #chead .tabrow #bar{background:transparent}
@@ -627,12 +628,12 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
   body.lbMode{padding-bottom:0}
   input,select,textarea{font-size:16px!important}
   /* header: one row (wordmark · names · more), search under it on the screens that search */
-  #top{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:8px;margin:8px 8px 0;padding:8px 10px 8px 14px;border-radius:var(--r-l)}
+  #top{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;margin:8px 8px 0;padding:8px 10px 8px 14px;border-radius:var(--r-l)}
   #top .brand{grid-column:1}#top .brand h1{font-size:17px}
   #top .spacer{display:none}
-  #btnHide{grid-column:2;grid-row:1}#topMore{grid-column:3;grid-row:1}#btnGuide0{grid-column:2/4;grid-row:1}
+  #btnHide{grid-column:2;grid-row:1}#btnGuide0{grid-column:2/4;grid-row:1}
   #search{grid-column:1/-1;grid-row:2;width:100%;min-width:0;flex:none}
-  #btnImport{grid-column:4;grid-row:1;min-height:var(--h-touch);padding:0 14px;font-size:var(--t-s)}
+  #btnImport{grid-column:3;grid-row:1;min-height:var(--h-touch);padding:0 14px;font-size:var(--t-s)}
   #btnImport svg{width:18px;height:18px}
   body.lbMode #btnImport{display:none}
   #keep{margin:8px 8px 0}
@@ -743,8 +744,8 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
 /* a phone on its side: little height, so the header is one row and the tab bar is thin */
 @media (max-height:500px) and (pointer:coarse){
   body{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
-  #top{grid-template-columns:auto 1fr auto auto auto}
-  #search{grid-column:2;grid-row:1}#btnHide{grid-column:3}#topMore{grid-column:4}#btnImport{grid-column:5;min-height:var(--h-m)}
+  #top{grid-template-columns:auto 1fr auto auto}
+  #search{grid-column:2;grid-row:1}#btnHide{grid-column:3}#btnImport{grid-column:4;min-height:var(--h-m)}
   #toast,body:has(#modal:not(.hidden)) #toast{bottom:calc(56px + env(safe-area-inset-bottom))}
 }
 </style>
@@ -761,17 +762,6 @@ body:has(#app:not(.hidden)) #btnImport{background:var(--paleturq);color:var(--te
   <input id="search" type="search" placeholder="Find a student…" aria-label="Find a student" class="hidden">
   <button class="pill ghost" id="btnGuide0" title="A printable guide: the weekly flow and what the words mean">Guide</button>
   <button class="ibtn hidden" id="btnHide" aria-pressed="true" aria-label="Student names"></button>
-  <div class="more hidden" id="topMore">
-    <button class="ibtn" id="btnMore" aria-haspopup="true" aria-expanded="false" aria-label="More" title="Details view, Settings, Guide, saving"><svg viewBox="0 0 24 24" class="dots"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></button>
-    <div class="menu hidden" id="topMenu">
-      <button id="btnDetails" role="menuitemcheckbox" aria-checked="false" title="Show everything: full notices, counts, legends"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Details view<span class="sw" aria-hidden="true"></span></button>
-      <button id="btnSettings" title="Settings, roster, threshold"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
-      <button id="btnGuide" title="A printable guide: the weekly flow and what the words mean"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16l-8-4-8 4z"/></svg>Guide</button>
-      <hr>
-      <button id="btnFullSave" title="Everything in Tally, in one file for your school Drive"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Full save<small id="topBk"></small></button>
-      <button id="btnBoardSave" title="For the classroom panel: the Race and the Data Lab, no names"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Board save</button>
-    </div>
-  </div>
   <button class="pill" id="btnImport">
     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     Import

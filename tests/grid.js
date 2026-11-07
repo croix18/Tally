@@ -5,7 +5,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more , ful
   const p=await ctx.newPage(); const errs=[]; p.on('framenavigated',f=>console.log('NAV',f.url().slice(-30))); p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{ if(m.type()==='error' && !/ERR_TUNNEL|fonts|net::/.test(m.text())) errs.push(m.text()); });
   let dialogs=[], dialogAnswer=true; p.on('dialog', async d=>{ dialogs.push(d.message()); await (dialogAnswer? d.accept(): d.dismiss()); });
   await p.goto('file://'+path.resolve(APP)); await unskip(p);
-  check(await p.locator('#topMore.hidden').count()===1 && await p.locator('#rail.hidden').count()===1 && await p.locator('#btnGuide0:not(.hidden)').count()===1,'on landing the header is the Guide and Import: no rail, no More menu yet');
+  check(await p.locator('#rail.hidden').count()===1 && await p.locator('#rail.hidden').count()===1 && await p.locator('#btnGuide0:not(.hidden)').count()===1,'on landing the header is the Guide and Import: no rail, no More menu yet');
   const main=fs.readdirSync('fixtures').filter(f=>f.endsWith('.xlsx') && /^f1473588/.test(f)).map(f=>path.resolve('fixtures',f));
   await p.setInputFiles('#file', main); await p.waitForTimeout(600);
   check((await p.evaluate(()=>window.__tally.state.order.length))===2,'two sections imported');

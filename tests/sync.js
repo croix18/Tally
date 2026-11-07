@@ -46,7 +46,7 @@ const T = (p, f, a) => p.evaluate(f, a);
 const label = (p, i) => T(p, i => { const t = window.__tally; return t.state.sections[t.state.order[i]].label; }, i);
 const setLabel = (p, i, v) => T(p, ([i, v]) => { const t = window.__tally; t.state.sections[t.state.order[i]].label = v; t.save(); }, [i, v]);
 const toastText = p => p.evaluate(() => document.querySelector('#toast').textContent);
-const openSync = async p => { if (await p.isVisible('#launchSync')) await p.click('#launchSync'); else { await p.click('#btnMore'); await p.click('#btnSync'); } await p.waitForTimeout(200); };
+const openSync = async p => { if (await p.isVisible('#launchSync')) await p.click('#launchSync'); else { await p.click('#btnSync'); } await p.waitForTimeout(200); };
 const PASS = 'Lantern cobalt rhubarb orbit mosaic';
 (async () => {
   const b = await chromium.launch({ executablePath: exe });
@@ -57,7 +57,7 @@ const PASS = 'Lantern cobalt rhubarb orbit mosaic';
   for (const [f, per, pr] of [['focus_gradebook_pool_p1.csv', '1', 'acc'], ['focus_gradebook_pool_p2.csv', '2', 'on']]) { await lap.setInputFiles('#file', [path.resolve('fixtures', f)]); await lap.waitForTimeout(600); await pick(lap, '[data-sec="__new__"]'); await lap.waitForTimeout(200); await lap.click(`#ncPeriod [data-p="${per}"]`); await lap.click(`#ncPrep [data-prep="${pr}"]`); await lap.click('#ncMake'); await lap.waitForTimeout(700); const a = await lap.$('#askApply'); if (a) { await a.click(); await lap.waitForTimeout(300); } }
   const lapInfo = await T(lap, () => { const t = window.__tally; return { n: t.state.order.length, labels: t.state.order.map(k => t.state.sections[k].label), names: t.state.order.flatMap(k => t.state.sections[k].students.slice(0, 5)), ids: t.state.order.flatMap(k => ((t.state.sections[k].grades || {}).students || []).slice(0, 3).map(s => String(s.id || ''))).filter(x => x.length > 3) }; });
   check(lapInfo.n === 2 && lapInfo.names.length >= 5, `the laptop has two classes (${lapInfo.labels.join(', ')})`);
-  await lap.click('#btnMore'); check(await lap.isVisible('#btnSync'), 'on mrshaffer.org the ⋯ menu has Sync'); check((await lap.textContent('#topSync')) === 'Off', 'and says Off'); await lap.keyboard.press('Escape');
+  check(await lap.isVisible('#btnSync'), 'on mrshaffer.org the rail has Sync'); check((await lap.textContent('#topSync')) === 'Off', 'and says Off'); await lap.keyboard.press('Escape');
   await openSync(lap);
   for (const weak of ['cobalt orbit', 'aaaa aaaa aaaa aaaa aaaa', 'ab cd ef gh ij kl mn', 'windy hill middle school']) { await lap.fill('#syPass', weak); await lap.click('#syGo'); await lap.waitForTimeout(150);
     check(/five different words/i.test(await lap.textContent('#syMsg')), `a weak passphrase ("${weak}") is refused before anything is sent`); }
@@ -107,7 +107,7 @@ const PASS = 'Lantern cobalt rhubarb orbit mosaic';
   check(/Updated from your other computer/.test(await toastText(pan)), 'and says where it came from');
   // a dialog open on the panel: the new copy waits
   await setLabel(lap, 0, 'Sync check B'); await T(lap, () => window.__tally.syncPush());
-  await pan.click('#btnMore'); await pan.click('#btnSettings'); await pan.waitForTimeout(200);
+  await pan.click('#btnSettings'); await pan.waitForTimeout(200);
   await T(pan, () => window.__tally.syncPull()); await pan.waitForTimeout(300);
   check(await label(pan, 0) === 'Sync check A', 'with Settings open on the panel, the new copy waits');
   await pan.click('#mCancel'); await pan.waitForTimeout(900);
@@ -171,7 +171,7 @@ const PASS = 'Lantern cobalt rhubarb orbit mosaic';
   // ---- clearing Tally on a computer forgets its key -------------------------------------------------------------------
   await T(pan, () => { localStorage.setItem('tally.sync', '{"k":"x","a":"y"}'); });
   if (await pan.isVisible('#modal')) await pan.click('#mClose');
-  await pan.click('#btnMore'); await pan.click('#btnSettings'); await pan.waitForTimeout(200); await seeTab(pan,'#wipe'); await pan.click('#wipe'); await pan.waitForTimeout(1200);
+  await pan.click('#btnSettings'); await pan.waitForTimeout(200); await seeTab(pan,'#wipe'); await pan.click('#wipe'); await pan.waitForTimeout(1200);
   check(await T(pan, () => localStorage.getItem('tally.sync')) === null, 'Clear all Tally data forgets this computer\'s sync key');
   // ---- no Sync where there is no mrshaffer.org ------------------------------------------------------------------------
   const f = await (await b.newContext()).newPage(); await f.goto('file://' + path.resolve(APP)); await f.waitForTimeout(400);

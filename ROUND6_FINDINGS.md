@@ -320,3 +320,6 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 7 Nov 2026: phase 2 of the navigation redesign: one Actions menu on the class header and one Attention inbox (the
   Overview's list, the rail's counts and the class's own list are one list, each row with its fix). `tests/shell.js`
   (41 checks).
+
+- 7 Nov 2026: phase 3 of the navigation redesign: the header's ⋯ menu folded into the rail's foot (Details view,
+  Sync, Settings, Guide, Full save); the header is search, the names switch and Import.
