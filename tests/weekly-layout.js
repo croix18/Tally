@@ -27,7 +27,7 @@ const K = '1205050-7T1A';
       moves:[], tots:[...d.querySelectorAll('.panel.main .tot')].map(txt),
       miss:[...((d.querySelector('.panel.miss')||d).querySelectorAll('tbody tr'))].map(tr=>({ t:txt(tr), cell:txt(tr.children[tr.children.length-1]), box:!!tr.querySelector('.box') })), missHead:txt(d.querySelector('.panel.miss .ph')),
       order:[...d.querySelectorAll('section.rep > *')].map(x=>x.className.replace(/\s+/g,'.')||x.tagName), ixlHead:txt(d.querySelector('.panel.ixl .ph')), last:txt(d.querySelector('.lastplan')),
-      mainHead:txt(d.querySelector('.panel.main .ph')), tq:[...d.querySelectorAll('.two .col > .panel:first-child table.tq tr')].map(tr=>[...tr.children].map(txt)), tqPara:!!d.querySelector('.two p.tests') };
+      mainHead:txt(d.querySelector('.panel.main .ph')), tq:[...d.querySelectorAll('.panel table.tq tr')].map(tr=>[...tr.children].map(txt)), tqPara:!!d.querySelector('.panel p.tests') };
     d.remove(); return out; },{K,i});
   // 1. A: one panel says what to do, the retake inside it: the score to aim for, a full score second, the HOWL days with dates
   const A=await report(who.a);
@@ -83,7 +83,7 @@ const K = '1205050-7T1A';
   check(boxed.length===who.missN[many] && pcts.length>0 && boxed.every(r=>/^\d+%( [A-F])?$|do the skills (listed below|in IXL)$|the rest are below$/.test(r.cell)) && pcts.every((v,k)=>!k||v>=pcts[k-1]) && new RegExp(who.missN[many]+' assignments · \\d+ points').test(M.missHead),'the back lists all '+who.missN[many]+' missing assignments, each with a box and the grade after it in that order (never down): '+M.missHead);
   check(M.tots.filter(t=>new RegExp('^All '+who.missN[many]+' missing assignments turned in').test(t)).length===1 && !M.moves.some(t=>/Worksheet|Assignment \d/.test(t)),'the total under the steps sums the missing work up in one line: '+M.tots.join(' | ').slice(0,200));
   const ord=M.order.join(' ');
-  check(/panel\.main.*two.*pledge.*sigs.*panel\.miss.*panel\.ixl/.test(ord) && /^head since|^head/.test(ord),'the front: header, grade, "Do this week", tests and moves, the plan and signatures; then the missing assignments and the IXL still owed: '+ord);
+  check(/panel\.main.*panel.*pledge.*sigs.*panel\.miss.*panel\.ixl/.test(ord) && /^head/.test(ord),'the front: header, grade with the tiles and the next test, "Do this week", tests and quizzes, the plan and signatures; then the missing assignments and the IXL still owed: '+ord);
   check(/^IXL still owed goal: SmartScore 67 · \(your score now\)( · a grey code typed into IXL's search box opens that skill)? ?unit bar: at goal started$/.test(M.ixlHead),'the IXL header says the goal, what the parentheses and the codes are, and what the unit bar shows (7 Nov 2026): "'+M.ixlHead+'"');
   // 5. the last plan: none on a first report; "Last week's plan" after last week's report; a dated plan after an older one
   const lastFor=async (date)=>{ await p.evaluate(({K,i,date})=>{ const T=window.__tally; const s=T.state.sections[K]; s.reportLog=s.reportLog||{}; const k=T.norm(s.grades.students[i]); if (date) s.reportLog[k]=[{ date, q:null, gb:'', ix:'', grade:70, missing:1, ixl:null }]; else delete s.reportLog[k]; },{K,i:who.a,date}); return (await report(who.a)).last; };
