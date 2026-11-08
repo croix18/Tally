@@ -1209,6 +1209,8 @@ per-section-file era and many items in them are now done).
   middle row is Tests & quizzes and the Next test box; the IXL is the totals under the steps and the list on the back.
 - **8 Nov 2026 — "Do this week" stands alone**: the hint after the title (the steps that lift the grade most; the
   baseline once the IXL points are in Focus; the full lists are on the back) went at Croix's word.
+- **8 Nov 2026 — The plan box's "I will have it done by" is a full line**: the in class / at home / during HOWL boxes went
+  at Croix's word.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
