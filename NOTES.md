@@ -1213,6 +1213,8 @@ per-section-file era and many items in them are now done).
   at Croix's word.
 - **8 Nov 2026 — The Next test box sits under the three tiles**, beside the category bars (`.tcol`: the tiles, then the
   box, date and unit on one line); Tests & quizzes runs the full width under Do this week.
+- **8 Nov 2026 — The last plan's check row (done / partly / not yet) is gone** at Croix's word; the plan box is the
+  three lines.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies

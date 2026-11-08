@@ -537,9 +537,7 @@ function studentReportSection(s0, i, ixlRow) {
     owed.length ? `<table class="missT"><thead><tr><th></th><th>Assignment</th><th>Was due</th><th class="r">Grade after, in this order</th></tr></thead><tbody data-items>${cumRows.map(m => `<tr><td class="bx"><span class="box"></span></td><td><b>${esc(m.a.name)}</b> <small>${plural(m.a.max, 'point')}${madeUp(m.a) ? ' · make it up' : ''}</small></td><td>${m.a.due ? esc(m.a.due) : ''}</td><td class="r">${m.cell}</td></tr>`).join('')}${doneRows}</tbody></table>`
     : earned.length ? `<p>Nothing to turn in.</p><table><tbody>${doneRows}</tbody></table>` : '<p>None. Every assignment is turned in.</p>', 'miss', ' data-newpage');
   // ---- the plan box: "This week I will" on full lines; the last plan's check only when there was a report before ----
-  const priorRep = ((s0.reportLog || {})[norm(name)] || []).filter(e => weekOf(e.date) < thisWeek).pop() || null;
-  const prevWeek = (() => { const d = new Date(thisWeek + 'T12:00:00'); d.setDate(d.getDate() - 7); return localDayOf(d.toISOString()); })();
-  const lastPlan = priorRep ? `<div class="lastplan"><b>${weekOf(priorRep.date) === prevWeek ? 'Last week\'s plan' : `My plan from ${esc(fmtDate(priorRep.date))}`}</b><span class="box"></span> done <span class="box"></span> partly <span class="box"></span> not yet</div>` : '';
+  const lastPlan = '';   // the last plan's done / partly / not yet row went at Croix's word (8 Nov 2026)
   // the plan box points only at what the page has (review, 3 Nov 2026: "Start here" was named on reports without one)
   const pickFrom = startHere ? 'pick a step from "Do this week" or "Start here" on the back' : owed.length || ixlOwedN ? 'pick a step from "Do this week" or the lists on the back' : 'pick a step from "Do this week"';
   /* ---- the next test, under the tests and quizzes (Croix, 25 Oct 2026: "use the space on the front to add in a test

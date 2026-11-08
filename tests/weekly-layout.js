@@ -89,7 +89,7 @@ const K = '1205050-7T1A';
   const lastFor=async (date)=>{ await p.evaluate(({K,i,date})=>{ const T=window.__tally; const s=T.state.sections[K]; s.reportLog=s.reportLog||{}; const k=T.norm(s.grades.students[i]); if (date) s.reportLog[k]=[{ date, q:null, gb:'', ix:'', grade:70, missing:1, ixl:null }]; else delete s.reportLog[k]; },{K,i:who.a,date}); return (await report(who.a)).last; };
   const lastMon=await p.evaluate(()=>{ const T=window.__tally; const d=new Date(T.weekOf(T.todayISO())+'T12:00:00'); d.setDate(d.getDate()-7); return T.localDayOf(d.toISOString()); });
   const l0=await lastFor(null), l1=await lastFor(lastMon), l2=await lastFor('2026-09-14');
-  check(l0==='' && /^Last week's plan done partly not yet$/.test(l1) && /^My plan from Sep 14 done partly not yet$/.test(l2),'the last plan\'s check prints only when there was a report: '+JSON.stringify([l0,l1,l2]));
+  check(l0==='' && l1==='' && l2==='','no last-plan check row, with or without an earlier report (Croix, 8 Nov 2026): '+JSON.stringify([l0,l1,l2]));
   await lastFor(null);
   // 6. printed: light header bars, an outlined title, the name on one line, the plan's lines across the box, the back on page 2
   const [pop]=await Promise.all([ctx.waitForEvent('page'), p.evaluate(({K,i})=>{ const T=window.__tally; const s=T.state.sections[K]; s.reportLog=s.reportLog||{}; s.reportLog[T.norm(s.grades.students[i])]=[{ date:'2026-09-14', q:null, gb:'', ix:'', grade:70, missing:1, ixl:null }]; T.printStudentReports(s,[i],'One'); },{K,i:many})]);
