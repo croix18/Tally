@@ -33,7 +33,7 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
   // 1. one grade, one sentence
   check(S.every(x => !x.gline && !x.withixl), 'nothing under the big grade but the category bars (the sentence went at Croix\'s word, 7 Nov 2026)');
   const moved = S.filter(x => x.copies && x.b0 !== x.grade);
-  check(moved.length > 0 && moved.every(x => new RegExp(x.b0 + '% once the ' + x.copyPts + ' IXL points? already earned (is|are) in Focus').test(x.mainHead)), 'with IXL points waiting for Focus, the Do this week hint names the grade the steps start from and the points that make it (' + moved.length + ' students)');
+  check(moved.length > 0 && S.every(x => x.mainHead === 'Do this week') && moved.every(x => !x.steps.length || Number(x.steps[0].after.split('%')[0]) >= x.b0), 'the Do this week title stands alone (Croix, 8 Nov 2026); with IXL points waiting for Focus the steps still start from the grade they make (' + moved.length + ' students)');
   check(S.every(x => !/Your IXL points go into Focus/.test(x.all)), 'the points are said once: the old lead line in Do this week is gone');
   // 2. each fact once: tiles, totals, no "What would move the grade"
   check(S.every(x => x.tiles.join('|') === 'Missing work|IXL at goal|Retake a test?') && S.every(x => !/all on the back|come first|skills in Units/.test(x.all)), 'three tiles: Missing work, IXL at goal, Retake a test?, each a label and a number');

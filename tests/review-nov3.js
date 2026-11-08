@@ -47,7 +47,7 @@ const K = '1205050-7T1A';
     return out; });
   check(base.length>=3,'the fixture has students whose IXL points Focus doesn\'t have yet: '+base.map(x=>x.n.split(',')[0]+' '+x.c.map(c=>c.name+' '+c.from+'→'+c.to).join(', ')).join(' | '));
   const moved=base.filter(x=>x.want.split('%')[0]!==x.big.split('%')[0]);
-  check(moved.length>0 && moved.every(x=>new RegExp(x.want.split('%')[0]+'% once the \\d+ IXL points? already earned (is|are) in Focus').test(x.sub) && x.afterBig.replace(/\s/g,'')===x.want.replace(/\s/g,'')),'the Do this week hint names the grade the steps start from once the IXL is in Focus: the grade Focus shows after the copy: '+moved.map(x=>x.big+' → "'+x.sub+'"').join(' | '));
+  check(moved.length>0 && moved.every(x=>x.sub==='' && x.afterBig.replace(/\s/g,'')===x.want.replace(/\s/g,'')),'nothing after the Do this week title (8 Nov 2026); the big grade is the one Focus shows after the copy: '+moved.map(x=>x.big+' → '+x.afterBig).join(' | '));
   check(base.every(x=>x.same),'every step, row and retake line reads the same before and after the teacher copies the IXL points: one baseline'+(base.filter(x=>!x.same).map(x=>' | '+x.n+': '+JSON.stringify(x.b).slice(0,300)+' vs '+JSON.stringify(x.a).slice(0,300)).join('')));
   check(base.every(x=>!/Your IXL points go into Focus|This is the grade in Focus/.test(x.all)) && base.every(x=>!/already earned/.test(x.afterSub||'')),'the old lead line and the sentence under the grade are gone, and nothing says "already earned" once the points are in: '+base.map(x=>x.sub).join(' | ').slice(0,400));
 

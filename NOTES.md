@@ -1207,6 +1207,8 @@ per-section-file era and many items in them are now done).
   ("from 48% once the 2 IXL points already earned are in Focus"). The suites above follow.
 - **8 Nov 2026 — The "IXL and the grade" box is gone too** (Croix: "Get rid of ixl and the grade box"). The front's
   middle row is Tests & quizzes and the Next test box; the IXL is the totals under the steps and the list on the back.
+- **8 Nov 2026 — "Do this week" stands alone**: the hint after the title (the steps that lift the grade most; the
+  baseline once the IXL points are in Focus; the full lists are on the back) went at Croix's word.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
