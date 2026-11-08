@@ -55,7 +55,7 @@ const K = '1205050-7T1A';
   // 5. nothing ahead: no panel
   await p.evaluate(({K})=>{ const T=window.__tally; T.state.testDates.acc=T.state.testDates.acc.slice(0,1); },{K});
   const A4=await report(who.a);
-  check(!A4.next && A4.col==='','with no test ahead, the front has no test panel: '+JSON.stringify(A4.col));
+  check(!A4.next && /^(board,panel wi)?$/.test(A4.col),'with no test ahead, the front has no test panel (the Working in line keeps a small box of its own): '+JSON.stringify(A4.col));
   // 6. the signatures: their own block after the plan, out of any box, two lines each
   check(A4.sigs==='Student signature | Date | Parent or guardian signature | Date' && !A4.sigBoxed && /^pledge>panel miss/.test(A4.sigLast),'the signatures: student and parent or guardian, each with a date, after the plan box and outside it: '+A4.sigs+' · '+A4.sigLast);
   await p.evaluate(({K,who})=>{ const T=window.__tally; T.state.testDates.acc=[{ unit:'Unit 4', title:'', from:who.d3, to:'' }, { unit:'Unit 5', title:'Multi-Step Proportional Relationships', from:who.d10, to:'' }]; T.save(); },{K,who});

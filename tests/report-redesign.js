@@ -69,8 +69,8 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
   await w.close();
   // 7. the unit being worked in and its standards, under the tiles (Croix, 8 Nov 2026)
   const wi = await p.evaluate(() => { const T = window.__tally; const s = T.state.sections[T.state.active]; const rows = T.gbRows(s); const d = new DOMParser().parseFromString(T.studentReportSection(s, 0, rows[0]), 'text/html'); const txt = e => e ? e.textContent.replace(/\s+/g, ' ').trim() : '';
-    const u = T.unitsOf(s).find(x => x.current); const col = d.querySelector('.tcol'); return { unit: txt(d.querySelector('.panel.wi .wiu')), codes: txt(d.querySelector('.panel.wi .wis')), want: u ? u.short + ' ' + u.title : '', order: col ? [...col.children].map(c => c.className).join(',') : '' }; });
-  check(wi.unit === wi.want && /^MA\.[78]\.[A-Z]+\.\d\.\d( · MA\.[78]\.[A-Z]+\.\d\.\d)*$/.test(wi.codes) && wi.order === 'board,panel wi,panel next', 'a "Working in" box under the tiles names the unit and its B.E.S.T. benchmark codes, above the Next test box: ' + wi.unit + ' | ' + wi.codes);
+    const u = T.unitsOf(s).find(x => x.current); const col = d.querySelector('.tcol'); const line = d.querySelector('.panel.next .wiu'); return { line: txt(line), codes: txt(d.querySelector('.panel.next .wis')), want: u ? 'Working in ' + u.short + ' ' + u.title : '', order: col ? [...col.children].map(c => c.className).join(',') : '' }; });
+  check(wi.line.startsWith(wi.want) && /^MA\.[78]\.[A-Z]+\.\d\.\d( · MA\.[78]\.[A-Z]+\.\d\.\d)*$/.test(wi.codes) && wi.order === 'board,panel next', 'the Next test box carries a "Working in" line with the unit and its B.E.S.T. benchmark codes (no box of its own: Croix, 8 Nov 2026): ' + wi.line);
   check(errs.length === 0, 'no errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
   await b.close(); done();
 })().catch(e => { console.log('FAIL crashed: ' + (e && e.stack || e)); process.exitCode = 1; });

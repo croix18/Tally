@@ -1216,7 +1216,8 @@ per-section-file era and many items in them are now done).
 - **8 Nov 2026 — The last plan's check row (done / partly / not yet) is gone** at Croix's word; the plan box is the
   three lines.
 - **8 Nov 2026 — "Working in" on the report** (Croix: "put in what unit and standards we are currently working in"): a
-  box under the tiles with the unit the course is working in and its Florida B.E.S.T. benchmark codes. The codes come
+  line inside the Next test box (a box of its own lasted an hour: "it doesn't need a separate box") with the unit the
+  course is working in and its Florida B.E.S.T. benchmark codes. The codes come
   from Windmill's spine (`spine.skills[id].benchmarks`), vendored as `vendor/benchmarks.json` (252 skills, 74 codes;
   build.py splices it in as `BENCHMARKS`); a unit whose skills the map lacks shows the unit alone. Refresh the file from
   croix18/Windmill when the course map changes.
