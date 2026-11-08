@@ -67,6 +67,10 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
   const lay = await w.evaluate(() => { const pages = [...document.querySelectorAll('.page')]; return { n: pages.length, pledgeOn: pages.findIndex(pg => pg.querySelector('.pledge')), sigsOn: pages.findIndex(pg => pg.querySelector('.sigs')), missOn: pages.findIndex(pg => pg.querySelector('.panel.miss')), cols: getComputedStyle(document.querySelector('.sks')).gridTemplateColumns.split(' ').length }; });
   check(lay.n === 2 && lay.pledgeOn === 0 && lay.sigsOn === 0 && lay.missOn === 1 && lay.cols === 3, 'the student with the most owed prints on two sheets: plan and signatures on the front, the lists on the back in three columns: ' + JSON.stringify(lay));
   await w.close();
+  // 7. the unit being worked in and its standards, under the tiles (Croix, 8 Nov 2026)
+  const wi = await p.evaluate(() => { const T = window.__tally; const s = T.state.sections[T.state.active]; const rows = T.gbRows(s); const d = new DOMParser().parseFromString(T.studentReportSection(s, 0, rows[0]), 'text/html'); const txt = e => e ? e.textContent.replace(/\s+/g, ' ').trim() : '';
+    const u = T.unitsOf(s).find(x => x.current); const col = d.querySelector('.tcol'); return { unit: txt(d.querySelector('.panel.wi .wiu')), codes: txt(d.querySelector('.panel.wi .wis')), want: u ? u.short + ' ' + u.title : '', order: col ? [...col.children].map(c => c.className).join(',') : '' }; });
+  check(wi.unit === wi.want && /^MA\.[78]\.[A-Z]+\.\d\.\d( · MA\.[78]\.[A-Z]+\.\d\.\d)*$/.test(wi.codes) && wi.order === 'board,panel wi,panel next', 'a "Working in" box under the tiles names the unit and its B.E.S.T. benchmark codes, above the Next test box: ' + wi.unit + ' | ' + wi.codes);
   check(errs.length === 0, 'no errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
   await b.close(); done();
 })().catch(e => { console.log('FAIL crashed: ' + (e && e.stack || e)); process.exitCode = 1; });

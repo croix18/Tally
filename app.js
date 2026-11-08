@@ -39,6 +39,10 @@ let state = null;
 /*__QUARTERS__*/ // quarters.js too
 /*__STUDENTS__*/ // students.js too
 /*__CONFERENCE__*/ // conference.js too
+// IXL skill ID → Florida B.E.S.T. benchmark codes, and a label per code, from Windmill's spine (vendor/benchmarks.json,
+// spliced in by build.py): the report names the standards of the unit being worked in. Refresh the file from
+// croix18/Windmill spine/spine.json when the course map changes.
+const BENCHMARKS = /*__BENCHMARKS__*/{ skills: {}, labels: {} };
 let view = { mode: 'home', unit: null };   // opens on the Overview
 let noticesOpen = false, noticeCount = { warn: 0, info: 0 }; let attCache = new Map(); let homeAttOpen = false;
 let search = '';
