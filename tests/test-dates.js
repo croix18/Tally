@@ -42,7 +42,7 @@ const K = '1205050-7T1A';
   const fmt=d=>p.evaluate(d=>window.__tally.testDays({ from:d, to:'' }),d);
   // 2. the front names the next test, under the tests and quizzes; a name left blank takes the IXL unit's
   const A=await report(who.a);
-  check(A.when===await fmt(who.d3) && A.unit==='Unit 4 Solving Problems with Rational Numbers' && /panel next$/.test(A.col) && !A.ixl,'the next test prints in its own panel, the last in its column (under "IXL and the grade" since 7 Nov 2026): '+A.next+' ('+A.col+')');
+  check(A.when===await fmt(who.d3) && A.unit==='Unit 4 Solving Problems with Rational Numbers' && /panel next$/.test(A.col) && !A.ixl,'the next test prints in its own panel, beside Tests & quizzes: '+A.next+' ('+A.col+')');
   // 3. with Unit 4 on the IXL list, where the student stands on it, the same count as the back
   await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; T.state.assigned.acc[T.unitsOf(s).find(u=>u.num===4).name]=true; T.save(); },K);
   const A2=await report(who.a); const [at,of]=(A2.back.match(/(\d+) \/ (\d+)/)||[]).slice(1).map(Number);

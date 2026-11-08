@@ -21,7 +21,7 @@ const K = '1205050-7T1A';
       s:()=>T.state.sections[K],
       look:(i,row)=>{ const s=T.state.sections[K]; const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,row===undefined?T.gbRows(s)[i]:row); const panelOf=re=>[...d.querySelectorAll('.panel')].find(x=>re.test(txt(x.querySelector('.ph'))));
         const tile=re=>[...d.querySelectorAll('.board > div')].find(x=>re.test(txt(x.querySelector('small'))));
-        const mv=panelOf(/IXL and the grade/i);   // the IXL columns as sentences (7 Nov 2026); the missing-work totals sit under the steps (.tot)
+        const mv=null;   // the IXL box went on 8 Nov 2026; the missing-work totals sit under the steps (.tot)
         return { all:txt(d), big:txt(d.querySelector('.big')), sub:txt(d.querySelector('.panel.main .ph .hs')), main:txt(d.querySelector('.panel.main')), lead:[...d.querySelectorAll('.panel.main .pbody > p.lead')].map(txt),
           steps:[...d.querySelectorAll('.panel.main .steps tbody tr')].map(txt), tots:[...d.querySelectorAll('.panel.main .tot')].map(txt), rt:txt(d.querySelector('.panel.main .rt')), howl:txt(d.querySelector('.howl')),
           missN:txt(tile(/Missing/).querySelector('b')), missSpan:txt(tile(/Missing/).querySelector('span')), ixlSpan:txt(tile(/IXL/).querySelector('span')), rtSpan:txt(tile(/Retake/).querySelector('span')),
@@ -75,7 +75,7 @@ const K = '1205050-7T1A';
     return out; });
   const row=(L,n)=>(L.miss.find(r=>r.t.startsWith(n))||{}).t||'';
   check(/do the skills listed below$/.test(row(where.none,'Unit 2 IXL')) && where.none.sk.length>=17 && where.none.missN==='2','an IXL column with nothing begun in IXL is missing work that points at the list below, and the list is there: '+row(where.none,'Unit 2 IXL'));
-  check(/2 of 17 points so far: the rest are below$/.test(row(where.part,'Unit 2 IXL')) && where.part.moves.some(m=>/^Unit 2 IXL: 2 of 17 skills at goal\. Finishing it lifts the grade to \d+%/.test(m.t)),'a part-done IXL column says how far along it is, on the back and in "IXL and the grade": '+row(where.part,'Unit 2 IXL')+' / '+(where.part.moves.map(m=>m.t).join(' | ')));
+  check(/2 of 17 points so far: the rest are below$/.test(row(where.part,'Unit 2 IXL')) && !/Finishing it lifts/.test(where.part.all),'a part-done IXL column says how far along it is on the back (no IXL box on the front since 8 Nov 2026): '+row(where.part,'Unit 2 IXL'));
   check(/do the skills in IXL$/.test(row(where.unl,'Unit 2 IXL')) && !/listed below/.test(where.unl.all) && /^IXL still owed\s*Your IXL skills aren't on this report\. Ask Mr\. Shaffer which ones are still owed\.$/.test(where.unl.ixlPanel),'with no IXL account matched, the column sends the student to IXL, never to a list that isn\'t there: '+row(where.unl,'Unit 2 IXL')+' / '+where.unl.ixlPanel);
 
   // ---- 5. A quiz or test not taken is made up, not turned in ----

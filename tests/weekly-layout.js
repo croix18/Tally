@@ -24,7 +24,7 @@ const K = '1205050-7T1A';
   const report=i=>p.evaluate(({K,i})=>{ const T=window.__tally; const s=T.state.sections[K]; const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,T.gbRows(s)[i]); document.body.appendChild(d);
     const txt=x=>x?x.textContent.replace(/\s+/g,' ').trim():''; const main=d.querySelector('.panel.main');
     const out={ main:txt(main), howl:txt(d.querySelector('.howl')), boxes:d.querySelectorAll('.howl .box').length, alert:d.querySelectorAll('.panel.alert').length, retakePanels:[...d.querySelectorAll('.panel .ph')].filter(x=>/retake/i.test(x.textContent)).length,
-      moves:[...([...d.querySelectorAll('.panel')].find(x=>/IXL and the grade/i.test(txt(x.querySelector('.ph'))))||{ querySelectorAll:()=>[] }).querySelectorAll('.words p')].map(txt), tots:[...d.querySelectorAll('.panel.main .tot')].map(txt),
+      moves:[], tots:[...d.querySelectorAll('.panel.main .tot')].map(txt),
       miss:[...((d.querySelector('.panel.miss')||d).querySelectorAll('tbody tr'))].map(tr=>({ t:txt(tr), cell:txt(tr.children[tr.children.length-1]), box:!!tr.querySelector('.box') })), missHead:txt(d.querySelector('.panel.miss .ph')),
       order:[...d.querySelectorAll('section.rep > *')].map(x=>x.className.replace(/\s+/g,'.')||x.tagName), ixlHead:txt(d.querySelector('.panel.ixl .ph')), last:txt(d.querySelector('.lastplan')),
       mainHead:txt(d.querySelector('.panel.main .ph')), tq:[...d.querySelectorAll('.two .col > .panel:first-child table.tq tr')].map(tr=>[...tr.children].map(txt)), tqPara:!!d.querySelector('.two p.tests') };

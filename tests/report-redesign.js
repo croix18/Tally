@@ -37,7 +37,7 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
   check(S.every(x => !/Your IXL points go into Focus/.test(x.all)), 'the points are said once: the old lead line in Do this week is gone');
   // 2. each fact once: tiles, totals, no "What would move the grade"
   check(S.every(x => x.tiles.join('|') === 'Missing work|IXL at goal|Retake a test?') && S.every(x => !/all on the back|come first|skills in Units/.test(x.all)), 'three tiles: Missing work, IXL at goal, Retake a test?, each a label and a number');
-  check(S.every(x => !x.panels.some(t => /What would move the grade|next assessment/i.test(t))) && S.some(x => x.panels.some(t => /^IXL and the grade$/.test(t))) && S.every(x => !/The next test is worth/.test(x.all)) && S.every(x => x.panels.some(t => /^Next test$/.test(t))), 'no "What would move the grade" box; "IXL and the grade" says what finishing each IXL column does; the Next test box carries the date and unit only (Croix, 7 Nov 2026)');
+  check(S.every(x => !x.panels.some(t => /What would move the grade|next assessment|IXL and the grade/i.test(t))) && S.every(x => !/The next test is worth|Finishing it lifts/.test(x.all)) && S.every(x => x.panels.some(t => /^Next test$/.test(t))), 'no "What would move the grade" or "IXL and the grade" box (Croix, 7 and 8 Nov 2026); the Next test box carries the date and unit only');
   const withSteps = S.filter(x => x.steps.length);
   check(withSteps.length > 0 && withSteps.every(x => x.stepHead.join('|') === '|Step|Grade after'), 'the steps are a table with a "Grade after" column (' + withSteps.length + ' students)');
   const letterOf = n => n >= 90 ? 'A' : n >= 80 ? 'B' : n >= 70 ? 'C' : n >= 60 ? 'D' : 'F';

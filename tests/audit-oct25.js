@@ -49,8 +49,8 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
   // A9: an IXL column marked NHI is listed once, as IXL to finish, not also as work to turn in
   const a9=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s); const col=gb.assignments.find(a=>a.name==='Unit 1 IXL'); const i=0; const keep=[col.values[i],col.status[i]];
     col.values[i]=null; col.status[i]='missing'; const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,rows[i]); col.values[i]=keep[0]; col.status[i]=keep[1];
-    const panel=[...d.querySelectorAll('.panel')].find(x=>/IXL and the grade/i.test(x.querySelector('.ph').textContent)); return [...panel.querySelectorAll('.words p')].map(pp=>pp.textContent.replace(/\s+/g,' ')).filter(t=>/Unit 1 IXL/.test(t)); },K);
-  check(a9.length===1 && /Finishing it lifts the grade to \d+%/.test(a9[0]) && !/turned in/.test(a9[0]),'an NHI IXL column is one sentence in "IXL and the grade": '+JSON.stringify(a9));
+    return [...d.querySelectorAll('.panel.miss tbody tr')].map(tr=>tr.textContent.replace(/\s+/g,' ').trim()).filter(t=>/Unit 1 IXL/.test(t)); },K);
+  check(a9.length===1 && /do the skills listed below|the rest are below/.test(a9[0]) && !/turned in/.test(a9[0]),'an NHI IXL column is one row on the back, pointing at its skills, not work to turn in: '+JSON.stringify(a9));
   // A3: one log entry per school week; a second print that week keeps "back, signed" and moves from last week's report
   const a3=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s); const i=1; const nm=gb.students[i];
     T.logReport(s,i,rows[i]); const key=Object.keys(s.reportLog).find(k=>s.reportLog[k]===T.reportsOf(s,nm));

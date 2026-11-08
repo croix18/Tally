@@ -1205,6 +1205,8 @@ per-section-file era and many items in them are now done).
   boxes stay); "Words on this page"; on the back, "tick each one as you turn it in", the note under the missing table
   and the codes sentence in the IXL header. The Do this week hint carries the baseline when IXL points wait for Focus
   ("from 48% once the 2 IXL points already earned are in Focus"). The suites above follow.
+- **8 Nov 2026 — The "IXL and the grade" box is gone too** (Croix: "Get rid of ixl and the grade box"). The front's
+  middle row is Tests & quizzes and the Next test box; the IXL is the totals under the steps and the list on the back.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
