@@ -47,7 +47,8 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP, more } = r
   check(lastTick===23 || lastTick>0,'last tick equals scale max: '+lastTick);
   // n floor: 7T1A now has 5 roster students → exactly MIN_N; drop one to 4
   await p.locator('#lbExit').dispatchEvent('pointerdown'); await p.waitForTimeout(1700);
-  await p.click('#btnHide'); await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster','Nguyen, Ava\nSmith, Liam\nGarcia, Noah\nJohnson, Emma'); await p.click('#mSave'); await p.waitForTimeout(300);
+  // leaving the Board lands on All classes, whose Settings reach every class: the roster is the class's own (phase 4)
+  await p.click('#btnHide'); await p.click('[data-k="1205050-7T1A"]'); await p.waitForTimeout(200); await more(p,'#btnSettings'); await seeTab(p,'#roster'); await p.fill('#roster','Nguyen, Ava\nSmith, Liam\nGarcia, Noah\nJohnson, Emma'); await p.click('#mSave'); await p.waitForTimeout(300);
   await p.click('#btnLb'); await p.waitForTimeout(300); await p.click('[data-tab="lab"]'); await p.waitForTimeout(300);
   check(await p.locator('.labNotYet').count()===1 && /needs 5/.test(await p.textContent('.labNotYet')),'n<5 shows not-enough-data instead of a plot');
   // 6. toast suppressed in projected mode

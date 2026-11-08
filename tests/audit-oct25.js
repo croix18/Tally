@@ -37,14 +37,16 @@ const timeoutPop = (ctx, ms = 5000) => Promise.race([ctx.waitForEvent('page'), n
     return null; },K);
   const a1t=a1?a1.txt:'';
   check(a1 && /Still missing: 2\.03 Worksheet\. Turn it in this week\./.test(a1t) && !/Nothing missing/.test(a1t) && !/Your IXL points go into Focus|This is the grade in Focus/.test(a1t),'a plan the IXL copy alone completes still names the missing work, with no sentence about the points under the grade (7 Nov 2026): '+(a1t.match(/DO THIS WEEK.{0,260}/i)||[''])[0]);
-  // A2: the tests-and-quizzes figure counts an NHI as 0, as the student page does (since 25 Oct it heads the Tests &
-  // quizzes panel; the tile that said "5 gradeds" is gone, so A7 went with it)
+  // A2: the Assessments figure counts an NHI as 0, as Focus does, and it is the category's own figure, the IXL columns
+  // with the tests and quizzes (Croix, 8 Nov 2026: "why does it say 80% overall but at the top it says ... 60% of
+  // assessments": the panel was "Tests & quizzes" with a figure of its own, the IXL left out)
   const a2=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s); const quiz=gb.assignments.find(a=>a.name==='Squares and Cubes Quiz'); const i=quiz.status.indexOf('missing');
-    const tests=gb.assignments.filter(a=>T.catOf(s.prep,a.name)==='Assessments' && !/\bixl\b/i.test(a.name) && a.max>0 && (a.status[i]==='score'||a.status[i]==='missing'));
-    const want=Math.round(tests.reduce((n,a)=>n+(a.status[i]==='score'?Number(a.values[i])||0:0),0)/tests.reduce((n,a)=>n+a.max,0)*100);
-    const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,rows[i]); const head=[...d.querySelectorAll('.panel .ph')].find(x=>/Tests/.test(x.textContent)).textContent.replace(/\s+/g,' ');
-    return { i, want, n:tests.length, head, tiles:[...d.querySelectorAll('.board > div small')].map(x=>x.textContent) }; },K);
-  check(a2.head.includes(a2.want+'% overall') && /not handed in counts as 0/.test(a2.head),'the tests-and-quizzes figure counts the quiz not handed in as 0 ('+a2.want+'%): '+a2.head);
+    const items=gb.assignments.filter(a=>T.catOf(s.prep,a.name)==='Assessments' && a.max>0 && (a.status[i]==='score'||a.status[i]==='missing'));
+    const want=Math.round(items.reduce((n,a)=>n+(a.status[i]==='score'?Number(a.values[i])||0:0),0)/items.reduce((n,a)=>n+a.max,0)*100);
+    const d=document.createElement('div'); d.innerHTML=T.studentReportSection(s,i,rows[i]); const txt=x=>x?x.textContent.replace(/\s+/g,' ').trim():'';
+    const head=txt([...d.querySelectorAll('.panel .ph')].find(x=>/^Assessments/.test(txt(x)))); const bar=txt(([...d.querySelectorAll('.catbar')].find(x=>/^Assessments/.test(txt(x)))||d).querySelector('.pc'));
+    return { i, want, n:items.length, ixl:items.filter(a=>/\bixl\b/i.test(a.name)).length, head, bar, tiles:[...d.querySelectorAll('.board > div small')].map(x=>x.textContent) }; },K);
+  check(a2.head==='Assessments '+a2.want+'% · not handed in counts as 0' && a2.bar===a2.want+'%' && a2.ixl>0,'the Assessments figure counts the quiz not handed in as 0 and the IXL columns with the tests ('+a2.want+'%, the bar\'s figure '+a2.bar+'): '+a2.head);
   check(a2.tiles.join('|')==='Missing work|IXL at goal|Retake a test?','three tiles: missing work, IXL at goal, retake a test? ('+a2.tiles.join(', ')+')');
   // A9: an IXL column marked NHI is listed once, as IXL to finish, not also as work to turn in
   const a9=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const gb=s.grades; const rows=T.gbRows(s); const col=gb.assignments.find(a=>a.name==='Unit 1 IXL'); const i=0; const keep=[col.values[i],col.status[i]];

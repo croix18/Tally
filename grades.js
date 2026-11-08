@@ -386,7 +386,6 @@ function studentReportSection(s0, i, ixlRow) {
   const arrow = x => x && x.rounded != null ? `→ ${x.rounded}% ${x.letter}` : '';
   const arrow2 = x => x && x.rounded != null ? `${x.rounded}% ${x.letter}` : '';
   const verbAll = xs => xs.every(madeUp) ? 'made up' : xs.some(madeUp) ? 'done' : 'turned in';
-  const skillsLeft = a => { if (ixlIdx == null) return 0; const u = gbUnitFor(s0, a); const unit = u ? unitsOf(s0).find(x => x.name === u.name) : null; return unit ? activeFor(s, unit, ixlIdx).filter(k => { const v = eff(s, k, ixlIdx); return v == null || v < s.threshold; }).length : 0; };
   const rt = r ? retakeStatus(s0, name) : null;
   const tests = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && !isIxl(a) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
   const retakeable = () => tests.filter(a => a.status[i] === 'score' && a.values[i] < a.max).map(a => ({ a, g: gw({ [a.name]: a.max }) })).filter(x => x.g && x.g.rounded != null && b0 && x.g.rounded > b0.rounded).sort((x, y) => y.g.rounded - x.g.rounded);
@@ -428,23 +427,39 @@ function studentReportSection(s0, i, ixlRow) {
       missIxl.length ? `do the ${missIxl.length === 1 ? esc(missIxl[0].name) : 'IXL'} skills` : ''].filter(Boolean));
     const list = all.map(a => `<b>${esc(a.name)}</b>`);
     return `Still missing: ${list.length > 3 ? `${list.slice(0, 3).join(', ')} and ${list.length - 3} more` : andList(list)}. ${todo.charAt(0).toUpperCase() + todo.slice(1)} this week.`; };
-  const steady = () => owed.length ? `<p class="keep">${stillMissing()}</p>`
-    : better.length ? '<p class="keep">Nothing missing.</p>'
-    : `<p class="keep">Nothing missing${belowFull ? '' : ' and every assessment at full marks'}: keep going.</p>`;
-  const curU = unitsOf(s).find(u => u.current); const curBelow = curU && ixlIdx != null ? activeFor(s, curU, ixlIdx).filter(k => { const v = eff(s, k, ixlIdx); return v == null || v < s.threshold; }).length : 0;
-  const keepLine = `<b>Keep every assignment in on time${curU ? ` and ${esc(curU.short)}'s IXL at goal` : ''}.</b>${curBelow ? ` ${curBelow === 1 ? 'One skill' : `${curBelow} skills`} in ${esc(curU.short)} ${curBelow === 1 ? 'is' : 'are'} still below goal; ${curBelow === 1 ? 'it is' : 'they are'} listed on the back.` : ''}`;
-  const totalsHtml = () => {   // the two totals under the steps: every missing assignment in, and the IXL finished too (the old "What would move the grade" rows)
+  const steady = () => owed.length ? `<p class="keep">${stillMissing()}${ixlStill()}</p>`
+    : better.length ? `<p class="keep">Nothing missing.${ixlStill()}</p>`
+    : `<p class="keep">Nothing missing${belowFull ? '' : ' and every assessment at full marks'}: keep going.${ixlStill()}</p>`;
+  /* The quarter's IXL (Croix, 8 Nov 2026: "All of the missing ixl for the quarter should be shown and they can't go back
+     to a previous quarter to make stuff up"): every unit of the open quarter, whether Focus has a column for it yet or
+     not, and never a unit from a quarter the class has moved past (unitClosed). The same units as the tile and the back. */
+  const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u));
+  const owedIn = u => ixlIdx == null ? 0 : activeFor(s, u, ixlIdx).filter(k => { const v = eff(s, k, ixlIdx); return v == null || v < s.threshold; }).length;
+  const ixlUnitsOwed = units.filter(u => owedIn(u) > 0); const ixlSkillsOwed = ixlUnitsOwed.reduce((n, u) => n + owedIn(u), 0);
+  const unitList = us => { const nums = us.map(u => (/^Unit (\S+)$/.exec(u.short) || [])[1]); return us.length > 1 && nums.every(Boolean) ? `Units ${andList(nums)}` : andList(us.map(u => esc(u.short))); };
+  const ixlStill = () => ixlSkillsOwed ? ` ${plural(ixlSkillsOwed, 'IXL skill')} in ${unitList(ixlUnitsOwed)} ${ixlSkillsOwed === 1 ? 'is' : 'are'} still below goal; ${ixlSkillsOwed === 1 ? 'it is' : 'they are'} listed on the back.` : '';
+  const keepLine = `<b>Keep every assignment in on time${ixlIdx != null && units.length ? ' and this quarter\'s IXL at goal' : ''}.</b>${ixlStill()}`;
+  /* The two totals under the steps (the old "What would move the grade" rows): every missing assignment in; then that
+     and every IXL skill of the quarter at goal, all of the quarter's units named (Croix, 8 Nov 2026: "what's with the …
+     And IXL in Unit 1 and 2"). Its grade counts the IXL columns Focus has today. When finishing the IXL would not move
+     the grade past the missing work alone (no Focus column for those units yet, or the columns already full), no grade
+     is claimed: the line names the skills still below goal instead. */
+  const totalsHtml = () => {
     const rows = [];
+    const workWord = missWork.length === 1 ? `${esc(missWork[0].name)} ${madeUp(missWork[0]) ? 'made up' : 'turned in'}` : missIxl.length ? `Every missing assignment but ${missIxl.length === 1 ? esc(missIxl[0].name) : 'the IXL'} ${verbAll(missWork)}` : `${missWork.length === 2 ? 'Both' : `All ${missWork.length}`} missing assignments ${verbAll(missWork)}`;
+    const g1 = missWork.length ? gw(allIn) : null; const base = g1 && g1.rounded != null ? g1 : b0;   // the grade with every missing assignment in
     // counted as the tile counts: with an IXL column owed too, the row is every missing assignment but that one
-    if (missWork.length > 1 || (missWork.length === 1 && steps.length > 1)) rows.push(`<div class="tot"><span>${missWork.length === 1 ? `${esc(missWork[0].name)} ${madeUp(missWork[0]) ? 'made up' : 'turned in'}` : missIxl.length ? `Every missing assignment but ${missIxl.length === 1 ? esc(missIxl[0].name) : 'the IXL'} ${verbAll(missWork)}` : `${missWork.length === 2 ? 'Both' : `All ${missWork.length}`} missing assignments ${verbAll(missWork)}`}</span><b>→ ${arrow2(gw(allIn))}</b></div>`);
-    if (missWork.length && ixlCols.length) { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); const nSk = ixlCols.reduce((n, a) => n + skillsLeft(a), 0); const us = ixlCols.map(a => { const u = gbUnitFor(s0, a); return u ? u.short : a.name; });
-      rows.push(`<div class="tot"><span>…and the IXL in ${esc(andList(us))} finished${nSk ? ` (${plural(nSk, 'skill')})` : ''}</span><b>→ ${arrow2(gw(both))}</b></div>`); }
+    if (missWork.length > 1 || (missWork.length === 1 && steps.length > 1)) rows.push(`<div class="tot"><span>${workWord}</span><b>→ ${arrow2(g1)}</b></div>`);
+    if (ixlSkillsOwed) { const both = { ...allIn }; ixlCols.forEach(a => both[a.name] = a.max); const g2 = gw(both);
+      const what = `this quarter's IXL finished (${plural(ixlSkillsOwed, 'skill')} in ${unitList(ixlUnitsOwed)})`;
+      const lead = missWork.length ? `${missWork.length === 1 ? esc(missWork[0].name) : missWork.length === 2 ? 'Both' : `All ${missWork.length}`} ${missWork.length === 1 ? (madeUp(missWork[0]) ? 'made up' : 'turned in') : verbAll(missWork)} and ${what}` : what.charAt(0).toUpperCase() + what.slice(1);
+      rows.push(g2 && g2.rounded != null && base && g2.rounded !== base.rounded ? `<div class="tot"><span>${lead}</span><b>→ ${arrow2(g2)}</b></div>` : `<div class="tot"><span>${ixlStill().trim()}</span></div>`); }
     return rows.join(''); };
-  const doThis = !r ? '' : qp && qp.top ? `<p class="keep">${owed.length ? stillMissing() : keepLine}</p>`
+  const doThis = !r ? '' : qp && qp.top ? `<p class="keep">${owed.length ? stillMissing() + ixlStill() : keepLine}</p>`
     : steps.length ? `${qp.reached ? '' : `<p class="lead">Missing work, IXL and retakes reach ${qp.result.rounded}%: the next assessments are needed too.</p>`}<table class="steps"><thead><tr><th></th><th>Step</th><th class="r">Grade after</th></tr></thead><tbody>${steps.join('')}</tbody></table>${totalsHtml()}`
     : steady();
   // ---- IXL by unit (the names a student can act on; the rest are counted) ----
-  const units = unitsOf(s).filter(u => u.assigned && u.total && !unitClosed(s, u)); const t = s.threshold; let ixl = '', startHere = '', ixlOwedN = 0;
+  const t = s.threshold; let ixl = '', startHere = '', ixlOwedN = 0;
   const sid = k => s.skills[k].id ? ` <small class="sid">${esc(s.skills[k].id)}</small>` : '';   // IXL's skill ID: two skills can share a name (review, 3 Nov 2026)
   if (ixlIdx != null) {
     /* Every skill still owed, by unit, each with the student's SmartScore in parentheses, 0 when not begun (Croix,
@@ -468,7 +483,13 @@ function studentReportSection(s0, i, ixlRow) {
   } else if (s.students.length) ixl = `<div class="panel"><div class="ph">IXL still owed</div><div class="pbody"><p>${ixlRow && ixlRow.status === 'noAccount' ? 'No IXL account.' : `Your IXL skills aren't on this report. Ask ${esc(teacher)} which ones are still owed.`}</p></div></div>`;   // words for the family, not Tally's (review, 3 Nov 2026: "IXL is not linked")
   // ---- tests and quizzes so far: one row each, the score and its percent in columns (Croix, 25 Oct 2026: "make the
   // test assessment box more organized"; it was one run-on line). Focus's order, newest first; not handed in: NHI, 0%.
-  const testsTable = tests.length ? `<table class="tq"><tbody>${tests.map(a => { const nhi = a.status[i] === 'missing';
+  /* The Assessments category item by item (Croix, 8 Nov 2026: "why does it say 80% overall but at the top it says ... 60%
+     of assessments"). In Focus the IXL columns sit in Assessments with the tests and quizzes; the list showed only tests
+     and quizzes, so its figure (80%) was not the category's (60%). Every graded item of the category is listed now, IXL
+     included, and the figure in the header is the bar's. */
+  const asmts = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
+  const asmtPct = r && r.cats.Assessments && r.cats.Assessments.pct != null ? Math.round(r.cats.Assessments.pct) : null;
+  const testsTable = asmts.length ? `<table class="tq"><tbody>${asmts.map(a => { const nhi = a.status[i] === 'missing';
     return `<tr><td>${esc(a.name)}</td><td class="sc">${nhi ? '<b>not handed in</b>' : `${fmtN(a.values[i])}/${fmtN(a.max)}`}</td><td class="pc">${nhi ? '0%' : `${Math.round(a.values[i] / a.max * 100)}%`}</td></tr>`; }).join('')}</tbody></table>` : '<p class="tests">None graded yet.</p>';
   // ---- what would move the grade ----
   // The missing work in one line: each assignment is listed on the back. An IXL column is finished, not turned in: it has
@@ -509,6 +530,7 @@ function studentReportSection(s0, i, ixlRow) {
      score to aim for comes first, a full score second. Retakes may be taken more than once, and a 79.5 is an 80, a B
      (Croix, 25 Oct 2026), so a retake is offered while it can still raise the grade. */
   const retakeStep = qp && !qp.top ? qp.plan.find(x => x.kind === 'retake') : null;
+  // "Do this week" is the panel's title alone (Croix, 8 Nov 2026: "Get rid of the text after do this week").
   const nextUp = b0 ? NEXT_UP.find(([tt]) => b0.rounded < tt) : null;
   const aimFor = a => { let at = null; if (nextUp) for (let v = Math.ceil((Number(a.values[i]) || 0) * 2) / 2; v <= a.max; v += 0.5) { const gg = gw({ [a.name]: v }); if (gg && gg.rounded >= nextUp[0]) { at = { v, g: gg }; break; } } return { at, full: gw({ [a.name]: a.max }) }; };
   const extra = !retakeStep && better.length ? (() => { const a = better[0].a; const m = aimFor(a); const more = better.slice(1).map(x => x.a);   // the others by name (review, 3 Nov 2026: "1 more assessment" said not which)
@@ -519,7 +541,6 @@ function studentReportSection(s0, i, ixlRow) {
       <p class="ticks"><span><span class="box"></span> I told my HOWL teacher</span><span><span class="box"></span> I plan to come Wednesday</span><span><span class="box"></span> I plan to come Thursday</span><span><span class="box"></span> I need another time</span></p></div>` : '';   // the boxes look ahead (Croix, 7 Nov 2026: "I plan to come Wednesday ... like in the future"); only an eligible student's report carries them
   const rtLine = rt && rt.ok && !howl && !noRetake ? `<p class="rt"><b>Retakes:</b> eligible: ${esc(retakeOkWhy(rt))}.</p>` : '';   // "not yet" is the tile's word; its sentence went at Croix's word (7 Nov 2026)
   // ---- tests and quizzes: the overall figure in the header, each one listed ----
-  const testPct = (() => { const e = tests.reduce((n, a) => n + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), p = tests.reduce((n, a) => n + a.max, 0); return p ? Math.round(e / p * 100) : null; })();
   // ---- the back: every missing assignment, then the IXL still owed (Croix, 25 Oct 2026: "move missing assignments and
   // ixls on the back page"). Each assignment has a box and what turning it in does, the biggest first. An IXL column
   // says where its skills are: listed below, in IXL, or done and waiting for Focus (review, 3 Nov 2026: "do the IXL
@@ -560,8 +581,8 @@ function studentReportSection(s0, i, ixlRow) {
   return `<section class="rep wk"><div class="head"><div class="title"><div class="course">${esc(s.label)} · ${esc(Q_NAMES[liveQuarter(s0) - 1])}</div><div class="badge">Weekly progress report</div></div><div class="who"><h1>${esc(name)}</h1><div class="meta">${esc(new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))} <small>· Focus as of ${esc(fmtDate(localDayOf(gbAt)))}${ixlIdx != null && dataDate(s) ? ` · IXL as of ${esc(fmtDate(dataDate(s)))}` : ''}</small></div></div></div>${since}
     <div class="top"><div class="gradeBox"><div class="gl"><div class="big">${r ? `${r.rounded}%<small>${r.letter}</small>` : '—'}</div></div>${r ? '' : `<p>${anyClosed() && !gb.assignments.length ? `No ${esc(Q_NAMES[currentQuarter() - 1])} grades in Tally yet.` : 'Nothing graded yet this quarter.'}</p>`}
       <div class="cats">${g.cats.map((c, k) => { const x = r && r.cats[c.name]; const pct = x && x.pct != null ? Math.round(x.pct) : null; return `<div class="catbar" title="${x && x.possible ? `${+x.earned.toFixed(1)} of ${x.possible} points` : ''}"><span>${esc(c.name)} <small>${c.w}%${k === 0 ? ' of the grade' : ''}</small></span><span class="cbar"><i style="width:${pct == null ? 0 : Math.max(0, Math.min(100, pct))}%"></i></span><span class="pc">${pct == null ? '—' : pct + '%'}</span></div>`; }).join('')}</div></div><div class="tcol">${scoreboard}${workingPanel}${nextPanel}</div></div>
-    ${panel('Do this week', `${doThis}${extra}${howl}${rtLine}`, 'main')}   // the title alone (Croix, 8 Nov 2026: "Get rid of the text after do this week")
-    ${panel(`Tests &amp; quizzes${testPct != null ? ` <span class="hs">${testPct}% overall${tests.some(a => a.status[i] === 'missing') ? ' · not handed in counts as 0' : ''}</span>` : ''}`, testsTable)}
+    ${panel('Do this week', `${doThis}${extra}${howl}${rtLine}`, 'main')}
+    ${panel(`Assessments${asmtPct != null ? ` <span class="hs">${asmtPct}%${asmts.some(a => a.status[i] === 'missing') ? ' · not handed in counts as 0' : ''}</span>` : ''}`, testsTable)}
     <div class="pledge"><b>My plan this week</b> <small>${pickFrom}</small><div class="lines"><div class="pl"><span>My goal</span><i></i></div><div class="pl"><span>My first step</span><i></i></div><div class="pl"><span>I will have it done by</span><i></i></div></div>${lastPlan}</div>
     ${sigs}
     ${missPanel}

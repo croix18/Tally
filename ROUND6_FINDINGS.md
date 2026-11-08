@@ -335,3 +335,9 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
 - 7 Nov 2026: the weekly progress report redesigned for its readers: one grade sentence, each fact once, a "Grade after"
   column with the letter only when it changes, family words, the back on one sheet in three columns; the next-assessment
   sentence dropped and the retake boxes in the future tense at Croix's word. `tests/report-redesign.js` (18).
+
+- 8 Nov 2026: the report's Assessments box is the category the bar shows (IXL columns with the tests; Micah read 80%
+  in the box and 60% on the bar); the totals name the quarter's IXL whole ("this quarter's IXL finished (54 skills in
+  Units 1, 2 and 3)"); a past quarter's unit stops being owed as soon as a later quarter's export arrives, before the
+  quarter is closed in Tally. A source comment had printed at the top of every weekly report since 47ae4a5; new suites
+  `tests/print-hygiene.js` (every print page and the main views read for code text) and `tests/quarter-units.js`.

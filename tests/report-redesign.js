@@ -23,11 +23,17 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
       const panels = [...d.querySelectorAll('.panel .ph')].map(txt);
       return { name, grade: r && r.rounded, b0: b0 && b0.rounded, b0L: b0 && b0.letter, copies: copies.length, owed: owed.length, work: work.length, allG: allG && allG.rounded, allL: allG && allG.letter,
         gline: !!d.querySelector('.gline'), mainHead: txt(d.querySelector('.panel.main .ph')), withixl: !!d.querySelector('.withixl'), copyPts: copies.reduce((n, c) => n + Math.max(0, c.to - (c.a.status[i] === 'missing' ? 0 : Number(c.a.values[i]) || 0)), 0), all: txt(d.body), panels,
-        tiles: [...d.querySelectorAll('.board small')].map(txt), stepHead: [...d.querySelectorAll('.panel.main .steps th')].map(txt), steps: [...d.querySelectorAll('.panel.main .steps tbody tr')].map(tr => ({ step: txt(tr.children[1]), after: txt(tr.children[2]) })),
+        tiles: [...d.querySelectorAll('.board small')].map(txt), board: txt(d.querySelector('.board')), stepHead: [...d.querySelectorAll('.panel.main .steps th')].map(txt), steps: [...d.querySelectorAll('.panel.main .steps tbody tr')].map(tr => ({ step: txt(tr.children[1]), after: txt(tr.children[2]) })),
         tots: [...d.querySelectorAll('.panel.main .tot')].map(txt), 
         back: [...d.querySelectorAll('.panel.miss .missT tbody tr')].map(tr => ({ name: txt(tr.children[1]), cell: txt(tr.children[3]) })), backHead: [...d.querySelectorAll('.panel.miss .missT th')].map(txt), note: txt(d.querySelector('.panel.miss .note')),
-        ixlHead: txt(d.querySelector('.panel.ixl .ph')), units: [...d.querySelectorAll('.panel.ixl .u')].map(u => ({ head: txt(u.querySelector('.uh')), scores: [...u.querySelectorAll('.sk b')].map(x => Number(txt(x).replace(/[()]/g, ''))) })),
-        words: txt(d.querySelector('.wordsOn')), nhi: /\bNHI\b/.test(d.body.textContent) }; }); });
+        ixlHead: txt(d.querySelector('.panel.ixl .ph')), units: [...d.querySelectorAll('.panel.ixl .u')].map(u => ({ head: txt(u.querySelector('.uh')), short: txt(u.querySelector('.uh b')), scores: [...u.querySelectorAll('.sk b')].map(x => Number(txt(x).replace(/[()]/g, ''))) })),
+        words: txt(d.querySelector('.wordsOn')), nhi: /\bNHI\b/.test(d.body.textContent), main: txt(d.querySelector('.panel.main')),
+        tileIxl: txt(([...d.querySelectorAll('.board > div')].find(x => /IXL at goal/.test(txt(x))) || d).querySelector('b')),
+        asmHead: txt([...d.querySelectorAll('.panel .ph')].find(x => /^Assessments\b/.test(txt(x)))), asmRows: [...d.querySelectorAll('table.tq tr')].map(tr => [...tr.children].map(txt)),
+        barAsm: txt(([...d.querySelectorAll('.catbar')].find(x => /^Assessments\b/.test(txt(x))) || d).querySelector('.pc')),
+        asmWant: (() => { const items = o.grades.assignments.filter(a => ((o._map && o._map[a.name]) || T.catOf(s.prep, a.name, a)) === 'Assessments' && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
+          const e = items.reduce((n, a) => n + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), pp = items.reduce((n, a) => n + a.max, 0);
+          return { names: items.map(a => a.name), pct: pp ? Math.round(e / pp * 100) : null, nhi: items.some(a => a.status[i] === 'missing'), ixl: items.filter(a => /\bixl\b/i.test(a.name)).length }; })() }; }); });
   const S = all.filter(x => x.grade != null);
   check(S.length > 10, S.length + ' graded students');
   // 1. one grade, one sentence
@@ -36,7 +42,7 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
   check(moved.length > 0 && S.every(x => x.mainHead === 'Do this week') && moved.every(x => !x.steps.length || Number(x.steps[0].after.split('%')[0]) >= x.b0), 'the Do this week title stands alone (Croix, 8 Nov 2026); with IXL points waiting for Focus the steps still start from the grade they make (' + moved.length + ' students)');
   check(S.every(x => !/Your IXL points go into Focus/.test(x.all)), 'the points are said once: the old lead line in Do this week is gone');
   // 2. each fact once: tiles, totals, no "What would move the grade"
-  check(S.every(x => x.tiles.join('|') === 'Missing work|IXL at goal|Retake a test?') && S.every(x => !/all on the back|come first|skills in Units/.test(x.all)), 'three tiles: Missing work, IXL at goal, Retake a test?, each a label and a number');
+  check(S.every(x => x.tiles.join('|') === 'Missing work|IXL at goal|Retake a test?') && S.every(x => !/all on the back|come first|skills in Units/.test(x.board)), 'three tiles: Missing work, IXL at goal, Retake a test?, each a label and a number');
   check(S.every(x => !x.panels.some(t => /What would move the grade|next assessment|IXL and the grade/i.test(t))) && S.every(x => !/The next test is worth|Finishing it lifts/.test(x.all)) && S.every(x => x.panels.some(t => /^Next test$/.test(t))), 'no "What would move the grade" or "IXL and the grade" box (Croix, 7 and 8 Nov 2026); the Next test box carries the date and unit only');
   const withSteps = S.filter(x => x.steps.length);
   check(withSteps.length > 0 && withSteps.every(x => x.stepHead.join('|') === '|Step|Grade after'), 'the steps are a table with a "Grade after" column (' + withSteps.length + ' students)');
@@ -60,14 +66,35 @@ const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
   // 5. family words
   check(S.every(x => !x.nhi), 'no report says "NHI"');
   check(S.every(x => !x.words && !/Since the last report/.test(x.all)), 'no "Words on this page" line and no "Since the last report" strip (both struck by Croix, 7 Nov 2026)');
-  // 6. the sample student with the most owed prints on two sheets, the plan box on the front
+  // 6. the Assessments panel is the category the bar shows (Croix, 8 Nov 2026: "why does it say 80% overall but at the
+  //    top it says ... 60% of assessments"): every graded item, IXL columns included, and the bar's figure in its header
+  const asmOK = S.filter(x => x.asmWant.names.length).every(x => { const m = /^Assessments (\d+)%( · not handed in counts as 0)?$/.exec(x.asmHead);
+    return m && +m[1] === x.asmWant.pct && x.barAsm === m[1] + '%' && !!m[2] === x.asmWant.nhi && x.asmRows.length === x.asmWant.names.length && x.asmRows.every((r, k) => r[0] === x.asmWant.names[k]); });
+  const bad = S.find(x => x.asmWant.names.length && !(/^Assessments (\d+)%/.exec(x.asmHead) && x.barAsm === /^Assessments (\d+)%/.exec(x.asmHead)[1] + '%'));
+  check(asmOK && S.some(x => x.asmWant.ixl > 0 && x.asmRows.some(r => /\bIXL\b/.test(r[0]))) && S.every(x => !/% overall/.test(x.all)), 'the Assessments panel lists every graded item of the category, IXL included, and its header is the bar\'s figure for every student, "not handed in counts as 0" when one is' + (bad ? ': ' + bad.name + ' ' + bad.asmHead + ' vs bar ' + bad.barAsm : ''));
+  // 7. Do this week names all of the quarter's IXL still owed (Croix, 8 Nov 2026: "what's with the ... And IXL in Unit 1
+  //    and 2. All of the missing ixl for the quarter should be shown"): the count the tile and the back give, every unit
+  //    of the quarter with a skill owed, and no "…and" line
+  const andL = xs => xs.length > 2 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : xs.join(' and ');
+  const unitWords = us => { const nums = us.map(u => (/^Unit (\S+)$/.exec(u) || [])[1]); return us.length > 1 && nums.every(Boolean) ? 'Units ' + andL(nums) : andL(us); };
+  const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const ixlSaid = withIxl.map(x => { const owedU = x.units.filter(u => u.scores.length); const N = owedU.reduce((n, u) => n + u.scores.length, 0); const m = /^(\d+) \/ (\d+)$/.exec(x.tileIxl); const U = reEsc(unitWords(owedU.map(u => u.short)));
+    const ok = !!m && +m[2] - +m[1] === N && (N ? new RegExp(`[Tt]his quarter's IXL finished \\(${N} skills? in ${U}\\) ?→ \\d+% [A-F]|${N} IXL skills? in ${U} (is|are) still below goal; (it is|they are) listed on the back\\.`).test(x.main) : !/still below goal|this quarter's IXL/.test(x.main));
+    return { ok, name: x.name, N, U, tile: x.tileIxl, main: x.main.slice(0, 160) }; });
+  const ixlMiss = ixlSaid.filter(x => !x.ok);
+  check(ixlSaid.filter(x => x.N).length > 5 && !ixlMiss.length && S.every(x => x.tots.every(t => !/^…/.test(t)) && !/the IXL in Unit/.test(x.all)), 'Do this week names every IXL skill the quarter still owes, with its units, the count the tile and the back give (' + ixlSaid.filter(x => x.N).length + ' students), and no "…and" line' + (ixlMiss.length ? ': ' + JSON.stringify(ixlMiss.slice(0, 2)) : ''));
+  const ixlTots = S.map(x => ({ x, t: x.tots.find(t => /this quarter's IXL finished/i.test(t)) })).filter(o => o.t);
+  check(ixlTots.length > 3 && ixlTots.every(({ x, t }) => { const g = +((/→ (\d+)% [A-F]$/.exec(t) || [])[1]); return g && g !== (x.work ? x.allG : x.b0); }) && S.some(x => x.tots.some(t => /^\d+ IXL skills? in .+ still below goal/.test(t))), 'the IXL total gives a grade only when finishing the IXL moves it past the grade with every missing assignment in; otherwise it names the skills still below goal (' + ixlTots.length + ' students with a grade)');
+  const keeps = S.filter(x => /Keep every assignment in on time/.test(x.main) && x.units.length);
+  check(keeps.every(x => /Keep every assignment in on time and this quarter's IXL at goal\./.test(x.main)), 'a student with nothing to raise keeps "this quarter\'s IXL" at goal, not one unit\'s (' + keeps.length + ' students)');
+  // 8. the sample student with the most owed prints on two sheets, the plan box on the front
   const idx = await p.evaluate(() => { const T = window.__tally; const s = T.state.sections[T.state.active]; const o = T.openSec(s); const rows = T.gbRows(s); let best = -1, bi = 0; s.grades.students.forEach((_, i) => { const n = T.owedWork(s, o, i, rows[i] && rows[i].ixl != null ? rows[i].ixl : null).owed.length; if (n > best && rows[i] && rows[i].ixl != null) { best = n; bi = i; } }); return bi; });
   const [w] = await Promise.all([ctx.waitForEvent('page'), p.evaluate(i => { const T = window.__tally; T.printStudentReports(T.state.sections[T.state.active], [i], 'One'); }, idx)]);
   await w.waitForLoadState(); await w.waitForFunction(() => document.body.getAttribute('data-paged'), null, { timeout: 15000 });
   const lay = await w.evaluate(() => { const pages = [...document.querySelectorAll('.page')]; return { n: pages.length, pledgeOn: pages.findIndex(pg => pg.querySelector('.pledge')), sigsOn: pages.findIndex(pg => pg.querySelector('.sigs')), missOn: pages.findIndex(pg => pg.querySelector('.panel.miss')), cols: getComputedStyle(document.querySelector('.sks')).gridTemplateColumns.split(' ').length }; });
   check(lay.n === 2 && lay.pledgeOn === 0 && lay.sigsOn === 0 && lay.missOn === 1 && lay.cols === 3, 'the student with the most owed prints on two sheets: plan and signatures on the front, the lists on the back in three columns: ' + JSON.stringify(lay));
   await w.close();
-  // 7. the unit being worked in and its standards, under the tiles (Croix, 8 Nov 2026)
+  // 9. the unit being worked in and its standards, under the tiles (Croix, 8 Nov 2026)
   const wi = await p.evaluate(() => { const T = window.__tally; const s = T.state.sections[T.state.active]; const rows = T.gbRows(s); const d = new DOMParser().parseFromString(T.studentReportSection(s, 0, rows[0]), 'text/html'); const txt = e => e ? e.textContent.replace(/\s+/g, ' ').trim() : '';
     const u = T.unitsOf(s).find(x => x.current); const col = d.querySelector('.tcol'); const line = d.querySelector('.panel.next .wiu'); return { line: txt(line), codes: txt(d.querySelector('.panel.next .wis')), want: u ? 'Working in ' + u.short + ' ' + u.title : '', order: col ? [...col.children].map(c => c.className).join(',') : '' }; });
   check(wi.line.startsWith(wi.want) && /^MA\.[78]\.[A-Z]+\.\d\.\d( · MA\.[78]\.[A-Z]+\.\d\.\d)*$/.test(wi.codes) && wi.order === 'board,panel next', 'the Next test box carries a "Working in" line with the unit and its B.E.S.T. benchmark codes (no box of its own: Croix, 8 Nov 2026): ' + wi.line);

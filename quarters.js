@@ -68,11 +68,34 @@ const anyClosed = () => Object.keys(quarters().closed).length > 0;
 function currentQuarter() { for (let n = 1; n <= 4; n++) if (!qClosed(n)) return n; return 4; }
 const aClosed = (a, gb) => qClosed(aQuarter(a, gb));
 const unitQuarter = (sec, u) => ((quarters().units[sec.prep] || {})[u.name]) || null;
-// A unit marked with a closed quarter is quiet — unless this class's open gradebook has a column for it (a Q2 "Unit 2
-// IXL Review" is Q2 work, so it is checked and owed again).
+/* The quarter each IXL unit was graded in, for one class: the latest quarter any Focus IXL column for it falls in, in the
+   live gradebook or a kept copy (a Q2 export moves Q1's columns into the kept copy). Cached until either changes. */
+const unitQCache = new Map();
+function unitColumnQuarters(sec) {
+  const gb = sec.grades, arch = sec.qArchive || {}, ks = Object.keys(arch).sort();
+  const sig = [sec.key, gb ? `${gb.importedAt}|${gb.assignments.length}` : '-', ...ks.map(k => `${k}:${arch[k] && arch[k].at || ''}:${arch[k] && arch[k].gb ? arch[k].gb.assignments.length : 0}`), JSON.stringify(sec.gbUnitMap || {}), quarters().ends.join(','), (sec.skills || []).length].join('/');
+  const hit = unitQCache.get(sig); if (hit) return hit;
+  const map = {}; const add = g => { if (g && Array.isArray(g.assignments)) g.assignments.forEach(a => { const u = gbUnitFor(sec, a); if (!u) return; const q = aQuarter(a, g); if (q && !(map[u.name] >= q)) map[u.name] = q; }); };
+  if (Array.isArray(sec.skills)) { add(gb); ks.forEach(k => add(arch[k] && arch[k].gb)); }
+  if (unitQCache.size > 300) unitQCache.clear(); unitQCache.set(sig, map); return map;
+}
+// The quarter a unit belongs to: the one it was closed with, else the one its IXL was graded in (null: not known).
+const unitQuarterOf = (sec, u) => unitQuarter(sec, u) || unitColumnQuarters(sec)[u.name] || null;
+/* A unit from a quarter before the one the class is in raises nothing: not owed, no retake hold, no Focus check (Croix,
+   8 Nov 2026: "they can't go back to a previous quarter to make stuff up").
+   · Closed with a quarter in Tally: quiet, unless this class's open gradebook has a column for it (a Q2 "Unit 2 IXL
+     Review" is Q2 work, so it is checked and owed again).
+   · Not closed (a Q2 export that arrived before Q1 was closed): past when its IXL was graded in an earlier quarter than
+     the one the class's gradebook is in, and that quarter is still open in Tally (a quarter closed in Tally settled its
+     units when it closed: one left unticked then stays owed); with no IXL column anywhere, past when a later unit's
+     IXL was graded in an earlier quarter. */
 function unitClosed(sec, u) {
-  if (!qClosed(unitQuarter(sec, u))) return false;
-  const gb = sec.grades; return !(gb && gb.assignments.some(a => !aClosed(a, gb) && (gbUnitFor(sec, a) || {}).name === u.name));
+  const mq = unitQuarter(sec, u);
+  if (qClosed(mq)) { const gb = sec.grades; return !(gb && gb.assignments.some(a => !aClosed(a, gb) && (gbUnitFor(sec, a) || {}).name === u.name)); }
+  const live = liveQuarter(sec); if (live <= 1) return false;
+  const qs = unitColumnQuarters(sec);
+  const q = mq || qs[u.name] || null; if (q) return q < live && !qClosed(q);
+  return u.num > 0 && unitsOf(sec).some(v => { const qv = unitQuarter(sec, v) || qs[v.name]; return v.num > u.num && qv && qv < live; });
 }
 // The quarter a gradebook describes: the latest quarter any of its assignments falls in (a fresh Q2 export is all Q2).
 function gbQuarter(gb) { if (!gb) return null; let q = 0; gb.assignments.forEach(a => { const n = aQuarter(a, gb); if (n > q) q = n; }); return q || quarterOf(gb.importedAt ? localDayOf(gb.importedAt) : null); }
@@ -149,9 +172,13 @@ function quarterAfterImport(sec) {
   return ` · ${qs.map(n => Q_NAMES[n - 1]).join(', ')} work in this file updated the closed-quarter record`;
 }
 // Units whose Focus IXL column is due in quarter n in any class of the course (the close dialog pre-ticks these).
+// The live gradebook and the kept copy of quarter n both count: a Q2 export that arrived before Q1 was closed moved Q1's
+// columns into the kept copy, and its units still belong to Q1 (8 Nov 2026).
 function unitsDueIn(prep, n) {
   const out = new Set();
-  state.order.map(k => state.sections[k]).filter(s => s.prep === prep && s.grades).forEach(s => s.grades.assignments.forEach(a => { const u = gbUnitFor(s, a); if (u && aQuarter(a, s.grades) === n) out.add(u.name); }));
+  state.order.map(k => state.sections[k]).filter(s => s.prep === prep && Array.isArray(s.skills)).forEach(s => {
+    const scan = g => { if (g && Array.isArray(g.assignments)) g.assignments.forEach(a => { const u = gbUnitFor(s, a); if (u && aQuarter(a, g) === n) out.add(u.name); }); };
+    scan(s.grades); if (s.qArchive && s.qArchive[n]) scan(s.qArchive[n].gb); });
   return out;
 }
 function closeQuarter(n, unitPicks) {

@@ -36,7 +36,7 @@ function classStudents(sec) {
 function ixlFor(sec, si) {
   if (si == null) return null; const t = sec.threshold;
   const units = unitsOf(sec).filter(u => u.assigned && u.total).map(u => { const own = activeFor(sec, u, si);
-    return { u, q: unitQuarter(sec, u), closed: unitClosed(sec, u), p: points(sec, u, si), n: own.length,
+    return { u, q: unitQuarterOf(sec, u), closed: unitClosed(sec, u), p: points(sec, u, si), n: own.length,
       below: own.filter(k => { const v = eff(sec, k, si); return v != null && v < t; }).map(k => ({ name: sec.skills[k].name, v: eff(sec, k, si) })),
       notStarted: own.filter(k => eff(sec, k, si) == null).map(k => sec.skills[k].name) }; });
   const open = units.filter(x => !x.closed); const basis = open.length ? open : units;

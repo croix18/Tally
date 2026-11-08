@@ -1221,6 +1221,38 @@ per-section-file era and many items in them are now done).
   from Windmill's spine (`spine.skills[id].benchmarks`), vendored as `vendor/benchmarks.json` (252 skills, 74 codes;
   build.py splices it in as `BENCHMARKS`); a unit whose skills the map lacks shows the unit alone. Refresh the file from
   croix18/Windmill when the course map changes.
+- **8 Nov 2026 — The report's Assessments box, the quarter's IXL, and a leaked comment** (Croix, on Micah's page: "why
+  does it say 80% overall but at the top it says ... 60% of assessments. Also what's with the ... And IXL in Unit 1 and
+  2. All of the missing ixl for the quarter should be shown and they can't go back to a previous quarter to make stuff
+  up"):
+  · The box was "Tests & quizzes" with a figure of its own (Micah: 64 of 80, 80%), but in Focus the IXL columns sit in
+    Assessments with the tests (67 of 112, the bar's 60%). It is the **Assessments** box now: every graded item of the
+    category, IXL columns included, and the bar's figure in its header ("· not handed in counts as 0" when one is).
+  · The totals under the steps say the quarter's IXL whole: "All 5 turned in and this quarter's IXL finished (54 skills
+    in Units 1, 2 and 3) → 90% A" (it was "…and the IXL in Unit 1 and Unit 2 finished (35 skills)": only the units
+    with a Focus column, under a leading ellipsis). The count is the tile's and the back's. The grade counts the IXL
+    columns Focus has; when finishing it would not move the grade past the missing work alone (no Focus column for those
+    units yet, the columns already full, or rounding), the line claims no grade and names the skills still below goal
+    ("21 IXL skills in Units 1, 2 and 3 are still below goal; they are listed on the back"). With no steps, the
+    sentence under "Keep every assignment in" names the same skills and units ("this quarter's IXL at goal", not one
+    unit's).
+  · A past quarter's unit is not owed even before that quarter is closed in Tally (`unitClosed`): a Q2 export that
+    arrives with Q1 still open moves Q1's columns into the kept copy, and a unit whose latest Focus IXL column is in an
+    earlier, still-open quarter is past (a unit with no column anywhere is past when a later unit's is). A unit with a
+    Q2 column ("Unit 2 IXL Review") stays owed; so does one left unticked when a quarter closes (closing settles its
+    units). The grid tags a past unit "Q1" (with no Focus check showing), "Q1 closed" once closed; the close dialog
+    pre-ticks units from the kept copy too (`unitsDueIn`). The report, the tile, the back and the still-owed list follow.
+  · **A source comment printed on every weekly report from 47ae4a5 to 9c51765**: "// the title alone (Croix, 8 Nov 2026:
+    …)" sat inside the report's template string, so it printed at the top of each report's first page (the pager pages
+    element children only, so stray text lands above page 1, and the line fit the page's slack). Fixed;
+    `tests/print-hygiene.js` reads every print page (weekly reports and checklist, FAST, still-owed in three modes, the
+    guide, the conference form, both seating copies) and the main views for comment marks, "${", undefined/NaN/null and
+    loose text outside the page elements. It fails on the old leak.
+  `tests/migration-and-history.js` had stopped three checks early since phase 4 (leaving the Board lands on All
+  classes, whose Settings hold no roster); it opens the class first now.
+  `tests/quarter-units.js` (Q2 export before Q1 closes; closing; a unit left unticked); `report-redesign` (the
+  Assessments box against the bar for every student, the quarter's IXL count and units, the IXL total's grade),
+  `weekly-layout` and `audit-oct25` follow the Assessments box.
 ## Sync on mrshaffer.org (22 Oct 2026)
 
 Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
