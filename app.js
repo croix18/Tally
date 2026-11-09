@@ -159,7 +159,7 @@ function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (f
 let saveCount = 0;
 const noCache = s => { if (!s || typeof s !== 'object') return s; const o = {}; for (const k of Object.keys(s)) if (k[0] !== '_') o[k] = s[k]; return o; };   // _keys and the like are caches, rebuilt on the next paint: saving them made the same work look changed
 function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = noCache(state.sections[k]); const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
-function save() { saveCount++; try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); syncSoon(); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save: this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
+function save() { saveCount++; try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save: this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
 function norm(s) {
@@ -246,7 +246,7 @@ function renderKeep() {
 }
 /* Tally open in two tabs (or windows) of one browser: each save in one is taken up by the other at once, so a tab
    left open can never write its older copy over newer work (audit, 22 Oct 2026: a stale tab's next save erased a
-   note added in the other, and Sync then spread the loss). An open dialog in this tab is closed first. */
+   note added in the other). An open dialog in this tab is closed first. */
 window.addEventListener('storage', e => {
   if (e.key !== LS_KEY || e.newValue == null || wiping || bootError) return;
   try { const s2 = hydrate(JSON.parse(e.newValue)); if (!s2) return; const m = $('#modal'); if (m && !m.classList.contains('hidden')) { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; }
@@ -1769,7 +1769,6 @@ function render() {
 }
 function renderInner() {
   if (closeOpenMenu) closeOpenMenu();   // a menu never outlives the screen it was opened on (its key listener and overlay go with it)
-  syncUI();
   document.querySelectorAll('#aheadMenu').forEach(m => m.remove());   // the grid's floating list of later units belongs to one render
   rowCache = new Map();   // students.js name-match cache: never outlives one render
   attCache = new Map();   // home.js attention items per class: the tabs, the cards and the list read the same answer once per render
@@ -1852,7 +1851,6 @@ function renderRail() {
     <div class="foot">
       <button id="btnLb" title="Student screen: Race and Data Lab"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8 20.5h8M12 16.5v4"/></svg>Board</button>
       <button id="btnDetails" role="menuitemcheckbox" aria-checked="${!!state.settings.details}" title="Show everything: full notices, counts, legends"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Details view<span class="sw"></span></button>
-      ${typeof SY !== 'undefined' && SY && SY.ready ? '<button id="btnSync" title="The same Tally on every computer, locked with your passphrase"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><polyline points="19 2 19 6.5 14.5 6.5"/><polyline points="5 22 5 17.5 9.5 17.5"/></svg>Sync<span class="age" id="topSync"></span></button>' : ''}
       <button id="btnSettings" class="${view.mode === 'settings' ? 'on' : ''}" ${view.mode === 'settings' ? 'aria-current="page"' : ''} title="Settings: this class, the course, Tally, files"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
       <button id="btnGuide" title="A printable guide: the weekly flow and what the words mean"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16l-8-4-8 4z"/></svg>Guide</button>
       <button id="btnFullSave" title="Everything in Tally, in one file for your school Drive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Full save<span class="age ${backupBehind() ? 'due' : ''}">${esc(age)}</span></button>
@@ -1862,7 +1860,6 @@ function renderRail() {
     state.active = b.dataset.k; view = { mode: 'units', unit: null }; noticesOpen = false; search = ''; $('#search').value = ''; save(); render(); }));
   $('#btnLb').onclick = enterProjected; $('#btnSettings').onclick = () => { if (view.mode === 'settings') return; openSettings(); }; $('#btnGuide').onclick = openGuide; $('#btnFullSave').onclick = () => saveFull();
   $('#btnDetails').onclick = () => { state.settings.details = !state.settings.details; save(); render(); };
-  const sy = $('#btnSync'); if (sy) sy.onclick = () => openSync(); if (typeof syncUI === 'function') syncUI();
 }
 // The class header above the bar: the class (or All classes), its facts, and the tabs.
 function renderChead() {
@@ -2370,7 +2367,7 @@ li{margin:3px 0}
 <p><b>Board</b>: the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade, with class averages). Names never show. Hold the exit button to leave.</p>
 <p><b>Find</b> (the box at the top, or Ctrl+K): a student, class, unit, tab or action; Enter takes the first match.</p>
 <p><b>Names</b>: the eye button in the header. Crossed out = initials only, for projecting.</p>
-<p><b>The rail</b>: All classes, every class under its course; at the foot the Board, Details view, Sync, Settings, this Guide, Full save. <b>Actions</b> (class header): Copy, What changed, quarters, Board save, Class settings.</p>
+<p><b>The rail</b>: All classes, every class under its course; at the foot the Board, Details view, Settings, this Guide, Full save. <b>Actions</b> (class header): Copy, What changed, quarters, Board save, Class settings.</p>
 </div>
 </div>
 </body></html>`;
@@ -2575,8 +2572,6 @@ function workPrint() {
   const v = (h >>> 0).toString(36) + '.' + txt.length.toString(36); printCache = { n: saveCount, v }; return v;
 }
 const unsavedWork = () => state.order.length > 0 && state.savedPrint !== workPrint();
-// Work that would be lost by replacing this computer's Tally: unsaved here and not held by Sync either.
-const unsavedAnywhere = () => unsavedWork() && !(typeof syncHolds === 'function' && syncHolds());
 function downloadJson(obj, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: 'application/json' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
 // Two-letter stand-in names ("Aa", "Ab", …): one token, letters only, so every name helper treats them as distinct students.
 const pseudoName = (j, prefix) => (prefix || '') + String.fromCharCode(65 + Math.floor(j / 26) % 26) + String.fromCharCode(97 + j % 26) + (j >= 676 ? String(Math.floor(j / 676)) : '');
@@ -2614,7 +2609,7 @@ async function loadTallyFile(file, cfg) {
   if (cfg.board || cfg.full) {
     const kind = cfg.board ? 'Board save' : 'Full save'; const meta = cfg.board || cfg.full || {}; const when = meta.saved ? whenText(meta.saved) : 'an unknown time';
     // never lose what is on screen: work that is in no Full save is saved first, before anything replaces it
-    if (state.order.length && !state.board && unsavedAnywhere()) { saveFull(); toast(`Your work here was saved first (${esc(state.lastSaveName || 'a Full save')}).`, false, 6000); }
+    if (state.order.length && !state.board && unsavedWork()) { saveFull(); toast(`Your work here was saved first (${esc(state.lastSaveName || 'a Full save')}).`, false, 6000); }
     const older = cfg.full && meta.saved && state.lastBackup && meta.saved < state.lastBackup && !state.board;
     const here = state.order.length ? ` It replaces everything open here (${plural(state.order.length, 'class')}).` : '';
     if ((state.order.length || older) && !await ask(`Open the ${kind} from ${when} (${plural(meta.classes || 0, 'class')})?${older ? ` It is older than the Full save already open here (${whenText(state.lastBackup)}).` : ''}${here}`, 'Open it')) return false;
@@ -2760,11 +2755,11 @@ ${all ? '' : `      <section class="scope stab ${settingsTab === 'class' ? 'on' 
     state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
     const wi = defaultWorkingIn(); noteWorkingIn(wi); save(); close(); toast('Saved' + wi.map(x => `<br>${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join(''), false, wi.length ? 9000 : undefined);
   };
-  const fg = $('#forget'); if (fg) fg.onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Everything Tally holds for it goes: IXL data, gradebook, kept quarters, roster, notes, family contacts and the contact log, weekly reports and signed-report ticks, IXL practice, conference text, seating. ${unsavedAnywhere() ? 'A Full save downloads first, so you can get it back.' : syncHolds() ? 'Sync still has it.' : 'Your last Full save still has it.'}`, 'Remove the class')) return; if (unsavedAnywhere()) saveFull(); delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; settingsBack = null; pageGuard = null; view = { mode: 'units', unit: null }; save(); render(); };
+  const fg = $('#forget'); if (fg) fg.onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Everything Tally holds for it goes: IXL data, gradebook, kept quarters, roster, notes, family contacts and the contact log, weekly reports and signed-report ticks, IXL practice, conference text, seating. ${unsavedWork() ? 'A Full save downloads first, so you can get it back.' : 'Your last Full save still has it.'}`, 'Remove the class')) return; if (unsavedWork()) saveFull(); delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; settingsBack = null; pageGuard = null; view = { mode: 'units', unit: null }; save(); render(); };
   $('#wipe').onclick = async () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
-    if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? ${unsavedAnywhere() ? 'A Full save downloads first, so you can get it back.' : syncHolds() ? 'Sync still has it.' : 'Your last Full save still has it.'}`, 'Clear everything')) return; if (unsavedAnywhere()) saveFull();
-    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); localStorage.removeItem(SYNC_KEY); } catch (e) {} try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; setTimeout(() => location.reload(), 700);   // lets the Full save finish downloading   // this computer forgets its sync key too; the synced copy stays
+    if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? ${unsavedWork() ? 'A Full save downloads first, so you can get it back.' : 'Your last Full save still has it.'}`, 'Clear everything')) return; if (unsavedWork()) saveFull();
+    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); } catch (e) {} try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; setTimeout(() => location.reload(), 700);   // lets the Full save finish downloading
   };
   $('#addCustom').onclick = () => { openCustomEditor(null, s.prep); };
   document.querySelectorAll('#stabs [data-stab]').forEach(b => b.onclick = () => { settingsTab = b.dataset.stab; document.querySelectorAll('#stabs [data-stab]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); }); m.querySelectorAll('section.stab').forEach(x => x.classList.toggle('on', x.dataset.stab === settingsTab)); const gw = $('#gridwrap'); if (gw) gw.scrollTop = 0; });
@@ -2790,7 +2785,7 @@ ${all ? '' : `      <section class="scope stab ${settingsTab === 'class' ? 'on' 
     } catch (err) { toast('That file is not a Tally course settings file.', true); }
   };
   $('#saveRace').onclick = () => downloadLeaderboard('race'); $('#saveLab').onclick = () => downloadLeaderboard('lab');
-  const dg = $('#dropGrades'); if (dg) dg.onclick = async () => { if (!await ask(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.${unsavedAnywhere() ? ' A Full save downloads first.' : ''}`, 'Remove the gradebook')) return; if (unsavedAnywhere()) saveFull(); delete s.grades; if (settingsBack && settingsBack.view.mode === 'grades') settingsBack.view = { mode: 'units', unit: null }; save(); render(); };
+  const dg = $('#dropGrades'); if (dg) dg.onclick = async () => { if (!await ask(`Remove the gradebook loaded for ${s.label}? Its grade history stays for trends.${unsavedWork() ? ' A Full save downloads first.' : ''}`, 'Remove the gradebook')) return; if (unsavedWork()) saveFull(); delete s.grades; if (settingsBack && settingsBack.view.mode === 'grades') settingsBack.view = { mode: 'units', unit: null }; save(); render(); };
   m.querySelectorAll('[data-auto]').forEach(b => b.onclick = () => { state.settings.autosave = Number(b.dataset.auto); save(); m.querySelectorAll('[data-auto]').forEach(x => x.classList.toggle('on', x === b)); renderKeep(); });
   $('#exportBoard').onclick = () => saveBoardFile(); $('#exportFull').onclick = () => { saveFull(); const lb = $('#lastBk'); if (lb) lb.textContent = 'Last full save today.'; };
   $('#importCfg').onclick = () => $('#cfgFile').click();
@@ -2902,7 +2897,6 @@ $('#btnImport').onclick = () => $('#file').click();
 $('#launch').onclick = () => $('#file').click();
 $('#file').onchange = e => { importFiles([...e.target.files]); e.target.value = ''; };
 $('#btnGuide0').onclick = openGuide;
-$('#launchSync').onclick = () => openSync();
 $('#btnHide').onclick = () => { state.settings.hideNames = !state.settings.hideNames; save(); render(); };
 /* Phones: a table wider than its box becomes one card per row (its column headings become each value's label), so
    nothing scrolls sideways. The class grid and the Students list have their own phone layouts. (Croix, 23 Oct 2026.) */
@@ -2955,7 +2949,6 @@ function finderItems(q) {
   act('Board save', 'no names', () => saveBoardFile(), 'file panel'); act('Full save', 'everything, for Drive', () => saveFull(), 'backup download');
   act('Import', 'IXL and Focus exports', () => $('#file').click(), 'open file drop');
   act(state.settings.hideNames ? 'Show names' : 'Hide names', 'the eye button', () => $('#btnHide').click(), 'initials project'); act(state.settings.details ? 'Details view off' : 'Details view on', 'every count and legend', () => { state.settings.details = !state.settings.details; save(); render(); }, 'dense');
-  if (typeof SY !== 'undefined' && SY && SY.ready) act('Sync', 'every computer', () => openSync(), 'passphrase');
   if (!qn) { const rank = { page: 0, action: 1, class: 2 }; return out.filter(it => it.kind in rank).sort((a, b) => rank[a.kind] - rank[b.kind]); }   // nothing typed: where you can go and what you can do, not the whole unit list
   const starts = it => fnorm(it.label).startsWith(qn) ? 0 : 1;
   return out.filter(hit).map((it, i) => [it, i]).sort((a, b) => starts(a[0]) - starts(b[0]) || a[1] - b[1]).map(x => x[0]);   // a label that begins with what was typed comes first; otherwise the order above
@@ -3007,14 +3000,12 @@ document.addEventListener('keydown', e => {
   else if (view.mode === 'settings') { if (settingsCancel) settingsCancel(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-/*__SYNC__*/
-window.__tally = { unitClosed, unitQuarterOf, unitColumnQuarters, unitsDueIn, liveQuarter, attentionGroups, fixCount, gbUnitFor, pendingCopies, owedWork, reportGaps, openQuarters, printDoc, adopt, niceName, askCategories, catGuesses, catCheck, cleanDismissed, nextTest, testDays, testUnitNums, cleanTestDates, openTestDates, testDatesOf, TEST_DATES, closedEarly, quarterDue, openSettings, gradeSummary, syncBusyHere, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get SY() { return SY; }, syncNorm, syncPassOk, syncSuggest, syncPull, syncPush, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { unitClosed, unitQuarterOf, unitColumnQuarters, unitsDueIn, liveQuarter, attentionGroups, fixCount, gbUnitFor, pendingCopies, owedWork, reportGaps, openQuarters, printDoc, adopt, niceName, askCategories, catGuesses, catCheck, cleanDismissed, nextTest, testDays, testUnitNums, cleanTestDates, openTestDates, testDatesOf, TEST_DATES, closedEarly, quarterDue, openSettings, gradeSummary, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, ixlVsTests, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.
 try { const wi = bootError ? [] : defaultWorkingIn(); if (wi.length) { noteWorkingIn(wi); save(); setTimeout(() => toast(wi.map(x => `${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join('<br>'), false, 9000), 400); } } catch (e) { console.error('Tally: could not set Working in', e); }
 render();
-syncBoot();
 if (foldedTwins.length && !bootError) { save(); setTimeout(() => toast(`${esc(foldedTwins.join(', '))} ${foldedTwins.length === 1 ? 'was' : 'were'} in Tally twice: an IXL export had made a second copy. ${foldedTwins.length === 1 ? 'It is' : 'They are'} one class again, with the newer IXL data.`, false, 9000), 500); }
 // Saved data that can't be read is downloaded as a file before Tally may write anything (audit, 22 Oct 2026: on a big
 // Tally the in-browser copy failed for space, the message still said it was kept, and the first save wrote over it).

@@ -1253,30 +1253,27 @@ per-section-file era and many items in them are now done).
   `tests/quarter-units.js` (Q2 export before Q1 closes; closing; a unit left unticked); `report-redesign` (the
   Assessments box against the bar for every student, the quarter's IXL count and units, the IXL total's grade),
   `weekly-layout` and `audit-oct25` follow the Assessments box.
-## Sync on mrshaffer.org (22 Oct 2026)
+## Where Tally runs: a file on the teacher's computer (9 Nov 2026)
 
-Croix now opens Tally from **mrshaffer.org/tally/** (his own site: Cloudflare, repo `croix18/mrshaffer-site`, which copies
-`Tally.html` in with `tools/sync.py`). There Tally keeps its data, and ⋯ → **Sync** keeps one Tally on every computer
-(laptop, Promethean, tablet). He asked for it ("working on my laptop, how will the data get to the Promethean?"), chose a
-passphrase lock over carrying files, and said the panel must not ask for the passphrase again ("my board is very secure").
+Croix, 9 Nov 2026: *"Tally is never going to live on mrshaffer.org because the risk of the data is too high. So instead, can
+you make the website have the latest html pushed at all times so when you click on tally, it downloads the latest html."*
 
-- `sync.js` (spliced into app.js at `/*__SYNC__*/`; the word list `sync-words.txt` at `/*__WORDS__*/`). Only where
-  `/api/sync/ping` answers, over https, with storage that works: a file, GitHub Pages or a Google Site show nothing.
-- The lock: PBKDF2-SHA-256 × 600,000 over the normalised passphrase (case, dashes, spacing ignored) → AES-256-GCM key +
-  a second secret the server checks (it stores only its SHA-256). State → gzip → AES-GCM, fresh IV, magic `TSY1`. The
-  edit number is sealed inside and must equal the server's `x-rev`, so an old copy can't pass as new. Each computer keeps
-  the two derived secrets in `localStorage["tally.sync"]`, never the passphrase. "Suggest one" gives five BIP-39 words.
-- The server (`worker.js` in mrshaffer-site) is one Durable Object: requests run one at a time, so "send only if nothing
-  newer arrived" (X-Base-Rev, 409) is exact. KV was tried first and dropped after review: it can be a minute stale between
-  locations. Claiming an empty store, and resetting a lost passphrase, need the Worker secret `SYNC_SETUP`. A new
-  passphrase is one PUT (`X-New-Key`), so the store is never empty in between.
-- Rhythm: a change goes out ≥4 s after the save, at most once a minute, and when the page is hidden. Others look every
-  minute and on coming back to the front; a copy waits while a dialog is open or a field has focus. A change on both
-  computers asks which to keep and downloads the one not kept as a Full save (`…-other-computer.json` for the other's).
-- Only `{error:"passphrase"}` or `{empty:true}` turns sync off on a computer; a filter page, a timeout or an outage
-  never forgets the key. A computer joining with no classes starts with names hidden.
-- `tests/sync.js` drives two computers against a mock of the Worker (56 checks). The real Worker was also run with
-  `wrangler dev` against the shipped page.
+- Tally runs only from a downloaded `Tally.html`. Its data stays in that browser's storage for local files (in Chrome and
+  Edge every local file shares it, so a newer download, `Tally (1).html` or in another folder, opens the same classes) and
+  in the Full saves the teacher keeps in the school Drive. The page may connect to nothing: `connect-src 'none'`.
+- mrshaffer.org → Teacher → **Tally** downloads the newest `Tally.html`: the site's Worker reads this repository's `main`
+  (its commit from GitHub's git endpoint, then the file at that commit) and hands it out as a download, never as a page, so
+  it never runs on the site. A push to `main` is what Croix gets within a minute: **`main` must always be a tested build.**
+  The site's side is `tally.js` in croix18/mrshaffer-site; `/teacher/tally/` there is the move-out page (see below).
+- The move from the site (9 Nov 2026): until then Tally ran at mrshaffer.org/teacher/tally/ and kept its data in that
+  site's browser storage. The site's `/teacher/tally/` now saves what a browser still holds there as a Full save
+  (`{tally: 4, full: {…}, state}`, the same file `saveFull` writes, from `localStorage["tally.v1"]`), removes it from that
+  browser, and offers the download.
+- **Sync is retired** (Croix chose it, 9 Nov 2026: "Retire Sync, delete the copy"). It locked the whole state with a
+  passphrase and kept the locked copy in a Durable Object on mrshaffer.org (22 Oct 2026) so the laptop and the Promethean
+  shared one Tally; it could only work where the site served Tally. `sync.js`, `sync-words.txt` and `tests/sync.js` are gone
+  (in git history before this change). The Promethean gets the classes from a Full save or the Board from a Board save, as
+  before Sync. The site deletes its stored copy once Croix's data is in the downloaded Tally.
 
 ## Weekly routine
 
@@ -1292,9 +1289,7 @@ primary once the end date has passed). Tick the IXL units that were that quarter
 
 ## Open items
 
-- **Enable GitHub Pages** (Settings → Pages → Deploy from branch → `main`, root). `index.html` is already
-  the app. Then use `https://croix18.github.io/Tally/` on the tablet and Chromebox — storage persists, the
-  clipboard works, "Add to Home screen" gives an icon. Only Croix can do this (API writes are refused).
+- (Dropped 9 Nov 2026: hosting Tally on GitHub Pages. Tally runs only from a downloaded file; see "Where Tally runs".)
 - **Rotate the fine-grained PAT** that was pasted into chat on 26 Sep once pushing is done.
 - First week of history: Race movement, trends, "since last import" and sliding need a second import.
 - **Student report** (27 Sep): one page per student — Focus grade, what would move it, IXL still owed — from the

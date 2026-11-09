@@ -4,7 +4,7 @@
 //   · missing work counts NHI only (a blank cell isn't missing work)
 //   · a kept-quarter record carries its import date
 //   · the Data Lab compares any two data sets, one picked per course
-//   · Sync never asks or downloads while the Board is up; a Full save opened on a hidden Tally keeps names hidden
+//   · a Full save opened on a hidden Tally keeps names hidden (Sync, checked here until it was retired on 9 Nov 2026, is gone)
 const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('./lib');
 (async()=>{
   const b=await chromium.launch({executablePath:exe}); const ctx=await b.newContext({viewport:{width:1400,height:1000},acceptDownloads:true}); const p=await ctx.newPage();
@@ -72,10 +72,6 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(await p.locator('#lbOpts').count()===1 && !(await p.locator('#labStats').isVisible()),'the toggles sit behind Options');
   await p.click('#lbOpts'); await p.waitForTimeout(200); check(await p.locator('#labStats').isVisible(),'Options opens them');
   await p.evaluate(()=>{ const T=window.__tally; T.state.settings.leaderboard=false; T.save(); T.render(); }); await p.waitForTimeout(300);
-
-  // 6. Sync is quiet while the Board is up
-  const busy=await p.evaluate(()=>{ document.body.classList.add('lbMode'); const r=window.__tally.syncBusyHere ? window.__tally.syncBusyHere() : null; document.body.classList.remove('lbMode'); return r; });
-  check(busy===true || busy===null,'with the Board up, Sync counts this computer as busy (no question, no download)'+(busy===null?' (helper not exposed; skipped)':''));
 
   // 7. a Full save opened on a hidden Tally keeps names hidden
   await more(p,'#btnSettings'); await p.waitForTimeout(250); await seeTab(p,'#exportFull'); const [dl]=await Promise.all([p.waitForEvent('download'), p.click('#exportFull')]); const fp=path.join(tmp,'full-hidden.json'); await dl.saveAs(fp); await p.keyboard.press('Escape'); await p.waitForTimeout(200);

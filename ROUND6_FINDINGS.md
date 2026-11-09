@@ -341,3 +341,8 @@ setup vs weekly diff; Settings by scope; the engineering memo cache.
   Units 1, 2 and 3)"); a past quarter's unit stops being owed as soon as a later quarter's export arrives, before the
   quarter is closed in Tally. A source comment had printed at the top of every weekly report since 47ae4a5; new suites
   `tests/print-hygiene.js` (every print page and the main views read for code text) and `tests/quarter-units.js`.
+
+- 9 Nov 2026: Tally runs only from a downloaded file (Croix: "Tally is never going to live on mrshaffer.org because the
+  risk of the data is too high"). mrshaffer.org → Teacher → Tally downloads the newest Tally.html from this repository's
+  main (croix18/mrshaffer-site: tally.js); its old address moves a browser's leftover classes out as a Full save. Sync is
+  retired (sync.js, sync-words.txt and tests/sync.js removed; the page may connect to nothing, `connect-src 'none'`).

@@ -146,7 +146,7 @@ const csvOf = rows => rows.map(r => r.map(v => v == null ? '' : '"' + String(v).
     await p.reload(); await p.waitForTimeout(700);
     const ok=await p.evaluate(()=>({ tabs:document.querySelectorAll('#rail [data-k]').length, cards:document.querySelector('#app').classList.contains('hidden') }));
     check(ok.tabs===1 && !ok.cards && errs.length===0,'a save with a broken date and a doubled class shows Tally normally (it used to stay blank for good)');
-    const csp=fs.readFileSync(APP,'utf8'); check(/http-equiv="Content-Security-Policy"[^>]*connect-src 'self'/.test(csp),'the shipped page carries a Content Security Policy: nothing can be sent anywhere but its own site');
+    const csp=fs.readFileSync(APP,'utf8'); check(/http-equiv="Content-Security-Policy"[^>]*connect-src 'none'/.test(csp) && !/connect-src 'self'/.test(csp),'the shipped page carries a Content Security Policy: it may connect to nothing, so nothing can be sent anywhere (Sync retired, 9 Nov 2026)');
     await ctx.close(); }
   { const { ctx, p } = await fresh(); await pools(p);
     await p.evaluate(()=>{ const T=window.__tally; T.state.settings.leaderboard=true; T.state.settings.lbTab='lab'; T.save(); T.render(); }); await p.waitForTimeout(500);
