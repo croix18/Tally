@@ -1273,7 +1273,8 @@ you make the website have the latest html pushed at all times so when you click 
   passphrase and kept the locked copy in a Durable Object on mrshaffer.org (22 Oct 2026) so the laptop and the Promethean
   shared one Tally; it could only work where the site served Tally. `sync.js`, `sync-words.txt` and `tests/sync.js` are gone
   (in git history before this change). The Promethean gets the classes from a Full save or the Board from a Board save, as
-  before Sync. The site deletes its stored copy once Croix's data is in the downloaded Tally.
+  before Sync. The site's store went the same day (Croix: "I never used sync so go ahead and retire it"): mrshaffer-site's
+  migration v3 deletes the TallyStore Durable Object, and /api/sync answers 410.
 
 ## Weekly routine
 
