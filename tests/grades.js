@@ -38,13 +38,13 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   const cavg=txt.replace(/\s+/g,' ').match(/Class average\s*(\d+)%/); check(cavg && cavg[1]===String(Math.round(expectAvg)) && /A\s*13/.test(txt) && /Missing work\s*22/.test(txt),'overview cards: average, letters, missing');
   check(/Matches the Focus Grade column for all 23 students/.test(txt),'overview states the formula matches Focus');
   check(await p.locator('.gasg tbody tr').count()===13 && await p.locator('.gstu tbody tr').count()===23,'assignments and students tables');
-  check(/r = 0\.\d\d/.test(txt) && await p.locator('.scatter .pt').count()===16,'IXL vs assessments scatter with r, IXL columns excluded');
+  check(/r = 0\.\d\d/.test(txt) && (await p.$$eval('.scatter .ptg',gs=>gs.flatMap(g=>g.dataset.pt.split(',')))).length===16,'IXL vs assessments scatter with r: 16 students across its dots, IXL columns excluded');
   check(await p.locator('.gasg small').count()>0 && await p.locator('.gasg small').count()===await p.locator('.gasg small svg.ico[aria-label="confirmed"]').count(),'every assignment shows the proved tick');
   // 4. move a category → user, Focus disagrees, not overridden by a re-fit
   await p.selectOption('.gasg select[data-cat="Unit 1 Notebook Check"]','Classwork'); await p.waitForTimeout(500);
   const mv=await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; const g=T.gradingFor(s.prep); const fit=T.fitCategories(s); return {how:g.how['Unit 1 Notebook Check'], map:g.map['Unit 1 Notebook Check'], exact:fit.exact, dis:fit.disagree['Unit 1 Notebook Check']}; }, K);
   check(mv.how==='user' && mv.map==='Classwork' && !mv.exact && mv.dis===true,'moved assignment is marked user; the fit now disagrees');
-  check(/Focus disagrees/.test(await p.textContent('.gasg')) && /don't all match Focus/.test(await p.textContent('#gridwrap')),'the row and a notice say Focus disagrees');
+  check(/Focus disagrees/.test(await p.textContent('.gasg')) && /differs from Focus's for \d+ of 23 students/.test(await p.textContent('#gridwrap')),'the row and a notice say Focus disagrees');
   await p.selectOption('.gasg select[data-cat="Unit 1 Notebook Check"]','Assessments'); await p.waitForTimeout(500);
   check(!/Focus disagrees/.test(await p.textContent('.gasg')),'moving it back clears the disagreement');
   // 5. student page (was the one-student card) + privacy
@@ -122,7 +122,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
     const i=gb.students.indexOf('DORSEY, MICAH FLYNN-WINTER'); gb.assignments.forEach(x=>{ if(x.status[i]==='missing'){ x.status[i]='score'; x.values[i]=x.max; x.missing--; } });
     T.gradeSnapshot(s); s.grades=JSON.parse(save); T.gradeSnapshot(s); T.save(); T.render();
     return { n:s.gradeHistory.length, dates:s.gradeHistory.map(x=>x.date), micahThen:s.gradeHistory[0].grade[i], micahNow:s.gradeHistory[1].grade[i] }; }, K);
-  check(h.n===2 && h.dates[0]==='2026-09-19' && h.dates[1]===new Date().toISOString().slice(0,10),'two history entries by date');
+  check(h.n===2 && h.dates[0]==='2026-09-19' && h.dates[1]===(d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date()),'two history entries by date');
   const t2=await p.textContent('#gridwrap');
   check(/since Sep 19/.test(t2) && /Class average by import/.test(t2) && await p.locator('.gcard .spark').count()===1,'trend card and Δ since previous import');
   const sl=await p.locator('.gstu tr.sliding').count(); check(sl>=1 && /sliding/.test(await p.locator('.gstu tr.sliding').first().textContent()),'sliding students flagged and sorted first: '+sl);

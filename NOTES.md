@@ -1276,6 +1276,49 @@ you make the website have the latest html pushed at all times so when you click 
   before Sync. The site's store went the same day (Croix: "I never used sync so go ahead and retire it"): mrshaffer-site's
   migration v3 deletes the TallyStore Durable Object, and /api/sync answers 410.
 
+## IXL beside its own unit's tests; who differs from Focus and why (13 Nov 2026)
+
+Croix, three asks in one evening: *"I recently added a correlation chart of ixls to assessments. Can you harden that
+engine. Make sure the ixl units match the assessment units. Can you also make each dot clickable and it pops up the
+students name who it represents."* and, mid-work: *"I'm still getting the error about the mismatch of grades and it
+links me to the categories page which I can't do anything to rectify the situation, even though I have no idea what
+the situation is."*
+
+- **The Grades scatter was not unit-matched.** `ixlVsTests` set ALL the assigned IXL beside ALL the non-IXL
+  assessments: on-level's Unit 1 Assessment sat beside IXL that starts at Unit 2, a Q2 gradebook's tests sat beside
+  Q1's IXL, and a test not handed in counted as a 0. `ixlTestPairs(sec)` (grades.js) now builds each dot from matched
+  units only: an assessment belongs to the unit(s) its name carries (`asgUnitNums`: "Unit 3 Assessment", "Units 3-4
+  Test", "Unit 3 & 4 Quiz", a lesson number "3.02 Quiz"; a date is never a unit) or, with no unit in the name, to the
+  one unit whose IXL column's Assigned–Due dates hold its due date (said under the chart: "by its due date"). Only
+  tests the student has a score on count, and only those tests' units count on the IXL side (each student's own skill
+  list). Pretests, tests whose unit has no assigned IXL, and tests no unit can be found for are left out **and named
+  with the reason** under the chart, as are students not matched to IXL. `ixlVsTests` stays only for the Students
+  table's "IXL at goal" column.
+  - Open question for Croix: notebook checks and vocabulary quizzes are Assessments in Focus, so they count on the
+    test side when named for a unit. If the chart should be tests and quizzes only, it is one line in `ixlTestPairs`.
+- **Dots are buttons.** `scatterSVG` draws one `g.ptg` per spot (dots closer than 9 units share one dot that carries
+  its count, so no student is hidden under another), a 12-unit halo under every dot for fingers, and the axis rises
+  past 100 for extra credit. `wireScatter` opens a card (`.scpop`) with each student's name, both numbers and their
+  units; the name opens the student's page; Enter/Space open, Escape or a click elsewhere closes; names hidden →
+  initials. **The board's "IXL and a test" stays in groups of 5 and names no one**: that is the student-facing screen.
+- **The board's pair** (`corrPick`) reads a name's unit through the same `asgUnitNums` (so "Units 3-4 Test" is Unit
+  3's and Unit 4's), and a pair picked by hand across units says "Different units: …" on the board.
+- **"Grades don't all match Focus" is now "Tally's grade differs from Focus's for N of M students"**, with the first
+  three named (both numbers) and a **See why** button; it no longer points at Categories. `gradeDiff(sec, fit)`
+  compares the grade every screen shows (the categories in use, not the fit's best try: chasing a class-wide cause
+  the fit moves categories that were right) with the Grade column, then tests what could explain it: one assignment
+  Focus isn't counting, empty cells Focus counts as zeros, NHIs it leaves out (per assignment, then across the
+  board), other weights in whole fives ("Use these weights", with undo), and per student any single cell that closes
+  the gap (a cell Tally couldn't read first, then a blank as 0, an excused mark as 0, an NHI left out, a score left
+  out, a grade on the rounding line), with Tally's category averages to set beside Focus's. **Stop flagging these**
+  takes it off Needs attention (`state.dismissed['gradediff|<class>|<hash>']`) until a student or number in it
+  changes; the Grades screen keeps a quiet line. Cached per gradebook and category map (`gradeDiffCache`).
+  - **Not seen yet: his real mismatch.** No real export was in this session (he can't upload real names). What his
+    dialog says for the students it lists is the next piece of evidence: if a pattern shows that the tests above
+    don't cover (it reads "No single score explains it" for most), add that test to `gradeDiff`.
+- `tests/corr-match.js` (36 checks) covers all of it. `tests/grades.js` compared the import's LOCAL day with the UTC
+  day and failed every evening after 7 pm Eastern: fixed.
+
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.
