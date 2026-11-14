@@ -173,14 +173,14 @@ function pearson(xs, ys) { const n = xs.length; if (n < 3) return null; const mx
    Croix: "harden that engine. Make sure the ixl units match the assessment units." Until now the scatter set ALL the
    assigned IXL beside ALL the assessments, whatever unit each belonged to (on-level's Unit 1 Assessment sat beside
    IXL that starts at Unit 2; a Q2 gradebook's tests sat beside Q1's IXL), and a test not handed in counted as a 0.
-   Now a student's dot is built from matched units only: the assessments named for a unit (or, with no unit in the
-   name, due inside exactly one unit's IXL dates) and that same unit's IXL, each student's own skill list. Only tests
+   Now a student's dot is built from matched units only: the unit assessment named for a unit and that same unit's
+   IXL, each student's own skill list. Only tests
    the student has a score on count, and only the units of those tests count on the IXL side. */
 // The unit numbers an assignment's name carries: "Unit 3 Assessment" → [3]; "Units 3-4 Test", "Unit 3 & 4 Quiz" →
 // [3, 4]; a lesson number ("3.02 Quiz") → [3]; [] when the name says no unit. Dates ("9/21") are never unit numbers.
 function asgUnitNums(name) {
   const s = String(name || '');
-  const m = s.match(/\bunits?\s*(\d{1,2})(?![\d\/.])((?:\s*(?:[-–—&,+]|and|to|through)\s*\d{1,2}(?![\d\/.]))*)/i);
+  const m = s.match(/\bunits?\s*(\d{1,2})(?![\d.])((?:\s*(?:,\s*and|[-–—&,+\/]|and|to|through)\s*(?:units?\s*)?\d{1,2}(?![\d\/.]))*)/i);
   if (m) {
     const first = +m[1]; const rest = (m[2].match(/\d+/g) || []).map(Number);
     if (rest.length === 1 && /[-–—]|to|through/i.test(m[2]) && rest[0] > first && rest[0] - first <= 6) { const o = []; for (let k = first; k <= rest[0]; k++) o.push(k); return o; }
@@ -189,24 +189,26 @@ function asgUnitNums(name) {
   const l = s.match(/(?:^|[^\d.\/])(\d{1,2})\.\d{1,2}(?![\d\/])/);
   return l ? [+l[1]] : [];
 }
+// The unit assessment itself: named for its unit(s) and called an assessment, test or exam; not a quiz, a vocabulary or
+// notebook check, a retake or a practice.
+const isUnitAssessment = n => { const s = String(n || ''); return /\bunits?\s*\d/i.test(s) && /\b(assessment|test|exam)\b/i.test(s) && !/\b(quiz|vocab\w*|notebook|practice|review|corrections?|re-?(take|test|do|assess\w*))\b/i.test(s); };
 const isPretest = n => /\bpre[- ]?(test|assess\w*|quiz|exam)\b/i.test(String(n || ''));
 function ixlTestPairs(sec) {
   const out = { pts: [], units: [], left: [], unmatched: 0, noScore: 0 }; const gb = sec.grades; if (!gb) return out;
   const g = gradingFor(sec.prep); const hasA = (sec._cats || g.cats).some(c => c.name === 'Assessments');
   const byNum = new Map(); unitsOf(sec).forEach(u => { if (u.num > 0 && u.assigned && u.total > 0 && !byNum.has(u.num)) byNum.set(u.num, u); });
-  // each unit's IXL column says when the unit ran (Assigned … Due): a test with no unit in its name is placed by its date
-  const windows = []; gb.assignments.forEach(a => { const u = gbUnitFor(sec, a); const f = mdToISO(a.assignedOn), t = mdToISO(a.due); if (u && u.num > 0 && f && t && f <= t) windows.push({ num: u.num, f, t }); });
+  // 14 Nov 2026 (Croix): "It should use the unit assessments only for that specific chart. The Unit assessments to the
+  // unit ixls." So the test side is the unit assessment itself ("Unit 3 Assessment", "Unit 3 Test", "Units 3-4 Exam"):
+  // no vocabulary quizzes, notebook checks, other quizzes, retakes or pretests, and nothing placed by date.
   const tests = [];
   gb.assignments.forEach(a => {
     if (!(a.max > 0) || /\bixl\b/i.test(a.name) || a.category === 'IXL' || gbUnitFor(sec, a)) return;
     if (hasA ? catIn(sec, a) !== 'Assessments' : !looksLikeTest(a.name)) return;
     if (isPretest(a.name)) { out.left.push({ name: a.name, why: 'a pretest' }); return; }
-    let nums = asgUnitNums(a.name), how = 'name';
-    if (!nums.length) { const d = mdToISO(a.due); const hit = d ? [...new Set(windows.filter(w => d >= w.f && d <= w.t).map(w => w.num))] : []; if (hit.length === 1) { nums = hit; how = 'date'; } }
-    if (!nums.length) { out.left.push({ name: a.name, why: 'no unit in its name' }); return; }
-    const live = nums.filter(n => byNum.has(n));
+    if (!isUnitAssessment(a.name)) { out.left.push({ name: a.name, why: /\b(corrections?|re-?(take|test|do|assess\w*))\b/i.test(a.name) ? 'a retake or corrections' : 'not a unit assessment' }); return; }
+    const nums = asgUnitNums(a.name); const live = nums.filter(n => byNum.has(n));
     if (!live.length) { out.left.push({ name: a.name, why: `no assigned IXL for Unit ${nums.join(', ')}` }); return; }
-    tests.push({ a, nums: live, how });
+    tests.push({ a, nums: live, how: 'name' });
   });
   const rows = gbRows(sec);
   gb.students.forEach((name, i) => {
@@ -349,7 +351,7 @@ function scatterSVG(pts, w, h, color) {
   let s = `<svg class="scatter" viewBox="0 0 ${w} ${h}"${color ? ` style="--cc:${color}"` : ''} role="group" aria-label="IXL at goal against the same units' assessment average, one dot per student: choose a dot for the name">`;
   [0, 50, 100].forEach(v => { s += `<line x1="${X(v)}" y1="${Y(0)}" x2="${X(v)}" y2="${Y(top)}" class="gl"/><text x="${X(v)}" y="${h - 20}" text-anchor="middle" class="tl">${v}%</text>`; });
   [0, top / 2, top].forEach(v => { s += `<line x1="${X(0)}" y1="${Y(v)}" x2="${X(100)}" y2="${Y(v)}" class="gl"/><text x="${X(0) - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${Math.round(v)}</text>`; });
-  s += `<text x="${(X(0) + X(100)) / 2}" y="${h - 4}" text-anchor="middle" class="al">IXL at goal, matched units</text><text transform="translate(10 ${(Y(0) + Y(top)) / 2}) rotate(-90)" text-anchor="middle" class="al">those units' assessments</text>`;
+  s += `<text x="${(X(0) + X(100)) / 2}" y="${h - 4}" text-anchor="middle" class="al">IXL at goal, matched units</text><text transform="translate(10 ${(Y(0) + Y(top)) / 2}) rotate(-90)" text-anchor="middle" class="al">unit assessment score</text>`;
   // dots that would sit on top of each other share one dot (it carries their count), so every student can be reached
   const NEAR = 9; const spots = [];
   pts.slice().sort((a, b) => a.ixl - b.ixl || a.tests - b.tests).forEach(p => { const x = X(p.ixl), y = Y(p.tests); const c = spots.find(c => Math.hypot(c.x - x, c.y - y) < NEAR);
@@ -431,7 +433,8 @@ function renderGrades(s0) {
   const catRows = (s._cats || g.cats).map(c => { const list = asg.filter(x => x.cat === c.name); const gs = grades.map(r => r.cats[c.name] && r.cats[c.name].pct).filter(v => v != null); return { c, n: list.length, avg: gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null }; });
   const pair = ixlTestPairs(s); const pts = pair.pts.map(x => ({ ...x, label: H ? mask(x.name) : x.name })); const rr = pts.length >= 8 ? pearson(pts.map(x => x.ixl), pts.map(x => x.tests)) : null;
   // what the dots are made of, said under the chart: which tests sit beside which unit's IXL, and what was left out and why
-  const pairWords = `${pair.units.length ? `<p class="ghint scmatch"><b>Matched by unit:</b> ${pair.units.map(u => `${esc(u.short)} IXL with ${u.tests.map(t => esc(t.name) + (t.how === 'date' ? ' <i>(by its due date)</i>' : '')).join(', ')}`).join(' · ')}. A test counts for the students with a score on it.</p>` : ''}${pair.left.length || pair.unmatched || pair.noScore ? `<p class="ghint scleft"><b>Left out:</b> ${[...pair.left.map(x => `${esc(x.name)} (${esc(x.why)})`), pair.unmatched ? `${plural(pair.unmatched, 'student')} not matched to IXL` : '', pair.noScore ? `${plural(pair.noScore, 'student')} with no score on these yet` : ''].filter(Boolean).join(' · ')}.</p>` : ''}`;
+  const leftBy = {}; pair.left.forEach(x => (leftBy[x.why] = leftBy[x.why] || []).push(x.name));
+  const pairWords = `${pair.units.length ? `<p class="ghint scmatch"><b>Matched by unit:</b> ${pair.units.map(u => `${esc(u.short)} IXL with ${u.tests.map(t => esc(t.name)).join(', ')}`).join(' · ')}. A unit counts for the students with a score on its assessment.</p>` : ''}${pair.left.length || pair.unmatched || pair.noScore ? `<p class="ghint scleft"><b>Left out:</b> ${[...Object.keys(leftBy).map(w => `${leftBy[w].map(esc).join(', ')} (${esc(w)})`), pair.unmatched ? `${plural(pair.unmatched, 'student')} not matched to IXL` : '', pair.noScore ? `${plural(pair.noScore, 'student')} with no score on these yet` : ''].filter(Boolean).join(' · ')}.</p>` : ''}`;
   // No direction claim below |r| = 0.3, and a small class is a hint, not a finding.
   const rWord = rr == null ? '' : (Math.abs(rr) < 0.3 ? 'no clear relationship between IXL work and assessment scores here' : (Math.abs(rr) < 0.5 ? 'a weak tendency for ' : Math.abs(rr) < 0.7 ? 'a moderate tendency for ' : 'a strong tendency for ') + (rr > 0 ? 'students doing more IXL to score higher on assessments' : 'students doing more IXL to score lower on assessments')) + (pts.length < 20 ? ` (${pts.length} students: treat as a hint, not proof)` : '');
   const gd = fit && !fit.exact && !closedQ && !s._partial ? gradeDiff(s, fit) : null;
@@ -458,7 +461,7 @@ function renderGrades(s0) {
       <section class="gsec"><h3>Categories</h3><table class="checkTable"><thead><tr><th>Category</th><th>Weight</th><th>Assignments</th><th title="Average of the scores turned in: work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th></tr></thead><tbody>
         ${catRows.map(x => `<tr><td>${esc(x.c.name)}</td><td>${x.c.w}%</td><td>${x.n}</td><td>${pct1(x.avg)}</td></tr>`).join('')}</tbody></table>
         ${fit && fit.exact ? `<p class="ghint"><b>Matches the Focus Grade column for all ${fit.n} students.</b></p>` : ''}</section>
-      <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 && rr != null ? `<div class="scwrap">${scatterSVG(pts, 420, 260, classColor(s0))}<div class="scpop" role="status" hidden></div></div><p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)}: ${rWord}. Choose a dot to see who it is.</p>` : `<p class="ghint">${!pair.units.length ? 'No assessment in this gradebook belongs to a unit with assigned IXL yet, so there is nothing to set side by side.' : pts.length >= 8 ? 'The scores are all the same on one side, so there is nothing to compare yet.' : `Needs at least 8 students matched to IXL with a score on a matched assessment (${pts.length} so far).`}</p>`}${pairWords}</section>
+      <section class="gsec"><h3>IXL vs assessments</h3>${pts.length >= 8 && rr != null ? `<div class="scwrap">${scatterSVG(pts, 420, 260, classColor(s0))}<div class="scpop" role="status" hidden></div></div><p class="ghint">${plural(pts.length, 'student')} with both · r = ${rr.toFixed(2)}: ${rWord}. Choose a dot to see who it is.</p>` : `<p class="ghint">${!pair.units.length ? 'No unit assessment in this gradebook belongs to a unit with assigned IXL yet, so there is nothing to set side by side.' : pts.length >= 8 ? 'The scores are all the same on one side, so there is nothing to compare yet.' : `Needs at least 8 students matched to IXL with a score on a matched unit assessment (${pts.length} so far).`}</p>`}${pairWords}</section>
     </div>
     <section class="gsec" id="gAsg"><h3>Assignments</h3>${catBar}<table class="checkTable gasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th>Points</th><th title="Average of the scores turned in: work not handed in is left out here (it counts as 0 in the grade)">Avg (turned in)</th><th>Missing</th><th>Excused</th><th title="Class average now minus the class average without this assignment: negative means it pulls grades down">Effect</th></tr></thead><tbody>
       ${asg.map(x => `<tr class="${x.disagree ? 'differ' : ''}"><td>${esc(x.a.name)}</td><td><select data-cat="${esc(x.a.name)}" ${closedQ ? 'disabled' : ''}>${g.cats.map(c => `<option ${c.name === x.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select> <small class="catsrc src-${x.how}${x.disagree ? ' off' : ''}">${x.how === 'fit' ? `<span title="Proved by the Focus Grade column">${ico('check', 'confirmed')}</span>` : x.how === 'user' ? 'Set by you' : x.how === 'ok' ? 'Checked by you' : x.how === 'file' ? 'From the file' : 'Tally\'s guess'}${x.disagree ? ' · Focus disagrees' : ''}</small>${x.how === 'user' && !closedQ ? ` <button class="linkbtn inl" data-back="${esc(x.a.name)}" title="Forget your choice; Focus's grades decide">Let Tally decide</button>` : ''}</td><td>${esc(x.a.due || '')}</td><td>${x.a.max != null ? esc(fmtN(x.a.max)) : '—'}</td><td>${pct1(x.avg)}</td><td>${x.a.missing || ''}</td><td>${x.a.excused || ''}</td><td>${x.cost == null ? '' : (x.cost >= 0 ? '+' : '−') + Math.abs(x.cost).toFixed(1)}</td></tr>`).join('')}</tbody></table></section>

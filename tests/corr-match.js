@@ -16,7 +16,8 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   const K = '1205050-7T1A';
 
   // ---- the name reader ----
-  const names = await p.evaluate(() => { const f = window.__tally.asgUnitNums; return Object.fromEntries(['Unit 3 Assessment', 'Units 3-4 Test', 'Unit 3 & 4 Quiz', 'Units 8 and 9', '3.02 Quiz', 'Unit 1.4 Check', 'Unit 12 Test 10/21', 'Whiteboard Practice Week 9/21', 'Squares and Cubes Quiz', 'Unit 30 Test'].map(n => [n, f(n).join(',')])); });
+  const names = await p.evaluate(() => { const f = window.__tally.asgUnitNums; return Object.fromEntries(['Unit 3 Assessment', 'Units 3-4 Test', 'Unit 3 & 4 Quiz', 'Units 8 and 9', '3.02 Quiz', 'Unit 1.4 Check', 'Unit 12 Test 10/21', 'Whiteboard Practice Week 9/21', 'Squares and Cubes Quiz', 'Unit 30 Test', 'Unit 3/4 Test', 'Unit 3 and Unit 4 Test', 'Units 3, 4, and 5 Test', 'Unit 3 Test - 10/21'].map(n => [n, f(n).join(',')])); });
+  check(names['Unit 3/4 Test'] === '3,4' && names['Unit 3 and Unit 4 Test'] === '3,4' && names['Units 3, 4, and 5 Test'] === '3,4,5' && names['Unit 3 Test - 10/21'] === '3', 'a slash, "and Unit", and a three-unit list are read; a trailing date is not');
   check(names['Unit 3 Assessment'] === '3' && names['Units 3-4 Test'] === '3,4' && names['Unit 3 & 4 Quiz'] === '3,4' && names['Units 8 and 9'] === '8,9', 'a name\'s units: one, a range, a pair');
   check(names['3.02 Quiz'] === '3' && names['Unit 1.4 Check'] === '1' && names['Unit 12 Test 10/21'] === '12' && names['Unit 30 Test'] === '30', 'a lesson number gives its unit; a date after the unit is not a unit');
   check(names['Whiteboard Practice Week 9/21'] === '' && names['Squares and Cubes Quiz'] === '', 'a date or a plain name carries no unit');
@@ -29,20 +30,24 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
       let d = 0, poss = 0; [...nums].forEach(n => { const u = units.find(x => x.num === n); poss += T.activeFor(s, u, rows[pt.i].ixl).length; d += T.points(s, u, rows[pt.i].ixl); });
       return Math.abs(pt.tests - e / q * 100) < 1e-9 && Math.abs(pt.ixl - d / poss * 100) < 1e-9 && pt.units.join() === [...nums].sort((a, b) => a - b).join(); });
     return { units: r.units.map(u => u.short + ': ' + u.tests.map(t => t.name + (t.how === 'date' ? '*' : '')).join(' | ')), left: r.left, n: r.pts.length, un: r.unmatched, byHand, anyIxl: r.units.some(u => u.tests.some(t => /ixl/i.test(t.name))), total: gb.students.length, noScore: r.noScore }; }, K);
-  check(m.units.length === 2 && /^Unit 1: /.test(m.units[0]) && /Unit 1 Assessment/.test(m.units[0]) && !/Unit 2/.test(m.units[0].slice(8)) && /^Unit 2: /.test(m.units[1]) && /Unit 2 Vocabulary Quiz/.test(m.units[1]) && !/Unit 1 /.test(m.units[1].slice(8)), 'each unit\'s IXL sits beside that unit\'s assessments only: ' + m.units.join(' · '));
-  check(/Squares and Cubes Quiz\*/.test(m.units[1]), 'a quiz with no unit in its name is placed by its due date inside one unit\'s IXL dates, and marked so');
+  // 14 Nov 2026: "It should use the unit assessments only for that specific chart. The Unit assessments to the unit ixls."
+  check(m.units.length === 1 && m.units[0] === 'Unit 1: Unit 1 Assessment', 'the unit assessment only, beside its own unit\'s IXL: ' + m.units.join(' · '));
+  const lo = m.left.map(x => x.name + ' / ' + x.why);
+  check(['Unit 1 Vocabulary Quiz', 'Unit 1 Notebook Check', 'Unit 2 Vocabulary Quiz', 'Squares and Cubes Quiz'].every(n => lo.includes(n + ' / not a unit assessment')), 'vocabulary quizzes, notebook checks and other quizzes are left out and named: ' + lo.join('; '));
+  const ua = await p.evaluate(() => { const f = window.__tally.isUnitAssessment; return ['Unit 3 Assessment', 'Unit 3 Test', 'Units 3-4 Exam', 'Unit 3 Assessment Retake', 'Unit 3 Vocabulary Quiz', 'Unit 3 Notebook Check', 'Unit 3 Practice Test', 'Proportions Test', 'Unit 3 Quiz', 'Unit 3 Re-Assessment', 'Unit 3 Test Corrections'].map(n => f(n) ? 1 : 0).join(''); });
+  check(ua === '11100000000', 'a unit assessment is named for its unit and called an assessment, test or exam; retakes, quizzes, checks and practice tests are not: ' + ua);
   check(!m.anyIxl && m.byHand, 'no IXL column is on the test side, and every dot equals a hand count over its own matched units');
   check(m.n + m.un + m.noScore === m.total && m.n === 16, 'every student is a dot or is counted as left out (' + m.n + ' dots, ' + m.un + ' not matched to IXL)');
 
   // a unit whose IXL isn't assigned leaves its tests out, and they are named with the reason
   const un = await p.evaluate(K => { const T = window.__tally; const s = T.state.sections[K]; const u1 = T.unitsOf(s).find(u => u.num === 1); T.state.assigned = T.state.assigned || {}; T.state.assigned[s.prep] = { ...(T.state.assigned[s.prep] || {}), [u1.name]: false };
     const r = T.ixlTestPairs(s); const out = { units: r.units.map(u => u.num), left: r.left.map(x => x.name + ' / ' + x.why), u: r.pts.every(pt => pt.units.join() === '2') }; delete T.state.assigned[s.prep][u1.name]; return out; }, K);
-  check(un.units.join() === '2' && un.u && un.left.some(x => /^Unit 1 Assessment \/ no assigned IXL for Unit 1$/.test(x)), 'with Unit 1\'s IXL not assigned, Unit 1\'s tests are left out by name and every dot is Unit 2 against Unit 2: ' + un.left.join('; '));
+  check(un.units.join() === '' && un.left.some(x => /^Unit 1 Assessment \/ no assigned IXL for Unit 1$/.test(x)), 'with Unit 1\'s IXL not assigned, its assessment is left out by name with the reason: ' + un.left.join('; '));
   // a test not handed in is not a score: it leaves that test (and its unit) out for that student instead of a 0
-  const nhi = await p.evaluate(K => { const T = window.__tally; const s = T.state.sections[K]; const gb = s.grades; const r0 = T.ixlTestPairs(s); const pt = r0.pts[0]; const keep = JSON.stringify(gb.assignments);
+  const nhi = await p.evaluate(K => { const T = window.__tally; const s = T.state.sections[K]; const gb = s.grades; const g2 = T.gradingFor(s.prep); const q2 = gb.assignments.find(a => a.name === 'Unit 2 Vocabulary Quiz'); q2.name = 'Unit 2 Assessment'; g2.map['Unit 2 Assessment'] = 'Assessments'; const r0 = T.ixlTestPairs(s); const pt = r0.pts[0]; const keep = JSON.stringify(gb.assignments);
     gb.assignments.forEach(a => { if (/^Unit 1 /.test(a.name) && !/ixl/i.test(a.name)) { a.status[pt.i] = 'missing'; a.values[pt.i] = null; } });
-    const r1 = T.ixlTestPairs(s).pts.find(x => x.i === pt.i); gb.assignments = JSON.parse(keep); return { before: pt.units.join(), after: r1 ? r1.units.join() : null, y: r1 ? r1.tests : null }; }, K);
-  check(nhi.before === '1,2' && nhi.after === '2' && nhi.y > 0, 'a student with Unit 1\'s tests not handed in is plotted on Unit 2 alone, not pulled down by zeros');
+    const r1 = T.ixlTestPairs(s).pts.find(x => x.i === pt.i); gb.assignments = JSON.parse(keep); gb.assignments.find(a => a.name === 'Unit 2 Assessment').name = 'Unit 2 Vocabulary Quiz'; delete g2.map['Unit 2 Assessment']; return { before: pt.units.join(), after: r1 ? r1.units.join() : null, y: r1 ? r1.tests : null }; }, K);
+  check(nhi.before === '1,2' && nhi.after === '2' && nhi.y > 0, 'with two unit assessments, a student who did not hand in Unit 1\'s is plotted on Unit 2 against Unit 2 alone, not pulled down by a zero');
   // a pretest never counts
   const pre = await p.evaluate(K => { const T = window.__tally; const s = T.state.sections[K]; const a = s.grades.assignments.find(a => a.name === 'Unit 1 Assessment'); a.name = 'Unit 1 Pretest'; const g = T.gradingFor(s.prep); g.map['Unit 1 Pretest'] = 'Assessments'; const r = T.ixlTestPairs(s); a.name = 'Unit 1 Assessment'; delete g.map['Unit 1 Pretest']; return r.left.map(x => x.name + ' / ' + x.why); }, K);
   check(pre.includes('Unit 1 Pretest / a pretest'), 'a pretest is left out and named');
@@ -50,7 +55,7 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   // ---- 2. the dots ----
   await p.click('#openGrades'); await p.waitForTimeout(500);
   const txt = (await p.textContent('#gridwrap')).replace(/\s+/g, ' ');
-  check(/Matched by unit: Unit 1 IXL with Unit 1 Assessment/.test(txt) && /Unit 2 IXL with Squares and Cubes Quiz \(by its due date\), Unit 2 Vocabulary Quiz/.test(txt) && /Left out: 7 students not matched to IXL/.test(txt), 'under the chart: what is matched to what, and what was left out');
+  check(/Matched by unit: Unit 1 IXL with Unit 1 Assessment\./.test(txt) && /Left out: [^.]*Unit 2 Vocabulary Quiz[^.]*\(not a unit assessment\) · 7 students not matched to IXL/.test(txt), 'under the chart: what is matched to what, and what was left out');
   const dots = await p.$$eval('.scatter .ptg', gs => gs.map(g => ({ ids: g.dataset.pt.split(','), n: (g.querySelector('.pn') || {}).textContent || '', tab: g.getAttribute('tabindex'), role: g.getAttribute('role'), label: g.getAttribute('aria-label') })));
   const all = dots.flatMap(d => d.ids);
   check(all.length === 16 && new Set(all).size === 16 && dots.every(d => d.tab === '0' && d.role === 'button' && d.label), 'every one of the 16 students is on exactly one dot, and each dot is a button');

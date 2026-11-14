@@ -1294,8 +1294,11 @@ the situation is."*
   list). Pretests, tests whose unit has no assigned IXL, and tests no unit can be found for are left out **and named
   with the reason** under the chart, as are students not matched to IXL. `ixlVsTests` stays only for the Students
   table's "IXL at goal" column.
-  - Open question for Croix: notebook checks and vocabulary quizzes are Assessments in Focus, so they count on the
-    test side when named for a unit. If the chart should be tests and quizzes only, it is one line in `ixlTestPairs`.
+  - **14 Nov 2026, Croix's answer: "It should use the unit assessments only for that specific chart. The Unit
+    assessments to the unit ixls."** The test side is now `isUnitAssessment(name)`: named for its unit(s) and called
+    an assessment, test or exam. Vocabulary quizzes, notebook checks, other quizzes, practice tests, retakes and
+    pretests are left out and named under the chart with the reason; nothing is placed by due date any more (the
+    date-window match of the 13th is gone). Retakes are out so a dot is the first attempt, the one the IXL came before.
 - **Dots are buttons.** `scatterSVG` draws one `g.ptg` per spot (dots closer than 9 units share one dot that carries
   its count, so no student is hidden under another), a 12-unit halo under every dot for fingers, and the axis rises
   past 100 for extra credit. `wireScatter` opens a card (`.scpop`) with each student's name, both numbers and their
@@ -1318,6 +1321,55 @@ the situation is."*
     don't cover (it reads "No single score explains it" for most), add that test to `gradeDiff`.
 - `tests/corr-match.js` (36 checks) covers all of it. `tests/grades.js` compared the import's LOCAL day with the UTC
   day and failed every evening after 7 pm Eastern: fixed.
+
+## Hostile review, 14 Nov 2026: the backlog (nothing here is built yet except where said)
+
+Croix: *"run over tally with an aggressive reviewer that wants to break or criticize everything. Then look over it's
+legitimate criticizems and give me a priority list of possible upgrades or fixes."* A separate reviewer attacked a
+copy of the repo (33 findings, most reproduced with throwaway scripts; the scripts were not kept). Vetted list, in
+the order recommended to Croix. "Checked" = the claim was confirmed in the code by the session that vetted it; the
+rest rest on the reviewer's own reproduction.
+
+1. **Gradebook reading that silently changes grades** (likely feeds his real Focus mismatch). Checked.
+   - a column whose header has no "N Points" gets `max = null` and `computeGrade` skips it with no notice;
+   - one percent cell in a column sets the whole column's max to 100 (`if (pct[j]) max = 100`, parseGradebook);
+   - 0-point (extra credit) columns are dropped; `missingRe` reads "Late", "-" and "—" as NHI = 0 and `excusedRe`
+     reads "I", "Inc", "E" as excused: guesses, not Focus's documented codes; scores below 0 or far above max pass.
+   Fix: notice + ask instead of guessing; then re-check against a real export.
+2. **"See why" states coincidences as facts** (`gradeDiff`, built 13 Nov). With Focus's grade off by a random 1 point,
+   every student got 1–9 single-cell "explanations", all false; `tests/corr-match.js` plants only true causes. Fix:
+   name a cell only when it is the single explanation, word it "would match if", say nothing per student when most
+   of the class is off or the gap is 1 point, search weights and categories together, add a noise test. Related:
+   `gradeOff` returns nothing when the fit is exact although screens grade from the stored map; "Use these weights →
+   Undo" restores weights but not categories `applyCategories` moved.
+3. **Two students with the same name show one student's numbers** (`openProfile`, `studentSummary`, `findStudent`
+   look up by name; `gb.ids` is parsed and unused). Fix: key by Focus Student ID.
+4. **"Hide names" initials identify everyone** (23 of 23 unique in the real class; Reports calls the initials list
+   "safe to post or project"). Croix's call on what replaces initials.
+5. **Typing in one tab is wiped when another Tally tab saves** (the `storage` listener closes the modal).
+6. **Home and Students take ~0.5 s per render at 6 × 30 × 60**: `fitCategories` runs uncached per class per render.
+7. **"IXL at goal" differs between Grades and Students after a quarter closes** (`ixlVsTests` vs `ixlFor`).
+8. **A gradebook `cleanGB` rejects disappears with no message**, and the next save makes it permanent.
+9. **The Board file keeps one consistent IXL column per (unnamed) student** across every skill: a known pattern
+   finds a full record. Gradebook columns are already shuffled per assignment; IXL should be too.
+10. **Before August 2027: the school year never rolls over.** `Q_ENDS` is 2026–27 only and `mdToISO` takes its year
+    from it, so next year's gradebook files into this year's closed Q1 and goes quiet. Checked.
+11. Smaller: tab-separated exports with multi-line headers parse wrong (`fileToRows` splits lines before quotes;
+    checked); categories can't be added or renamed; duplicate assignment names are told apart by column order;
+    wrong-file messages name the wrong thing; the weekly report says "one page per student" and prints two;
+    "Quickest way" says 3 steps over a list of 4; `#btnHide` aria-pressed is wrong; seating's "gone" date is UTC;
+    Students header says Quarter 2 over Q1 grades; Grades at 1366×768 is mostly header.
+12. Judged low or not worth doing now: any local HTML file can read Tally's localStorage (true of every file://
+    page in Chrome; worth one line in the Guide); full names in `data-` attributes with names hidden (needs dev
+    tools on his laptop); long one-line functions (the repo's house style).
+
+Held up under attack: HTML injection through every import (names, skills, units, assignments) across all screens
+and print popups; no visible name with names hidden; name matching (apostrophes, hyphens, accents, suffixes);
+unreadable saved state is kept with a message; rounding; the diff dialog's focus trap. Not covered: storage quota
+over a full year, the tablet, FAST/Quickview/PDF imports, the seating algorithm, conference printing, DST edges.
+
+**Fixed the same day from the review:** the unit-name reader now reads "Unit 3/4 Test", "Unit 3 and Unit 4 Test"
+and "Units 3, 4, and 5 Test", and "Re-Assessment" / "Test Corrections" are not unit assessments.
 
 ## Weekly routine
 
