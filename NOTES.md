@@ -1399,6 +1399,31 @@ Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 ch
   consistent IXL column per unnamed student: the board's own charts need a look before shuffling), 10 (school-year
   rollover, before August 2027), then the smaller ones in 11.
 
+## Review: item 4 parked, item 9 judged, the small ones done (14 Nov 2026)
+
+- **4 (Hide names → initials) is parked by Croix:** *"Leave the initials for now, and skip 4. I'll figure it out
+  later."* Initials stay; don't change Hide names until he says what should replace them.
+- **9 (Board file keeps one unnamed IXL row per student) is NOT built, on purpose.** Looked at what the Board reads:
+  the Lab's per-unit and all-units plots, per-student skill skips, and the Race's growth between snapshots
+  (`history.per` / `history.pu`, joined by the stand-in key) all need a student's skills to stay together, and
+  students who join mid-year make a per-unit shuffle give wrong growth. Shuffling per unit would trade a small risk
+  (someone must get the JSON file off the panel and already know a classmate's exact scores) for wrong numbers on
+  the student board. The real fix is a different Board file: no score matrix at all, only the finished lists each
+  chart draws (the way `boardGrades` already carries course grades). That is a project of its own; ask Croix before
+  starting it. Meanwhile the README says plainly that IXL scores travel as unnamed rows.
+- **11, done:** tab-separated exports go through the quote-aware reader (`sniffDelim` + `csvToRows(text, delim)`,
+  parser.js: a line break inside a header cell no longer cuts the row; a comma file with a stray tab stays comma);
+  wrong-file messages say what the file looked like and what Tally takes (a gradebook with no students, a damaged
+  save, a non-spreadsheet, anything else); the print screen's heading is "One report per student" (it is one sheet,
+  two sides); "Quickest way" says "N steps for the student · M copies into Focus for you" so the count matches the
+  list; seating's "gone" date is the local day.
+- **11, judged not a defect:** `#btnHide`'s aria-pressed (pressed = names showing, and the label states the state:
+  consistent and tested in header.js).
+- **11, still open:** categories can't be added or renamed (matters only if Focus has more than his three);
+  duplicate assignment names told apart by column order; the Students header's quarter wording in a mixed-quarter
+  state; Grades at 1366×768 (belongs with the navigation redesign). And **10**, the school-year rollover, before
+  August 2027: needs Croix's decisions on what a new year keeps.
+
 ## Hostile review, 14 Nov 2026: the backlog (nothing here is built yet except where said)
 
 Croix: *"run over tally with an aggressive reviewer that wants to break or criticize everything. Then look over it's

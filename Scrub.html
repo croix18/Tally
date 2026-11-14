@@ -219,7 +219,7 @@ function xlsxToRows(buf) {
     }
   }
   const sx = zip.text(sheetPath);
-  if (!sx) throw new Error('Worksheet not found in file');
+  if (!sx) throw new Error('This is not a spreadsheet Tally can read (it has no worksheet inside: a Word or other document?). Tally takes .xlsx and .csv exports.');
   const doc = parser.parseFromString(sx, 'application/xml');
   const rows = [];
   const rowEls = tags(doc, 'row');
@@ -248,8 +248,14 @@ function xlsxToRows(buf) {
 }
 
 // CSV -> rows of strings (or null for empty). No numeric coercion here; parseIxlGrid decides what is a score.
-function csvToRows(text) {
+// `delim` is a comma unless the first record (read with quotes respected) has more tabs than commas: a tab-separated
+// export with a line break inside a quoted header cell used to be cut at the line break (review, 14 Nov 2026: Focus's
+// "Title / N Points / Assigned / Due" headers became a fake student and lost their points), and a comma file with one
+// tab somewhere near the top was read as tab-separated.
+function sniffDelim(text) { let q = false, tabs = 0, commas = 0; for (let i = 0; i < text.length; i++) { const ch = text[i]; if (ch === '"') { if (q && text[i + 1] === '"') i++; else q = !q; } else if (!q) { if (ch === '\t') tabs++; else if (ch === ',') commas++; else if (ch === '\n' || ch === '\r') { if (tabs + commas) break; } } } return tabs > commas ? '\t' : ','; }
+function csvToRows(text, delim) {
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  delim = delim || sniffDelim(text);
   const rows = []; let row = [], field = '', q = false;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
@@ -257,14 +263,14 @@ function csvToRows(text) {
       if (ch === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
       else field += ch;
     } else if (ch === '"') q = true;
-    else if (ch === ',') { row.push(field); field = ''; }
+    else if (ch === delim) { row.push(field); field = ''; }
     else if (ch === '\n' || ch === '\r') {
       if (ch === '\r' && text[i + 1] === '\n') i++;
       row.push(field); rows.push(row); row = []; field = '';
     } else field += ch;
   }
   if (field.length || row.length) { row.push(field); rows.push(row); }
-  return rows.map(r => r.map(v => (v == null || String(v).trim() === '') ? null : v));
+  return rows.map(r => r.map(v => (v == null || String(v).trim() === '') ? null : (delim === '\t' ? String(v).trim() : v)));
 }
 
 // A score is a number 0–100, or a string that is exactly a number (some writers store numbers as text).

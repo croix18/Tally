@@ -1064,7 +1064,7 @@ function renderReportsPage() {
   const wrap = $('#gridwrap');
   wrap.innerHTML = `<div class="rpage">
     <section class="gsec rpPrint" id="rpPrint" aria-labelledby="rpTitle"><div class="rphead"><h3 id="rpTitle">Print · ${allMode ? 'All classes' : esc(s.label)}</h3>${scope}</div>
-      <h4 class="subh">One page per student</h4>${perStudent}
+      <h4 class="subh">One report per student</h4>${perStudent}
       <h4 class="subh">IXL still owed</h4>${owed}
       <label class="rpDuplex"><input type="checkbox" id="rpDuplex" ${duplexOn() ? 'checked' : ''}> Two-sided printing</label></section>
     <section class="gsec rpBack" id="rpBack">${allPage ? returnsAllHtml(classes) : returnsHtml(s, retEditing)}</section>

@@ -990,7 +990,7 @@ function xlsxToRows(buf) {
     }
   }
   const sx = zip.text(sheetPath);
-  if (!sx) throw new Error('Worksheet not found in file');
+  if (!sx) throw new Error('This is not a spreadsheet Tally can read (it has no worksheet inside: a Word or other document?). Tally takes .xlsx and .csv exports.');
   const doc = parser.parseFromString(sx, 'application/xml');
   const rows = [];
   const rowEls = tags(doc, 'row');
@@ -1019,8 +1019,14 @@ function xlsxToRows(buf) {
 }
 
 // CSV -> rows of strings (or null for empty). No numeric coercion here; parseIxlGrid decides what is a score.
-function csvToRows(text) {
+// `delim` is a comma unless the first record (read with quotes respected) has more tabs than commas: a tab-separated
+// export with a line break inside a quoted header cell used to be cut at the line break (review, 14 Nov 2026: Focus's
+// "Title / N Points / Assigned / Due" headers became a fake student and lost their points), and a comma file with one
+// tab somewhere near the top was read as tab-separated.
+function sniffDelim(text) { let q = false, tabs = 0, commas = 0; for (let i = 0; i < text.length; i++) { const ch = text[i]; if (ch === '"') { if (q && text[i + 1] === '"') i++; else q = !q; } else if (!q) { if (ch === '\t') tabs++; else if (ch === ',') commas++; else if (ch === '\n' || ch === '\r') { if (tabs + commas) break; } } } return tabs > commas ? '\t' : ','; }
+function csvToRows(text, delim) {
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  delim = delim || sniffDelim(text);
   const rows = []; let row = [], field = '', q = false;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
@@ -1028,14 +1034,14 @@ function csvToRows(text) {
       if (ch === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
       else field += ch;
     } else if (ch === '"') q = true;
-    else if (ch === ',') { row.push(field); field = ''; }
+    else if (ch === delim) { row.push(field); field = ''; }
     else if (ch === '\n' || ch === '\r') {
       if (ch === '\r' && text[i + 1] === '\n') i++;
       row.push(field); rows.push(row); row = []; field = '';
     } else field += ch;
   }
   if (field.length || row.length) { row.push(field); rows.push(row); }
-  return rows.map(r => r.map(v => (v == null || String(v).trim() === '') ? null : v));
+  return rows.map(r => r.map(v => (v == null || String(v).trim() === '') ? null : (delim === '\t' ? String(v).trim() : v)));
 }
 
 // A score is a number 0–100, or a string that is exactly a number (some writers store numbers as text).
@@ -2252,7 +2258,7 @@ function renderReportsPage() {
   const wrap = $('#gridwrap');
   wrap.innerHTML = `<div class="rpage">
     <section class="gsec rpPrint" id="rpPrint" aria-labelledby="rpTitle"><div class="rphead"><h3 id="rpTitle">Print · ${allMode ? 'All classes' : esc(s.label)}</h3>${scope}</div>
-      <h4 class="subh">One page per student</h4>${perStudent}
+      <h4 class="subh">One report per student</h4>${perStudent}
       <h4 class="subh">IXL still owed</h4>${owed}
       <label class="rpDuplex"><input type="checkbox" id="rpDuplex" ${duplexOn() ? 'checked' : ''}> Two-sided printing</label></section>
     <section class="gsec rpBack" id="rpBack">${allPage ? returnsAllHtml(classes) : returnsHtml(s, retEditing)}</section>
@@ -3071,7 +3077,7 @@ function renderSeating(s) {
   if (s.seating && s.seating.seats) { const tmp = { seats: s.seating.seats, locks: s.seating.locks || {} }; const freed = pruneSeats(tmp, stu); if (freed) { save(); toast(`${plural(freed, 'seat')} freed: ${freed === 1 ? 'that student is' : 'those students are'} no longer on the roster.`, false, 5000); } }
   const w = workFor(s); if (w) pruneSeats(w, stu);
   // Seating info for students no longer on the roster: stamped the day they vanish, kept 45 days (transfers come back), then dropped.
-  const onRoster = new Set(stu.map(x => x.id)); const today = new Date().toISOString().slice(0, 10); const departed = []; let changed = false;
+  const onRoster = new Set(stu.map(x => x.id)); const today = (d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date());   /* the local day, like ageDays counts (it was the UTC day: tomorrow, after 7 pm Eastern) */ const departed = []; let changed = false;
   for (const k of Object.keys(s.seatInfo || {})) { const i = s.seatInfo[k]; if (onRoster.has(k)) { if (i.gone) { delete i.gone; changed = true; } continue; } if (!i.gone) { i.gone = today; changed = true; } if (ageDays(i.gone) > 45) { delete s.seatInfo[k]; changed = true; continue; } departed.push({ id: k, gone: i.gone, photo: i.photo }); }
   if (changed) save();
   const seatCands = seatCandsBy[s.key] || [];
@@ -4364,7 +4370,7 @@ function quickestCard(q, forStudent) {
   if (!q) return ''; if (q.top) return `<div class="qcard top"><b>${forStudent ? 'You have an A' : 'Already an A'}</b><span>${forStudent ? 'Keep turning everything in.' : 'Nothing to climb: the what-ifs below show what keeps it.'}</span></div>`;
   const head = forStudent ? `Your quickest way to ${anLetter(q.letter)}` : `Quickest way to ${anLetter(q.letter)}`;
   if (!q.reached) return `<div class="qcard"><b>${head}</b><span>Even with every missing assignment turned in, IXL finished${q.retakeBlocked ? '' : ' and every retake at full marks'}, the grade only reaches ${q.result.rounded}%. It will take the next assessments too.${!forStudent && q.retakeBlocked ? ` Retakes aren't planned: ${esc(q.retakeBlocked)}.` : ''}</span>${quickestList(q, forStudent)}</div>`;
-  return `<div class="qcard"><div class="qhead"><b>${head}</b><span class="qres">${q.base.rounded}% → <b>${q.result.rounded}% ${q.result.letter}</b></span></div><span>${plural(q.steps, 'step')}${q.ixl.length ? ' · IXL counts once it\'s copied into Focus' : ''}</span>${quickestList(q, forStudent)}${forStudent ? '<button class="pill" id="shPlan">Show me on the sliders</button>' : ''}</div>`;
+  return `<div class="qcard"><div class="qhead"><b>${head}</b><span class="qres">${q.base.rounded}% → <b>${q.result.rounded}% ${q.result.letter}</b></span></div><span>${plural(q.steps, 'step')}${(n => n ? (forStudent ? ` · ${plural(n, 'line')} below ${n === 1 ? 'is' : 'are'} already earned` : ` for the student · ${n} ${n === 1 ? 'copy' : 'copies'} into Focus for you`) : '')(q.plan.filter(x => x.kind === 'copy').length)}${q.ixl.length ? ' · IXL counts once it\'s copied into Focus' : ''}</span>${quickestList(q, forStudent)}${forStudent ? '<button class="pill" id="shPlan">Show me on the sliders</button>' : ''}</div>`;
 }
 
 // The teacher's what-ifs: each missing assignment turned in, retakes, IXL columns, and the next assessment.
@@ -5492,7 +5498,7 @@ async function importFiles(files) {
       if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts): a Tally backup goes through Settings
         let obj = null; try { obj = JSON.parse(await f.text()); } catch (e) {}
         if (obj && obj.tally) { let done = false; try { done = await loadTallyFile(f, obj); } catch (e) { fails.push(f.name + ': not a Tally file'); } if (done && (obj.board || obj.full)) return; continue; }   // a full save or Board file replaces everything: nothing else in the drop applies
-        if (!looksLikeSeatingBackup(obj)) { fails.push(f.name + ': not a Seating Chart backup'); continue; }
+        if (!looksLikeSeatingBackup(obj)) { fails.push(f.name + (obj ? ': a .json file, but not a Tally save or a Seating Chart backup' : ': not readable as a Tally save (the file is cut off or damaged)')); continue; }
         const r = await importSeatingBackup(obj); save();
         toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).map(n => shown(n)).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
         render(); continue;
@@ -5510,7 +5516,13 @@ async function importFiles(files) {
       catch (e) {
         // not an IXL grid — maybe a gradebook export (Focus): students down, assignments across
         const gb = parseGradebook(rows);
-        if (!gb) throw e;
+        if (!gb) {   // say what the file looked like and what Tally takes, not only what it isn't
+          if (!/does not look like an IXL Score Grid/.test(String(e && e.message))) throw e;   // an IXL grid with its own problem keeps its own message
+          const real = (rows || []).filter(r => r && r.some(v => v != null)); const cols = real.reduce((m, r) => Math.max(m, r.length), 0); const hdr = real.find(r => r.filter(v => v != null).length > 1) || [];
+          if (!real.length || cols < 2) throw new Error('This is not a table Tally can read (a picture or a document?). Tally takes an IXL Score Grid export, a Focus gradebook export, a FAST report or a Tally save.');
+          if (hdr.some(v => typeof v === 'string' && /^(student|student name|name|last,? ?first)$/i.test(v.trim()))) throw new Error(`This looks like a gradebook, but Tally found ${real.length < 3 ? 'no student rows' : 'fewer than two students or no assignment columns'} in it. Export the gradebook from Focus with the students and their scores showing.`);
+          throw new Error(`Tally doesn't know this table (${real.length} rows, ${cols} columns; no "Skill name" column for an IXL Score Grid and no student column for a gradebook). It takes an IXL Score Grid export, a Focus gradebook export, a FAST report or a Tally save.`);
+        }
         deferred.push({ f, gb });   // attached after every IXL grid in this drop has been imported, so a mixed drop works in any order
         continue;
       }
@@ -6638,8 +6650,7 @@ async function fileToRows(f) {
     }));
     return rows;
   }
-  if (/\t/.test(head)) return text.split(/\r?\n/).map(l => l.split('\t').map(v => { v = v.replace(/^"|"$/g, '').trim(); return v === '' ? null : v; }));
-  return csvToRows(text);
+  return csvToRows(text);   // comma- or tab-separated: csvToRows tells which
 }
 const isNum = v => v != null && v !== '' && !isNaN(Number(String(v).replace(/%$/, '')));
 // Generic gradebook grid: a header row with a name column and assignment columns; students down.

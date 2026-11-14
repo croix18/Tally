@@ -322,7 +322,7 @@ function renderSeating(s) {
   if (s.seating && s.seating.seats) { const tmp = { seats: s.seating.seats, locks: s.seating.locks || {} }; const freed = pruneSeats(tmp, stu); if (freed) { save(); toast(`${plural(freed, 'seat')} freed: ${freed === 1 ? 'that student is' : 'those students are'} no longer on the roster.`, false, 5000); } }
   const w = workFor(s); if (w) pruneSeats(w, stu);
   // Seating info for students no longer on the roster: stamped the day they vanish, kept 45 days (transfers come back), then dropped.
-  const onRoster = new Set(stu.map(x => x.id)); const today = new Date().toISOString().slice(0, 10); const departed = []; let changed = false;
+  const onRoster = new Set(stu.map(x => x.id)); const today = (d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date());   /* the local day, like ageDays counts (it was the UTC day: tomorrow, after 7 pm Eastern) */ const departed = []; let changed = false;
   for (const k of Object.keys(s.seatInfo || {})) { const i = s.seatInfo[k]; if (onRoster.has(k)) { if (i.gone) { delete i.gone; changed = true; } continue; } if (!i.gone) { i.gone = today; changed = true; } if (ageDays(i.gone) > 45) { delete s.seatInfo[k]; changed = true; continue; } departed.push({ id: k, gone: i.gone, photo: i.photo }); }
   if (changed) save();
   const seatCands = seatCandsBy[s.key] || [];
