@@ -280,6 +280,27 @@ function familyFormHtml(c = {}) { return `<form class="fform" data-cid="${esc(c.
 // Croix, marking a print (25 Oct 2026): "Week of", not the print date; no instructions, just the count; a way to
 // clear the list; and the Home cell opens a card to add or edit the contact right there, or go to the student's page.
 const weekOf = d => { const x = new Date(String(d).slice(0, 10) + 'T12:00:00'); if (isNaN(x)) return String(d || ''); const wd = x.getDay(); x.setDate(x.getDate() + (wd === 6 ? 2 : wd === 0 ? 1 : 1 - wd)); return localDayOf(x.toISOString()); };   // the school week's Monday; a weekend print belongs to the week ahead
+/* Removing a print (Croix, 14 Nov 2026: "I printed off worksheets a few weeks ago as an experiment and Tally is still
+   expecting and tracking for them to come back. Is there a way to delete that instance?" Clear only stopped the
+   list counting them; the reports stayed on every student's page). A print is a day's reports for the class: Remove
+   takes that day's report off every student of the class as if it had never been printed, with one undo. */
+function printsOf(s) { const by = {}; Object.keys(s.reportLog || {}).forEach(k => (s.reportLog[k] || []).forEach(e => { const d = by[e.date] || (by[e.date] = { date: e.date, n: 0, back: 0 }); d.n++; if (e.back) d.back++; })); return Object.values(by).sort((a, b) => b.date.localeCompare(a.date)); }
+function removePrint(s, date) { let n = 0; Object.keys(s.reportLog || {}).forEach(k => { const l = s.reportLog[k] || []; const keep = l.filter(e => e.date !== date); n += l.length - keep.length; if (keep.length) s.reportLog[k] = keep; else delete s.reportLog[k]; }); return n; }
+function openRemovePrint(s) {
+  const m = $('#modal'); const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
+  const draw = () => { const prints = printsOf(s); m.classList.remove('hidden');
+    m.innerHTML = `<div class="panel narrow"><header><h2>Remove a print · ${esc(s.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
+      <div class="body one"><p>Each line is one day's weekly reports for this class. Removing it takes that report off every student's page and off this list, as if it had never been printed.</p>
+        ${prints.length ? `<table class="rettab rmprint"><tbody>${prints.map(x => `<tr><td><b>Printed ${esc(fmtDate(x.date))}</b><small> · week of ${esc(fmtDate(weekOf(x.date)))}</small></td><td>${plural(x.n, 'report')}${x.back ? ` · ${x.back} back signed` : ''}</td><td class="r"><button class="pill small toggle" data-rmprint="${esc(x.date)}">Remove</button></td></tr>`).join('')}</tbody></table>` : '<p class="ghint">No prints on record for this class.</p>'}
+        <div class="rp-actions"><button class="pill" id="mCancel">Done</button></div></div></div>`;
+    m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    m.querySelectorAll('[data-rmprint]').forEach(b => b.onclick = async () => { const date = b.dataset.rmprint; const x = printsOf(s).find(y => y.date === date); if (!x) return;
+      if (!await ask(`Remove the reports printed ${fmtDate(date)}? ${plural(x.n, 'report')}${x.back ? ` (${x.back} already marked back)` : ''} will come off the students' pages. Nothing else changes.`, 'Remove')) return;
+      const snap = JSON.stringify(s.reportLog || {}); const n = removePrint(s, date); save(); retEditing = null; render(); draw();
+      toast(`Removed the print of ${esc(fmtDate(date))} (${plural(n, 'report')}). <button class="tundo" id="rmUndo">Undo</button>`, false, 8000);
+      const u = $('#rmUndo'); if (u) u.onclick = () => { s.reportLog = cleanReportLog(JSON.parse(snap)); save(); render(); if (!m.classList.contains('hidden')) draw(); toast('Put back', false, 1500); }; }); };
+  draw();
+}
 /* The signed-reports list, a card on the class's Reports page (phase 4, 7 Nov 2026; before that a dialog behind ⋯). */
 function returnsRows(s) {
   const gb = s.grades; if (!gb) return null;
@@ -296,7 +317,7 @@ function returnsHtml(s, editing) {
   const row = r => `<tr class="${r.last.back ? 'back' : ''}"><td><label><input type="checkbox" data-rback="${esc(r.nm)}" data-date="${esc(r.last.date)}" ${r.last.back ? 'checked' : ''}> ${esc(H ? mask(r.nm) : r.nm)}</label></td><td>${r.last.back ? `back ${esc(fmtDate(r.last.back))}` : `<b>${ageDays(r.last.date) ? plural(ageDays(r.last.date), 'day') + ' out' : 'printed today'}</b>`}</td><td class="who">${H ? '' : `<button class="linkbtn home" data-home="${esc(r.nm)}">${home(r)}</button>`}</td></tr>${editing === r.nm && !H ? `<tr class="qedit"><td colspan="3"><div class="qcard">${familyFormHtml(r.f.contacts[0] || {})}<button class="linkbtn" data-goto="${esc(r.nm)}">Open ${esc(niceName(r.nm).split(' ')[0])}'s page</button></div></td></tr>` : ''}`;
   return head(rows.length ? `week of ${weeks.map(w => esc(fmtDate(w))).join(', ')}` : 'signed reports, this class', rows.length ? `<span class="retOut ${out.length ? 'some' : ''}">${out.length ? `${plural(out.length, 'report')} still out` : 'all back'}</span>` : '')
     + (rows.length ? `<table class="rettab"><thead><tr><th>Back signed</th><th></th><th>Home</th></tr></thead><tbody>${out.map(row).join('')}${rows.filter(r => r.last.back).map(row).join('')}</tbody></table>` : '<p class="ghint">Cleared. The next weekly reports you print start a new list.</p>')
-    + `<div class="rp-actions">${out.length && !H ? `<button class="pill pale" id="retCopy">Copy the still-out list</button>` : ''}${rows.length ? `<button class="pill toggle" id="retClear">Clear the list</button>` : ''}</div>`;
+    + `<div class="rp-actions">${out.length && !H ? `<button class="pill pale" id="retCopy">Copy the still-out list</button>` : ''}${rows.length ? `<button class="pill toggle" id="retClear">Clear the list</button>` : ''}<button class="pill toggle" id="retRemove" title="Take a day's reports off every student, as if they had never been printed">Remove a print</button></div>`;
 }
 function wireReturns(s) {
   const m = $('#rpBack'); if (!m) return; const all = returnsRows(s) || []; const rows = all.filter(r => !r.last.cleared); const out = rows.filter(r => !r.last.back);
@@ -310,6 +331,7 @@ function wireReturns(s) {
       next.contacts = id ? next.contacts.map(x => x.id === id ? c : x) : next.contacts.concat([c]); setFamily(s, nm, next); save(); again(null); };
     fm.querySelector('[data-fcancel]').onclick = () => again(null); }
   const clr = $('#retClear'); if (clr) clr.onclick = async () => { if (!await ask(`Clear this list? ${out.length ? `${plural(out.length, 'report')} still out will drop off it. ` : ''}Every report stays on its student's page.`, 'Clear')) return; rows.forEach(r => { r.last.cleared = true; }); save(); again(null); };
+  const rm = $('#retRemove'); if (rm) rm.onclick = () => openRemovePrint(s);
   const cp = $('#retCopy'); if (cp) cp.onclick = async () => { const text = out.map(r => { const c = r.f.contacts[0]; return `${r.nm}\t${c ? [c.name, c.rel, c.phone, c.email].filter(Boolean).join(' · ') : ''}`; }).join('\n'); try { await navigator.clipboard.writeText(text); toast('Copied: one line per student, with the first contact.', false, 3000); } catch (e) { toast('Could not copy here.', true); } };
 }
 // All classes › Reports: one line per class, who still has a report out, and the way to that class's list.

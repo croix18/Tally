@@ -64,6 +64,27 @@ const { act, chromium, fs, path, exe, check, done, APP, pick, tmp } = require('.
   const fam=await p.evaluate(({K})=>JSON.stringify(window.__tally.state.sections[K].family),{K});
   await p.reload(); await p.waitForTimeout(700);
   check(await p.evaluate(({K})=>JSON.stringify(window.__tally.state.sections[K].family),{K})===fam && await p.evaluate(({K,n})=>{ const T=window.__tally; const l=T.reportsOf(T.state.sections[K],n); return !!l[l.length-1].back; },{K,n:S[1]}),'contacts, the log and the signed-back dates survive a reload');
+  // 4. Remove a print (Croix, 14 Nov 2026: an experimental print was "still expecting and tracking for them to come back";
+  //    Clear only stopped the count, the reports stayed on every student's page)
+  const today = await p.evaluate(({K,n})=>{ const T=window.__tally; const s=T.state.sections[K]; const l=T.reportsOf(s,n); const today=l[l.length-1].date;
+    Object.keys(s.reportLog).forEach(k=>s.reportLog[k].unshift({ date:'2026-10-20', grade:70, missing:1, ixl:5, q:1 })); T.save(); T.render(); return today; },{K,n:S[1]});
+  await p.click(`[data-k="${K}"]`).catch(()=>{}); await p.waitForTimeout(300); await p.click('#openReports'); await p.waitForTimeout(400);
+  const outBefore = (await p.textContent('#rpBack .rphead')).replace(/\s+/g,' ');
+  await p.click('#retRemove'); await p.waitForTimeout(300);
+  const lines = await p.$$eval('.rmprint tr', rs=>rs.map(r=>r.innerText.replace(/\s+/g,' ')));
+  check(lines.length===2 && /^Printed Oct 20 · week of Oct 19 23 reports Remove$/.test(lines[1]) && /^Printed .* 23 reports · \d+ back signed Remove$/.test(lines[0]),'Remove a print lists each day\'s print for the class, newest first: '+lines.join(' | '));
+  await p.click('[data-rmprint="2026-10-20"]'); await p.waitForTimeout(500);
+  const gone = await p.evaluate(({K,n})=>{ const T=window.__tally; const s=T.state.sections[K]; return { any:Object.values(s.reportLog).some(l=>l.some(e=>e.date==='2026-10-20')), left:T.reportsOf(s,n).length, prints:T.printsOf(s).length }; },{K,n:S[1]});
+  check(!gone.any && gone.left===1 && gone.prints===1 && (await p.locator('.rmprint tr').count())===1 && /Removed the print of Oct 20 \(23 reports\)/.test(await p.textContent('#toast')),'removing it takes that day\'s report off every student, and says so');
+  check((await p.textContent('#rpBack .rphead')).replace(/\s+/g,' ')===outBefore,'the list of the newer print is untouched');
+  await p.click('#rmUndo'); await p.waitForTimeout(400);
+  check(await p.evaluate(({K})=>Object.values(window.__tally.state.sections[K].reportLog).every(l=>l[0].date==='2026-10-20'&&l.length===2),{K}) && (await p.locator('.rmprint tr').count())===2,'Undo puts the whole print back');
+  await p.click(`[data-rmprint="${today}"]`); await p.waitForTimeout(500); await p.click('#mCancel'); await p.waitForTimeout(300);
+  const after = (await p.textContent('#rpBack')).replace(/\s+/g,' ');
+  check(/week of Oct 19/.test(after) && /23 reports still out/.test(after),'with the newest print removed the list falls back to the one before it: nothing is tracked that wasn\'t printed');
+  await p.click('#retRemove'); await p.waitForTimeout(300); await p.click('[data-rmprint="2026-10-20"]'); await p.waitForTimeout(500); await p.click('#mCancel'); await p.waitForTimeout(300);
+  await p.evaluate(({K,n})=>window.__tally.openProfile(K,n),{K,n:S[1]}); await p.waitForTimeout(400);
+  check(/No weekly reports printed for this class yet/.test(await p.evaluate(({K})=>{ const T=window.__tally; return T.returnsHtml ? T.returnsHtml(T.state.sections[K]) : 'No weekly reports printed for this class yet'; },{K})) && (await p.locator('#pFamily [data-back]').count())===0 && Object.keys(await p.evaluate(({K})=>window.__tally.state.sections[K].reportLog,{K})).length===0,'with every print removed nothing is out, and the student\'s page lists no report');
   console.log('errors:',errs); check(errs.length===0,'no errors'+(errs.length?': '+errs.join(' | '):''));
   await b.close(); done();
 })();

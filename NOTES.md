@@ -1399,6 +1399,16 @@ Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 ch
   consistent IXL column per unnamed student: the board's own charts need a look before shuffling), 10 (school-year
   rollover, before August 2027), then the smaller ones in 11.
 
+## Remove a print (14 Nov 2026)
+
+Croix: *"I printed off worksheets a few weeks ago as an experiment and tally is still expecting and tracking for them
+to come back. Is there a way to delete that instance?"* then *"Yeah add a remove this print option."* Clear the list
+only marks each student's latest report `cleared`; the reports stay on the students' pages. **Reports tab → Reports
+out and back → Remove a print** (`openRemovePrint`, `printsOf`, `removePrint` in students.js) lists each day's print
+for the class (date, week, how many reports, how many back) with a Remove button: it asks, then deletes that day's
+entry from every student's `reportLog` in the class, with one Undo. With the newest print removed the list falls
+back to the print before it. Per class, like Clear. tests/family.js (section 4).
+
 ## Review: item 4 parked, item 9 judged, the small ones done (14 Nov 2026)
 
 - **4 (Hide names → initials) is parked by Croix:** *"Leave the initials for now, and skip 4. I'll figure it out
