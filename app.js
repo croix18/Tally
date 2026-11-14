@@ -479,6 +479,7 @@ async function importFiles(files) {
     if (target) placed.add(target);
     if (!target) { skipped++; continue; }
     const sec = state.sections[target];
+    applyCodes(gb, sec.prep);   // text grades the course has already been told about count the way the teacher said
     /* An earlier quarter's file, or an older copy of this quarter's, must never replace the gradebook in use (audit,
        22 Oct 2026: an old Q1 file dropped after Q2 was in rewrote the closed Q1 finals and threw the Q2 columns away). */
     const newAt0 = f.lastModified ? new Date(f.lastModified).toISOString() : null;
@@ -1555,7 +1556,12 @@ function parseGradebook(rows) {
   const isPP = v => isT(v) && /^(points? possible|max(imum)?( points)?|out of|total points|possible)/i.test(v.trim());
   let maxRow = null; for (let i = Math.max(0, h - 3); i < rows.length; i++) { const r = rows[i] || []; if (r.some(isPP)) { maxRow = r; break; } }
   const catRow = h > 0 && !(rows[h - 1] || []).some(isPP) ? rows[h - 1] : null;
-  const excusedRe = /^(ng|x|ex|exc|e|i|inc|excused|exempt|n\/a|na)$/i, missingRe = /^(m|nhi|\*|—|-|missing|late)$/i;
+  /* 14 Nov 2026 (review): "Late", "-" and "*" were read as a zero and "I", "Inc", "E", "X", "N/A" as excused. Those
+     were guesses: Focus's custom grades are set by the district, and each one either leaves the grade out or scores it
+     zero. Only the words that can mean one thing are read here now; any other text is kept as a code (a.codes) and the
+     teacher says once, per course, how Focus counts it (grades.js: applyCodes, the "Decide" dialog). */
+  const excusedRe = /^(ng|ex|exc|excused|exempt)$/i, missingRe = /^(m|nhi|missing)$/i;
+  const codes = cols.map(() => ({})), pctCells = cols.map(() => []);
   const examples = [];
   const rawCells = cols.map(() => []);
   const students = [], ids = [], overall = [], data = cols.map(() => []), status = cols.map(() => []), unread = cols.map(() => 0), excusedN = cols.map(() => 0), pct = cols.map(() => false), fracMax = cols.map(() => null);
@@ -1575,13 +1581,13 @@ function parseGradebook(rows) {
       let m;
       if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*-\s*-?\d+(?:\.\d+)?\s*%\s*(?:-\s*[A-F][+-]?)?$/i))) { data[j].push(Number(m[1])); st(j, 'score'); return; }   // Focus: "16.5 - 79 % - C"
       if (/^nhi\b/i.test(t)) { data[j].push(null); st(j, 'missing'); return; }                                                                              // Focus: "NHI Not Handed In"
-      if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*%$/))) { pct[j] = true; data[j].push(Number(m[1])); st(j, 'score'); return; }
+      if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*%$/))) { pct[j] = true; pctCells[j].push(data[j].length); data[j].push(Number(m[1])); st(j, 'score'); return; }
       if ((m = t.match(/^(-?\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/))) { data[j].push(Number(m[1])); st(j, 'score'); fracMax[j] = fracMax[j] == null ? Number(m[2]) : (fracMax[j] === Number(m[2]) ? fracMax[j] : NaN); return; }
       if (/^-?\d+(\.\d+)?$/.test(t)) { data[j].push(Number(t)); st(j, 'score'); return; }
       if (/^z$/i.test(t)) { data[j].push(0); st(j, 'score'); return; }
       if (excusedRe.test(t)) { data[j].push(null); st(j, 'excused'); excusedN[j]++; return; }
       if (missingRe.test(t)) { data[j].push(null); st(j, 'missing'); return; }
-      data[j].push(null); st(j, 'unread'); unread[j]++; if (examples.length < 3 && !examples.includes(t)) examples.push(t);
+      codes[j][data[j].length] = t.slice(0, 24); data[j].push(null); st(j, 'unread'); unread[j]++; if (examples.length < 3 && !examples.includes(t)) examples.push(t);
     });
   }
   if (students.length < 2) return null;
@@ -1599,13 +1605,19 @@ function parseGradebook(rows) {
       name = name.replace(/\s*\(?\d+(?:\.\d+)?\s*(?:pts?|points)\)?\s*/i, ' ').replace(/\s+\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*$/, '').trim();
     }
     if (!max && fracMax[j] != null && !isNaN(fracMax[j])) max = fracMax[j];
-    if (pct[j]) max = 100;
+    // A percent cell is a percent OF the column's points. With the points known ("20 Points" in the header) "50%" is
+    // 10 points; only a column with no points anywhere is read as out of 100 (review, 14 Nov: one "50%" cell used to
+    // turn a 20-point column into a 100-point one, so a 15 out of 20 counted as 15%).
+    const pctOnly = pct[j] && !(max > 0);
+    if (pct[j]) { if (max > 0) pctCells[j].forEach(i => { if (data[j][i] != null) data[j][i] = Math.round(data[j][i] / 100 * max * 100) / 100; }); else max = 100; }
+    // A score below zero or over twice the points is a typing slip, not a score: it is left out and shown to the teacher.
+    data[j].forEach((v, i) => { if (status[j][i] === 'score' && v != null && (v < 0 || (max > 0 && v > 2 * max))) { codes[j][i] = String(rawCells[j][i]).slice(0, 24); data[j][i] = null; status[j][i] = 'unread'; unread[j]++; } });
     const categoryFromFile = !!category;
     if (!category) category = /\b(test|exam|assessment|benchmark)\b/i.test(name) ? 'Assessments' : /\bixl\b/i.test(name) ? 'IXL' : /\bquiz\b/i.test(name) ? 'Quizzes' : 'Classwork';
     seen[name] = (seen[name] || 0) + 1; if (seen[name] > 1) name = name + ' (' + seen[name] + ')';
     const vals = data[j]; const missing = status[j].filter(t => t === 'missing').length;   // NHI only: a blank (not graded yet) is out of the grade, so it isn't missing work (audit, 24 Oct)
-    return { name, category, categoryFromFile, max, values: vals, status: status[j], missing, excused: excusedN[j], unread: unread[j], percent: pct[j], assignedOn, due, _col: col };
-  }).filter(a => a.values.some(v => v != null) || a.status.some(x => x === 'missing'));   // an all-NHI column still counts as zeros in Focus; only a column nobody has anything in is dropped
+    return { name, category, categoryFromFile, max, values: vals, status: status[j], missing, excused: excusedN[j], unread: unread[j], percent: pctOnly, assignedOn, due, ...(Object.keys(codes[j]).length ? { codes: codes[j] } : {}), _col: col };
+  }).filter(a => a.values.some(v => v != null) || a.status.some(x => x === 'missing') || !!a.codes);   // an all-NHI column still counts as zeros in Focus; only a column nobody has anything in is dropped
   if (!assignments.length) return null;
   const raw = {}; assignments.forEach((a, j) => { raw[a.name] = rawCells[cols.findIndex(c => c === a._col)] || []; delete a._col; });
   return { students, ids, overall: overall.some(v => v != null) ? overall : null, assignments, unread: assignments.reduce((a, x) => a + x.unread, 0), examples, raw };
@@ -3003,7 +3015,7 @@ document.addEventListener('keydown', e => {
   else if (view.mode === 'settings') { if (settingsCancel) settingsCancel(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { unitClosed, unitQuarterOf, unitColumnQuarters, unitsDueIn, liveQuarter, attentionGroups, fixCount, gbUnitFor, pendingCopies, owedWork, reportGaps, openQuarters, printDoc, adopt, niceName, askCategories, catGuesses, catCheck, cleanDismissed, nextTest, testDays, testUnitNums, cleanTestDates, openTestDates, testDatesOf, TEST_DATES, closedEarly, quarterDue, openSettings, gradeSummary, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, labCorrMarkup, corrPick, ixlVsTests, ixlTestPairs, asgUnitNums, isUnitAssessment, gradeDiff, gradeOff, gradeDiffKey, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { unitClosed, unitQuarterOf, unitColumnQuarters, unitsDueIn, liveQuarter, attentionGroups, fixCount, gbUnitFor, pendingCopies, owedWork, reportGaps, openQuarters, printDoc, adopt, niceName, askCategories, catGuesses, catCheck, cleanDismissed, nextTest, testDays, testUnitNums, cleanTestDates, openTestDates, testDatesOf, TEST_DATES, closedEarly, quarterDue, openSettings, gradeSummary, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, labCorrMarkup, corrPick, ixlVsTests, ixlTestPairs, asgUnitNums, isUnitAssessment, gradeDiff, gradeOff, gradeDiffKey, gbQuestions, applyCodes, parseGradebook, regradeCourse, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.

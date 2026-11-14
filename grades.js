@@ -12,6 +12,7 @@ function gradingFor(prep) {
   if (!g || !Array.isArray(g.cats) || !g.cats.length) g = state.grading[prep] = { cats: DEFAULT_CATS.map(c => ({ ...c })), map: {}, how: {} };
   g.map = g.map && typeof g.map === 'object' && !Array.isArray(g.map) ? g.map : {}; g.how = g.how && typeof g.how === 'object' && !Array.isArray(g.how) ? g.how : {};
   g.cats = g.cats.filter(c => c && typeof c.name === 'string' && Number.isFinite(+c.w)).map(c => ({ name: c.name, w: +c.w })); if (!g.cats.length) g.cats = DEFAULT_CATS.map(c => ({ ...c }));
+  const plain = o => o && typeof o === 'object' && !Array.isArray(o) ? o : {}; g.codes = plain(g.codes); g.ec = plain(g.ec);   // how Focus counts a text grade ("LATE": 'zero' | 'out'); whether a column with no points is extra credit
   return g;
 }
 // Name-based guess. Croix's categories: whiteboard/participation → Participation; tests, quizzes, IXL, notebook checks,
@@ -38,16 +39,22 @@ function catGuesses(sec) { const og = openSec(sec); if (!og || !og.grades) retur
 // "These are right": each unchecked guess is kept at the category it has now, as checked.
 function catCheck(prep, list) { const g = gradingFor(prep); list.forEach(a => { if (catHow(g, a) !== 'guess') return; g.map[a.name] = catOf(prep, a.name, a); g.how[a.name] = 'ok'; }); }
 
+const isExtraCredit = (sec, g, a) => a.max === 0 || (a.max == null && !!(sec._ec && Object.prototype.hasOwnProperty.call(sec._ec, a.name) ? sec._ec[a.name] : g.ec && g.ec[a.name]));
 // The course grade for student i. `over` optionally replaces cells: { [assignmentName]: points } (null = leave out).
 // NHI counts as 0 over the full possible; excused/blank cells are left out; empty categories re-weight the rest.
 function computeGrade(sec, i, over, mapOverride) {
   const gb = sec.grades; if (!gb) return null;
   const g = gradingFor(sec.prep); const cats = {}; (sec._cats || g.cats).forEach(c => cats[c.name] = { earned: 0, possible: 0, w: c.w, n: 0 });   // a kept quarter keeps its own weights
   gb.assignments.forEach(a => {
-    if (a.max == null || !(a.max > 0)) return;
+    // Focus: an assignment worth 0 points is extra credit: its points add to the category and nothing is added to the
+    // possible (Focus's own help page for teachers; until 14 Nov 2026 Tally dropped these columns). A column whose
+    // export shows no points at all is only counted that way once the teacher says so (g.ec), never by guessing.
+    const ec = isExtraCredit(sec, g, a);
+    if (!ec && !(a.max > 0)) return;
     const cat = (mapOverride && mapOverride[a.name]) || (sec._map && sec._map[a.name]) || catOf(sec.prep, a.name, a); const c = cats[cat] || (cats[cat] = { earned: 0, possible: 0, w: 0, n: 0 });
     let v = a.values[i], stt = a.status ? a.status[i] : (v == null ? 'blank' : 'score');
     if (over && Object.prototype.hasOwnProperty.call(over, a.name)) { v = over[a.name]; stt = v == null ? 'excused' : 'score'; }
+    if (ec) { if (stt === 'score' && Number(v) > 0) c.earned += Number(v); return; }
     if (stt === 'excused' || stt === 'blank' || stt === 'unread') return;
     c.earned += stt === 'missing' ? 0 : Number(v) || 0; c.possible += a.max; c.n++;
   });
@@ -243,91 +250,186 @@ function classAverage(sec, mapOverride, dropName) {
   return gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null;
 }
 
-/* ---------- where Tally's grade and Focus's differ, student by student (13 Nov 2026) ----------
+/* ---------- what the gradebook leaves to the teacher: text grades and columns with no points (14 Nov 2026) ----------
+   The review found Tally guessing where the export doesn't say: "Late" as a zero, "Inc" as excused, a column with no
+   points silently out of the grade. Focus's custom grades are set by the district (each one either leaves the grade out
+   or scores it zero), so a guess is wrong for somebody. Now the cell is left out until Croix says, once per course,
+   how Focus counts it; where the export has Focus's Grade column, each choice shows whether it reproduces it. */
+const codeKey = t => String(t).trim().toUpperCase();
+const isNumText = t => /^-?\d+(\.\d+)?\s*(%|\/|-|$)/.test(String(t).trim());   // an out-of-range score kept for the teacher to see, not a text grade
+// Set each text cell's status from the course's rules: 'zero' counts like an NHI, 'out' like an excused mark, no rule = unread (left out).
+function applyCodes(gb, prep) {
+  if (!gb || !Array.isArray(gb.assignments)) return; const rules = gradingFor(prep).codes;
+  gb.assignments.forEach(a => { if (!a.codes || !a.status) return;
+    Object.keys(a.codes).forEach(k => { const i = Number(k), t = a.codes[k]; if (isNumText(t) || !(i < a.status.length)) return; const r = rules[codeKey(t)]; a.status[i] = r === 'zero' ? 'missing' : r === 'out' ? 'excused' : 'unread'; a.values[i] = null; });
+    a.missing = a.status.filter(t => t === 'missing').length; });
+}
+function gbQuestions(sec) {
+  const out = { codes: [], noPoints: [], range: [], open: 0, decided: 0 }; const gb = sec.grades; if (!gb) return out;
+  const g = gradingFor(sec.prep); const idx = gb.overall ? gb.students.map((_, i) => i).filter(i => gb.overall[i] != null) : [];
+  const E = (overFor, s2) => idx.length < 3 ? null : idx.reduce((e, i) => { const r = computeGrade(s2 || sec, i, overFor ? overFor(i) : null); return e + (r && r.rounded != null ? Math.abs(r.rounded - gb.overall[i]) : 0); }, 0);
+  const by = new Map();
+  gb.assignments.forEach(a => { if (!a.codes) return; Object.keys(a.codes).forEach(k => { const t = a.codes[k], i = Number(k);
+    if (isNumText(t)) { out.range.push({ name: a.name, max: a.max, text: t, i }); return; }
+    const c = codeKey(t); if (!by.has(c)) by.set(c, { code: c, show: t, n: 0, where: [], cells: [] }); const o = by.get(c); o.n++; if (!o.where.includes(a.name)) o.where.push(a.name); o.cells.push({ a: a.name, i }); }); });
+  by.forEach(o => { o.rule = g.codes[o.code] || null; const mk = val => i => { const ov = {}; o.cells.forEach(c => { if (c.i === i) ov[c.a] = val; }); return ov; }; o.zeroErr = E(mk(0)); o.outErr = E(mk(null)); out.codes.push(o); });
+  gb.assignments.forEach(a => { if (a.max != null) return; const n = a.values.filter(v => v != null).length; if (!n) return; const d = g.ec[a.name];
+    out.noPoints.push({ name: a.name, n, rule: d === true ? 'ec' : d === false ? 'no' : null, ecErr: E(null, { ...sec, _ec: { [a.name]: true } }), noErr: E(null, { ...sec, _ec: { [a.name]: false } }) }); });
+  const all = [...out.codes, ...out.noPoints]; out.open = all.filter(x => !x.rule).length; out.decided = all.length - out.open;
+  return out;
+}
+// One step of undo for anything that changes how a course is graded, and the re-grade of every class of the course.
+const gradingSnap = prep => { const g = gradingFor(prep); return JSON.stringify({ cats: g.cats, map: g.map, how: g.how, codes: g.codes, ec: g.ec }); };
+function regradeCourse(prep) { state.order.map(k => state.sections[k]).filter(x => x && x.prep === prep && x.grades).forEach(x => { applyCodes(x.grades, prep); applyCategories(x); gradeSnapshot(x); }); }
+function gradingRestore(prep, snap) { const g = gradingFor(prep), b = JSON.parse(snap); g.cats = b.cats; g.map = b.map; g.how = b.how; g.codes = b.codes; g.ec = b.ec; regradeCourse(prep); }
+function gradingUndoToast(prep, snap, html) { toast(`${html} <button class="tundo" id="gdUndo">Undo</button>`, false, 8000); const u = $('#gdUndo'); if (u) u.onclick = () => { gradingRestore(prep, snap); save(); render(); toast('Undone', false, 1500); }; }
+function openGbQuestions(s0) {
+  const g = gradingFor(s0.prep); const H = state.settings.hideNames; const course = courseWord(s0.prep);
+  const draw = () => {
+    const q = gbQuestions(s0); const m = $('#modal'); m.classList.remove('hidden');
+    const proof = (mine, other) => mine == null || other == null || !(mine < other) ? '' : `<small class="gqproof">${mine === 0 ? 'Focus\'s grades match this way' : 'Closer to Focus\'s grades'}</small>`;
+    const row = (title, sub, btns) => `<div class="gqrow"><div><b>${title}</b><small>${sub}</small></div><div class="gqbtns">${btns}</div></div>`;
+    const btn = (attr, on, label, pr) => `<span class="gqopt"><button class="chip${on ? ' on' : ''}" ${attr} aria-pressed="${on ? 'true' : 'false'}">${label}</button>${pr}</span>`;
+    m.innerHTML = `<div class="panel"><header><h2>How Focus counts these · ${esc(course)}</h2><button id="mClose" aria-label="Close">×</button></header>
+      <div class="body one gqBody"><p>The export doesn't say how Focus counts these, and Tally no longer guesses. Until you choose, they are left out of the grade. A choice applies to every ${esc(course)} class and every later import.</p>
+        ${q.codes.map(o => row(`“${esc(o.show)}”`, `${plural(o.n, 'cell')} · ${esc(o.where.slice(0, 3).join(', '))}${o.where.length > 3 ? ` and ${o.where.length - 3} more` : ''}`,
+          btn(`data-code="${esc(o.code)}" data-rule="zero"`, o.rule === 'zero', 'Counts as a zero', proof(o.zeroErr, o.outErr)) + btn(`data-code="${esc(o.code)}" data-rule="out"`, o.rule === 'out', 'Left out of the grade', proof(o.outErr, o.zeroErr)))).join('')}
+        ${q.noPoints.map(o => row(esc(o.name), `no points possible in the export · ${plural(o.n, 'score')}. In Focus an assignment with no points is extra credit.`,
+          btn(`data-ec="${esc(o.name)}" data-rule="ec"`, o.rule === 'ec', 'Extra credit', proof(o.ecErr, o.noErr)) + btn(`data-ec="${esc(o.name)}" data-rule="no"`, o.rule === 'no', 'Not in the grade', proof(o.noErr, o.ecErr)))).join('')}
+        ${q.range.length ? `<p class="ghint gqrange"><b>Out of range, left out:</b> ${q.range.slice(0, 6).map(r => `“${esc(r.text)}” for ${esc(H ? mask(s0.grades.students[r.i]) : s0.grades.students[r.i])} on ${esc(r.name)}${r.max > 0 ? ` (${fmtN(r.max)} points)` : ''}`).join('; ')}${q.range.length > 6 ? `; and ${q.range.length - 6} more` : ''}. Correct ${q.range.length === 1 ? 'it' : 'them'} in Focus and export again.</p>` : ''}
+        ${!q.codes.length && !q.noPoints.length && !q.range.length ? '<p class="ghint">Nothing in this gradebook needs a decision.</p>' : ''}
+        <div class="rp-actions"><button class="pill" id="mCancel">Done</button></div></div></div>`;
+    const close = () => { m.classList.add('hidden'); m.innerHTML = ''; render(); };
+    m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    const set = fn => { const snap = gradingSnap(s0.prep); fn(); regradeCourse(s0.prep); save(); draw(); gradingUndoToast(s0.prep, snap, 'Saved for every ' + esc(course) + ' class.'); };
+    m.querySelectorAll('[data-code]').forEach(b => b.onclick = () => set(() => { if (g.codes[b.dataset.code] === b.dataset.rule) delete g.codes[b.dataset.code]; else g.codes[b.dataset.code] = b.dataset.rule; }));
+    m.querySelectorAll('[data-ec]').forEach(b => b.onclick = () => set(() => { const v = b.dataset.rule === 'ec'; if (g.ec[b.dataset.ec] === v) delete g.ec[b.dataset.ec]; else g.ec[b.dataset.ec] = v; }));
+  };
+  draw();
+}
+
+/* ---------- where Tally's grade and Focus's differ, student by student (13 Nov 2026; rebuilt 14 Nov) ----------
    Croix: "I'm still getting the error about the mismatch of grades and it links me to the categories page which I
-   can't do anything to rectify the situation, even though I have no idea what the situation is." The notice gave a
-   total ("off by 7 points across 23 students") and sent him to Categories, where every row already read as proved.
-   This says who differs and by how much, and tests the things that can make Focus's number differ from the scores in
-   its own export: one assignment Focus isn't counting, empty cells Focus counts as zeros, NHIs it leaves out, other
-   weights, a cell Tally couldn't read, and for each student any single score that would close the gap. */
-const gradeOff = (sec, fit) => { const gb = sec.grades; if (!gb || !gb.overall || !fit || fit.exact) return []; return gb.students.map((_, i) => i).filter(i => gb.overall[i] != null).map(i => { const r = computeGrade(sec, i); return { i, tally: r ? r.rounded : null, focus: gb.overall[i] }; }).filter(x => x.tally !== x.focus); };   // the grade every screen shows (the stored categories), not the fit's best try
+   can't do anything to rectify the situation, even though I have no idea what the situation is." The notice names who
+   differs and by how much; "See why" looks for a cause.
+   14 Nov, after the hostile review: the first build named, for each student, ANY single cell whose removal landed on
+   Focus's number and said it as fact ("the NHI on X isn't counted in Focus"). With Focus off by a random point every
+   student got one to nine such lines, all false. The rules now:
+   - a class-wide cause is only reported when it reproduces EVERY student's grade exactly, and each has a one-click fix
+     where the fix is Tally's to make (categories, a text grade's rule, extra credit, weights, weights + one category);
+   - a per-student line is only arithmetic ("would match if"), only when exactly one cell does it, never for a gap of
+     one point, and never when a third of the class or more is off (that is class-wide, not one score);
+   - what is simply true is always said: a cell Tally couldn't read, a grade sitting on the rounding line. */
+const gradeOff = sec => { const gb = sec.grades; if (!gb || !gb.overall) return []; return gb.students.map((_, i) => i).filter(i => gb.overall[i] != null).map(i => { const r = computeGrade(sec, i); return { i, tally: r ? r.rounded : null, focus: gb.overall[i] }; }).filter(x => x.tally !== x.focus); };   // the grade every screen shows (the stored categories), whatever the fit says
 // One key per set of differences: "stop flagging these" holds until a student or a number in it changes.
 const gradeDiffKey = (sec, off) => `gradediff|${sec.key}|${hashStr(off.map(x => `${sec.grades.students[x.i]}:${x.tally}:${x.focus}`).join('|'))}`;
 const gradeDiffCache = new Map();
 function gradeDiff(sec, fit) {
-  const gb = sec.grades; const offNow = gradeOff(sec, fit); if (!offNow.length) return null;
-  const g = gradingFor(sec.prep); const map = {}; gb.assignments.forEach(a => map[a.name] = catIn(sec, a));   // the categories in use; the fit's own map is tried too (chasing a class-wide cause, it moves categories that were right)
-  const sig = [sec.key, gb.importedAt, gb.assignments.length, hashStr(JSON.stringify([g.cats, map, fit.map])), gradeDiffKey(sec, offNow)].join('/');
+  const gb = sec.grades; const offNow = gradeOff(sec); if (!offNow.length || !fit) return null;
+  const g = gradingFor(sec.prep); const map = {}; gb.assignments.forEach(a => map[a.name] = catIn(sec, a));   // the categories in use
+  const sig = [sec.key, gb.importedAt, gb.assignments.length, hashStr(JSON.stringify([g.cats, map, fit.map, g.codes, g.ec])), gradeDiffKey(sec, offNow)].join('/');
   const hit = gradeDiffCache.get(sig); if (hit) return hit;
-  const idx = gb.students.map((_, i) => i).filter(i => gb.overall[i] != null);
-  const asg = gb.assignments.filter(a => a.max > 0); const stOf = (a, i) => a.status ? a.status[i] : (a.values[i] == null ? 'blank' : 'score');
-  const rawOf = (a, i) => { const r = gb.raw && gb.raw[a.name]; return r && r[i] != null ? String(r[i]) : ''; };
+  const idx = gb.students.map((_, i) => i).filter(i => gb.overall[i] != null); const n = idx.length;
+  const counted = a => a.max > 0 || isExtraCredit(sec, g, a); const asg = gb.assignments.filter(counted);
+  const stOf = (a, i) => a.status ? a.status[i] : (a.values[i] == null ? 'blank' : 'score');
   const grade = (i, over, s2, m2) => { const r = computeGrade(s2 || sec, i, over || null, m2 || map); return r ? r.rounded : null; };
-  const errOne = (overFor, s2, m2) => idx.reduce((e, i) => { const v = grade(i, overFor ? overFor(i) : null, s2, m2); return e + (v == null ? (gb.overall[i] == null ? 0 : 1) : Math.abs(v - gb.overall[i])); }, 0);
-  const errOf = (overFor, s2, m2) => m2 ? errOne(overFor, s2, m2) : Math.min(errOne(overFor, s2, map), errOne(overFor, s2, fit.map));
+  const errOne = (overFor, s2, m2) => idx.reduce((e, i) => { const v = grade(i, overFor ? overFor(i) : null, s2, m2); return e + (v == null ? 1 : Math.abs(v - gb.overall[i])); }, 0);
+  const errOf = (overFor, s2) => Math.min(errOne(overFor, s2, map), errOne(overFor, s2, fit.map));   // the fit's own map is tried too
   const empty = st => st === 'blank' || st === 'excused' || st === 'unread';
-  // one cause for the whole class: looked for when more than one student is off
-  const whole = [];
-  if (offNow.length >= 2) {
+  const many = offNow.length > Math.max(3, n / 3);
+  const whole = [];   // { html, fix: { label, run } | null }: each one reproduces every grade
+  // (a) the fit already reproduces Focus: the categories in use are what differ
+  if (fit.exact) { const moved = gb.assignments.filter(a => fit.map[a.name] && fit.map[a.name] !== map[a.name]);
+    if (moved.length && errOne(null, null, fit.map) === 0) whole.push({ html: `Every grade matches with ${moved.slice(0, 4).map(a => `<b>${esc(a.name)}</b> in ${esc(fit.map[a.name])} (Tally has ${esc(map[a.name])})`).join(', ')}${moved.length > 4 ? ` and ${moved.length - 4} more` : ''}.`, fix: { label: `Use ${moved.length === 1 ? 'this category' : 'these categories'}`, run: () => moved.forEach(a => { g.map[a.name] = fit.map[a.name]; g.how[a.name] = 'fit'; }) } }); }
+  if (!whole.length && offNow.length >= 2) {
+    // (b) a text grade Focus counts the other way; (c) a column with no points that is extra credit
+    const q = gbQuestions(sec);
+    q.codes.forEach(o => { const cur = o.rule; [['zero', o.zeroErr, 'a zero'], ['out', o.outErr, 'left out of the grade']].forEach(([rule, e, words]) => { if (rule !== cur && e === 0) whole.push({ html: `Every grade matches when <b>“${esc(o.show)}”</b> (${plural(o.n, 'cell')}) is ${words}.`, fix: { label: `Count “${esc(o.show)}” that way`, run: () => { g.codes[o.code] = rule; } } }); }); });
+    q.noPoints.forEach(o => { if (o.rule !== 'ec' && o.ecErr === 0) whole.push({ html: `Every grade matches when <b>${esc(o.name)}</b> (no points in the export) is extra credit.`, fix: { label: 'Count it as extra credit', run: () => { g.ec[o.name] = true; } } }); });
+  }
+  if (!whole.length && offNow.length >= 2) {
+    // (d) one assignment Focus treats differently: nothing for Tally to change, so it is named and left to him
     asg.forEach(a => {
-      if (errOf(() => ({ [a.name]: null })) === 0) whole.push(`Every grade matches when <b>${esc(a.name)}</b> isn't counted. In Focus it may be set not to count toward the grade, or its scores may not be posted yet.`);
-      else if (idx.some(i => empty(stOf(a, i))) && errOf(i => empty(stOf(a, i)) ? { [a.name]: 0 } : null) === 0) whole.push(`Every grade matches when the empty cells on <b>${esc(a.name)}</b> count as zeros. Focus is counting them against those students; Tally leaves an empty cell out.`);
-      else if (idx.some(i => stOf(a, i) === 'missing') && errOf(i => stOf(a, i) === 'missing' ? { [a.name]: null } : null) === 0) whole.push(`Every grade matches when the NHIs on <b>${esc(a.name)}</b> aren't counted. Focus isn't holding them against those students yet; Tally counts an NHI as a 0.`);
+      if (errOf(() => ({ [a.name]: null })) === 0) whole.push({ html: `Every grade matches when <b>${esc(a.name)}</b> isn't counted. In Focus it may be set not to count toward the grade, or its scores may not be posted yet.`, fix: null });
+      else if (a.max > 0 && idx.some(i => empty(stOf(a, i))) && errOf(i => empty(stOf(a, i)) ? { [a.name]: 0 } : null) === 0) whole.push({ html: `Every grade matches when the empty cells on <b>${esc(a.name)}</b> count as zeros. Focus is counting them against those students; Tally leaves an empty cell out.`, fix: null });
+      else if (a.max > 0 && idx.some(i => stOf(a, i) === 'missing') && errOf(i => stOf(a, i) === 'missing' ? { [a.name]: null } : null) === 0) whole.push({ html: `Every grade matches when the NHIs on <b>${esc(a.name)}</b> aren't counted. Focus isn't holding them against those students yet; Tally counts an NHI as a 0.`, fix: null });
     });
     if (!whole.length) {
-      if (errOf(i => { const o = {}; asg.forEach(a => { if (stOf(a, i) === 'blank') o[a.name] = 0; }); return o; }) === 0) whole.push('Every grade matches when <b>every blank cell counts as a zero</b>. Focus is counting blanks against students; Tally leaves a blank out.');
-      else if (errOf(i => { const o = {}; asg.forEach(a => { if (stOf(a, i) === 'missing') o[a.name] = null; }); return o; }) === 0) whole.push('Every grade matches when <b>no NHI is counted</b>. Focus is leaving work not handed in out of the grade; Tally counts an NHI as a 0.');
+      if (errOf(i => { const o = {}; asg.forEach(a => { if (a.max > 0 && stOf(a, i) === 'blank') o[a.name] = 0; }); return o; }) === 0) whole.push({ html: 'Every grade matches when <b>every blank cell counts as a zero</b>. Focus is counting blanks against students; Tally leaves a blank out.', fix: null });
+      else if (errOf(i => { const o = {}; asg.forEach(a => { if (stOf(a, i) === 'missing') o[a.name] = null; }); return o; }) === 0) whole.push({ html: 'Every grade matches when <b>no NHI is counted</b>. Focus is leaving work not handed in out of the grade; Tally counts an NHI as a 0.', fix: null });
     }
   }
-  // other weights (whole fives), with the categories in use or as fitted: the closest set that reproduces every grade
-  let weights = null; const cats = g.cats;
-  if (!whole.length && offNow.length >= 2 && cats.length >= 2 && cats.length <= 4) {
-    const combos = []; const rec = (k, left, acc) => { if (k === cats.length - 1) { combos.push([...acc, left]); return; } for (let w = 0; w <= left; w += 5) rec(k + 1, left - w, [...acc, w]); }; rec(0, 100, []);
-    let best = null;
-    combos.forEach(ws => { if (ws.every((w, k) => w === cats[k].w)) return; const d = ws.reduce((a, w, k) => a + Math.abs(w - cats[k].w), 0); if (best && d >= best.d) return;
-      const s2 = { ...sec, _cats: cats.map((c, k) => ({ name: c.name, w: ws[k] })) }; if (errOne(null, s2, map) === 0 || errOne(null, s2, fit.map) === 0) best = { ws, d }; });
-    if (best) weights = best.ws;
+  // (e) other weights (whole fives), alone or with ONE assignment in another category. Done on plain arrays (a quarter
+  // of a million trials at 35 students × 60 assignments would be seconds through computeGrade); skipped unless the
+  // arrays reproduce computeGrade for every student first.
+  if (!whole.length && offNow.length >= 2 && g.cats.length >= 2 && g.cats.length <= 4) {
+    const cats = g.cats, K = cats.length, cI = nm => cats.findIndex(c => c.name === nm);
+    const cells = idx.map(i => { const row = []; gb.assignments.forEach((a, j) => { if (!counted(a)) return; const st = stOf(a, i), v = a.values[i];
+      if (!(a.max > 0)) { if (st === 'score' && Number(v) > 0) row.push(j, Number(v), 0); return; }
+      if (empty(st)) return; row.push(j, st === 'missing' ? 0 : Number(v) || 0, a.max); }); return row; });
+    const E = new Float64Array(K), P = new Float64Array(K);
+    const fast = (row, m, w) => { E.fill(0); P.fill(0); for (let x = 0; x < row.length; x += 3) { const c = m[row[x]]; E[c] += row[x + 1]; P[c] += row[x + 2]; } let tw = 0, tot = 0; for (let c = 0; c < K; c++) if (P[c] > 0) { tw += w[c]; tot += w[c] * E[c] / P[c] * 100; } return tw ? roundPct(tot / tw) : null; };
+    const want = idx.map(i => gb.overall[i]); const order = idx.map((_, k) => k).sort((a, b) => (grade(idx[b]) !== want[b]) - (grade(idx[a]) !== want[a]));   // the students who differ first: a wrong trial fails at once
+    const ok = (m, w) => { for (const k of order) if (fast(cells[k], m, w) !== want[k]) return false; return true; };
+    const baseW = cats.map(c => c.w); const bases = [map, fit.map].map(mm => gb.assignments.map(a => cI(mm[a.name] || map[a.name])));
+    const sound = bases.every(m => m.every(c => c >= 0)) && idx.every((i, k) => fast(cells[k], bases[0], baseW) === grade(i));
+    if (sound) {
+      const combos = []; const rec = (k, left, acc) => { if (k === K - 1) { combos.push([...acc, left]); return; } for (let w = 0; w <= left; w += 5) rec(k + 1, left - w, [...acc, w]); }; rec(0, 100, []);
+      const used = new Set(); cells.forEach(r => { for (let x = 0; x < r.length; x += 3) used.add(r[x]); });
+      // every setup that reproduces every grade is kept: when there is more than one, the export can't tell them apart, and saying so is the honest answer
+      const sols = new Map(); const take = (ws, m) => { const k = ws.join() + '|' + m.join(); if (sols.has(k)) return; const mv = bases[0].reduce((a, c, j) => a + (used.has(j) && m[j] !== c ? 1 : 0), 0); sols.set(k, { ws, m: m.slice(), d: ws.reduce((a, w, x) => a + Math.abs(w - baseW[x]), 0) + 15 * mv }); };
+      combos.forEach(ws => { if (ws.every((w, k) => w === baseW[k]) || sols.size > 24) return;
+        for (const b of bases) { if (ok(b, ws)) { take(ws, b); continue; }
+          for (const j of used) { const cur = b[j]; for (let c = 0; c < K; c++) { if (c === cur) continue; b[j] = c; if (ok(b, ws)) take(ws, b); } b[j] = cur; } } });
+      const list = [...sols.values()].sort((x, y) => x.d - y.d);
+      list.slice(0, 3).forEach(sol => { const moved = gb.assignments.map((a, j) => ({ a, j, to: cats[sol.m[j]].name })).filter(x => used.has(x.j) && x.to !== map[x.a.name]);
+        whole.push({ weights: sol.ws, alts: list.length, html: `Every grade matches with weights of ${cats.map((c, k) => `${esc(c.name)} ${sol.ws[k]}%`).join(' · ')}${moved.length ? ` and ${moved.slice(0, 3).map(x => `<b>${esc(x.a.name)}</b> in ${esc(x.to)}`).join(', ')}${moved.length > 3 ? ` and ${moved.length - 3} more` : ''}` : ''}.`,
+          fix: { label: moved.length ? 'Use these weights and categories' : 'Use these weights', run: () => { gradingFor(sec.prep).cats.forEach((c, k) => c.w = sol.ws[k]); moved.forEach(x => { g.map[x.a.name] = x.to; g.how[x.a.name] = 'fit'; }); } } }); });
+      if (list.length === 1) whole[whole.length - 1].html = whole[whole.length - 1].html.replace(/\.$/, '') + ` (Tally has ${cats.map(c => `${esc(c.name.slice(0, 1))} ${c.w}`).join(' · ')}). If that is how Focus is set, use it.`;
+      else if (list.length) whole.splice(whole.length - Math.min(3, list.length), 0, { html: `${list.length > 24 ? 'Many setups' : list.length + ' setups'} of weights${list.some(x => x.m.some((c, j) => used.has(j) && c !== bases[0][j])) ? ' and categories' : ''} reproduce every grade (Tally has ${cats.map(c => `${esc(c.name.slice(0, 1))} ${c.w}`).join(' · ')}). The export can't tell them apart: look at the weights in Focus and use the one that matches${list.length > 3 ? ' (the three closest to Tally\'s are shown)' : ''}.`, fix: null, note: true });
+    }
   }
-  // student by student: any single cell that would close the gap, likeliest first
+  // student by student
   const off = offNow.map(x => {
-    const i = x.i, focus = x.focus; const r = computeGrade(sec, i, null, map); const why = [];
-    asg.forEach(a => { const st = stOf(a, i), raw = rawOf(a, i), nm = `<b>${esc(a.name)}</b>`;
-      if (st === 'unread') why.push({ rank: 0, text: `Tally couldn't read "${esc(raw)}" on ${nm}${grade(i, { [a.name]: 0 }) === focus ? ': as a 0 the grade matches' : grade(i, { [a.name]: a.max }) === focus ? ': as full marks the grade matches' : ''}` });
-      else if (st === 'blank' && grade(i, { [a.name]: 0 }) === focus) why.push({ rank: 1, text: `the blank on ${nm} counts as a 0 in Focus` });
-      else if (st === 'excused' && grade(i, { [a.name]: 0 }) === focus) why.push({ rank: 2, text: `"${esc(raw || 'excused')}" on ${nm} counts as a 0 in Focus` });
-      else if (st === 'missing' && grade(i, { [a.name]: null }) === focus) why.push({ rank: 2, text: `the NHI on ${nm} isn't counted in Focus` });
-      else if (st === 'score' && a.values[i] != null && grade(i, { [a.name]: null }) === focus) why.push({ rank: 3, text: `the ${fmtN(a.values[i])} out of ${fmtN(a.max)} on ${nm} isn't counted in Focus` });
+    const i = x.i, focus = x.focus; const r = computeGrade(sec, i, null, map); const facts = [], flips = [], drops = [];
+    const gap = x.tally == null ? 99 : Math.abs(x.tally - focus);
+    asg.forEach(a => { const st = stOf(a, i), nm = `<b>${esc(a.name)}</b>`; const code = a.codes && a.codes[i] != null ? a.codes[i] : '';
+      if (st === 'unread') facts.push(`Tally ${isNumText(code) ? 'left out' : "couldn't read"} ${code ? `“${esc(code)}”` : 'a cell'} on ${nm}${a.max > 0 && grade(i, { [a.name]: 0 }) === focus ? ' (as a 0 the grade matches)' : ''}`);
+      else if (!(a.max > 0)) { if (st === 'score' && grade(i, { [a.name]: null }) === focus) drops.push(`the ${fmtN(a.values[i])} extra credit on ${nm} weren't counted`); }
+      else if (st === 'blank' && grade(i, { [a.name]: 0 }) === focus) flips.push(`the blank on ${nm} counted as a 0`);
+      else if (st === 'excused' && grade(i, { [a.name]: 0 }) === focus) flips.push(`the excused mark on ${nm} counted as a 0`);
+      else if (st === 'missing' && grade(i, { [a.name]: null }) === focus) flips.push(`the NHI on ${nm} weren't counted`);
+      else if (st === 'score' && a.values[i] != null && grade(i, { [a.name]: null }) === focus) drops.push(`the ${fmtN(a.values[i])} out of ${fmtN(a.max)} on ${nm} weren't counted`);
     });
-    if (r && r.pct != null && focus != null && Math.abs(r.rounded - focus) === 1 && Math.abs(r.pct - Math.floor(r.pct) - 0.5) < 0.02) why.push({ rank: 1, text: `Tally's ${r.pct.toFixed(2)}% sits on the rounding line` });
-    why.sort((a, b) => a.rank - b.rank);
-    return { i, name: gb.students[i], tally: x.tally, focus, why: why.slice(0, 4).map(w => w.text), more: Math.max(0, why.length - 4),
-      cats: r ? Object.keys(r.cats).filter(k => r.cats[k].pct != null).map(k => `${k} ${r.cats[k].pct.toFixed(1)}%`) : [] };
+    if (r && r.pct != null && gap === 1 && Math.abs(r.pct - Math.floor(r.pct) - 0.5) < 0.02) facts.push(`Tally's ${r.pct.toFixed(2)}% sits on the rounding line`);
+    // arithmetic, not a finding: only when one cell alone does it, the gap is more than a rounding point, and the class isn't off as a whole
+    let would = '';
+    if (!many && !whole.length && gap >= 2) { if (flips.length === 1) would = flips[0]; else if (!flips.length && drops.length === 1 && gap >= 3) would = drops[0]; }
+    return { i, name: gb.students[i], tally: x.tally, focus, facts, would, cats: r ? Object.keys(r.cats).filter(k => r.cats[k].pct != null).map(k => `${k} ${r.cats[k].pct.toFixed(1)}%`) : [] };
   }).sort((a, b) => Math.abs((b.tally ?? 0) - b.focus) - Math.abs((a.tally ?? 0) - a.focus) || a.name.localeCompare(b.name));
-  const out = { n: idx.length, off, whole, weights, key: gradeDiffKey(sec, offNow) };
+  const out = { n, off, whole, many, key: gradeDiffKey(sec, offNow) };
   if (gradeDiffCache.size > 40) gradeDiffCache.clear(); gradeDiffCache.set(sig, out); return out;
 }
 function openGradeDiff(s0, gd) {
-  const g = gradingFor(s0.prep); const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : d); const k = gd.off.length; const course = courseWord(s0.prep);
+  const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : d); const k = gd.off.length; const course = courseWord(s0.prep);
   const quiet = !!(state.dismissed || {})[gd.key];
-  const wWords = gd.weights ? g.cats.map((c, j) => `${esc(c.name)} ${gd.weights[j]}%`).join(' · ') : '';
-  const lead = gd.weights ? `<div class="notice info"><span>${ico('info')}</span><span><b>Every grade matches with other weights:</b> ${wWords} (Tally has ${g.cats.map(c => `${esc(c.name.slice(0, 1))} ${c.w}`).join(' · ')}). If that is what Focus is set to, use them.</span><button class="pill small" id="gdWeights">Use these weights</button></div>`
-    : gd.whole.length ? `<div class="notice info"><span>${ico('info')}</span><span>${gd.whole.slice(0, 2).join('<br>')}</span></div>` : '';
+  const lead = gd.whole.slice(0, 4).map((w, j) => `<div class="notice info gdwhole"><span>${ico('info')}</span><span>${w.html}</span>${w.fix ? `<button class="pill small" data-gdfix="${j}">${w.fix.label}</button>` : ''}</div>`).join('');
+  const rowWhy = o => { const bits = [...o.facts.map(f => f + '.'), o.would ? `Would match if ${o.would}. That is arithmetic, not proof: check that cell in Focus.` : ''].filter(Boolean);
+    return bits.length ? bits.join(' ') : gd.whole.length ? 'Covered by the note above.' : gd.many ? 'Part of a class-wide difference: no single score would be a fair guess.' : 'No single score explains it.'; };
   const m = $('#modal'); m.classList.remove('hidden');
   m.innerHTML = `<div class="panel"><header><h2>Where Tally and Focus differ · ${esc(s0.label)}</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one gdiffBody"><p>Tally works each grade out from the scores in the Focus export. The same file carries Focus's own Grade column. They agree for <b>${gd.n - k} of ${gd.n}</b> students; for ${k === 1 ? 'this one' : `these ${k}`} they don't.</p>
       ${lead}
-      <table class="checkTable gdtab"><thead><tr><th>Student</th><th>Tally</th><th>Focus</th><th>What would explain it</th></tr></thead><tbody>
-      ${gd.off.map(o => `<tr><td><button class="nm nmbtn" data-gdstu="${o.i}">${nm(o.name)}</button></td><td>${o.tally == null ? '—' : o.tally + '%'}</td><td>${o.focus}%</td><td>${o.why.length ? `${o.why.length > 1 ? 'Any one of these: ' : ''}${o.why.join('; ')}${o.more ? `; and ${o.more} more` : ''}.` : (gd.weights || gd.whole.length) ? 'See the note above.' : 'No single score explains it.'}${o.cats.length ? `<small class="gdcats">Tally's categories: ${esc(o.cats.join(' · '))}</small>` : ''}</td></tr>`).join('')}</tbody></table>
-      <p class="ghint"><b>What to do.</b> Where a line names a score, look at that cell for that student in Focus: it is usually a blank, an NHI or an excused mark that Focus and the export treat differently. Where nothing explains it, open the student's grade in Focus and compare its category averages with Tally's above: the category that differs holds the score. Categories and weights apply to every ${course} class, so when most students match they are not the cause.</p>
+      <table class="checkTable gdtab"><thead><tr><th>Student</th><th>Tally</th><th>Focus</th><th>What Tally can say</th></tr></thead><tbody>
+      ${gd.off.map(o => `<tr><td><button class="nm nmbtn" data-gdstu="${o.i}">${nm(o.name)}</button></td><td>${o.tally == null ? '—' : o.tally + '%'}</td><td>${o.focus}%</td><td>${rowWhy(o)}${o.cats.length ? `<small class="gdcats">Tally's categories: ${esc(o.cats.join(' · '))}</small>` : ''}</td></tr>`).join('')}</tbody></table>
+      <p class="ghint"><b>What to do.</b> ${gd.whole.length ? 'The note at the top reproduces every grade: if it describes how Focus is set, use it.' : gd.many ? `With ${k} of ${gd.n} off, the cause is something that applies to the whole class, and it isn't one Tally can test from the export: an assignment or category setting in Focus, or a Grade column that hasn't caught up with the scores. Open one of these students in Focus and compare its category averages with Tally's: the category that differs is where to look.` : `Open the student's grade in Focus and compare its category averages with Tally's: the category that differs holds the score. Categories and weights apply to every ${esc(course)} class, so with ${gd.n - k} students matching they are not the cause.`}</p>
       <p class="ghint">Until the two agree, Tally's screens, what-ifs and reports use Tally's figure for ${k === 1 ? 'this student' : 'these students'}.</p>
       <div class="rp-actions">${quiet ? '<button class="pill pale" id="gdFlag">Flag these again</button>' : `<button class="pill pale" id="gdQuiet" title="Takes this off Needs attention until a student or a number in it changes">Stop flagging ${k === 1 ? 'this' : `these ${k}`}</button>`}<button class="pill" id="mCancel">Done</button></div></div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-gdstu]').forEach(b => b.onclick = () => { close(); openProfile(s0.key, s0.grades.students[Number(b.dataset.gdstu)]); });
-  const gw = $('#gdWeights'); if (gw) gw.onclick = () => { const before = g.cats.map(c => c.w); g.cats.forEach((c, j) => c.w = gd.weights[j]); const each = fn => state.order.map(x => state.sections[x]).filter(x => x.prep === s0.prep && x.grades).forEach(fn);
-    each(x => { applyCategories(x); gradeSnapshot(x); }); save(); close(); render();
-    toast(`Weights are now ${g.cats.map(c => `${esc(c.name.slice(0, 1))} ${c.w}`).join(' · ')} for every ${course} class. <button class="tundo" id="gdUndo">Undo</button>`, false, 8000);
-    const u = $('#gdUndo'); if (u) u.onclick = () => { g.cats.forEach((c, j) => c.w = before[j]); each(x => { applyCategories(x); gradeSnapshot(x); }); save(); render(); toast('Undone', false, 1500); }; };
+  // every fix is one step of undo that puts back weights, categories, text-grade rules and extra credit together
+  m.querySelectorAll('[data-gdfix]').forEach(b => b.onclick = () => { const w = gd.whole[Number(b.dataset.gdfix)]; const snap = gradingSnap(s0.prep); w.fix.run(); regradeCourse(s0.prep); save(); close(); render(); gradingUndoToast(s0.prep, snap, `Changed for every ${esc(course)} class.`); });
   const q = $('#gdQuiet'); if (q) q.onclick = () => { state.dismissed = state.dismissed || {}; state.dismissed[gd.key] = todayISO(); save(); close(); render(); toast('Off Needs attention until one of these grades changes. The Grades screen still shows it.', false, 5000); };
   const f = $('#gdFlag'); if (f) f.onclick = () => { delete state.dismissed[gd.key]; save(); close(); render(); };
 }
@@ -437,10 +539,11 @@ function renderGrades(s0) {
   const pairWords = `${pair.units.length ? `<p class="ghint scmatch"><b>Matched by unit:</b> ${pair.units.map(u => `${esc(u.short)} IXL with ${u.tests.map(t => esc(t.name)).join(', ')}`).join(' · ')}. A unit counts for the students with a score on its assessment.</p>` : ''}${pair.left.length || pair.unmatched || pair.noScore ? `<p class="ghint scleft"><b>Left out:</b> ${[...Object.keys(leftBy).map(w => `${leftBy[w].map(esc).join(', ')} (${esc(w)})`), pair.unmatched ? `${plural(pair.unmatched, 'student')} not matched to IXL` : '', pair.noScore ? `${plural(pair.noScore, 'student')} with no score on these yet` : ''].filter(Boolean).join(' · ')}.</p>` : ''}`;
   // No direction claim below |r| = 0.3, and a small class is a hint, not a finding.
   const rWord = rr == null ? '' : (Math.abs(rr) < 0.3 ? 'no clear relationship between IXL work and assessment scores here' : (Math.abs(rr) < 0.5 ? 'a weak tendency for ' : Math.abs(rr) < 0.7 ? 'a moderate tendency for ' : 'a strong tendency for ') + (rr > 0 ? 'students doing more IXL to score higher on assessments' : 'students doing more IXL to score lower on assessments')) + (pts.length < 20 ? ` (${pts.length} students: treat as a hint, not proof)` : '');
-  const gd = fit && !fit.exact && !closedQ && !s._partial ? gradeDiff(s, fit) : null;
+  const gd = fit && !closedQ && !s._partial ? gradeDiff(s, fit) : null;
+  const gq = closedQ || s !== s0 ? null : gbQuestions(s0);
   const guessN = closedQ ? 0 : catGuesses(s0).length;   // unchecked guesses (the banner shows them only for an export with no Grade column)
   const hist = (s.gradeHistory || []).filter(h => snapQ(h) === n); const trend = hist.length >= 2 ? hist.map(h => { const v = h.grade.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }) : null;
-  const unverified = closedQ && s._closed ? `<div class="notice soft"><span>${ico('check')}</span><span><b>${esc(Q_NAMES[n - 1])} is closed.</b> This is the copy Tally kept on ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))}: every score and the final grades. Nothing here raises an alert.</span></div>` : closedQ ? `<div class="notice info"><span>${ico('info')}</span><span><b>${esc(Q_NAMES[n - 1])} isn't closed yet.</b> A newer export started the next quarter, so Tally kept this copy of ${esc(Q_NAMES[n - 1])} before it was replaced. Close it under <b>Quarters</b> when grades are final.</span></div>` : s._partial ? '' : !gb.overall ? (guessN ? `<div class="notice info catcheck"><span>${ico('info')}</span><span><b>${guessN === 1 ? '1 category is Tally\'s guess' : `${guessN} categories are Tally's guesses`}</b> from ${guessN === 1 ? 'its name' : 'their names'}: this export has no Grade column to check ${guessN === 1 ? 'it' : 'them'} against. Change any that are wrong under <b>Assignments</b>.</span><button class="pill small" id="catKeep">${guessN === 1 ? 'It\'s right' : 'These are right'}</button></div>` : '') : (gd ? `<div class="notice${(state.dismissed || {})[gd.key] ? ' soft' : ''} gdiff"><span>${ico((state.dismissed || {})[gd.key] ? 'info' : 'warn')}</span><span><b>Tally's grade differs from Focus's for ${gd.off.length} of ${gd.n} students</b>: ${gd.off.slice(0, 3).map(o => `${nm(o.name)} (Tally ${o.tally == null ? '—' : o.tally}, Focus ${o.focus})`).join(', ')}${gd.off.length > 3 ? ` and ${gd.off.length - 3} more` : ''}. ${gd.weights ? 'Other weights reproduce every grade.' : gd.whole.length ? 'One assignment explains all of them.' : gd.off.length * 3 <= gd.n ? `The other ${gd.n - gd.off.length} match exactly, so it comes down to single scores, not categories or weights.` : ''}</span><button class="pill small" id="gdWhy">See why</button></div>` : '');
+  const unverified = closedQ && s._closed ? `<div class="notice soft"><span>${ico('check')}</span><span><b>${esc(Q_NAMES[n - 1])} is closed.</b> This is the copy Tally kept on ${esc(fmtDate((quarters().closed[n].at || '').slice(0, 10)))}: every score and the final grades. Nothing here raises an alert.</span></div>` : closedQ ? `<div class="notice info"><span>${ico('info')}</span><span><b>${esc(Q_NAMES[n - 1])} isn't closed yet.</b> A newer export started the next quarter, so Tally kept this copy of ${esc(Q_NAMES[n - 1])} before it was replaced. Close it under <b>Quarters</b> when grades are final.</span></div>` : s._partial ? '' : !gb.overall ? (guessN ? `<div class="notice info catcheck"><span>${ico('info')}</span><span><b>${guessN === 1 ? '1 category is Tally\'s guess' : `${guessN} categories are Tally's guesses`}</b> from ${guessN === 1 ? 'its name' : 'their names'}: this export has no Grade column to check ${guessN === 1 ? 'it' : 'them'} against. Change any that are wrong under <b>Assignments</b>.</span><button class="pill small" id="catKeep">${guessN === 1 ? 'It\'s right' : 'These are right'}</button></div>` : '') : (gd ? `<div class="notice${(state.dismissed || {})[gd.key] ? ' soft' : ''} gdiff"><span>${ico((state.dismissed || {})[gd.key] ? 'info' : 'warn')}</span><span><b>Tally's grade differs from Focus's for ${gd.off.length} of ${gd.n} students</b>: ${gd.off.slice(0, 3).map(o => `${nm(o.name)} (Tally ${o.tally == null ? '—' : o.tally}, Focus ${o.focus})`).join(', ')}${gd.off.length > 3 ? ` and ${gd.off.length - 3} more` : ''}. ${gq && gq.open ? 'Decide the open items first: they are left out of the grade, and that may be the whole difference.' : gd.whole.length ? 'Tally found a setting that reproduces every grade.' : gd.many ? 'That many points to something class-wide; Tally tested what it can and none of it reproduces Focus.' : `The other ${gd.n - gd.off.length} match exactly, so it comes down to single scores, not categories or weights.`}</span><button class="pill small" id="gdWhy">See why</button></div>` : '');
   const cell = (v, cls) => `<td class="${cls || ''}">${v}</td>`;
   // Fixing a category mistake: Focus's own grades say which rows are wrong, so the fix is one button, and anything set by
   // hand goes back to Tally in one more. A kept quarter is read-only; it says how to change it.
@@ -448,8 +551,11 @@ function renderGrades(s0) {
   const catWord = k => k === 1 ? 'category' : 'categories';
   const catBar = closedQ ? `<p class="ghint">To change a category in ${esc(Q_NAMES[n - 1])}, reopen it under <b>Quarters</b>, change it, then close it again.</p>`
     : `${dis.length && fit.focusMap ? `<div class="notice info catfix"><span>${ico('info')}</span><span><b>Focus's grades disagree with ${dis.length === 1 ? 'a category' : dis.length + ' categories'} you set:</b> ${dis.slice(0, 3).map(esc).join(', ')}${dis.length > 3 ? ` and ${dis.length - 3} more` : ''}.</span><button class="pill small" id="catUseFocus">Use Focus's ${catWord(dis.length)}</button></div>` : ''}${userSet.length ? `<p class="ghint catline">You set ${userSet.length} ${catWord(userSet.length)} by hand. Changes apply to every ${course} class. <button class="linkbtn inl" id="catAllBack">Let Tally decide all ${userSet.length}</button></p>` : `<p class="ghint catline">A change here applies to every ${course} class.</p>`}`;
+  // text grades and no-point columns the export leaves open: asked once, per course ("Decide"); quiet once answered
+  const gqNotice = !gq || !(gq.open || gq.decided || gq.range.length) ? '' : gq.open ? `<div class="notice gbq"><span>${ico('warn')}</span><span><b>${gq.open === 1 ? 'One thing' : gq.open + ' things'} in this gradebook ${gq.open === 1 ? 'needs' : 'need'} a decision</b>: ${[...gq.codes.filter(o => !o.rule).map(o => `“${esc(o.show)}” (${plural(o.n, 'cell')})`), ...gq.noPoints.filter(o => !o.rule).map(o => `${esc(o.name)} has no points`)].slice(0, 4).join(', ')}. The export doesn't say how Focus counts ${gq.open === 1 ? 'it' : 'them'}, so ${gq.open === 1 ? 'it is' : 'they are'} left out of the grade until you say.</span><button class="pill small" id="gqDecide">Decide</button></div>`
+    : `<div class="notice soft gbq"><span>${ico('info')}</span><span>${[...gq.codes.map(o => `“${esc(o.show)}” ${o.rule === 'zero' ? 'counts as a zero' : 'is left out'}`), ...gq.noPoints.map(o => `${esc(o.name)} ${o.rule === 'ec' ? 'is extra credit' : 'is not in the grade'}`), gq.range.length ? `${plural(gq.range.length, 'score')} out of range ${gq.range.length === 1 ? 'is' : 'are'} left out` : ''].filter(Boolean).slice(0, 4).join(' · ')}.</span><button class="pill small pale" id="gqDecide">${gq.codes.length || gq.noPoints.length ? 'Change' : 'See'}</button></div>`;
   const html = `<div class="grades">
-    ${unverified}
+    ${gqNotice}${unverified}
     <div class="gcards">
       <div class="gcard"><small>${closedQ ? 'Final class average' : 'Class average'}</small><b>${pct1(avg)}</b>${closedQ ? `<span>${esc(Q_NAMES[n - 1])}, as closed</span>` : prevAvg != null && avg != null ? `<span class="${Math.round(avg) - Math.round(prevAvg) < 0 ? 'down' : 'up'}">${signedPts(Math.round(avg) - Math.round(prevAvg))} since ${esc(fmtDate(prev.date))}</span>` : '<span>first import</span>'}</div>
       <div class="gcard"><small>Letters</small><b class="letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${letters[l]}</em></i>`).join('')}</b></div>
@@ -470,7 +576,7 @@ function renderGrades(s0) {
   </div>`;
   const wrap = $('#gridwrap'); wrap.innerHTML = html;
   wireScatter(wrap, pts, p => openProfile(s0.key, gb.students[p.i]));
-  { const why = $('#gdWhy'); if (why && gd) why.onclick = () => openGradeDiff(s0, gd); }
+  { const why = $('#gdWhy'); if (why && gd) why.onclick = () => openGradeDiff(s0, gd); const dq = $('#gqDecide'); if (dq) dq.onclick = () => openGbQuestions(s0); }
   wrap.querySelectorAll('[data-cat]').forEach(sel => sel.onchange = () => { if (closedQ) return; const snap = catSnap(s0.prep); const nm0 = sel.dataset.cat; g.map[nm0] = sel.value; g.how[nm0] = 'user'; catRefresh(s0.prep); save(); render();
     catUndoToast(s0.prep, snap, `<b>${esc(nm0)}</b> is ${esc(sel.value)} in every ${course} class.`); });
   wrap.querySelectorAll('[data-back]').forEach(b => b.onclick = () => { const snap = catSnap(s0.prep); const nm0 = b.dataset.back; catLetTally(s0.prep, [nm0]); save(); render(); catUndoToast(s0.prep, snap, `<b>${esc(nm0)}</b> is back to Tally: ${esc(gradingFor(s0.prep).map[nm0] || '')}.`); });

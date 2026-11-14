@@ -1322,6 +1322,55 @@ the situation is."*
 - `tests/corr-match.js` (36 checks) covers all of it. `tests/grades.js` compared the import's LOCAL day with the UTC
   day and failed every evening after 7 pm Eastern: fixed.
 
+## Review items 1 and 2 built (14 Nov 2026): the reader asks instead of guessing; "See why" claims nothing it can't prove
+
+Croix, on the priority list: *"Yes. Get on it"* (items 1 and 2 of the backlog below, together).
+
+**1. The gradebook reader** (`parseGradebook` in app.js; `computeGrade`, `applyCodes`, `gbQuestions`,
+`openGbQuestions` in grades.js; `cleanGB` keeps `a.codes`)
+- **A percent cell is a percent of the column's points.** "50%" in a "20 Points" column is 10; only a column with no
+  points anywhere is read out of 100. (One percent cell used to make the whole column out of 100.)
+- **A 0-point column is extra credit**: its points add to the category's earned and nothing to the possible. This is
+  Focus's own rule (Focus teacher help, "Extra Credit Assignments": points left blank or zero → "automatically
+  calculated as extra credit"). Tally used to drop these columns.
+- **A column whose export shows no points at all** (`max == null`) is NOT counted and is asked about: Extra credit /
+  Not in the grade (`g.ec[name]`, per course). Never guessed: a header Tally failed to read must not become bonus points.
+- **Text grades are asked, not guessed.** Only words with one meaning are read: NHI / M / Missing = zero; NG / EX / EXC
+  / Excused / Exempt = left out; Z = 0. Anything else ("Late", "-", "*", "X", "I", "Inc", "E", "N/A": Focus's custom
+  grades are set by the district and each either zeroes or excludes) is kept in `a.codes[i]`, left out of the grade
+  (`unread`), and decided once per course in **Decide** (`g.codes[CODE] = 'zero' | 'out'`). `applyCodes(gb, prep)` runs
+  on every import and on every rule change (`regradeCourse`). Where the export has the Grade column each choice shows
+  "Focus's grades match this way" / "Closer to Focus's grades".
+- **A score below 0 or over twice the points** is left out, kept in `a.codes` and shown in Decide ("out of range").
+- Grades screen: a notice above everything while something is undecided ("N things in this gradebook need a
+  decision … [Decide]"), a quiet line with **Change** afterwards. Needs attention carries it too.
+- A gradebook saved before today keeps the statuses the old reader gave it ("Late" as a zero, and so on) until the
+  next export of it is imported; then its text grades become questions.
+
+**2. "See why"** (`gradeDiff`, `openGradeDiff`)
+- A class-wide cause is reported only when it reproduces **every** student's grade, and each comes with a one-click
+  fix where the fix is Tally's to make: the categories the fit proves (when the stored category is a wrong guess and
+  the fit is exact: this case used to raise nothing), a text grade's rule, a no-points column as extra credit, other
+  weights, and weights **with one assignment in another category** (searched on plain arrays: ~250k trials in
+  milliseconds; skipped unless the arrays reproduce `computeGrade` first). When more than one setup of weights and
+  categories reproduces every grade, all are shown (three closest) with "the export can't tell them apart: look at
+  the weights in Focus". Causes that are Focus's to change (an assignment not counted, blanks as zeros, NHIs left
+  out) are named without a button.
+- Per student: what is simply true is always said (a cell Tally couldn't read, a grade on the rounding line). A
+  single-cell line is worded **"Would match if … That is arithmetic, not proof"**, only when exactly one cell does
+  it, never for a one-point gap (three points for "this score weren't counted"), and never when more than a third
+  of the class (or more than three students) is off: then the row says it is class-wide.
+- Every fix is one undo (`gradingSnap` / `gradingRestore`) that puts back weights, categories, text-grade rules and
+  extra credit together (the first build's undo left categories moved).
+- `gradeOff(sec)` compares the grade the screens show with Focus whatever the fit says; the notice and Needs
+  attention use it.
+- `tests/gradebook-reading.js` (30 checks), including the negative cases the first build had none of: random ±1
+  noise → no claim; half the class off → "class-wide", no per-student guesses; a 65-assignment class where nothing
+  explains it → the whole diagnosis in well under 4 s and claims nothing.
+- Still not seen: his real mismatch. With extra credit now counted and text grades asked about, the next real import
+  is the test. If "See why" still says class-wide with nothing found, the next suspects are in backlog item 11
+  (categories beyond the three, tab-separated exports) or a Grade column that lags the scores.
+
 ## Hostile review, 14 Nov 2026: the backlog (nothing here is built yet except where said)
 
 Croix: *"run over tally with an aggressive reviewer that wants to break or criticize everything. Then look over it's
@@ -1330,13 +1379,13 @@ copy of the repo (33 findings, most reproduced with throwaway scripts; the scrip
 the order recommended to Croix. "Checked" = the claim was confirmed in the code by the session that vetted it; the
 rest rest on the reviewer's own reproduction.
 
-1. **Gradebook reading that silently changes grades** (likely feeds his real Focus mismatch). Checked.
+1. **DONE 14 Nov (see the section above).** Gradebook reading that silently changes grades (likely feeds his real Focus mismatch). Checked.
    - a column whose header has no "N Points" gets `max = null` and `computeGrade` skips it with no notice;
    - one percent cell in a column sets the whole column's max to 100 (`if (pct[j]) max = 100`, parseGradebook);
    - 0-point (extra credit) columns are dropped; `missingRe` reads "Late", "-" and "—" as NHI = 0 and `excusedRe`
      reads "I", "Inc", "E" as excused: guesses, not Focus's documented codes; scores below 0 or far above max pass.
    Fix: notice + ask instead of guessing; then re-check against a real export.
-2. **"See why" states coincidences as facts** (`gradeDiff`, built 13 Nov). With Focus's grade off by a random 1 point,
+2. **DONE 14 Nov (see the section above).** "See why" states coincidences as facts (`gradeDiff`, built 13 Nov). With Focus's grade off by a random 1 point,
    every student got 1–9 single-cell "explanations", all false; `tests/corr-match.js` plants only true causes. Fix:
    name a cell only when it is the single explanation, word it "would match if", say nothing per student when most
    of the class is off or the gap is 1 point, search weights and categories together, add a noise test. Related:

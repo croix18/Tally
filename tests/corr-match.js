@@ -105,7 +105,7 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   check(new RegExp(`differs from Focus's for 1 of 23 students: ${a.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(Tally ${a.now}, Focus ${a.as0}\\)`).test(n1) && /The other 22 match exactly/.test(n1) && !/Categories/.test(n1), 'the notice names the student and both numbers, and no longer sends him to Categories: ' + n1);
   await p.click('#gdWhy'); await p.waitForTimeout(300);
   const d1 = (await p.locator('.gdtab tbody').innerText()).replace(/\s+/g, ' ');
-  check(d1.includes(a.name) && d1.includes(`the blank on ${a.asg} counts as a 0 in Focus`) && /Tally's categories: Assessments [\d.]+%/.test(d1), 'See why: the blank that Focus counts as a 0 is named, with Tally\'s category averages to compare: ' + d1.slice(0, 260));
+  check(d1.includes(a.name) && d1.includes(`Would match if the blank on ${a.asg} counted as a 0. That is arithmetic, not proof`) && /Tally's categories: Assessments [\d.]+%/.test(d1), 'See why: the one cell that would close the gap is named as arithmetic, not as fact, with Tally\'s category averages to compare: ' + d1.slice(0, 260));
   check(/agree for 22 of 23 students/.test((await p.locator('.gdiffBody').innerText()).replace(/\s+/g, ' ')), 'the dialog says how many agree');
   // the Overview lists it, until he says to stop
   const homeHas = async () => p.evaluate(K => window.__tally.attentionItems(window.__tally.state.sections[K]).map(x => x.text).join(' | '), K);
@@ -117,15 +117,15 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   // (b) class-wide: Focus isn't counting one assignment
   const bRes = await p.evaluate(K => { const T = window.__tally; const s = T.state.sections[K]; const gb = s.grades; const x = gb.assignments.find(q => q.name === 'Unit 1 Assessment');
     // Focus's column rebuilt from the scores without the notebook check
-    gb.overall = gb.students.map((_, i) => T.computeGrade(s, i, { [x.name]: null }).rounded); T.render(); const f = T.fitCategories(s); const gd = T.gradeDiff(s, f); return gd ? { n: gd.off.length, whole: gd.whole.join(' / '), weights: gd.weights } : null; }, K);
-  check(bRes && bRes.n >= 2 && /Every grade matches when <b>Unit 1 Assessment<\/b> isn't counted/.test(bRes.whole) && !bRes.weights, 'an assignment Focus isn\'t counting is found and named for the whole class: ' + JSON.stringify(bRes).slice(0, 200));
+    gb.overall = gb.students.map((_, i) => T.computeGrade(s, i, { [x.name]: null }).rounded); T.render(); const f = T.fitCategories(s); const gd = T.gradeDiff(s, f); return gd ? { n: gd.off.length, whole: gd.whole.map(w => w.html).join(' / '), weights: gd.whole.some(w => w.weights), fix: gd.whole.some(w => w.fix) } : null; }, K);
+  check(bRes && bRes.n >= 2 && /Every grade matches when <b>Unit 1 Assessment<\/b> isn't counted/.test(bRes.whole) && !bRes.weights && !bRes.fix, 'an assignment Focus isn\'t counting is found and named for the whole class (nothing for Tally to change, so no button): ' + JSON.stringify(bRes).slice(0, 200));
   // (c) class-wide: the weights in Tally are not Focus's
   const cRes = await p.evaluate(K => { const T = window.__tally; const s = T.state.sections[K]; const gb = s.grades; gb.overall = gb.students.map((_, i) => T.computeGrade(s, i).rounded); const g = T.gradingFor(s.prep); g.cats.forEach(c => c.w = c.name === 'Assessments' ? 50 : c.name === 'Classwork' ? 40 : 10); T.save(); T.render();
-    const f = T.fitCategories(s); const gd = T.gradeDiff(s, f); return gd ? { n: gd.off.length, weights: gd.weights, exact: f.exact } : { exact: f.exact }; }, K); await p.waitForTimeout(300);
+    const f = T.fitCategories(s); const gd = T.gradeDiff(s, f); return gd ? { n: gd.off.length, weights: (gd.whole.find(w => w.weights && w.weights.join() === '70,25,5') || {}).weights, at: gd.whole.findIndex(w => w.weights && w.weights.join() === '70,25,5'), all: gd.whole.map(w => w.html), exact: f.exact } : { exact: f.exact }; }, K); await p.waitForTimeout(300);
   check(cRes.exact === false && cRes.weights && cRes.weights.join() === '70,25,5', 'wrong weights: the set that reproduces every Focus grade is found (' + JSON.stringify(cRes.weights) + ')');
-  await p.click('#gdWhy'); await p.waitForTimeout(300); await p.click('#gdWeights'); await p.waitForTimeout(500);
+  await p.click('#gdWhy'); await p.waitForTimeout(300); await p.click(`[data-gdfix="${cRes.at}"]`); await p.waitForTimeout(500);
   const fixed = await p.evaluate(K => { const T = window.__tally; const s = T.state.sections[K]; return { exact: T.fitCategories(s).exact, w: T.gradingFor(s.prep).cats.map(c => c.w).join() }; }, K);
-  check(fixed.exact && fixed.w === '70,25,5' && !(await p.$('.notice.gdiff')), '"Use these weights" sets them and the grades match Focus again');
+  check(fixed.exact && fixed.w === '70,25,5' && !(await p.$('.notice.gdiff')), '"Use these weights" sets them and the grades match Focus again: ' + JSON.stringify(fixed) + ' ' + (await p.$('.notice.gdiff') ? (await p.locator('.notice.gdiff').innerText()).slice(0, 200) : ''));
   await p.click('#gdUndo'); await p.waitForTimeout(400); check((await p.evaluate(K => window.__tally.gradingFor(window.__tally.state.sections[K].prep).cats.map(c => c.w).join(), K)) === '50,40,10', 'and it can be undone');
   check(errs.length === 0, 'no page errors: ' + errs.join(' | '));
   await b.close(); done();

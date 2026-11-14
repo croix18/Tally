@@ -18,7 +18,7 @@ const { chromium, fs, path, exe, check, done, tmp, need, unskip, APP } = require
   const hard=await p.evaluate(()=>{const rows=[['Name: Mr. S','Period: 3'],['Student ID','Student','Grade','Unit 1 Test','Grade Check 2','Quiz','Quiz','Semester Total'],['100001','Doe, Jane','88%','17/20','9','NG','85%','88'],['100002','Roe, Rick','70%','Z','M','X','','70'],['100003','Poe, Pat','90%','20/20','10','19','100%','90']]; return window.__tally.parseGradebook(rows);});
   check(hard && hard.students[0]==='Doe, Jane' && hard.assignments.map(a=>a.name).join('|')==='Unit 1 Test|Grade Check 2|Quiz|Quiz (2)','hard gradebook: ID column skipped, preamble skipped, Grade Check kept, dup Quiz renamed, Semester Total skipped: '+(hard&&hard.assignments.map(a=>a.name).join('|')));
   check(hard && JSON.stringify(hard.assignments[0].values)==='[17,0,20]' && hard.assignments[0].max===20,'17/20 → 17 of 20; Z → 0');
-  check(hard && hard.assignments[2].excused===2 && hard.assignments[2].values[2]===19,'NG/X excused, not missing');
+  check(hard && hard.assignments[2].excused===1 && hard.assignments[2].status[0]==='excused' && hard.assignments[2].status[1]==='unread' && hard.assignments[2].codes[1]==='X' && hard.assignments[2].values[2]===19,'NG is excused; X (a district-set grade) is kept as a code to ask about, not guessed (14 Nov 2026)');
   check(hard && hard.assignments[3].percent && hard.assignments[3].max===100,'% column → max 100');
   check(/Imported 1 file/.test(await p.textContent('#toast')) && /Focus gradebook/.test(await p.evaluate(()=>JSON.stringify(window.__tally.state.lastImport))),'gradebook toast and a stored import result');
   // html-as-xls and tab-as-xls -> same parse; the same students again, so both are placed on 7T3A without the picker

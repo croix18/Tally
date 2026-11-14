@@ -29,7 +29,8 @@ function cleanGB(gb) {
   const assignments = [];
   for (const y of gb.assignments) {
     if (!y || typeof y.name !== 'string' || !Array.isArray(y.values) || y.values.length !== n || (y.status && (!Array.isArray(y.status) || y.status.length !== n))) return null;
-    assignments.push({ name: y.name.slice(0, 200), max: numOrNull(y.max), values: y.values.map(numOrNull), status: y.status ? y.status.map(t => GB_STATUS.includes(t) ? t : 'unread') : undefined,
+    const codes = {}; if (y.codes && typeof y.codes === 'object') for (const k of Object.keys(y.codes)) { const i = Number(k); if (Number.isInteger(i) && i >= 0 && i < n && typeof y.codes[k] === 'string') codes[i] = y.codes[k].slice(0, 24); }
+    assignments.push({ ...(Object.keys(codes).length ? { codes } : {}), name: y.name.slice(0, 200), max: numOrNull(y.max), values: y.values.map(numOrNull), status: y.status ? y.status.map(t => GB_STATUS.includes(t) ? t : 'unread') : undefined,
       missing: y.status ? y.status.filter(t => t === 'missing').length : Number(y.missing) || 0, excused: Number(y.excused) || 0, due: str(y.due, 20), assignedOn: str(y.assignedOn, 20), category: str(y.category, 60), categoryFromFile: !!y.categoryFromFile });
   }
   return { students, ids: Array.isArray(gb.ids) ? gb.ids.map(x => str(String(x ?? ''), 40)) : [], overall: Array.isArray(gb.overall) && gb.overall.length === n ? gb.overall.map(numOrNull) : null,
