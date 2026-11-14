@@ -1399,6 +1399,23 @@ Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 ch
   consistent IXL column per unnamed student: the board's own charts need a look before shuffling), 10 (school-year
   rollover, before August 2027), then the smaller ones in 11.
 
+## The privacy screen (14 Nov 2026)
+
+Croix: *"Can you make a privacy screen. So if I haven't used it in x amount of time it blurs the screen."*
+- `settings.privacy` = minutes untouched before Tally is hidden: Off, 1, 2, 5, 10, 15; **default 5** (Settings →
+  Files, above Autosave). `veil()` / `unveil()` / `veilTick()` in app.js; `#veil` in app.html.
+- Hidden means: every top-level element is blurred (28px) and `inert` (no click, no Tab, no shortcut: a window-level
+  capture key handler swallows the key that wakes it), under a cover with a card saying why and a **Show Tally**
+  button. A click anywhere or a key press shows it again; moving the mouse does not (a bumped desk mustn't uncover
+  it). Any use, mouse movement included, restarts the clock; coming back to the tab after the time has passed hides
+  it at once.
+- It is a guard against eyes on an unattended screen, **not a lock**: anyone at the keyboard can bring it back. If he
+  wants a PIN to show it again, that is the next step (not asked for).
+- Never hides: with no class loaded, in a Board save, on the Board (`lbMode`) or a student's Show page (`showMode`):
+  those are there to be looked at and carry no names.
+- On demand: "Hide the screen now" in the finder (type "hide").
+- `tests/privacy-screen.js` (18 checks; `__tally.idle(ms)` moves the clock).
+
 ## Remove a print (14 Nov 2026)
 
 Croix: *"I printed off worksheets a few weeks ago as an experiment and tally is still expecting and tracking for them
