@@ -76,7 +76,9 @@ function hydrate(s) {
 // Takes a candidate state in: migrated on its own first, so a state that can't be migrated never replaces the one in use
 // half-done (audit, 24 Oct). Returns the state now in use.
 function adopt(s) { const keep = state; state = s; try { migrate(); } catch (e) { state = keep; throw e; } return state; }
+let loadLost = [];   // what migrate() had to leave out of a saved state because it couldn't be read (said at boot, with the data as it was kept)
 function migrate() {
+  loadLost = [];
   const st = state.settings || {};
   state.settings = { copyNames: !!st.copyNames, hideNames: !!st.hideNames, showAllUnits: !!st.showAllUnits, leaderboard: !!st.leaderboard, lbFocus: st.lbFocus === 'acc' || st.lbFocus === 'on' ? st.lbFocus : 'both', lbTab: st.lbTab === 'lab' ? 'lab' : 'race', labUnit: typeof st.labUnit === 'string' ? (st.labUnit && !/^(unit|skill|gb|custom|grade):/.test(st.labUnit) ? 'unit:' + st.labUnit : st.labUnit) : '', labStats: st.labStats === 2 ? 2 : st.labStats ? 1 : 0, labTukey: !!st.labTukey, labDots: st.labDots && typeof st.labDots === 'object' ? st.labDots : {}, useBest: st.useBest !== false, duplex: st.duplex !== false, copyMode: st.copyMode, labPrep: st.labPrep === 'on' ? 'on' : st.labPrep === 'both' ? 'both' : 'acc', labPick: { acc: st.labPick && typeof st.labPick.acc === 'string' ? st.labPick.acc.slice(0, 200) : '', on: st.labPick && typeof st.labPick.on === 'string' ? st.labPick.on.slice(0, 200) : '' }, labRows: st.labRows === 'class' ? 'class' : typeof st.labRows === 'string' && /^vs:[^\u0000-\u001f]{1,300}$/.test(st.labRows) ? st.labRows : 'course', labCmp: Object.fromEntries(['acc', 'on'].map(c => [c, st.labCmp && typeof st.labCmp[c] === 'string' && /^(class|pool|vs:[^\u0000-\u001f]{1,300})$/.test(st.labCmp[c]) ? st.labCmp[c] : 'class'])),   /* a class key can be a renamed file's stem (spaces, dots): labCmpFor checks it names a class */ labCorr: Object.fromEntries(['acc', 'on'].map(c => { const o = st.labCorr && st.labCorr[c]; const str = v => typeof v === 'string' && v.length < 300 ? v : undefined; return [c, o && typeof o === 'object' ? { x: str(o.x), y: str(o.y) } : {}]; })), labPairs: st.labPairs && typeof st.labPairs === 'object' ? Object.fromEntries(Object.entries(st.labPairs).filter(([k, v]) => SAFE_KEY(k) && typeof v === 'string').slice(0, 200)) : {}, labValues: !!st.labValues, remindDays: st.remindDays == null ? 7 : ([0, 7, 14, 30].includes(st.remindDays) ? st.remindDays : 7),
     skipFirst: { acc: st.skipFirst && Number.isInteger(st.skipFirst.acc) ? st.skipFirst.acc : 0, on: st.skipFirst && Number.isInteger(st.skipFirst.on) ? st.skipFirst.on : 1 }, details: !!st.details, labPct: !!st.labPct, labKind: ['box', 'dots', 'hist', 'stem', 'bar', 'circle', 'line', 'avg', 'corr'].includes(st.labKind) ? st.labKind : 'box', labAvg: !!st.labAvg, labBin: [1, 2, 5, 10].includes(st.labBin) ? st.labBin : 0, skipFirstV2: !!st.skipFirstV2, onlyCurrent: { acc: !!(st.onlyCurrent && st.onlyCurrent.acc), on: !!(st.onlyCurrent && st.onlyCurrent.on) },
@@ -105,10 +107,10 @@ function migrate() {
   state.settings.copyMode = ['points', 'names', 'ids'].includes(state.settings.copyMode) ? state.settings.copyMode : (state.settings.copyNames ? 'names' : 'points');
   for (const k of Object.keys(state.sections)) { if (!SAFE_KEY(k)) { delete state.sections[k]; continue; }
     const s = state.sections[k];
-    if (!s || typeof s !== 'object' || !Array.isArray(s.students) || !Array.isArray(s.skills) || !Array.isArray(s.scores)) { delete state.sections[k]; continue; }
+    if (!s || typeof s !== 'object' || !Array.isArray(s.students) || !Array.isArray(s.skills) || !Array.isArray(s.scores)) { loadLost.push({ label: s && typeof s.label === 'string' ? s.label : k, what: 'class' }); delete state.sections[k]; continue; }
     if (typeof s.label !== 'string') s.label = s.autoLabel || k;
     // A gradebook is only usable whole: assignments with values/status arrays of the students' length.
-    if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) delete s.grades; else gb.assignments.forEach(a => { a.missing = a.status ? a.status.filter(t => t === 'missing').length : Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); }
+    if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) { loadLost.push({ label: s.label, what: 'gradebook' }); delete s.grades; } else { if (gb.students.every(x => typeof x === 'string')) uniqueNames(gb.students, Array.isArray(gb.ids) ? gb.ids : []); gb.assignments.forEach(a => { a.missing = a.status ? a.status.filter(t => t === 'missing').length : Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); } }
     s.stuNotes = cleanNotes(s.stuNotes); s.family = cleanFamily(s.family); s.practice = cleanPractice(s.practice); s.confForms = cleanConfForms(s.confForms); s.reportLog = cleanReportLog(s.reportLog);
     s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s.overrides = cleanOverrides(s.overrides); s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
@@ -159,9 +161,20 @@ function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (f
 let saveCount = 0;
 const noCache = s => { if (!s || typeof s !== 'object') return s; const o = {}; for (const k of Object.keys(s)) if (k[0] !== '_') o[k] = s[k]; return o; };   // _keys and the like are caches, rebuilt on the next paint: saving them made the same work look changed
 function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = noCache(state.sections[k]); const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
-function save() { saveCount++; try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save: this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
+function save() { saveCount++; if (extPending && !(($('#modal') || {}).classList && !$('#modal').classList.contains('hidden'))) settleExt();   // another tab saved while something was being typed here: its changes and this tab's go out together (a dialog still open holds the old objects, so that case waits for it to close: extIdle)
+  try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save: this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
+// Two students with the same name in one gradebook: every screen finds a student by name, so both showed the first
+// one's grade and missing work (review, 14 Nov 2026). Each gets a mark that tells them apart and stays the same from
+// import to import: the last four digits of the Focus Student ID, or the row's order when the export has no IDs.
+function uniqueNames(students, ids) {
+  const n = {}; students.forEach(s => { n[s] = (n[s] || 0) + 1; }); const seen = {};
+  students.forEach((s, i) => { if (n[s] < 2 || /\((ID …\w+|\d+)\)$/.test(s)) return; seen[s] = (seen[s] || 0) + 1; const id = ids && ids[i] ? String(ids[i]).replace(/\s+/g, '') : '';
+    const same = id && students.some((t, j) => j !== i && t === s && ids[j] && String(ids[j]).replace(/\s+/g, '').slice(-4) === id.slice(-4));
+    students[i] = `${s} (${id && !same ? 'ID …' + id.slice(-4) : seen[s]})`; });
+  return students;
+}
 function norm(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -247,11 +260,38 @@ function renderKeep() {
 /* Tally open in two tabs (or windows) of one browser: each save in one is taken up by the other at once, so a tab
    left open can never write its older copy over newer work (audit, 22 Oct 2026: a stale tab's next save erased a
    note added in the other). An open dialog in this tab is closed first. */
+/* 14 Nov 2026 (review): that closed a dialog the teacher was typing in and the text was gone. Now, while something is
+   being typed here, the other tab's save waits: this tab takes it in when the dialog closes or at this tab's next
+   save, by a three-way merge (what changed here since the other tab saved, what the other tab changed, the state
+   both started from). Where both changed the very same thing, what was typed here stays. */
+let extPending = null;   // { base: this tab's saved form when the other tab's save arrived, theirs: the other tab's newest save }
+function merge3(base, mine, theirs) {
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v); const same = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
+  if (same(mine, base)) return theirs; if (same(theirs, base) || same(mine, theirs)) return mine;
+  if (isObj(mine) && isObj(theirs)) { const b0 = isObj(base) ? base : {}; const out = {}; for (const k of new Set([...Object.keys(mine), ...Object.keys(theirs)])) { const v = merge3(b0[k], mine[k], theirs[k]); if (v !== undefined) out[k] = v; } return out; }
+  return mine;
+}
+const typingNow = () => { const dirty = el => !!el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|button|file|range|color|submit)$/i.test(el.type || ''))) && el.value !== el.defaultValue;
+  const m = $('#modal'); return (m && !m.classList.contains('hidden') && [...m.querySelectorAll('textarea, input')].some(dirty)) || dirty(document.activeElement); };
+// Take the waiting save in. Returns true when this tab's state was replaced by the merge.
+function settleExt() {
+  if (!extPending) return false; const { base, theirs } = extPending; extPending = null;
+  try { const merged = merge3(JSON.parse(base), JSON.parse(JSON.stringify(stateForSave())), JSON.parse(theirs)); const s2 = hydrate(merged); if (!s2) return false; adopt(s2); printCache = { n: -1, v: '' }; return true; } catch (err) { console.error(err); return false; }
+}
+function takeExt(raw) { const s2 = hydrate(JSON.parse(raw)); if (!s2) return; const m = $('#modal'); if (m && !m.classList.contains('hidden')) { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; }
+  adopt(s2); printCache = { n: -1, v: '' }; saveCount++; render(); toast('Updated with the changes made in another Tally tab.', false, 3500); }
 window.addEventListener('storage', e => {
   if (e.key !== LS_KEY || e.newValue == null || wiping || bootError) return;
-  try { const s2 = hydrate(JSON.parse(e.newValue)); if (!s2) return; const m = $('#modal'); if (m && !m.classList.contains('hidden')) { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; }
-    adopt(s2); printCache = { n: -1, v: '' }; saveCount++; render(); toast('Updated with the changes made in another Tally tab.', false, 3500); } catch (err) { console.error(err); }
+  try {
+    if (extPending || typingNow()) { if (!extPending) extPending = { base: JSON.stringify(stateForSave()) }; extPending.theirs = e.newValue;
+      toast('Another Tally tab just saved. Finish what you are typing: it is kept, and this tab takes the other tab\'s changes in when you are done.', false, 7000); return; }
+    takeExt(e.newValue);
+  } catch (err) { console.error(err); }
 });
+// the dialog closed, or the field was left, with nothing saved here: the waiting save comes in now
+const extIdle = () => { if (!extPending || typingNow()) return; const m = $('#modal'); if (m && !m.classList.contains('hidden')) return; if (settleExt()) { try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); } catch (e) {} saveCount++; render(); toast('Updated with the changes made in another Tally tab.', false, 3500); } };
+document.addEventListener('DOMContentLoaded', () => { const m = $('#modal'); if (m) new MutationObserver(() => setTimeout(extIdle, 0)).observe(m, { attributes: true, attributeFilter: ['class'] }); });
+document.addEventListener('focusout', () => setTimeout(extIdle, 50));
 window.addEventListener('beforeunload', e => { if (storageFragile && !wiping && !state.board && unsavedWork()) { e.preventDefault(); e.returnValue = ''; } });
 // Autosave, where the page keeps nothing: a Full save downloads once work has been only on this page for the chosen
 // minutes, and again when the page is hidden (another tab, the laptop closing, the Site navigating away), at most
@@ -273,8 +313,8 @@ document.addEventListener('keydown', e => {
 try { if (!storageFragile && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}   // ask the browser not to clear Tally's storage to make room
 
 // state boots here, after every helper it needs is defined (a TDZ on a regex const once blanked the app on reload)
-let bootError = null; var bootRaw = '';   // what could not be read: downloaded before anything can be saved over it
-try { state = load() || { settings: {}, sections: {}, order: [], active: null, pendingCfg: {}, pools: {} }; const pre = state.savedPrint ? workPrint() : null; migrate(); if (pre && pre === state.savedPrint) { printCache = { n: -1, v: '' }; state.savedPrint = workPrint(); } }
+let bootError = null; var bootRaw = '', bootLost = [];   // what could not be read: downloaded before anything can be saved over it
+try { try { bootRaw = localStorage.getItem(LS_KEY) || ''; } catch (x) {} state = load() || { settings: {}, sections: {}, order: [], active: null, pendingCfg: {}, pools: {} }; const pre = state.savedPrint ? workPrint() : null; migrate(); bootLost = loadLost.slice(); if (bootLost.length) { try { localStorage.setItem(LS_KEY + '.broken', bootRaw); } catch (x) {} } if (pre && pre === state.savedPrint) { printCache = { n: -1, v: '' }; state.savedPrint = workPrint(); } }
 catch (e) { console.error('Tally: could not load saved data', e); bootError = e; try { bootRaw = localStorage.getItem(LS_KEY) || ''; } catch (x) {} try { localStorage.setItem(LS_KEY + '.broken', bootRaw); } catch (x) {} state = { settings: {}, sections: {}, order: [], active: null, pendingCfg: {}, pools: {} }; migrate(); }
 
 // rows: [{ display, sub, ixl, key, status:'ok'|'rosterOnly'|'ambiguous'|'ixlOnly'|'noAccount', tier:'exact'|'loose'|'alias'|'' }]
@@ -1591,6 +1631,7 @@ function parseGradebook(rows) {
     });
   }
   if (students.length < 2) return null;
+  uniqueNames(students, ids);
   const seen = {};
   const assignments = cols.map((col, j) => {
     let max = maxRow && isNum(maxRow[col.c]) ? Number(maxRow[col.c]) : null;
@@ -3015,7 +3056,7 @@ document.addEventListener('keydown', e => {
   else if (view.mode === 'settings') { if (settingsCancel) settingsCancel(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { unitClosed, unitQuarterOf, unitColumnQuarters, unitsDueIn, liveQuarter, attentionGroups, fixCount, gbUnitFor, pendingCopies, owedWork, reportGaps, openQuarters, printDoc, adopt, niceName, askCategories, catGuesses, catCheck, cleanDismissed, nextTest, testDays, testUnitNums, cleanTestDates, openTestDates, testDatesOf, TEST_DATES, closedEarly, quarterDue, openSettings, gradeSummary, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, labCorrMarkup, corrPick, ixlVsTests, ixlTestPairs, asgUnitNums, isUnitAssessment, gradeDiff, gradeOff, gradeDiffKey, gbQuestions, applyCodes, parseGradebook, regradeCourse, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { merge3, uniqueNames, fitCache, ixlFor, unitClosed, unitQuarterOf, unitColumnQuarters, unitsDueIn, liveQuarter, attentionGroups, fixCount, gbUnitFor, pendingCopies, owedWork, reportGaps, openQuarters, printDoc, adopt, niceName, askCategories, catGuesses, catCheck, cleanDismissed, nextTest, testDays, testUnitNums, cleanTestDates, openTestDates, testDatesOf, TEST_DATES, closedEarly, quarterDue, openSettings, gradeSummary, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, labCorrMarkup, corrPick, ixlVsTests, ixlTestPairs, asgUnitNums, isUnitAssessment, gradeDiff, gradeOff, gradeDiffKey, gbQuestions, applyCodes, parseGradebook, regradeCourse, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.
@@ -3024,6 +3065,13 @@ render();
 if (foldedTwins.length && !bootError) { save(); setTimeout(() => toast(`${esc(foldedTwins.join(', '))} ${foldedTwins.length === 1 ? 'was' : 'were'} in Tally twice: an IXL export had made a second copy. ${foldedTwins.length === 1 ? 'It is' : 'They are'} one class again, with the newer IXL data.`, false, 9000), 500); }
 // Saved data that can't be read is downloaded as a file before Tally may write anything (audit, 22 Oct 2026: on a big
 // Tally the in-browser copy failed for space, the message still said it was kept, and the first save wrote over it).
+/* Part of the saved data was unreadable (one class's gradebook, or a class): the rest loaded, and that part used to
+   vanish without a word, for good at the next save (review, 14 Nov 2026). Now the data as it was is downloaded
+   first and the message says what is gone and what to do. */
+if (!bootError && bootLost.length) { let fileName = '';
+  if (bootRaw && bootRaw.length > 2) { try { fileName = 'tally-before-repair-' + stamp(new Date().toISOString()) + '.json'; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bootRaw], { type: 'application/json' })); a.download = fileName; a.click(); } catch (e) { fileName = ''; } }
+  const gbs = bootLost.filter(x => x.what === 'gradebook').map(x => x.label), cls = bootLost.filter(x => x.what === 'class').map(x => x.label);
+  setTimeout(() => toast(`${gbs.length ? `Tally couldn't read the saved gradebook for ${esc(gbs.join(', '))}, so ${gbs.length === 1 ? 'that class has' : 'those classes have'} none now: import the Focus export again. ` : ''}${cls.length ? `${cls.length === 1 ? 'A saved class' : plural(cls.length, 'saved class')} (${esc(cls.join(', '))}) couldn't be read and ${cls.length === 1 ? 'was' : 'were'} left out. ` : ''}${fileName ? `The data as it was has been downloaded as ${esc(fileName)}; keep it.` : ''}`, true, 20000), 300); }
 if (bootError) { let fileName = '';
   if (bootRaw && bootRaw.length > 2) { try { fileName = 'tally-unreadable-' + stamp(new Date().toISOString()) + '.json'; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bootRaw], { type: 'application/json' })); a.download = fileName; a.click(); } catch (e) { fileName = ''; } }
   setTimeout(() => toast(`Tally couldn't read what this browser had saved, so it started empty.${fileName ? ` The unreadable data was downloaded as ${esc(fileName)}; keep it.` : ''} Open your newest Full save to carry on.`, true, 12000), 300); }

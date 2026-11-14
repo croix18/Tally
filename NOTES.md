@@ -1371,6 +1371,34 @@ Croix, on the priority list: *"Yes. Get on it"* (items 1 and 2 of the backlog be
   is the test. If "See why" still says class-wide with nothing found, the next suspects are in backlog item 11
   (categories beyond the three, tab-separated exports) or a Grade column that lags the scores.
 
+## Review items 3, 5, 6, 7 and 8 built (14 Nov 2026)
+
+Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 checks) covers these.
+
+- **3. Two students with one name.** Every screen finds a student by name, so the fix is at the name: `uniqueNames`
+  (app.js) marks each of a same-name pair with the end of the Focus Student ID ("DOE, JANE (ID …0421)"), or (1)/(2)
+  in row order when the export has no IDs. It runs in `parseGradebook` and, for gradebooks already saved, in
+  `migrate`. `findStudent` tries the exact name before the normalized one (`norm()` strips the mark). Still shared by
+  a same-name pair: anything stored under `norm(name)` (report log, conference form text, notes): they would need an
+  ID key, which is the real fix if he ever has such a pair.
+- **5. Two tabs.** While something is being typed (a changed text field in the open dialog, or the focused field),
+  another tab's save no longer closes the dialog: it waits (`extPending`), and comes in when the dialog closes or the
+  field is left (`extIdle`), or at this tab's next save when no dialog is open, by a three-way merge (`merge3`: base
+  = this tab's saved form when the other save arrived). Both tabs end with both changes; a clash on the very same
+  value keeps what was done in the typing tab. With nothing being typed the other tab's save is taken at once, as
+  before (the 22 Oct rule stands: a stale tab never writes over newer work).
+- **6. Speed.** `fitCategories` keeps its answer (`fitCache`, 24 entries) under a key of everything it depends on
+  (scores, statuses, Grade column, weights, categories, extra credit), so the Overview and Students no longer refit
+  every class on every render.
+- **7. "IXL at goal"** on the Grades table is now `ixlFor(sec, i).pct`, the Students screen's own figure (open-quarter
+  units), instead of a second calculation over every assigned unit.
+- **8. An unreadable saved gradebook (or class)** is no longer dropped silently: at boot the saved data as it was is
+  downloaded (`tally-before-repair-….json`) and kept under `tally.v1.broken`, and a message names the class and says
+  to import the Focus export again.
+- **Not built yet, in order:** 4 (Hide names: needs Croix's choice of what replaces initials), 9 (Board file keeps a
+  consistent IXL column per unnamed student: the board's own charts need a look before shuffling), 10 (school-year
+  rollover, before August 2027), then the smaller ones in 11.
+
 ## Hostile review, 14 Nov 2026: the backlog (nothing here is built yet except where said)
 
 Croix: *"run over tally with an aggressive reviewer that wants to break or criticize everything. Then look over it's
@@ -1391,14 +1419,14 @@ rest rest on the reviewer's own reproduction.
    of the class is off or the gap is 1 point, search weights and categories together, add a noise test. Related:
    `gradeOff` returns nothing when the fit is exact although screens grade from the stored map; "Use these weights →
    Undo" restores weights but not categories `applyCategories` moved.
-3. **Two students with the same name show one student's numbers** (`openProfile`, `studentSummary`, `findStudent`
+3. **DONE 14 Nov.** Two students with the same name show one student's numbers (`openProfile`, `studentSummary`, `findStudent`
    look up by name; `gb.ids` is parsed and unused). Fix: key by Focus Student ID.
 4. **"Hide names" initials identify everyone** (23 of 23 unique in the real class; Reports calls the initials list
    "safe to post or project"). Croix's call on what replaces initials.
-5. **Typing in one tab is wiped when another Tally tab saves** (the `storage` listener closes the modal).
-6. **Home and Students take ~0.5 s per render at 6 × 30 × 60**: `fitCategories` runs uncached per class per render.
-7. **"IXL at goal" differs between Grades and Students after a quarter closes** (`ixlVsTests` vs `ixlFor`).
-8. **A gradebook `cleanGB` rejects disappears with no message**, and the next save makes it permanent.
+5. **DONE 14 Nov.** Typing in one tab is wiped when another Tally tab saves (the `storage` listener closes the modal).
+6. **DONE 14 Nov.** Home and Students take ~0.5 s per render at 6 × 30 × 60: `fitCategories` runs uncached per class per render.
+7. **DONE 14 Nov.** "IXL at goal" differs between Grades and Students after a quarter closes (`ixlVsTests` vs `ixlFor`).
+8. **DONE 14 Nov.** A gradebook `cleanGB` rejects disappears with no message, and the next save makes it permanent.
 9. **The Board file keeps one consistent IXL column per (unnamed) student** across every skill: a known pattern
    finds a full record. Gradebook columns are already shuffled per assignment; IXL should be too.
 10. **Before August 2027: the school year never rolls over.** `Q_ENDS` is 2026–27 only and `mdToISO` takes its year

@@ -67,6 +67,7 @@ function computeGrade(sec, i, over, mapOverride) {
 const roundPct = p => p == null ? null : Math.round(p + 1e-9);
 const gradeAll = (sec, mapOverride) => sec.grades ? sec.grades.students.map((_, i) => computeGrade(sec, i, null, mapOverride)) : [];
 
+const fitCache = new Map();
 // Fit assignment categories to the Focus "Grade" column. Coordinate descent from the current map/guesses; then, at
 // zero error, each assignment is "determined" only if every alternative category breaks the fit.
 function fitCategories(sec, opts) {
@@ -75,6 +76,10 @@ function fitCategories(sec, opts) {
   if (!gb || !gb.overall || names.length < 2) return null;
   const idx = gb.students.map((_, i) => i).filter(i => gb.overall[i] != null);
   if (idx.length < 3) return null;
+  // The fit ran on every render, once per class on the Overview (review, 14 Nov 2026: half a second a screen with six
+  // full classes). Its answer depends only on what is in this key, so it is kept until any of that changes.
+  const ck = JSON.stringify([lock, sec.prep, gb.overall, gb.assignments.map(a => [a.name, a.max, a.values, a.status || 0, a.category || '', a.categoryFromFile ? 1 : 0]), g.cats, g.map, g.how, g.ec, sec._cats || 0, sec._map || 0]);
+  const kept = fitCache.get(ck); if (kept) return kept;
   const err = map => idx.reduce((e, i) => { const r = computeGrade(sec, i, null, map); return e + (r && r.rounded != null ? Math.abs(r.rounded - gb.overall[i]) : 0); }, 0);
   // Coordinate descent can stall in a local minimum (two categories wrong at once), so it runs from two starting
   // points — the stored map and pure name guesses — and keeps the better result. User-set assignments stay put when locked.
@@ -99,7 +104,8 @@ function fitCategories(sec, opts) {
   // a category you set by hand "disagrees" with Focus when letting everything float reproduces the Grade column better and lands it elsewhere
   const disagree = {}; let focusMap = null;
   if (lock && gb.assignments.some(a => g.how[a.name] === 'user')) { const free = fitCategories(sec, { ignoreUser: true }); focusMap = free && free.err < best ? free.map : null; gb.assignments.forEach(a => { if (g.how[a.name] === 'user') disagree[a.name] = !!free && free.err < best && free.map[a.name] !== map[a.name]; }); }
-  return { map, err: best, exact: best === 0, determined, disagree, focusMap, n: idx.length };
+  const out = { map, err: best, exact: best === 0, determined, disagree, focusMap, n: idx.length };
+  if (fitCache.size >= 24) fitCache.delete(fitCache.keys().next().value); fitCache.set(ck, out); return out;
 }
 // Apply a fit after import: proved assignments are stored as `fit`; new ones the fit can't prove are returned so the
 // import can ask. Returns { ask: [names], proved: n, guessed: n }.
@@ -237,7 +243,7 @@ function ixlVsTests(sec) {
   const tests = gb.assignments.filter(a => catIn(sec, a) === 'Assessments' && !/\bixl\b/i.test(a.name) && a.max > 0);
   return gb.students.map((name, i) => {
     const r = rows[i]; let ixl = null;
-    if (r && r.ixl != null) { let done = 0, poss = 0; units.forEach(u => { const own = activeFor(sec, u, r.ixl); poss += own.length; own.forEach(k => { const v = eff(sec, k, r.ixl); if (v != null && v >= t) done++; }); }); ixl = poss ? done / poss * 100 : null; }
+    if (r && r.ixl != null) ixl = ixlFor(sec, r.ixl).pct;   // the Students screen's own figure (open-quarter units): the two screens used to disagree once a quarter closed (review, 14 Nov 2026)
     let e = 0, p = 0; tests.forEach(a => { const s = a.status ? a.status[i] : null; if (s === 'score' || s === 'missing') { e += s === 'missing' ? 0 : (a.values[i] || 0); p += a.max; } });
     return { name, i, ixl, tests: p ? e / p * 100 : null };
   });

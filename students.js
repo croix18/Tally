@@ -20,7 +20,8 @@ const cachedRows = (sec, kind) => { const k = sec.key + '|' + kind; if (!rowCach
 // Where a student sits in a class: their gradebook row (gi, -1 if none) and IXL row (ixl, null if unmatched).
 function findStudent(sec, name) {
   const nn = norm(name); const gb = sec.grades;
-  const gi = gb ? gb.students.findIndex(n => norm(n) === nn) : -1;
+  // the exact name first: two students with one name are told apart by the mark the import gives them (uniqueNames), which norm() would strip
+  let gi = gb ? gb.students.indexOf(name) : -1; if (gi < 0 && gb) gi = gb.students.findIndex(n => norm(n) === nn);
   let row = gi >= 0 ? cachedRows(sec, 'gb')[gi] : null;
   if (!row || row.ixl == null) { const r2 = cachedRows(sec, 'all').find(r => norm(r.display) === nn && r.status !== 'ixlOnly'); if (r2) row = r2; }
   return { gi, ixl: row && row.ixl != null ? row.ixl : null, row, noAccount: !!(row && row.status === 'noAccount'), id: row && row.id ? row.id : (gb && gi >= 0 && gb.ids ? gb.ids[gi] : '') };
