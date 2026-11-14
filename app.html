@@ -182,6 +182,9 @@ h1,h2,h3{margin:0;font-weight:var(--w-black)}
 .hidden{display:none!important}
 body.veiled>*:not(#veil){filter:blur(28px) saturate(.5);pointer-events:none;user-select:none}
 #veil{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:rgba(15,23,42,.28);cursor:pointer}
+.pinIn{-webkit-text-security:disc;font:inherit;font-size:var(--t-l);letter-spacing:.2em;text-align:center;padding:8px 10px;border:2px solid var(--grid);border-radius:var(--r-m);width:150px}.pinIn:focus{outline:none;border-color:var(--turq)}.pinIn::placeholder{letter-spacing:0;font-size:var(--t-s);-webkit-text-security:none}
+.pinBox{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}.pinBox span{color:var(--ink-soft)}.pinForm{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.pinBox small{flex-basis:100%;color:var(--ink-soft)}
+.veilCard #veilHelp{max-width:300px;font-size:var(--t-s);color:var(--ink-soft)}.veilCard #veilHelp p{margin:4px 0 8px}.veilCard #veilHelpMsg{display:block;margin-top:8px;color:var(--bad);font-weight:var(--w-bold)}.veilCard .vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}#veil:has(#veilForm){cursor:default}
 .veilCard{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:28px 40px;text-align:center}.veilCard b{font-size:var(--t-xl);font-weight:var(--w-black);color:var(--navy)}.veilCard span{color:var(--ink-soft)}.veilCard .pill{margin-top:8px}.veilCard small{color:var(--ink-soft);font-size:var(--t-s)}
 @media print{#veil{display:none!important}body.veiled>*:not(#veil){filter:none}}
 .pill:active,.chip:active,.tab:active,.copy:active,.ulink:active{transform:translateY(1px) scale(.97)}

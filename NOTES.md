@@ -1409,12 +1409,26 @@ Croix: *"Can you make a privacy screen. So if I haven't used it in x amount of t
   button. A click anywhere or a key press shows it again; moving the mouse does not (a bumped desk mustn't uncover
   it). Any use, mouse movement included, restarts the clock; coming back to the tab after the time has passed hides
   it at once.
-- It is a guard against eyes on an unattended screen, **not a lock**: anyone at the keyboard can bring it back. If he
-  wants a PIN to show it again, that is the next step (not asked for).
+- Without a PIN it is a guard against eyes on an unattended screen: anyone at the keyboard can bring it back.
+- **The PIN** (Croix, same day: *"Oh yeah a pin would be great!"*). Settings → Files → "Ask for a PIN instead": 4 to
+  8 digits, typed twice; Change / Remove need no PIN (Settings is only reachable when Tally is showing). With one set:
+  the hidden screen has a PIN box (digits shown as dots; `type=text` + `-webkit-text-security`, so the browser never
+  offers to save it); a click or a key no longer shows Tally; **a reload stays hidden** (`tally.veil` in
+  localStorage); a Tally opened after the time has passed starts hidden (`tally.use`, the last-use stamp, written at
+  most every 30 s, only while a PIN is set); five wrong tries wait 30 seconds.
+  - The PIN is per computer: `tally.pin` = { salt, hash } in its own localStorage key, never in `state`, so it is not
+    in a Full save and can't be merged or adopted from another tab or file. "Clear data" removes it (`pinClear`).
+  - **Forgotten:** "Forgot the PIN?" on the hidden screen takes one of his own Full save files as proof (`ownSave`:
+    a Full save in which at least half of this Tally's classes appear with four in five of the same students). The
+    file is only read, nothing is loaded from it; the PIN is removed and Tally shows. A made-up save, a save of other
+    students or a Board save is refused. So a PIN without any Full save can't be recovered: setting one with no Full
+    save on record says "make a Full save now".
+  - What it is not: encryption. The data is still plain in this browser's storage (dev tools, or another local page,
+    can read it: review item on file:// storage). The PIN keeps hands and eyes off an unattended screen.
 - Never hides: with no class loaded, in a Board save, on the Board (`lbMode`) or a student's Show page (`showMode`):
   those are there to be looked at and carry no names.
 - On demand: "Hide the screen now" in the finder (type "hide").
-- `tests/privacy-screen.js` (18 checks; `__tally.idle(ms)` moves the clock).
+- `tests/privacy-screen.js` (36 checks; `__tally.idle(ms)` moves the clock).
 
 ## Remove a print (14 Nov 2026)
 

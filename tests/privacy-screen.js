@@ -45,6 +45,55 @@ const { chromium, fs, path, exe, check, done, APP, pick } = require('./lib');
   await p.evaluate(() => window.__tally.idle(0)); await p.click('#search'); await p.keyboard.type('hide the screen'); await p.waitForTimeout(300); await p.keyboard.press('Enter'); await p.waitForTimeout(300); s = await st();
   check(s.veiled && /You hid the screen\./.test(s.text), '"Hide the screen now" in the search box hides it at once: ' + s.text);
   await p.click('#veilShow'); await p.waitForTimeout(150); check(!(await st()).veiled, 'the button shows it again');
+
+  // ---------- the PIN (Croix, 14 Nov 2026: "Oh yeah a pin would be great!") ----------
+  const ui = (fn, arg) => p.evaluate(fn, arg);   // the Files tab of Settings isn't the one showing: its controls are driven directly
+  await ui(() => window.__tally.openSettings()); await p.waitForTimeout(300);
+  check(/A click or a key press brings it back\./.test(await ui(() => document.querySelector('#pinBox').innerText)) && !(await ui(() => window.__tally.pinOn())), 'no PIN to start with: Settings says a click or a key brings Tally back, and offers a PIN');
+  const tryPin = (a, b2) => ui(([a, b2]) => { if (!document.querySelector('#pin1')) (document.querySelector('#pinNew') || document.querySelector('#pinChange')).click(); document.querySelector('#pin1').value = a; document.querySelector('#pin2').value = b2; document.querySelector('#pinSave').click(); const m = document.querySelector('#pinMsg'); return m ? m.textContent : document.querySelector('#pinBox').innerText; }, [a, b2]);
+  check(/4 to 8 digits/.test(await tryPin('12', '12')) && /4 to 8 digits/.test(await tryPin('12ab', '12ab')), 'a PIN is 4 to 8 digits, nothing else');
+  check(/don't match/.test(await tryPin('2468', '2469')) && !(await ui(() => window.__tally.pinOn())), 'typed twice, and the two must match');
+  check(/PIN is on\./.test(await tryPin('2468', '2468')) && await ui(() => window.__tally.pinOn()), 'a matching pair sets it; Settings now says the PIN is on');
+  const stored = await ui(() => localStorage.getItem('tally.pin'));
+  check(!/2468/.test(stored) && !(await ui(() => JSON.stringify(window.__tally.stateForSave()).includes(JSON.parse(localStorage.getItem('tally.pin')).hash))) && !/"pin"|tally\.pin/.test(await ui(() => JSON.stringify(window.__tally.stateForSave()))), 'the PIN itself is never stored (a salted hash is), and it is not in a Full save');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  await idle(5.1); s = await st();
+  check(s.veiled && /Tally is hidden Nothing touched for 5 minutes\. Show Tally Enter your PIN Forgot the PIN\?/.test(s.text) && await ui(() => document.activeElement.id === 'veilPin'), 'with a PIN the hidden screen asks for it: ' + s.text);
+  await p.mouse.click(40, 700); await p.waitForTimeout(100); await p.keyboard.press('Control+k'); await p.waitForTimeout(100);
+  check((await st()).veiled && await ui(() => document.activeElement.id === 'veilPin') && !(await ui(() => document.querySelector('#search') === document.activeElement)), 'a click or a key no longer shows Tally, and no shortcut reaches the page');
+  await p.keyboard.type('1111'); check(await ui(() => getComputedStyle(document.querySelector('#veilPin')).webkitTextSecurity === 'disc'), 'the digits typed are shown as dots');
+  await p.keyboard.press('Enter'); await p.waitForTimeout(100); s = await st();
+  check(s.veiled && /That is not the PIN\./.test(s.text) && await ui(() => document.querySelector('#veilPin').value === ''), 'a wrong PIN says so and clears the box');
+  await p.keyboard.type('2468'); await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+  check(!(await st()).veiled && await ui(() => [...document.body.children].every(el => !el.inert)), 'the right PIN shows Tally');
+  // a reload doesn't lift it
+  await idle(6); await p.reload(); await p.waitForTimeout(800); s = await st();
+  check(s.veiled && /Hidden since you were last here\./.test(s.text) && await ui(() => [...document.body.children].filter(el => el.id !== 'veil' && el.tagName !== 'SCRIPT').every(el => el.inert)), 'reloading the page does not get past it: ' + s.text);
+  // five wrong tries: a wait
+  for (let k = 0; k < 5; k++) { await p.fill('#veilPin', '0000'); await p.keyboard.press('Enter'); await p.waitForTimeout(60); }
+  s = await st(); check(s.veiled && /Too many tries\. Wait \d+ seconds\./.test(s.text) && await ui(() => document.querySelector('#veilPin').disabled && document.querySelector('#veilShow').disabled), 'five wrong tries and it makes whoever is guessing wait: ' + s.text.slice(0, 80));
+  // forgotten: one of his own Full saves gets him back in, and only that
+  const os = require('os'); const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tally-pin-')); const put = (n, c) => { const f = path.join(tmp, n); fs.writeFileSync(f, c); return f; };
+  const full = await ui(() => JSON.stringify({ tally: 4, full: { saved: new Date().toISOString(), classes: 1 }, state: window.__tally.stateForSave() }));
+  const before = await ui(() => JSON.stringify(window.__tally.stateForSave()).length);
+  await ui(() => document.querySelector('#veilForgot').click());
+  await p.setInputFiles('#veilFile', put('fake.json', JSON.stringify({ tally: 4, full: { saved: 'x' }, state: { sections: {}, order: [] } }))); await p.waitForTimeout(300); s = await st();
+  const fake = s.veiled && /That is not a Full save of the classes in this Tally\./.test(s.text);
+  const other = JSON.parse(full); Object.values(other.state.sections).forEach(x => { x.students = x.students.map((_, i) => 'Somebody Else' + i); if (x.grades) x.grades.students = x.grades.students.map((_, i) => 'ELSE, SOMEBODY' + i); });
+  await p.setInputFiles('#veilFile', put('other.json', JSON.stringify(other))); await p.waitForTimeout(300); s = await st();
+  check(fake && s.veiled && /That is not a Full save of the classes in this Tally\./.test(s.text) && await ui(() => window.__tally.pinOn()), 'a made-up save, or a save of other students, does not get in: ' + fake + ' / ' + JSON.stringify(s));
+  await p.setInputFiles('#veilFile', put('board.json', JSON.stringify({ tally: 4, board: { saved: 'x' }, state: JSON.parse(full).state }))); await p.waitForTimeout(300);
+  check((await st()).veiled && /That is a Board save\. A Full save is needed\./.test((await st()).text), 'a Board save (no names in it) is not enough');
+  await p.setInputFiles('#veilFile', put('tally-full.json', full)); await p.waitForTimeout(400); s = await st();
+  check(!s.veiled && !(await ui(() => window.__tally.pinOn())) && /The PIN is removed\. Nothing else changed\./.test(await p.textContent('#toast')) && (await ui(() => JSON.stringify(window.__tally.stateForSave()).length)) === before, 'his own Full save removes the PIN and shows Tally; nothing is loaded from the file and the data is untouched');
+  // a Tally opened after the time has passed starts hidden (with a PIN only)
+  await ui(() => { localStorage.setItem('tally.use', String(Date.now() - 10 * 60000)); }); await p.reload(); await p.waitForTimeout(700);
+  const noPinBoot = (await st()).veiled;
+  await ui(() => { window.__tally.pinSet('135790'); localStorage.setItem('tally.use', String(Date.now() - 10 * 60000)); }); await p.reload(); await p.waitForTimeout(700); s = await st();
+  check(!noPinBoot && s.veiled && /Hidden since you were last here\./.test(s.text), 'opened after the time has passed, Tally starts hidden when there is a PIN (and not when there isn\'t)');
+  await p.fill('#veilPin', '135790'); await p.keyboard.press('Enter'); await p.waitForTimeout(150); check(!(await st()).veiled, 'and the PIN opens it');
+  await ui(() => window.__tally.openSettings()); await p.waitForTimeout(300); await ui(() => document.querySelector('#pinOff').click()); await p.waitForTimeout(150);
+  check(!(await ui(() => window.__tally.pinOn())) && /A click or a key press brings it back\./.test(await ui(() => document.querySelector('#pinBox').innerText)), 'Remove in Settings turns the PIN off');
   check(errs.length === 0, 'no page errors: ' + errs.join(' | '));
   await b.close(); done();
 })();
