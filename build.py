@@ -30,6 +30,17 @@ if not test:
     app, n = re.subn(r"^window\.__tally = \{.*$", '', app, flags=re.M)
     assert n == 1, 'expected exactly one window.__tally line in app.js'
     assert '__tally' not in app, 'app.js still references window.__tally after stripping'
+else:
+    # The test build also exposes every top-level function and constant of the app by name (window.__all), so a suite
+    # or an audit probe (review/audit-nov15/probes) can call any engine function, not only the ones on window.__tally.
+    # A getter that names something out of scope only throws when it is read. Never in the shipped build.
+    names = []
+    for line in app.split('\n'):
+        m = re.match(r'^(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)', line) or re.match(r'^(?:const|let|var|class)\s+([A-Za-z_$][\w$]*)\s*(?:=|;|$|extends|\{)', line)
+        if m and m.group(1) not in names: names.append(m.group(1))
+    hook = 'window.__all = { ' + ', '.join('get %s() { return %s; }' % (x, x) for x in names) + ' };'
+    app, n = re.subn(r"^(window\.__tally = \{.*)$", lambda m: m.group(1) + '\n' + hook, app, count=1, flags=re.M)
+    assert n == 1, 'expected exactly one window.__tally line in app.js'
 
 # pdf.js (vendor/, Apache-2.0) reads the FLDOE score report PDF; neither file may hold "</script", which would end its tag.
 pdfjs = (root / 'vendor' / 'pdf.min.js').read_text(); pdfworker = (root / 'vendor' / 'pdf.worker.min.js').read_text()
