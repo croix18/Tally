@@ -1407,7 +1407,12 @@ charts, everything. Deep audit the whole project. Look for things we missed, loo
 opportunities to clean and harden code. Don't make any decisions before running it against a counter agent. Only use
 fable for this task."*
 
-How it is run (every agent on Fable, as he asked):
+Twenty minutes later, after six Fable auditors had started: *"I'm sorry, using fable only was ridiculous and burning
+usage. Use the most efficient model with the highest quality output. If you can salvage anything from that run please
+do."* They were stopped six minutes in, still reading (no findings); the setup was kept and the audit restarted with
+**every agent on Opus 5.5**, the six core math engines first.
+
+How it is run:
 1. **Twelve auditors, one per engine**, each on its own copy of the repo at `8f973ed` with an audit-only hook
    (`window.__all`: every top-level function by name, test build only, never in the repo). The briefs are in
    `review/audit-nov15/` (`BRIEF_COMMON.md`, `briefs/*.md`). Each builds its own implementation of the math and

@@ -45,6 +45,9 @@ You fix nothing in the real repo. Your product is evidence.
    wherever you can, and rerun any failing probe at least twice before you believe it.
 6. Write as you go. Append each finding to `FINDINGS.md` as soon as it is proven. If you are running out of room,
    stop exploring and finish the two deliverables: an unwritten finding is lost.
+7. Be economical: usage is limited. Read each file once (keep notes instead of re-reading). Grep NOTES.md, do not
+   read all 170 KB of it. Keep tool output short (`| cut -c1-300`, `| head`). Prefer one well-built fuzz harness to
+   many one-off probes. Stop probing an area when two more attempts find nothing new.
 
 ## The code
 
@@ -58,6 +61,8 @@ You fix nothing in the real repo. Your product is evidence.
   `sed -n '45,66p' repo/grades.js | fold -s -w 220`. Cite a function by name and by the source file's own line number
   (`grep -n "^function name" repo/file.js`). `/home/claude/work/audit/INVENTORY.txt` lists every top-level function as
   `file:line name`.
+  To search inside the long lines, `node /home/claude/work/audit/tools/ctx.js <repo dir> '<regex>' [width] [files...]`
+  prints every match with its surrounding characters as `file:line@offset`.
 - Build: `cd repo && python3 build.py --test` writes `Tally.test.html` (already built for you). The test build has two
   handles: `window.__tally` (the suites' handle: `state`, `save()`, `render()` and about 200 functions) and
   `window.__all` (audit-only: every top-level function and constant by name, such as `__all.computeGrade` or
