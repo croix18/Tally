@@ -1399,6 +1399,29 @@ Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 ch
   consistent IXL column per unnamed student: the board's own charts need a look before shuffling), 10 (school-year
   rollover, before August 2027), then the smaller ones in 11.
 
+## Deep audit, 15 Nov 2026 (IN PROGRESS: read this first if you are taking over)
+
+Croix: *"Is there anything I missed? I want you to run a deep dive on the cores and engines that make up tally. Look
+at all edge cases. I need all of the math and the information absolutely correct at all times. Graphs, what ifs,
+charts, everything. Deep audit the whole project. Look for things we missed, look for edge cases, look for
+opportunities to clean and harden code. Don't make any decisions before running it against a counter agent. Only use
+fable for this task."*
+
+How it is run (every agent on Fable, as he asked):
+1. **Twelve auditors, one per engine**, each on its own copy of the repo at `8f973ed` with an audit-only hook
+   (`window.__all`: every top-level function by name, test build only, never in the repo). The briefs are in
+   `review/audit-nov15/` (`BRIEF_COMMON.md`, `briefs/*.md`). Each builds its own implementation of the math and
+   compares it with Tally on random data, and every finding needs a probe that exits 1 while the defect exists.
+   IXL and what goes to Focus · the grade engine · what-ifs, plans and retakes · charts, Data Lab, Race and Board ·
+   quarters and dates · one number on every screen · printed reports and Home · conference form, FAST and PDFs ·
+   imports and placement · saves, two tabs, privacy · seating · code health.
+2. **A counter agent per report** tries to refute each finding on a clean copy and checks its "expected" against this
+   file. Nothing is decided before that.
+3. Confirmed, unambiguous defects are fixed with a failing-first check; anything that changes what Croix sees or
+   decides is listed for him instead. A second counter agent reviews the fixes. Then the full suite and a push.
+
+**Status** is kept in `review/audit-nov15/STATUS.md` and the reports land beside it as they finish.
+
 ## The quarter's IXL on the board: one pie a class (15 Nov 2026)
 
 Croix: *"Can I get an option on the board to show all ixls for the current grading period on one pie for each
