@@ -1399,6 +1399,38 @@ Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 ch
   consistent IXL column per unnamed student: the board's own charts need a look before shuffling), 10 (school-year
   rollover, before August 2027), then the smaller ones in 11.
 
+## The quarter's IXL on the board: one pie a class (15 Nov 2026)
+
+Croix: *"Can I get an option on the board to show all ixls for the current grading period on one pie for each
+class."*
+- **Where:** Board → Data Lab → the data-set menu → **"Quarter N IXL · skills at goal"** (beside "All assigned units"),
+  shown as **Circle graph**. The id is `ixl:quarter` whatever the quarter, so the choice carries over when the
+  quarter changes; the name comes from `liveQ()`.
+- **What it counts:** `openUnits(sec)` (app.js): the class's units that are assigned, have counted skills and are not
+  from a quarter it has moved past (`unitClosed`): the same "this quarter's IXL" the Students page, the weekly report
+  and the still-owed list use. Not the units ahead of "Working in".
+- **The pie** (`labSeries` → `cells`, `pieParts`): every skill of those units once for each counted student, on the
+  student's own list (`activeFor`): **At goal / Below goal / Not started**, the same three slices a single skill's pie
+  has, so the slices count skills, not students; the line under the title says "every skill counted once for each
+  student" and names the units ("Units 3–5"). Each card: "n = 16 · 35 skills each" (the count is dropped when lists
+  differ inside the class). A whole course ("All accelerated together", one class vs the course, both courses) adds
+  the classes' counts (`labPool`). A class under 5 counted students is not drawn, as everywhere on the board.
+- **The other forms** use each student's skills at goal on the quarter's units (box, dots, histogram, stem, bar,
+  class averages; Points or %). **Line graph:** each class's average share of the quarter's skills at goal at each
+  import *of the quarter* (imports dated on or before the previous quarter's end are left off: nobody had started).
+- **His reading, decided without asking** (he was on his phone; easy to change): "all IXLs on one pie" = the pie is
+  made of the IXLs (skills), as his single-skill pies are, not of students bucketed by how far along they are. If he
+  wants the student-bucket pie for the quarter, it is `pieParts`' ordinary branch: drop the `x.cells` case.
+- **A class reads its quarter from its own gradebook**, so a class one export behind can count other units than the
+  rest. Then the line under the title says "each class's own units for the quarter" and names no span.
+- **Board save:** each class carries `openUnits` (the unit names). The save holds no kept quarter and no hand-matched
+  column, so worked out again there Unit 1 came back into Quarter 2 (tested): `openUnits()` uses the carried list
+  when a class has one. Only a Board save's classes have that field.
+- "IXL and a test" does not offer it (its own pickers take single units and All assigned units).
+- `tests/quarter-pie.js` (37 checks): Quarter 1 → Quarter 2 with the same choice, recounts of every pie, a modified
+  list, a small class, pool / vs / both courses, the other forms, the line, a Board save on another browser, a class
+  an export behind, nothing assigned.
+
 ## The privacy screen (14 Nov 2026)
 
 Croix: *"Can you make a privacy screen. So if I haven't used it in x amount of time it blurs the screen."*

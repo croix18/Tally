@@ -76,7 +76,7 @@ const near = (shown, want) => want != null && Math.abs(shown - want) <= 0.5 + 1e
     return { inF: units.filter(u => inGb.has(u.num)).map(u => 'unit:' + u.name), notF: units.filter(u => !inGb.has(u.num)).map(u => 'unit:' + u.name), gbUnits: [...inGb].sort() }; });
   const gIn = groups.find(g => g.label === 'IXL units in Focus (points)'), gNot = groups.find(g => g.label === 'IXL units not in Focus yet (points)');
   check(gIn && gNot && groups.indexOf(gIn) === 0 && groups.indexOf(gNot) === 1, 'the data list opens with two groups of IXL units: "IXL units in Focus" then "IXL units not in Focus yet" (' + groups.map(g => g.label).join(' | ') + ')');
-  check(gIn && JSON.stringify(gIn.items.filter(v => v !== 'unit:__all__')) === JSON.stringify(want5.inF) && gIn.items[gIn.items.length - 1] === 'unit:__all__', 'in Focus: the units the gradebook has an IXL column for (Units ' + want5.gbUnits.join(', ') + '), then All assigned units');
+  check(gIn && JSON.stringify(gIn.items.filter(v => v !== 'unit:__all__' && v !== 'ixl:quarter')) === JSON.stringify(want5.inF) && gIn.items.slice(-2).join() === 'ixl:quarter,unit:__all__', 'in Focus: the units the gradebook has an IXL column for (Units ' + want5.gbUnits.join(', ') + '), then the quarter\'s IXL (15 Nov 2026) and All assigned units');
   check(gNot && want5.notF.length > 0 && JSON.stringify(gNot.items) === JSON.stringify(want5.notF), 'not in Focus yet: every other unit Tally counts (' + want5.notF.map(v => (/^unit:(Unit \d+)/.exec(v) || [, v])[1]).join(', ') + ')');
   const U1 = want5.inF[0], U2 = want5.inF[1], U3 = want5.notF[0], U1n = U1.slice(5), U3n = U3.slice(5);
   // a unit Focus doesn't have yet works in every graph, from Tally's own count

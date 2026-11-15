@@ -453,6 +453,10 @@ function unitsOf(sec) {
     return { name, short: m ? 'Unit ' + m[1] : name, title: m ? m[2] : '', num, idx, active, total: active.length, hidden, assigned, upcoming: !assigned && !hidden, current: !!cur && num === cur, marked: marks[name] != null };
   });
 }
+/* The IXL units of the grading period a class is in: assigned, with counted skills, and not from a quarter the class has
+   moved past (unitClosed). A Board save carries the list ready-made (sec.openUnits), worked out where the gradebooks
+   and the kept quarters are: the save itself holds neither a kept quarter nor a column matched by hand. */
+function openUnits(sec) { const us = unitsOf(sec).filter(u => u.assigned && u.total); return Array.isArray(sec.openUnits) ? us.filter(u => sec.openUnits.includes(u.name)) : us.filter(u => !unitClosed(sec, u)); }
 // A student's own list for a unit: the class's counted skills minus any skipped just for them (modified assignment lists)
 function activeFor(sec, unit, si) {
   const sk = sec.studentSkips[ixlKeyAt(sec, si)]; if (!sk) return unit.active;
@@ -943,6 +947,12 @@ function labDatasets(prep) {
   const IXL_IN = 'IXL units in Focus (points)', IXL_NOT = anyGb ? 'IXL units not in Focus yet (points)' : 'IXL units (points)';   // no gradebook in Tally: no unit is waiting for Focus
   const units = []; secs.forEach(s => unitsOf(s).forEach(u => { if (!u.hidden && u.total && !units.some(x => x.name === u.name)) units.push(u); }));
   units.filter(u => inFocus.has(u.name)).forEach(u => add(IXL_IN, 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')));
+  /* The whole grading period on one data set (Croix, 15 Nov 2026: "an option on the board to show all ixls for the
+     current grading period on one pie for each class"): every unit assigned in the quarter the classes are in
+     (openUnits), each student's skills at goal on them. As a circle graph it is one pie a class of every skill for
+     every student: at goal, below goal, not started. The id stays the same from quarter to quarter, so the choice
+     carries over when the quarter changes. */
+  if (units.length) add(inFocus.size ? IXL_IN : IXL_NOT, 'ixl:quarter', Q_NAMES[liveQ() - 1] + ' IXL · skills at goal');
   add(inFocus.size ? IXL_IN : IXL_NOT, 'unit:__all__', 'All assigned units · skills at goal');
   units.filter(u => !inFocus.has(u.name)).forEach(u => add(IXL_NOT, 'unit:' + u.name, u.short + (u.title ? ' · ' + u.title : '')));
   if (secs.some(hasOpenGrades)) add('Focus course grade', 'grade:course', 'Course grade · ' + Q_NAMES[liveQ() - 1]);
@@ -956,8 +966,12 @@ function labSeries(prep, id, forcePct) {
   const { secs } = labDatasets(prep);
   return secs.map(s => {
     const list = population(s); const aUnits = unitsOf(s).filter(u => u.assigned);
-    let vals, max, missing = 0, excused = 0, unit = 'points', grade = false;
-    if (id === 'unit:__all__') { vals = list.map(x => aUnits.reduce((m, u) => m + points(s, u, x.i), 0)); max = aUnits.reduce((m, u) => m + u.total, 0); unit = 'skills at goal'; }
+    let vals, max, missing = 0, excused = 0, unit = 'points', grade = false, cells, qUnits, each;
+    if (id === 'ixl:quarter') {   // the quarter's units: skills at goal per student, and every (student, skill) by where it stands
+      const qU = openUnits(s); if (!qU.length) return null; const t = s.threshold; cells = { at: 0, below: 0, none: 0 }; const own = [];
+      vals = list.map(x => { let pts = 0, n = 0; qU.forEach(u => activeFor(s, u, x.i).forEach(k => { n++; const v = eff(s, k, x.i); if (v == null) cells.none++; else if (v >= t) { cells.at++; pts++; } else cells.below++; })); own.push(n); return pts; });
+      max = qU.reduce((m, u) => m + u.total, 0); unit = 'skills at goal'; qUnits = qU.map(u => u.short); each = own.length && own.every(n => n === own[0]) ? own[0] : null; }
+    else if (id === 'unit:__all__') { vals = list.map(x => aUnits.reduce((m, u) => m + points(s, u, x.i), 0)); max = aUnits.reduce((m, u) => m + u.total, 0); unit = 'skills at goal'; }
     else if (id.startsWith('unit:')) { const u = unitsOf(s).find(u => u.name === id.slice(5)); if (!u) return null; vals = list.map(x => points(s, u, x.i)); max = u.total; }
     else if (id.startsWith('skill:')) { const k = s.skills.findIndex(sk => skillKey(sk) === id.slice(6)); if (k < 0) return null; vals = list.map(x => eff(s, k, x.i)); missing = vals.filter(v => v == null).length; max = 100; unit = 'SmartScore'; }
     else if (id.startsWith('custom:')) { const c = state.custom.find(c => c.id === id.slice(7)); const vv = c && c.values[s.key]; if (!vv || !vv.length) return null; vals = vv.slice(); max = Math.max(...vv, 1); unit = c.unit || 'value'; }
@@ -968,7 +982,7 @@ function labSeries(prep, id, forcePct) {
     let pct = grade;   // a course grade is a percent already
     if (!grade && (forcePct || state.settings.labPct) && max > 0 && unit !== 'SmartScore') { vals = vals.map(v => v == null ? null : Math.round(v / max * 100)); unit = '% of ' + unit; max = 100; pct = true; }   // percent of the maximum, whole numbers
     const st = stats(vals) || { n: 0 };
-    return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: grade ? 'gb' : id.split(':')[0], values: vals, thr: s.threshold, sec: s, pct, grade };
+    return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: grade ? 'gb' : id.split(':')[0], values: vals, thr: s.threshold, sec: s, pct, grade, cells, qUnits, each };
   }).filter(Boolean);
 }
 const fmtN = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
@@ -1031,6 +1045,8 @@ function labPlot(kind, x, scale, id, o) {
 // quarters of the maximum, red to green. `chip` is the short name under a pie in the grid, beside its count.
 function pieParts(x) {
   const vals = x.values.filter(v => v != null);
+  if (x.cells) { const goals = [...new Set(x.thrs || [x.thr])];   // the quarter's IXL: slices count skills (each student's own list), not students
+    return [{ label: goals.length === 1 ? 'At goal (' + goals[0] + '+)' : 'At goal (each class\'s goal)', chip: 'At goal', value: x.cells.at, color: QUARTER_COLORS[3] }, { label: 'Below goal', chip: 'Below', value: x.cells.below, color: QUARTER_COLORS[1] }, { label: 'Not started', chip: 'Not started', value: x.cells.none, color: NEUTRAL_FILL }]; }
   if (x.kind === 'skill') { let at = 0, below = 0; x.values.forEach((v, i) => { if (v == null) return; if (v >= (x.thrs ? x.thrs[i] : x.thr)) at++; else below++; }); const goals = [...new Set(x.thrs || [x.thr])];
     return [{ label: goals.length === 1 ? 'At goal (' + goals[0] + '+)' : 'At goal (each class\'s goal)', chip: 'At goal', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', chip: 'Below', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', chip: 'Not started', value: x.missing, color: NEUTRAL_FILL }]; }
   if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return ['A', 'B', 'C', 'D', 'F'].map(k => ({ label: k, short: k, chip: k, value: b[k], color: LETTER_COLORS[k] })); }
@@ -1064,7 +1080,7 @@ const labNorm = t => norm(String(t || '').replace(/\((acc|accelerated|adv|advanc
 function labMatch(from, id) {
   const to = from === 'acc' ? 'on' : 'acc'; const { list } = labDatasets(to); if (!id || !list.length) return null;
   const pair = (state.settings.labPairs || {})[from + '|' + id]; if (pair && list.some(d => d.id === pair)) return pair;
-  if (['grade:course', 'unit:__all__'].includes(id) || id.startsWith('skill:')) return list.some(d => d.id === id) ? id : null;
+  if (['grade:course', 'unit:__all__', 'ixl:quarter'].includes(id) || id.startsWith('skill:')) return list.some(d => d.id === id) ? id : null;
   if (id.startsWith('gb:')) { const n = labNorm(id.slice(3)); const m = list.find(d => d.id.startsWith('gb:') && labNorm(d.id.slice(3)) === n); return m ? m.id : null; }
   if (id.startsWith('custom:')) { const c = state.custom.find(x => x.id === id.slice(7)); const m = c && state.custom.find(x => x.prep === to && labNorm(x.label) === labNorm(c.label)); return m ? 'custom:' + m.id : null; }
   return null;
@@ -1081,7 +1097,9 @@ function labPickFor(c) {
 function labPool(c, series, name) {
   if (!series.length) return null; const values = series.flatMap(x => x.values); const st = stats(values) || { n: 0 };
   return { ...series[0], name: name || COURSE_NAMES[c], course: c, pool: true, values, st, total: values.length, missing: series.reduce((a, x) => a + (x.missing || 0), 0), excused: series.reduce((a, x) => a + (x.excused || 0), 0), max: Math.max(...series.map(x => x.max)), sec: null, secs: series.map(x => x.sec), color: COURSE_COLORS[c], classes: series.map(x => labShort(x.name)),
-    thrs: series.flatMap(x => x.values.map(() => x.thr)) };   // each student's own class goal: a skill's pie counts at goal by it (audit: the first class's goal was used for all)
+    thrs: series.flatMap(x => x.values.map(() => x.thr)),
+    cells: series.every(x => x.cells) ? series.reduce((a, x) => ({ at: a.at + x.cells.at, below: a.below + x.cells.below, none: a.none + x.cells.none }), { at: 0, below: 0, none: 0 }) : undefined,
+    qUnits: series.every(x => x.qUnits && x.qUnits.join() === series[0].qUnits.join()) ? series[0].qUnits : undefined, each: series.every(x => x.each && x.each === series[0].each) ? series[0].each : null };   // each student's own class goal: a skill's pie counts at goal by it (audit: the first class's goal was used for all)
 }
 /* What the rows are (Croix, 4 Nov 2026: "a way to display all of a prep so like all of a7 or all of m7 compared to a
    specific class"). One course: each class (the default), the whole course together, or one class beside the whole
@@ -1140,6 +1158,12 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     seriesAll = cmp === 'pool' ? [poolOf(prep, raw, allCourse(prep), foc)].filter(Boolean) : vs ? [raw.find(x => x.sec.key === vs) || blank(vs), poolOf(prep, raw, allCourse(prep), foc)].filter(Boolean) : raw;
   }
   const anyId = both ? ids.acc : unitName;
+  const qSet = both ? (ids.acc === 'ixl:quarter' && ids.on === 'ixl:quarter') : unitName === 'ixl:quarter';   // the quarter's IXL on every row
+  if (qSet && !seriesAll.some(x => x && x.cells)) return `${boardHead(dsTitle(title), [labCmpWords(prep, cmp)])}<div class="lbEmpty">No IXL unit is assigned for ${Q_NAMES[liveQ() - 1]} yet. Set the unit the course is working in, and it shows here.</div>`;
+  // the units it counts ("Units 3–5"). A class's quarter is read from its own gradebook, so one that is an export behind
+  // can count other units than the rest: then the line says so, not one class's units as if they were everyone's
+  const qRows = qSet ? seriesAll.filter(x => x.cells) : [];
+  const qSpan = !qRows.length ? '' : qRows.every(x => x.qUnits && x.qUnits.join() === qRows[0].qUnits.join()) ? unitSpan(qRows[0].qUnits) : 'each class\'s own units for the quarter';
   const series = seriesAll.filter(x => x.st.n >= MIN_N), thin = seriesAll.filter(x => x.st.n < MIN_N);
   // Focus scores on the projected screen stay aggregate: no per-student values, no outlier marks, bins of at least 5,
   // no excused counts. Comparing whole courses (15 or more students a row) is the exception he asked for: every chart.
@@ -1154,18 +1178,23 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     // 2026: Unit 5, due Thursday) shows each class's progress through the week, in percent of the unit.
     const rows = (both && rowsBy === 'class' ? [...labSeries('acc', ids.acc).map(x => ({ ...x, course: 'acc' })), ...labSeries('on', ids.on).map(x => ({ ...x, course: 'on' }))] : seriesAll).filter(x => x.st.n >= MIN_N);
     const idOf = x => both ? ids[x.course || (x.sec.prep === 'acc' ? 'acc' : 'on')] : unitName;
-    const lkOf = id => id === 'unit:__all__' ? 'all' : /^unit:/.test(id) ? 'unit' : /^gb:/.test(id) ? 'gb' : id === 'grade:course' ? 'grade' : null;
-    const lks = [...new Set(rows.map(x => lkOf(idOf(x))))]; const lk = lks.length === 1 ? lks[0] : null; const ixlLine = lk === 'all' || lk === 'unit';
+    const lkOf = id => id === 'ixl:quarter' ? 'qtr' : id === 'unit:__all__' ? 'all' : /^unit:/.test(id) ? 'unit' : /^gb:/.test(id) ? 'gb' : id === 'grade:course' ? 'grade' : null;
+    const lks = [...new Set(rows.map(x => lkOf(idOf(x))))]; const lk = lks.length === 1 ? lks[0] : null; const ixlLine = lk === 'all' || lk === 'unit' || lk === 'qtr';
     const secsOf = x => x.pool ? x.secs : [x.sec];
     const hist = (s, x) => ixlLine ? (s.history || []) : (s.gradeHistory || []).filter(z => lk === 'grade' || z.assignments.some(a => a.name === idOf(x).slice(3)));
-    const dates = lk ? [...new Set(rows.flatMap(x => secsOf(x).flatMap(s => hist(s, x).map(h => h.date))))].sort() : [];
+    // the quarter's IXL is drawn from the quarter's own imports: before it began nobody had started its units
+    const qFrom = lk === 'qtr' && liveQ() > 1 ? quarters().ends[liveQ() - 2] : null;
+    const dates = lk ? [...new Set(rows.flatMap(x => secsOf(x).flatMap(s => hist(s, x).map(h => h.date))))].filter(d => !qFrom || d > qFrom).sort() : [];
     // One class at one import: the sum and how many it counts. Focus scores (an assignment, the course grade) need 5 or
     // more in a class, as every Focus number on the board does, and a course's line counts only the classes that have
     // them (audit: an early import with one score drew that student's score as the class's point). An assignment's
     // count is kept since 4 Nov 2026; older imports count the students not marked missing.
     const focusLine = lk === 'gb' || lk === 'grade';
+    const qU = new Map(); const qUnitsOf = s => { if (!qU.has(s.key)) qU.set(s.key, openUnits(s)); return qU.get(s.key); };   // each class's quarter units, worked out once for the whole line
     const partAt = (s, x, h) => { let sum = 0, n = 0;
       if (lk === 'all') snapTotals(s, h).forEach(v => { sum += v; n++; });
+      else if (lk === 'qtr') { const us = qUnitsOf(s).filter(u => (h.pu || {})[u.name] && (h.ua || {})[u.name]); const tot = us.reduce((a, u) => a + h.ua[u.name], 0);   // each student's share of the quarter's skills at goal, as the snapshot counted them
+        if (tot) Object.keys(h.per).forEach(key => { sum += us.reduce((a, u) => a + (h.pu[u.name][key] || 0), 0) / tot * 100; n++; }); }
       else if (lk === 'unit') { const nm = idOf(x).slice(5); const pu = (h.pu || {})[nm], tot = (h.ua || {})[nm]; if (pu && tot) Object.values(pu).forEach(v => { sum += v / tot * 100; n++; }); }
       else if (lk === 'grade') (h.grade || []).forEach(g => { if (g != null) { sum += g; n++; } });
       else { const a = h.assignments.find(a => a.name === idOf(x).slice(3)); if (a && a.avg != null) { const k = Number.isInteger(a.n) ? a.n : Math.max(0, (h.students || []).length - (a.missing || 0)); sum += a.avg * k; n += k; } }
@@ -1174,16 +1203,16 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
       secsOf(x).forEach(s => { const H = hist(s, x); const h = x.pool ? H.filter(z => z.date <= d).pop() : H.filter(z => z.date === d).pop(); if (!h) return; const [a, b] = partAt(s, x, h); sum += a; n += b; });
       return n ? sum / n : null; };
     const asOfL = labAsOf(secs, gbSet); let body = '';
-    if (!lk) body = '<div class="labNotYet">A line graph needs data over time. Pick an IXL unit, <b>All assigned units</b>, the course grade or a Focus assignment.</div>';
-    else if (dates.length < 2) body = `<div class="labNotYet">${ixlLine ? 'Needs at least two imports on different days.' : lk === 'gb' ? 'Needs this assignment in at least two gradebook imports on different days.' : 'Needs at least two gradebook imports on different days.'}</div>`;
+    if (!lk) body = '<div class="labNotYet">A line graph needs data over time. Pick an IXL unit, the quarter\'s IXL, <b>All assigned units</b>, the course grade or a Focus assignment.</div>';
+    else if (dates.length < 2) body = `<div class="labNotYet">${lk === 'qtr' ? `Needs at least two imports on different days in ${Q_NAMES[liveQ() - 1]}.` : ixlLine ? 'Needs at least two imports on different days.' : lk === 'gb' ? 'Needs this assignment in at least two gradebook imports on different days.' : 'Needs at least two gradebook imports on different days.'}</div>`;
     else { const mixed = rows.some(x => x.pool) && rows.some(x => !x.pool);   // a whole course beside a class: the course's line is dashed
       body = chartLines(dates.map(fmtDate), rows.map(x => ({ name: labShort(x.name), color: x.pool ? x.color : classColor(x.sec), ref: mixed && !!x.pool, values: dates.map(d => valueAt(x, d)) })),
-        lk === 'all' ? { aria: 'average of skills at goal by import', h: LINE_H(), w: 900, labelW: 200 } : { pct: true, min: lk === 'grade' ? 40 : 0, max: 100, h: LINE_H(), w: 900, labelW: 200, aria: lk === 'unit' ? 'average share of the unit at goal by import' : lk === 'grade' ? 'average course grade by import' : 'average on this assignment by import' }); }
-    const what = lk === 'unit' ? 'average share of the unit\'s skills at goal at each import' : rows.every(x => !x.pool) ? 'class average at each import' : 'average at each import';
+        lk === 'all' ? { aria: 'average of skills at goal by import', h: LINE_H(), w: 900, labelW: 200 } : { pct: true, min: lk === 'grade' ? 40 : 0, max: 100, h: LINE_H(), w: 900, labelW: 200, aria: lk === 'qtr' ? 'average share of the quarter\'s IXL at goal by import' : lk === 'unit' ? 'average share of the unit at goal by import' : lk === 'grade' ? 'average course grade by import' : 'average on this assignment by import' }); }
+    const what = lk === 'qtr' ? 'average share of the quarter\'s skills at goal at each import' : lk === 'unit' ? 'average share of the unit\'s skills at goal at each import' : rows.every(x => !x.pool) ? 'class average at each import' : 'average at each import';
     // a row with no line says why, as in every other form (a class too small to show, or one with nothing for this yet)
     const offL = (both && rowsBy === 'class' ? [] : seriesAll).filter(x => x.st.n < MIN_N); const few = offL.filter(x => x.st.n), none = offL.filter(x => !x.st.n);
     const why = `${few.length ? `<div class="labNotYet">${esc(few.map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}${none.length ? `<div class="labNotYet">${esc(none.map(x => labShort(x.name)).join(', '))}: no scores for this yet</div>` : ''}`;
-    return `${boardHead(dsTitle(title), [labCmpWords(prep, cmp), what, asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
+    return `${boardHead(dsTitle(title), [labCmpWords(prep, cmp), lk === 'qtr' ? qSpan : '', what, asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
       <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot">${body}${why}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
@@ -1194,7 +1223,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
   const unitLabel = mixedMax ? 'the maximum' : ref0 && ref0.unit ? ref0.unit : 'points';
   const asOf = labAsOf(secs, gbSet);
   const isGrade = anyId === 'grade:course'; const isPct = !!(ref0 && ref0.pct);
-  const facts = [labCmpWords(prep, cmp)];
+  const facts = [labCmpWords(prep, cmp), qSpan];
   const pooled = seriesAll.some(x => x.pool); const perWord = seriesAll.every(x => x.pool) ? 'course' : pooled ? 'row' : 'class';
   if (both && units && labNorm(units.acc) !== labNorm(units.on)) facts.push(`accelerated: ${units.acc}; on-level: ${units.on}`);
   if (kind === 'avg') {   // one bar per row, in period order (the Race ranks; this compares)
@@ -1208,7 +1237,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
         ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
         ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)}, too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''; };
-  const nameSmall = x => `<b>n = ${x.st.n}</b>${x.classes ? ` · ${x.classes.length > 3 ? x.classes.length + ' classes' : esc(x.classes.join(', '))}` : ''}${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}`;
+  const nameSmall = x => `<b>n = ${x.st.n}</b>${x.cells && x.each ? ` · ${x.each} skills each` : ''}${x.classes ? ` · ${x.classes.length > 3 ? x.classes.length + ' classes' : esc(x.classes.join(', '))}` : ''}${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}`;
   const perStudent = isGrade ? 'course grade per student, in percent' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`;
   /* Circle graphs as a grid of large pies with one key above them (Croix, 4 Nov 2026: "bigger pies that's my favorite
      of the comparisons but it views as kinda small on the board"): one per row, as many columns as fill the screen,
@@ -1216,7 +1245,7 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
   if (kind === 'circle') {
     const pies = series.map(x => ({ x, parts: pieParts(x) }));
     // one key for every pie: a skill's goal is named only when every class has the same one
-    const key = !pies.length ? [] : pies[0].x.kind === 'skill' && new Set(series.flatMap(x => x.thrs || [x.thr])).size > 1 ? pies[0].parts.map((p, i) => i ? p : { ...p, label: 'At goal (each class\'s goal)' }) : pies[0].parts;
+    const key = !pies.length ? [] : (pies[0].x.kind === 'skill' || pies[0].x.cells) && new Set(series.flatMap(x => x.thrs || [x.thr])).size > 1 ? pies[0].parts.map((p, i) => i ? p : { ...p, label: 'At goal (each class\'s goal)' }) : pies[0].parts;
     // Columns: as many as fill the board (1, 2, 3; 4 as 2×2; 5 or 6 as 3×2; more, 4 across). By course, as many as the
     // larger course has classes (5 at most), each course on its own rows under its name. The rows, the course names and
     // the stats under each pie are taken out of the height each pie may use (audit: ten classes by course overflowed).
@@ -1233,7 +1262,8 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     // every row in its place (a class too small to draw keeps its spot beside the course it is compared with)
     const thinCard = x => `<div class="labPie thin" style="--cc:${color(x)}"><div class="labPieHead"><span class="labName">${esc(labShort(x.name))}</span><small>n = ${x.st.n || 0}</small></div><div class="labNotYet">${x.st.n ? `Not enough students yet (needs ${MIN_N})` : 'No scores for this yet'}</div></div>`;
     let cards = '', at = null; seriesAll.forEach(x => { if (grouped && x.course !== at) { at = x.course; cards += `<div class="labGroupHead" style="--cc:${COURSE_COLORS[at]}">${COURSE_NAMES[at]}</div>`; } cards += x.st.n >= MIN_N ? card(pies.find(q => q.x === x)) : thinCard(x); });
-    return `${boardHead(dsTitle(title), [...facts, perStudent, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+    const pieWhat = pies.length && pies.every(q => q.x.cells) ? 'every skill counted once for each student' : perStudent;   // the quarter's pies count skills, and say so
+    return `${boardHead(dsTitle(title), [...facts, pieWhat, asOf ? 'as of ' + fmtDate(asOf) : ''])}
       ${key.length ? `<div class="labLegend labPieLegend">${key.map(p => `<span><i style="background:${p.color}"></i>${esc(p.label)}</span>`).join('')}</div>` : ''}
       <div class="labPies${narrow ? ' narrow' : ''}" style="${fit}">${cards}${!seriesAll.length ? '<div class="lbEmpty">No class has data for that yet.</div>' : ''}</div>`;
   }
@@ -2496,7 +2526,7 @@ li{margin:3px 0}
 <p><b>Notes and Family</b>: on a student's page: dated notes, parent contacts, a contact log, a box per weekly report to tick when it comes back signed (the Reports tab lists who is still out). Hidden when names are hidden, never on the Board.</p>
 <p><b>FAST and PDFs</b>: import the Focus FAST report like any file; scores show on the student's page and the conference form. The state's score report PDF adds percentiles and categories; IXL's Students Quickview PDF adds questions, time and last practice by skill.</p>
 <p><b>Google Site</b>: the page forgets everything when you leave, so open your newest Full save each visit. Tally autosaves one after 10 minutes of changes; Ctrl+S saves.</p>
-<p><b>Board</b>: the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, skill, assignment or the course grade, with class averages). Names never show. Hold the exit button to leave.</p>
+<p><b>Board</b>: the student screen: the <b>Race</b> (classes ranked by how many students gained a skill since last week) and the <b>Data Lab</b> (plots of any unit, the whole quarter's IXL, a skill, an assignment or the course grade, with class averages). Names never show. Hold the exit button to leave.</p>
 <p><b>Find</b> (the box at the top, or Ctrl+K): a student, class, unit, tab or action; Enter takes the first match.</p>
 <p><b>Names</b>: the eye button in the header. Crossed out = initials only, for projecting.</p>
 <p><b>The rail</b>: All classes, every class under its course; at the foot the Board, Details view, Settings, this Guide, Full save. <b>Actions</b> (class header): Copy, What changed, quarters, Board save, Class settings.</p>
@@ -2716,7 +2746,7 @@ function boardFile() {
     const keyMap = {}; perm.forEach((i, j) => keyMap[ixlKeyAt(s, i)] = pseudoName(j) + '#0');
     const remap = o => { const out = {}; if (o) for (const k in o) if (keyMap[k]) out[keyMap[k]] = o[k]; return out; };
     const scores = s.skills.map((sk, k) => perm.map(i => eff(s, k, i)));   // best scores baked in, so `best` need not travel
-    const sec = { key: s.key, label: s.label, prep: s.prep, period: s.period, threshold: s.threshold, date: s.date, importedAt: s.importedAt, file: '', skills: s.skills.map(sk => ({ unit: sk.unit, lesson: sk.lesson, name: sk.name, id: sk.id })), students: perm.map((_, j) => pseudoName(j)), scores,
+    const sec = { key: s.key, label: s.label, prep: s.prep, period: s.period, openUnits: openUnits(s).map(u => u.name), threshold: s.threshold, date: s.date, importedAt: s.importedAt, file: '', skills: s.skills.map(sk => ({ unit: sk.unit, lesson: sk.lesson, name: sk.name, id: sk.id })), students: perm.map((_, j) => pseudoName(j)), scores,
       studentSkips: remap(s.studentSkips), hiddenUnits: s.hiddenUnits || {}, roster: '', ignored: {}, aliases: {}, excluded: {}, overrides: {}, receipts: {}, seatInfo: {}, qArchive: {}, pool: false, allBlank: !scores.some(r => r.some(v => v != null)),
       history: (s.history || []).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: remap(h.per), pu: Object.fromEntries(Object.entries(h.pu || {}).map(([u, m]) => [u, remap(m)])), ua: h.ua })) };
     if (s.grades && s.grades.assignments.length) {
@@ -3145,7 +3175,7 @@ document.addEventListener('keydown', e => {
   else if (view.mode === 'settings') { if (settingsCancel) settingsCancel(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
-window.__tally = { pinOn, pinSet, pinClear, pinOK, ownSave, stateForSave, veil, unveil, veilTick, idle(ms) { lastUse = Date.now() - ms; }, printsOf, removePrint, csvToRows, sniffDelim, merge3, uniqueNames, fitCache, ixlFor, unitClosed, unitQuarterOf, unitColumnQuarters, unitsDueIn, liveQuarter, attentionGroups, fixCount, gbUnitFor, pendingCopies, owedWork, reportGaps, openQuarters, printDoc, adopt, niceName, askCategories, catGuesses, catCheck, cleanDismissed, nextTest, testDays, testUnitNums, cleanTestDates, openTestDates, testDatesOf, TEST_DATES, closedEarly, quarterDue, openSettings, gradeSummary, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, labCorrMarkup, corrPick, ixlVsTests, ixlTestPairs, asgUnitNums, isUnitAssessment, gradeDiff, gradeOff, gradeDiffKey, gbQuestions, applyCodes, parseGradebook, regradeCourse, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
+window.__tally = { openUnits, labSeries, labDatasets, pieParts, pinOn, pinSet, pinClear, pinOK, ownSave, stateForSave, veil, unveil, veilTick, idle(ms) { lastUse = Date.now() - ms; }, printsOf, removePrint, csvToRows, sniffDelim, merge3, uniqueNames, fitCache, ixlFor, unitClosed, unitQuarterOf, unitColumnQuarters, unitsDueIn, liveQuarter, attentionGroups, fixCount, gbUnitFor, pendingCopies, owedWork, reportGaps, openQuarters, printDoc, adopt, niceName, askCategories, catGuesses, catCheck, cleanDismissed, nextTest, testDays, testUnitNums, cleanTestDates, openTestDates, testDatesOf, TEST_DATES, closedEarly, quarterDue, openSettings, gradeSummary, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, labCorrMarkup, corrPick, ixlVsTests, ixlTestPairs, asgUnitNums, isUnitAssessment, gradeDiff, gradeOff, gradeDiffKey, gbQuestions, applyCodes, parseGradebook, regradeCourse, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };
 $('#toast').addEventListener('click', e => { if (e.target.closest('button')) return; $('#toast').classList.remove('show'); });
 // An older save can have a course with no "Working in" (it ran on a guess). Give it one before the first paint, and leave
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.
