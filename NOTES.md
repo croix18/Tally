@@ -1399,7 +1399,7 @@ Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 ch
   consistent IXL column per unnamed student: the board's own charts need a look before shuffling), 10 (school-year
   rollover, before August 2027), then the smaller ones in 11.
 
-## Deep audit, 15 Nov 2026 (IN PROGRESS: read this first if you are taking over)
+## Deep audit, 15 Nov 2026 (STOPPED at Croix's word: findings logged, NOTHING FIXED yet)
 
 Croix: *"Is there anything I missed? I want you to run a deep dive on the cores and engines that make up tally. Look
 at all edge cases. I need all of the math and the information absolutely correct at all times. Graphs, what ifs,
@@ -1425,7 +1425,15 @@ How it is run:
 3. Confirmed, unambiguous defects are fixed with a failing-first check; anything that changes what Croix sees or
    decides is listed for him instead. A second counter agent reviews the fixes. Then the full suite and a push.
 
-**Status** is kept in `review/audit-nov15/STATUS.md` and the reports land beside it as they finish.
+**Where it stopped** (Croix, 6:18 pm: *"Finish, push, and stop"*): all twelve auditors finished; eight reports were
+countered (IXL, grades, what-ifs, charts, time, consistency, seating, conference); printed reports, imports, saves and
+code health were NOT. **No Tally code was changed**: `Tally.html` is still the build of `8f973ed`.
+
+**Everything is in `review/audit-nov15/RESULTS.md`**: A, confirmed defects to fix (one Critical: two students of one
+name see the first one's numbers on Show student and the conference form; seven High); B, confirmed but his call; C,
+refuted or intended; D, not yet countered; E, what was verified correct. Each finding's reproduction is in
+`review/audit-nov15/probes/` (run them on a copy made by `tools/make_audit_copy.sh`). To resume: counter D, fix A with
+each probe as the failing-first check, ask him B.
 
 ## The quarter's IXL on the board: one pie a class (15 Nov 2026)
 

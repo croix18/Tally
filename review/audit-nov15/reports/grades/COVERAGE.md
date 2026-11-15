@@ -1,0 +1,3 @@
+# GRD coverage (condensed)
+Verified against an exact-fraction oracle: computeGrade on 5,000 random gradebooks / 34,689 grades (percent, rounded, letter, categories; excused, blank, unread, NHI, max 0, extra credit, weight 0, weights not summing to 100, over max, 755 grades exactly on .5); neededOn 6,668 checks by brute force; withNext 1,667; classAverage; pearson 3,000 to 1e-12; fit: 1,500 cases, every exact fit reproduces every grade; 45 unit names; scatter geometry 5,850 dots; fitCache follows weight, category, text-grade and extra-credit changes.
+Not covered: nextAssessment, the report and student-page what-ifs (line 633 on), the digest's use of snapshots, xlsx number formats in the Grade column.

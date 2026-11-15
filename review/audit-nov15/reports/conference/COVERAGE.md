@@ -1,0 +1,3 @@
+# CNF coverage (condensed)
+Verified: every FAST_MATH cut score against the FLDOE 2026-27 fact sheet and the learning-gains subcategory chart; 21,287 fuzz cases with no disagreement (fastBucket grades 3-8, the gain floor, the scale geometry, the semester average rounded half up); the real class's 23 forms against a recount (grade, missing, untaken tests, under 70 %, class averages, Q1 against Focus's Grade column); 75 rows across two generated edge PDFs; saved text survives a reload; print escapes text.
+Not covered: the real PDFs (cannot be uploaded); the Percentile column's window once PM3 exists.

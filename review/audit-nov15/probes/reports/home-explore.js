@@ -1,0 +1,15 @@
+const H = require('./h.js');
+(async () => { const { b, p, errs, K } = await H.open();
+  const step = async (label, fn) => { const o = await p.evaluate(({ K, fn }) => { const T = window.__tally, A = window.__all; const s = T.state.sections[K]; eval(fn); T.save(); T.state.view = 'home';
+      A.attCache && 0; window.__tally.render && T.render();
+      const g = A.gradeSummary(s); const att = A.attentionItems(s).map(a => a.level + ':' + a.text); const secs = T.state.order.map(k => T.state.sections[k]);
+      const og = A.openSec(s); const gs = og.grades ? A.gradeAll(og) : []; const graded = gs.filter(r => r && r.letter).length;
+      const missSt = og.grades ? og.grades.students.filter((_, i) => og.grades.assignments.some(a => a.status && a.status[i] === 'missing')).length : null;
+      const missN = og.grades ? og.grades.assignments.reduce((n, a) => n + (a.status || []).filter(x => x === 'missing').length, 0) : null;
+      return { q: A.currentQuarter(), g: g && { waiting: g.waiting, avg: g.avg, letters: g.letters, sum: g.letters && Object.values(g.letters).reduce((a, b) => a + b, 0), graded, missing: g.missing, missN, missingStudents: g.missingStudents, missSt, sliding: g.sliding }, att, fix: A.fixCount(secs), groups: A.attentionGroups(secs).map(x => x.level + ':' + x.who + ':' + x.text) }; }, { K, fn });
+    console.log('==', label, JSON.stringify(o).slice(0, 1500)); };
+  await step('fresh', '');
+  await step('closeQ1', 'A.closeQuarter(1,{acc:[],on:[]})');
+  await H.pick; await p.setInputFiles('#file', [require('path').resolve('fixtures/focus_gradebook_scrubbed_q2.csv')]); await p.waitForTimeout(500); await H.pick(p); await p.waitForTimeout(600);
+  await step('q2 in', '');
+  console.log(errs); await b.close(); })();

@@ -47,21 +47,22 @@ the finding.
 Read the auditor's COVERAGE.md. Name the two or three most important things in that engine that were NOT verified and
 that you would want checked before anyone calls the engine right. If you can check one of them quickly, do it.
 
-## Deliver (in your directory)
+## Effort
 
-`VERDICTS.md`, one entry per finding:
+Give Critical, High and Medium findings the full treatment above. For Low, CLEANUP and DECISION items: rerun the
+probe once, read the cited lines, and give a one-line verdict. Be economical: read each file once, keep tool output
+short.
+
+## Deliver: your final message IS the report (do not write a report file)
+
+One block per finding, as compact as this, 70 words at most (FIX-NOW items may add one "fix:" sentence):
 
 ```
-### <ID>  <title>   ->  <VERDICT> · <RECOMMENDATION> · severity <...>
-- Reproduced: yes / no (how; your own probe if you wrote one: counter-probes/NN.js)
-- Expected is right: yes / no / partly, with the citation
-- Reachable: how, and how often
-- The fix: your judgment of the suggested fix, or a better one; what it could break; which suites cover it
-- Notes: anything the person fixing it must know
+<ID> | <VERDICT> | <RECOMMENDATION> | severity <...> | reproduced: yes/no
+why: the decisive reason, with the NOTES / spec citation if one settles it
+fix: your judgment of the suggested fix or a better one; what it could break; the suites that cover it
 ```
 
-followed by "## Cleanup items", "## Suspicions" and "## Gaps in coverage".
-
-Your final message to the orchestrator, under 300 words: counts by verdict; each FIX-NOW in one line; each ASK-CROIX in
-one line; anything you refuted that the auditor rated High or Critical; and the path of VERDICTS.md. Do not paste the
-file.
+Then three short lists: "Cleanup items" (worth doing or not, one line each), "Suspicions" (one line each), and "Gaps
+in coverage" (two or three lines). Put any probe you wrote in `counter-probes/` in your directory and name it in the
+block. Nothing else: no preamble, no summary of method.
