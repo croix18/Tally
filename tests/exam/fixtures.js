@@ -85,7 +85,8 @@ function sitting(r, o) {
   const back = qnums.filter(() => r() < 0.25);
   back.forEach((q, i) => { const s = 8 + Math.floor(r() * 40); visits.push([q, t, s]); qlog[q].visits++; qlog[q].sec += s; if (i === 0) { qlog[q].flag = true; qlog[q].flagEnd = !!o.flagEnd; } t += s; });
   (o.idle || []).forEach(s => idle.push([Math.floor(t / 2), s, qnums[3]]));
-  const total = t + 4, finished = started + total * 1000;
+  if (o.away) { while (away.length < o.away) away.push([20 + away.length * 31, 6, (o.kinds || ['tab'])[away.length % (o.kinds || ['tab']).length], '3']); away.length = o.away; }   // exactly as many times away as the sitting is meant to have
+  const total = t + 4 + (o.extra || 0), finished = started + total * 1000;
   QS.forEach(p => { const v = verdict[p.q]; const pv = v === 'almost' ? 'wrong' : v; parts.push({ id: p.q, type: p.type, typed: typed[p.q], v: pv, almost: v === 'almost', key: keyTextOf(p) }); if (pv === 'right') right += pointsOf(p); });
   const skew = (o.skew || 0) * 1000;
   let log = { v: 1, t0: started + 1400 - skew, t1: finished + 300 - skew, q: qlog, visits, parts: {}, calc, scratch: { opens, end, cut: !!o.cut }, away, blocked, idle,
@@ -103,10 +104,23 @@ function sitting(r, o) {
   if (o.nulls) { log.device = { sw: null, sh: null, ww: 1280, wh: null, dpr: null, touch: null, os: null, osv: null, br: 'Chrome', brv: null, dark: null, large: null, zoom: null, tz: null }; log.fails = null; log.t0 = null; Object.values(log.q).forEach(e => { e.first = null; }); }
   if (o.log === false) log = null;
   return { v: 1, id: [...Array(16)].map(() => '0123456789abcdef'[Math.floor(r() * 16)]).join(''), code: null, course: o.course || 'm7', unit: o.unit == null ? 10 : o.unit, cv: 3, kit: '7f3a9c21b04e', seed: [...Array(32)].map(() => '0123456789abcdef'[Math.floor(r() * 16)]).join(''),
-    site: { started, finished, saves: 20 + Math.floor(r() * 30), timeline: timeline.sort((a, b) => a[0] - b[0]) },
+    site: { started, finished, saves: 20 + Math.floor(r() * 30), timeline: timeline.sort((a, b) => a[0] - b[0]), ...(o.opened === null ? {} : { opened: o.opened || at(9, 38) }) },
     rule: o.rule || { leave: 'count', after: 3 }, ended: o.ended || null, unlocks: o.unlocks || 0, parts, points: right, of: OF, log };
 }
 
+/* A record's strings are the student's own (CHANGES-16NOV §6, review N4): markup, a closing script tag, a 200-character run,
+   right-to-left and zero-width characters, an answer that is a 2 KB object, junk among the times away. Tally shows them inert. */
+const HOSTILE = { img: '<img src=x onerror="document.title=\'pwned\'">', script: '</script><script>document.title="pwned"</script>', run: 'W'.repeat(200), rtl: '\u202Eevil\u202C txt\u200B\u200Dzero\uFEFFwidth' };
+function hostile(rec) {
+  rec.parts[0].typed = HOSTILE.img; rec.parts[0].v = 'wrong';
+  rec.parts[3].typed = HOSTILE.run + HOSTILE.rtl; rec.parts[3].v = 'unread';
+  rec.parts[1].typed = { junk: 'x'.repeat(2000), nested: { a: [1, 2, HOSTILE.script] } };
+  rec.parts[2].key = HOSTILE.script;
+  const L = rec.log; L.scratch.end['2'] = { n: HOSTILE.script + '\n' + HOSTILE.img + '\n' + HOSTILE.rtl + '\n' + HOSTILE.run, g: { v: [4, 1], o: [['p', 3, 4], ['zz', 1], ['l', 'a', 1, 2, 3]] } };
+  L.away.push(['x', 5, 'tab', '1'], [30, -4, 'tab', '1'], [40, 999999, 'tab', '1'], null, [50, 1e400, 'tab', '1'], 'junk');
+  L.device.os = HOSTILE.img; L.device.br = HOSTILE.rtl; L.calc.push([HOSTILE.script, '2', 60, 5]);
+  if (L.parts['1']) L.parts['1'].vals.push([70, HOSTILE.img, 'typed']);
+}
 /* The class, the records and the sheet. Each record carries how it is to be locked (to: 'tally' | 'other'; by: 'site' | 'old'
    | 'forger'); `rows` are the form's responses, in the order they came in. */
 function build(seed) {
@@ -122,7 +136,12 @@ function build(seed) {
     2: { away: 3, kinds: ['tab'], rule: { leave: 'end', after: 3 }, ended: 'left', blankFrom: 11 },      // the test ended itself
     3: { idle: [612, 75] }, 4: { scratch: 'heavy', cut: true, calc: 0.5 }, 5: { cap: true, away: 3, calc: 0.3 },
     6: { log: false }, 7: { nulls: true, unlocks: 1, rule: { leave: 'lock', after: 2 }, away: 2 },
-    13: { pastes: 2, blocked: true }, 20: { skew: -184, flagEnd: true }, 21: { start: at(10, 52) }, 22: { slowQ: '6' } };
+    13: { pastes: 2, blocked: true }, 20: { skew: -184, flagEnd: true, extra: 2700 }, 21: { start: at(10, 52) }, 22: { slowQ: '6' },
+    11: { rule: { leave: 'end', after: 3 }, away: 3 },                                                 // left 3 times under "end after 3" and it did not end
+    14: { rule: { leave: 'lock', after: 2 }, away: 4 },                                                // left 4 times under "lock after 2", never unlocked
+    25: { ended: 'teacher' },                                                                          // the site closed it with what was saved
+    27: { start: at(13, 5), opened: at(12, 55) },                                                      // taken in the afternoon, in another opening (at home?)
+    26: { opened: null } };                                                                            // an older record with no site.opened
   const codes = {};
   P4.forEach((d, i) => { codes[i] = add({ sec: 4, n: d }, { skill: sk[i], start: day(i), calc: 0.15, scratch: 'some', away: i % 4 === 1 ? 1 : 0, ...(kinds[i] || {}) }, i === 23 ? { by: 'old' } : null); });   // Tereza's is signed with the site's key from before it was made again; Daniel finishes after the period
   // the mess
@@ -132,8 +151,9 @@ function build(seed) {
   const unit9 = add({ sec: 4, n: P4[18] }, { skill: 0.7, start: at(9, 43), unit: 9 });                       // another unit
   const a7 = add({ sec: 4, n: P4[19] }, { skill: 0.6, start: at(9, 44), course: 'a7', unit: 4 });            // the other course
   const late = codes[21], oldKey = codes[23];
-  const nobody = add(null, { skill: 0.66, start: day(25) });                                                  // nobody turned it in (the cockpit's file has it)
-  const p5 = P5.map((d, i) => add({ sec: 5, n: d }, { skill: 0.6 + i * 0.05, start: at(10, 41 + i), calc: 0.1 }));
+  const nobody = add(null, { skill: 0.66, start: day(25), ended: 'teacher' });                            // abandoned: the site finished and sealed it                                                  // nobody turned it in (the cockpit's file has it)
+  const p5 = P5.map((d, i) => add({ sec: 5, n: d }, { skill: 0.6 + i * 0.05, start: at(10, 41 + i), calc: 0.1, opened: at(10, 38) }));
+  hostile(recs.find(x => x.code === p5[0]).record);                                                       // a genuinely signed record full of a student's own strings
   // the responses, as the form collected them
   P4.forEach((d, i) => {
     const when = fmt(recs.find(x => x.code === codes[i]).record.site.finished + 40000 + i * 1000);
@@ -193,11 +213,12 @@ async function lockAll(b, keys, tallyPub) {
 }
 function resultsFile(b, locked, keys) {
   return { site: { key: keys.site.pub }, results: b.recs.filter(x => x.record.course === 'm7' && x.record.unit === 10).map(x => { const r = x.record, aw = r.log ? r.log.away : [];
-    return { code: x.code, course: r.course, unit: r.unit, points: r.points, of: r.of, seconds: Math.round((r.site.finished - r.site.started) / 1000), away: aw.length, awaySeconds: aw.reduce((a, e) => a + e[1], 0), finished: r.site.finished, record: locked[x.code] }; }) };
+    const ok = aw.filter(e => Array.isArray(e) && typeof e[0] === 'number' && typeof e[1] === 'number' && isFinite(e[1]) && e[1] >= 0 && e[1] <= 86400), secs = Math.round((r.site.finished - r.site.started) / 1000);
+    return { code: x.code, course: r.course, unit: r.unit, points: r.points, of: r.of, seconds: secs, away: ok.length, awaySeconds: Math.min(secs, ok.reduce((a, e) => a + e[1], 0)), opened: r.site.opened == null ? null : r.site.opened, started: r.site.started, finished: r.site.finished, record: locked[x.code] }; }) };
 }
 async function makeKeys() { return { site: await SEAL.makeSiteKey(), old: await SEAL.makeSiteKey(), forger: await SEAL.makeSiteKey(), tally: await SEAL.makeTallyKey(), other: await SEAL.makeTallyKey() }; }
 
-module.exports = { build, sheets, classFiles, lockAll, resultsFile, makeKeys, QS, OF, P4, P5, firstLast, at };
+module.exports = { HOSTILE, build, sheets, classFiles, lockAll, resultsFile, makeKeys, QS, OF, P4, P5, firstLast, at };
 
 if (require.main === module) (async () => {
   fs.mkdirSync(OUT, { recursive: true });

@@ -141,10 +141,13 @@ var nameKey = function (t) { return tokens(t).sort().join(' '); };
    Every field is read as the design pins it and nothing else is trusted to have its shape: the record opened and its
    signature held, but a field the page could not fill is null, and an older page's log may be shaped differently. */
 var qOf = function (id) { var s = String(id == null ? '' : id); return s.replace(/[a-z]+$/i, '') || s; };
-function answerText(type, a) {
+// what a student typed is shown as text and never at any length: past 300 characters it is cut, and says so
+function clip(s, n) { s = String(s); n = n || 300; return s.length > n ? s.slice(0, n) + '… (' + (s.length - n) + ' more characters)' : s; }
+function answerText(type, a) { try { return clip(answerRaw(type, a)); } catch (e) { return '(unreadable)'; } }
+function answerRaw(type, a) {
   if (a == null) return '';
-  if (type === 'mc') return typeof a === 'number' || /^\d+$/.test(String(a)) ? (LET[+a] || String(a)) : String(a);
-  if (type === 'multi') return Array.isArray(a) ? a.map(function (k) { return LET[+k] || String(k); }).join(', ') : String(a);
+  if (type === 'mc' && (typeof a === 'number' || (typeof a === 'string' && /^\d+$/.test(a)))) return LET[+a] || String(a);
+  if (type === 'multi' && Array.isArray(a)) return a.slice(0, 40).map(function (k) { return LET[+k] || String(k); }).join(', ');
   if (type === 'nline' || (a && typeof a === 'object' && !Array.isArray(a) && ('c' in a || 'dir' in a || 'closed' in a))) {
     if (!a || typeof a !== 'object') return String(a);
     var bits = []; if (a.c != null && a.c !== '') bits.push(String(a.c).replace(/^-/, '−')); if (a.closed != null) bits.push(a.closed ? 'closed dot' : 'open dot'); if (a.dir === 'left' || a.dir === 'right') bits.push('arrow ' + (a.dir === 'left' ? '←' : '→'));
@@ -159,8 +162,10 @@ function answerText(type, a) {
   return String(a);
 }
 // the key as the record carries it: the letter of a choice, "A,C", "nline:3|closed|right", "cgraph:Dogs=90|Cats=270", or text
-function keyText(k) {
+function keyText(k) { try { return clip(keyRaw(k)); } catch (e) { return '(unreadable)'; } }
+function keyRaw(k) {
   if (k == null) return '';
+  if (typeof k === 'object' && !Array.isArray(k)) return JSON.stringify(k);
   if (Array.isArray(k)) return k.map(String).join('  ·  ');
   var s = String(k), m;
   if ((m = /^nline:([^|]*)\|(open|closed)\|(left|right)$/.exec(s))) return answerText('nline', { c: m[1], closed: m[2] === 'closed', dir: m[3] });
@@ -188,7 +193,8 @@ function readRecord(r) {
     q.almost = q.parts.some(function (p) { return p.almost; }); });
   // the device's lists, each entry kept only in its pinned shape
   var list = function (k, shape) { return log && Array.isArray(log[k]) ? log[k].filter(function (e) { return Array.isArray(e) && shape(e); }) : []; };
-  var away = list('away', function (e) { return num(e[0]) != null && num(e[1]) != null; }).map(function (e) { return { at: e[0], sec: e[1], kind: str(e[2]) || '', q: e[3] == null ? '' : String(e[3]) }; });
+  // the site's own rule (CHANGES-16NOV §6): [at, sec, kind, q] with 0 ≤ sec ≤ 86400; the count and the sum then agree with its clear summary
+  var away = list('away', function (e) { return num(e[0]) != null && num(e[1]) != null && e[1] >= 0 && e[1] <= 86400; }).map(function (e) { return { at: e[0], sec: e[1], kind: str(e[2]) || '', q: e[3] == null ? '' : String(e[3]) }; });
   var visits = list('visits', function (e) { return num(e[1]) != null && num(e[2]) != null; }).map(function (e) { return { q: String(e[0]), at: e[1], sec: e[2] }; });
   var calc = list('calc', function (e) { return num(e[2]) != null && num(e[3]) != null; }).map(function (e) { return { which: str(e[0]) || '', q: e[1] == null ? '' : String(e[1]), at: e[2], sec: e[3] }; });
   var sc = log && log.scratch && typeof log.scratch === 'object' ? log.scratch : {};
@@ -210,7 +216,8 @@ function readRecord(r) {
     rule: r.rule && typeof r.rule === 'object' ? { leave: str(r.rule.leave) || 'count', after: num(r.rule.after) } : null, ended: r.ended === 'left' || r.ended === 'teacher' ? r.ended : null, unlocks: num(r.unlocks),
     points: num(r.points), of: num(r.of), parts: parts, questions: qs,
     log: log ? { t0: t0, t1: t1, deviceSeconds: t0 != null && t1 != null && t1 >= t0 ? Math.round((t1 - t0) / 1000) : null, fails: num(log.fails), shaped: own(log, 'v') && Array.isArray(log.visits) } : null,
-    visits: visits, away: away, awaySec: sum(away), calc: calc, scratch: scratch, paper: paper, cut: !!sc.cut, blocked: blocked, idle: idle, idleSec: sum(idle),
+    opened: num(site.opened),
+    visits: visits, away: away, awaySec: started != null && finished != null && finished >= started ? Math.min(sum(away), Math.round((finished - started) / 1000)) : sum(away), calc: calc, scratch: scratch, paper: paper, cut: !!sc.cut, blocked: blocked, idle: idle, idleSec: sum(idle),
     device: dev, drop: { visits: num(drop.visits) || 0, calc: num(drop.calc) || 0, scratch: num(drop.scratch) || 0, away: num(drop.away) || 0, blocked: num(drop.blocked) || 0, idle: num(drop.idle) || 0 }
   };
 }
@@ -297,8 +304,31 @@ function flags(c) {
   mineRecs.filter(here).forEach(function (x) {
     if (x.ended === 'left') out.push({ kind: 'left', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test ended itself: they left it ' + (x.after || 'too many') + ' times.',
       todo: 'The score is what was answered when it ended. Open the test to see when and for how long; then decide whether it stands or they sit it again (open the test again in the cockpit).' });
-    if (outsidePeriod(x.finished, c.period)) out.push({ kind: 'period', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + ' finished at ' + hm(x.finished) + ', outside the class period (' + c.period.from + '–' + c.period.to + ').',
-      todo: 'The site\'s clock says when Finish was pressed. If it wasn\'t a make-up you allowed, open the test and look at its timeline.' });
+    var so = outsidePeriod(x.started, c.period), fo = outsidePeriod(x.finished, c.period);
+    if (so || fo) out.push({ kind: 'period', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + (so && fo ? ' took it ' + hm(x.started) + '–' + hm(x.finished) : so ? ' started at ' + hm(x.started) : ' finished at ' + hm(x.finished)) + ', outside the class period (' + c.period.from + '–' + c.period.to + ').',
+      todo: 'The site\'s clock says when Start and Finish were pressed. If it wasn\'t a make-up you allowed, open the test and look at its timeline.' });
+    var r = x.rule, aw = x.awayN;
+    if (r && aw != null && r.after != null && ((r.leave === 'lock' && aw > r.after && !x.unlocks) || (r.leave === 'end' && aw >= r.after && x.ended !== 'left')))
+      out.push({ kind: 'rule', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + ' left the test ' + aw + ' times; the rule was ' + (r.leave === 'lock' ? 'lock after ' + r.after + ', and it was never unlocked' : 'end after ' + r.after + ', and it did not end') + '.',
+        todo: 'The site should have ' + (r.leave === 'lock' ? 'locked' : 'ended') + ' it and did not: the page may have been tampered with. Open the test, look at each time away, and talk to the student.' });
+    if (x.ended === 'teacher') out.push({ kind: 'teacher', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test did not finish: the site closed it with what was saved when the test closed.',
+      todo: 'The score counts only the answers saved before then. Decide whether it stands, or open the test again in the cockpit for them to finish.' });
+  });
+  // against the rest of the class (one class, one test, one day): far from the others' times, another opening, far longer
+  var days = {}; mineRecs.filter(here).filter(function (x) { return x.started != null; }).forEach(function (x) { var d = new Date(x.started), k = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); (days[k] = days[k] || []).push(x); });
+  Object.keys(days).forEach(function (k) {
+    var l = days[k]; if (l.length < 5) return;
+    var med = function (v) { v = v.slice().sort(function (p, q) { return p - q; }); var m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+    var ms = med(l.map(function (x) { return x.started; })), mf = med(l.filter(function (x) { return x.finished != null; }).map(function (x) { return x.finished; }));
+    var rest = function (x) { var o = l.filter(function (y) { return y !== x; }); return hm(Math.min.apply(null, o.map(function (y) { return y.started; }))) + '–' + hm(Math.max.apply(null, o.map(function (y) { return y.finished || y.started; }))); };
+    l.forEach(function (x) { if (x.started < ms - 20 * 60000 || (mf != null && x.started > mf)) out.push({ kind: 'apart', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + ' took it at ' + hm(x.started) + '–' + hm(x.finished) + '; the rest of this class took it ' + rest(x) + '.',
+      todo: 'A test taken apart from the class may have been taken at home while it was open, or started early to see the questions. Open it and look at its clocks and timeline, and ask.' }); });
+    var op = {}; l.forEach(function (x) { if (x.opened != null) op[x.opened] = (op[x.opened] || 0) + 1; }); var top = Object.keys(op).sort(function (p, q) { return op[q] - op[p]; })[0];
+    if (top != null && Object.keys(op).length > 1) l.forEach(function (x) { if (x.opened != null && String(x.opened) !== top) out.push({ kind: 'opening', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test was started in another opening of the test (opened ' + hm(+x.opened) + ') than the rest of this class (opened ' + hm(+top) + ').',
+      todo: 'The test was opened more than once; this one was taken in an opening the class wasn\'t in. If you didn\'t open it for them (a make-up), open the test and ask.' }); });
+    var sm = med(l.filter(function (x) { return x.seconds != null; }).map(function (x) { return x.seconds; }));
+    l.forEach(function (x) { if (x.seconds != null && sm && x.seconds > 2 * sm) out.push({ kind: 'long', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s sitting lasted ' + dur(x.seconds) + ', more than twice the class\'s typical ' + dur(sm) + '.',
+      todo: 'A sitting that long may have been left open and come back to. Open the test: its timeline shows where the time went.' }); });
   });
   // records of this class for another test, or another course
   var other = {}; mineRecs.filter(function (x) { return !here(x); }).forEach(function (x) { var k = testKey(x.course, x.unit); (other[k] = other[k] || { course: x.course, unit: x.unit, n: 0 }).n++; });
@@ -306,7 +336,7 @@ function flags(c) {
     todo: (COURSES[o.course] && COURSES[o.course].prep !== c.prep ? 'That is the other course\'s test: the student may have opened the wrong one. ' : '') + 'Open ' + testName(o.course, o.unit) + ' to see ' + (o.n === 1 ? 'it' : 'them') + '.' }); });
   // tests nobody claimed, of this course
   recs.filter(function (x) { return !x.sec && !x.pin && !P.shared[x.code] && !claimed[x.code] && here(x); }).forEach(function (x) {
-    out.push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + 'finished ' + hm(x.finished) + ').',
+    out.push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : '') + ').',
       todo: 'A student finished this test and didn\'t turn the code in, or typed it wrong. Give it to the student it belongs to.' }); });
   // responses Tally could not put a name to, or whose code doesn't read
   rows.filter(function (r) { return !r.who && (r.codes || []).length && !P.shared[(r.codes || [])[0]]; }).forEach(function (r) {
@@ -321,7 +351,7 @@ function flags(c) {
 var fmtCode = function (c) { return SEAL.showCode(c); };
 function hm(ms) { if (ms == null) return '?'; var d = new Date(ms); var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
-var api = { COURSES: COURSES, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
+var api = { COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
   qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testKey: testKey, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ExamCore = api;
 })(typeof self !== 'undefined' ? self : this);

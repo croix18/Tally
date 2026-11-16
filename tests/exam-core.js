@@ -90,7 +90,7 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
   for (const x of R) {   // what Tally would hold after fetching every code turned in, then opening the cockpit's file
     const turned = X.rows.some(r => r.codes.includes(x.code)), inFile = x.record.course === 'm7' && x.record.unit === 10;
     if (!turned && !inFile) continue;
-    try { await SEAL.open(L[x.code], K.tally.priv, sites, { code: x.code }); recs.push({ code: x.code, course: x.record.course, unit: x.record.unit, finished: x.record.site.finished, ended: x.record.ended, after: x.record.rule.after, points: x.record.points, of: x.record.of, pin: null }); }
+    try { await SEAL.open(L[x.code], K.tally.priv, sites, { code: x.code }); const v = C.readRecord(x.record); recs.push({ code: x.code, course: v.course, unit: v.unit, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, rule: v.rule, after: v.rule && v.rule.after, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, points: v.points, of: v.of, pin: null }); }
     catch (e) { fails[x.code] = { why: e.why, ...(turned ? {} : { course: x.record.course, unit: x.record.unit }) }; }
   }
   X.rows.forEach(r => r.codes.forEach(c => { if (!recs.some(x => x.code === c) && !fails[c]) fails[c] = { why: 'none' }; }));
@@ -111,6 +111,23 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
   has('who', f => f.rows[0].name === 'Ava' && /Choose the student/.test(f.todo), 'a name Tally is not sure of');
   has('badcode', f => f.names.includes('Ivanova, Daria') && /is not a code/.test(f.text), 'a code too short to be one');
   check(!recs.some(x => x.code === b.codes.forged || x.code === b.codes.other), 'a record that did not open is never among the records Tally keeps');
+  // CHANGES-16NOV §7: against the rest of the class, the rule, the length, a test the site closed
+  has('apart', f => f.names.includes('Bello, Tunde') && /took it at 1:05 pm–[0-9:]+ pm; the rest of this class took it 9:4\d am–/.test(f.text) && /at home/.test(f.todo), 'a test taken apart from the class, said with its times and the class\'s');
+  has('opening', f => f.names.includes('Bello, Tunde') && /another opening of the test \(opened 12:55 pm\) than the rest of this class \(opened 9:38 am\)/.test(f.text), 'a test started in another opening than the class\'s');
+  has('period', f => f.names.includes('Bello, Tunde') && /took it 1:05 pm–/.test(f.text), 'a start (and finish) outside the period');
+  has('rule', f => f.names.includes('Delgado, Mateo') && /left the test 4 times; the rule was lock after 2, and it was never unlocked/.test(f.text), 'left more times than "lock after" allowed, never unlocked');
+  has('rule', f => f.names.includes('Haddad, Yusuf') && /left the test 3 times; the rule was end after 3, and it did not end/.test(f.text), 'left as many times as "end after" allowed, and it did not end');
+  has('long', f => f.names.includes('Reyes, Valentina') && /more than twice the class's typical/.test(f.text), 'a sitting more than twice the class\'s median');
+  has('teacher', f => f.names.includes('Ferreira, Lucas') && /did not finish/.test(f.text), 'a test the site closed (ended by the teacher\'s side)');
+  check(!fl.some(f => f.kind === 'rule' && (f.names.includes('Ramírez, José') || f.names.includes('Okafor, Chidinma'))), 'a test that did end after leaving, and one that was locked and unlocked, raise no rule flag');
+  check(!fl.some(f => ['apart', 'long'].includes(f.kind) && !['Bello, Tunde', 'Reyes, Valentina', 'Kim, Daniel', 'Patel, Rohan'].includes(f.names[0])), 'only the afternoon test, the very long one and the two sat after the class (Daniel\'s late one, Rohan\'s second) are apart or long: ' + fl.filter(f => ['apart', 'long'].includes(f.kind)).map(f => f.names[0]).join(', '));
+  check(fl.filter(f => f.kind === 'unclaimed').every(f => /taken \d+:\d+ am–\d+:\d+ am/.test(f.text)) && fl.filter(f => f.kind === 'unclaimed' && /in the opening of 9:38 am/.test(f.text)).length === 4 && fl.some(f => f.kind === 'unclaimed' && /not finished: closed by the site/.test(f.text)), 'a test nobody turned in is shown with its start and finish and its opening (an older record without one, without it; and says when the site closed it)');
+  /* CHANGES-16NOV §6: a record's strings are the student's own */
+  const hr = read[b.codes.p5[0]];
+  check(hr.away.length === 0 && hr.awaySec === 0, 'junk among the times away is not counted (the site\'s rule: 0 ≤ sec ≤ 86400): ' + hr.away.length);
+  const ht = C.answerText('text', hr.parts.find(p => p.id === '2').typed);
+  check(ht.length < 360 && /more characters\)$/.test(ht), 'an answer that is a 2 KB object is shown cut, never at its length');
+  check(hr.paper.find(p => p.q === '2').grid.o.length === 1, 'a scratch grid\'s malformed marks are dropped, the good one kept');
   check(fl.every(f => typeof f.text === 'string' && f.text.length > 10 && typeof f.todo === 'string' && f.todo.length > 20), 'every flag says what is wrong and what he can do');
   const p5 = C.flags({ sec: 'p5', prep: 'on', course: 'm7', unit: 10, period: null, rows: X.rows, recs, fails, picks: {}, known: [] });
   check(!p5.some(f => ['shared', 'key', 'signature', 'twice', 'left', 'badcode'].includes(f.kind)) && recs.filter(x => x.sec === 'p5').length === 6, '5th Period gets its own six tests and none of 4th Period\'s flags');

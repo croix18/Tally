@@ -54,6 +54,7 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
   const words = await p.evaluate(() => [...document.querySelectorAll('.xtWords span')].map(s => s.textContent).join(' '));
   check(words === tr.words, `the trial opens and its four words are the cockpit's: "${words}" = "${tr.words}"`);
   const big = await p.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.xtWords span')).fontSize)); check(big >= 28, 'the words are large enough to compare across a desk (' + big + ' px)');
+  check(/Type these four words into the box under the trial code on the cockpit's Test card/.test(await text(p, '.xtSteps')) && await p.locator('#xtCopyWords').count() === 1 && await p.evaluate(() => getComputedStyle(document.querySelector('.xtWords')).textTransform) === 'lowercase', 'the line under the words says to type them into the cockpit; lower case, with a Copy button');
   await shot(p, '03-trial-words-1366');
   const [dl0] = await Promise.all([p.waitForEvent('download'), p.click('#xtSaveNow')]); await dl0.saveAs(path.join(tmp, 'after-key.json'));
   const fs0 = JSON.parse(fs.readFileSync(path.join(tmp, 'after-key.json'), 'utf8'));
@@ -77,6 +78,7 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
   await p.click('#xtMoreFlags'); await p.waitForTimeout(200);
   const listTxt = await text(p, '#gridwrap'); if (process.env.XDEBUG) { console.log('TABS', await text(p, '#ctabs')); console.log(listTxt); await shot(p, 'dbg-class', true); }
   check(/Two students turned in the same code: Moreau, Camille and Fischer, Hannah/i.test(listTxt) && /No test on the site has the code/.test(listTxt) && /locked to another Tally/.test(listTxt) && /was not signed by the site/.test(listTxt) && /isn.t sure who “Ava” is/.test(listTxt) && /turned in 2 tests/.test(listTxt) && /outside the class period/.test(listTxt) === false && /for On-level Unit 9/.test(listTxt) && /for Accelerated Unit 4/.test(listTxt) && /is not a code/.test(listTxt) && /ended itself/.test(listTxt), 'the class shows every flag of the pasted mess, each with what to do');
+  check(/the rest of this class took it/.test(listTxt) && /another opening of the test/.test(listTxt) && /the rule was lock after 2, and it was never unlocked/.test(listTxt) && /the rule was end after 3, and it did not end/.test(listTxt) && /more than twice the class's typical/.test(listTxt) && /did not finish: the site closed it/.test(listTxt), 'and the new ones: apart from the class (with the times), another opening, the rule not kept (lock and end), a very long sitting, a test the site closed');
   check(/Nobody turned in/.test(listTxt) === false, 'a test nobody turned in is not known until the cockpit\'s file says so');
   check(!/Abara, Kofi[^\n]*36\s*\/\s*36/i.test(listTxt) && await p.locator('tr[data-xcode]').count() >= 20, 'the forged record (a perfect score) is shown nowhere; the others are rows');
     const hughes = await p.evaluate(() => [...document.querySelectorAll('.xtList tbody tr')].find(r => /Hughes/i.test(r.textContent)).textContent); check(/No test turned in/.test(hughes), 'Caleb Hughes: no test turned in');
@@ -162,6 +164,12 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
       await q.click('[data-xgive]'); await q.waitForTimeout(200); check(await q.locator('#modal .xtAll .xtWho').count() === 28, 'giving a test: the class\'s own students are listed, anyone else is a search away'); await q.fill('#xtFind', 'hughes'); await q.waitForTimeout(100); await q.click('#modal .xtWho:has-text("HUGHES, CALEB")'); await q.waitForTimeout(300).catch(() => {});
       const caleb = await q.evaluate(() => [...document.querySelectorAll('.xtList tbody tr')].find(r => /Hughes/i.test(r.textContent)).textContent);
       check(/\d+\s*\/\s*36/.test(caleb), 'a test nobody turned in, given to the student: it is his now');
+      await q.evaluate(() => [...document.querySelectorAll('.xtList tbody tr[data-xcode]')].find(r => /Hughes/i.test(r.textContent)).click()); await q.waitForTimeout(300);
+      check(/You gave this test to HUGHES, CALEB/.test(await text(q, '.xtOwn')) && /opening of 9:38 am/.test(await text(q, '.xtFacts')), 'his test says it was given by hand, with its opening and times');
+      await q.click('#xtTakeBack'); await q.waitForTimeout(300); if (/more/.test(await text(q, '#xtMoreFlags'))) { await q.click('#xtMoreFlags'); await q.waitForTimeout(150); }
+      const back = await q.evaluate(() => [...document.querySelectorAll('.xtList tbody tr')].find(r => /Hughes/i.test(r.textContent)).textContent); if (process.env.XDEBUG) console.log('BACK', back, (await text(q, '#gridwrap')).split('Nobody turned in').length - 1, await text(q, '#toast'));
+      check(/No test turned in/.test(back) && (await text(q, '#gridwrap')).split('Nobody turned in').length - 1 >= 4, 'Take it back: he has no test again and it is back among the tests nobody turned in');
+      await q.click('[data-xgive]'); await q.waitForTimeout(200); await q.fill('#xtFind', 'hughes'); await q.waitForTimeout(100); await q.click('#modal .xtWho:has-text("HUGHES, CALEB")'); await q.waitForTimeout(300);
       site.state.down = false; await o.ctx.setOffline(false);
     }
     await q.evaluate(() => window.scrollTo(0, 0)); await shot(q, `10-class-${tag}${dark ? '-dark' : ''}`);
@@ -184,6 +192,11 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
     check(/not fetched yet/i.test(await text(q, '#gridwrap')) && await q.locator('[data-xretry]').count() === 1, 'with the network gone: "not fetched yet", and Try again');
     site.state.down = false; await q.click('[data-xretry]'); await fetched(q); await q.waitForTimeout(300);
     check(!/not fetched yet/i.test(await text(q, '#gridwrap')) && await q.locator('tr[data-xcode]').count() === 6, 'Try again with the network back: every 5th Period test fetched');
+    // a genuinely signed record full of a student's own strings: shown as text, inert
+    await q.evaluate(() => [...document.querySelectorAll('.xtList tbody tr[data-xcode]')].find(r => /QUINLAN/i.test(r.textContent)).click()); await q.waitForTimeout(500);
+    const inert = await q.evaluate(() => ({ title: document.title, imgs: document.querySelectorAll('#gridwrap img').length, scripts: document.querySelectorAll('#gridwrap script').length, onerr: document.querySelectorAll('#gridwrap [onerror]').length, txt: document.querySelector('#gridwrap').innerText, wide: document.documentElement.scrollWidth > innerWidth + 1 }));
+    check(!/pwned/.test(inert.title) && inert.imgs === 0 && inert.scripts === 0 && inert.onerr === 0 && inert.txt.includes('<img src=x onerror=') && inert.txt.includes('</script><script>') && /more characters\)/.test(inert.txt) && !inert.wide, 'a record\'s markup, a closing script tag, a 200-character run, right-to-left and zero-width text and a 2 KB answer are all shown as inert text, cut where long, and nothing runs');
+    await shot(q, '13-hostile-record-1366', true); await q.click('#xtBack'); await q.waitForTimeout(250);
     const st = await q.evaluate(() => window.__tally && JSON.parse(localStorage.getItem('tally.v1')).exam.sites.length); check(st >= 1, 'the site key is kept in Tally\'s data');
     await q.click('.xtConn .linkbtn'); await q.waitForTimeout(200); await q.click('.xtMore summary'); await q.fill('#xtSite', 'https://example.org'); await q.click('#xtSiteSave'); await q.waitForTimeout(200); await q.click('.xtMore summary').catch(() => {});
     check(/may only reach/.test(await text(q, '.xtMoreBody')), 'an address this copy may not reach is said to be refused, before anything is tried');

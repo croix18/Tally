@@ -39,7 +39,7 @@
 .xtLose{align-items:flex-start;flex-wrap:wrap;margin:6px 0 2px;line-height:1.5}.xtLose>span:nth-child(2){flex:1 1 300px}.xtLoseBtns{display:flex;gap:14px;align-items:center;margin-left:auto}.xtLose .pill{background:var(--navy);color:var(--white)}
 .xtTrialRow{display:flex;gap:8px;align-items:center}.xtCodeIn{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:var(--t-l);letter-spacing:.08em;text-transform:uppercase;padding:8px 12px;border:2px solid var(--grid);border-radius:var(--r-m);width:220px;min-height:var(--h-m)}.xtCodeIn:focus{outline:none;border-color:var(--turq)}
 .xtTrialOut{margin:8px 0 0;font-size:var(--t-m);min-height:1em}.xtTrialOut.bad{color:var(--bad);font-weight:var(--w-bold)}
-.xtWords{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 10px}.xtWords span{font-size:30px;font-weight:var(--w-black);letter-spacing:.01em;color:var(--navy);background:var(--paleturq);border-radius:var(--r-m);padding:10px 18px;line-height:1.1}
+.xtWordsRow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:6px 0 10px}.xtWords{display:flex;gap:10px;flex-wrap:wrap;margin:0;user-select:all;text-transform:lowercase}.xtWords span{font-size:30px;font-weight:var(--w-black);letter-spacing:.01em;color:var(--navy);background:var(--paleturq);border-radius:var(--r-m);padding:10px 18px;line-height:1.1}
 .xtMore{margin-top:10px;border-top:1px solid var(--grid);padding-top:10px}.xtMore summary{cursor:pointer;font-weight:var(--w-bold);color:var(--teal);font-size:var(--t-m)}.xtMoreBody{padding:10px 0 0}.xtMoreBody h4{margin:14px 0 4px;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
 .xtAddr{display:inline-flex;gap:8px;align-items:center;font-weight:var(--w-bold);margin-right:8px}.xtAddr input{font:inherit;font-weight:var(--w-reg);padding:6px 10px;border:1px solid var(--grid);border-radius:var(--r-s);width:280px}
 .xtKeys{list-style:none;margin:0;padding:0;font-size:var(--t-s);color:var(--ink-soft)}.xtKeys li{padding:3px 0}.xtKeys code{color:var(--navy)}
@@ -50,6 +50,8 @@
 .xtCode{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.04em}
 /* one test, whole */
 .xtHead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 24px;align-items:end;background:var(--white);border:1px solid var(--grid);border-radius:var(--r);box-shadow:var(--shadow-1);padding:18px 22px}
+.xtOwn{display:flex;align-items:center;gap:12px;margin-top:10px;font-size:var(--t-m);color:var(--ink-soft)}.xtOpenTag{display:block;font-size:var(--t-xs);color:var(--ink-soft);font-weight:var(--w-med)}.xtBtns{display:inline-flex;gap:8px;align-self:center}
+.xtTyped,.xtPaper pre,.xtFlags b,.xtList .nm{unicode-bidi:isolate}.xtTyped{max-width:46ch;display:inline-block;overflow-wrap:anywhere}.xtPaper pre{overflow-wrap:anywhere}
 .xtWho1 h2{font-size:26px;font-weight:var(--w-black);margin:0;line-height:1.15}.xtWho1 p{margin:4px 0 0;color:var(--ink-soft);font-weight:var(--w-med)}
 .xtBig{display:flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums}.xtBig b{font-size:44px;font-weight:var(--w-black);line-height:1}.xtBig small{font-size:var(--t-xl);color:var(--ink-soft);font-weight:var(--w-bold)}.xtBig span{font-size:var(--t-l);color:var(--teal);font-weight:var(--w-heavy);margin-left:10px}
 .xtFacts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 34px;margin:10px 0 0;padding-top:12px;border-top:1px solid var(--grid)}.xtFacts div{display:flex;flex-direction:column;gap:1px}.xtFacts dt{font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:var(--w-black)}.xtFacts dd{margin:0;font-weight:var(--w-bold);font-size:var(--t-l);font-variant-numeric:tabular-nums}.xtFacts dd.away,.xtFacts .bad{color:var(--bad)}
@@ -1566,10 +1568,13 @@ var nameKey = function (t) { return tokens(t).sort().join(' '); };
    Every field is read as the design pins it and nothing else is trusted to have its shape: the record opened and its
    signature held, but a field the page could not fill is null, and an older page's log may be shaped differently. */
 var qOf = function (id) { var s = String(id == null ? '' : id); return s.replace(/[a-z]+$/i, '') || s; };
-function answerText(type, a) {
+// what a student typed is shown as text and never at any length: past 300 characters it is cut, and says so
+function clip(s, n) { s = String(s); n = n || 300; return s.length > n ? s.slice(0, n) + '… (' + (s.length - n) + ' more characters)' : s; }
+function answerText(type, a) { try { return clip(answerRaw(type, a)); } catch (e) { return '(unreadable)'; } }
+function answerRaw(type, a) {
   if (a == null) return '';
-  if (type === 'mc') return typeof a === 'number' || /^\d+$/.test(String(a)) ? (LET[+a] || String(a)) : String(a);
-  if (type === 'multi') return Array.isArray(a) ? a.map(function (k) { return LET[+k] || String(k); }).join(', ') : String(a);
+  if (type === 'mc' && (typeof a === 'number' || (typeof a === 'string' && /^\d+$/.test(a)))) return LET[+a] || String(a);
+  if (type === 'multi' && Array.isArray(a)) return a.slice(0, 40).map(function (k) { return LET[+k] || String(k); }).join(', ');
   if (type === 'nline' || (a && typeof a === 'object' && !Array.isArray(a) && ('c' in a || 'dir' in a || 'closed' in a))) {
     if (!a || typeof a !== 'object') return String(a);
     var bits = []; if (a.c != null && a.c !== '') bits.push(String(a.c).replace(/^-/, '−')); if (a.closed != null) bits.push(a.closed ? 'closed dot' : 'open dot'); if (a.dir === 'left' || a.dir === 'right') bits.push('arrow ' + (a.dir === 'left' ? '←' : '→'));
@@ -1584,8 +1589,10 @@ function answerText(type, a) {
   return String(a);
 }
 // the key as the record carries it: the letter of a choice, "A,C", "nline:3|closed|right", "cgraph:Dogs=90|Cats=270", or text
-function keyText(k) {
+function keyText(k) { try { return clip(keyRaw(k)); } catch (e) { return '(unreadable)'; } }
+function keyRaw(k) {
   if (k == null) return '';
+  if (typeof k === 'object' && !Array.isArray(k)) return JSON.stringify(k);
   if (Array.isArray(k)) return k.map(String).join('  ·  ');
   var s = String(k), m;
   if ((m = /^nline:([^|]*)\|(open|closed)\|(left|right)$/.exec(s))) return answerText('nline', { c: m[1], closed: m[2] === 'closed', dir: m[3] });
@@ -1613,7 +1620,8 @@ function readRecord(r) {
     q.almost = q.parts.some(function (p) { return p.almost; }); });
   // the device's lists, each entry kept only in its pinned shape
   var list = function (k, shape) { return log && Array.isArray(log[k]) ? log[k].filter(function (e) { return Array.isArray(e) && shape(e); }) : []; };
-  var away = list('away', function (e) { return num(e[0]) != null && num(e[1]) != null; }).map(function (e) { return { at: e[0], sec: e[1], kind: str(e[2]) || '', q: e[3] == null ? '' : String(e[3]) }; });
+  // the site's own rule (CHANGES-16NOV §6): [at, sec, kind, q] with 0 ≤ sec ≤ 86400; the count and the sum then agree with its clear summary
+  var away = list('away', function (e) { return num(e[0]) != null && num(e[1]) != null && e[1] >= 0 && e[1] <= 86400; }).map(function (e) { return { at: e[0], sec: e[1], kind: str(e[2]) || '', q: e[3] == null ? '' : String(e[3]) }; });
   var visits = list('visits', function (e) { return num(e[1]) != null && num(e[2]) != null; }).map(function (e) { return { q: String(e[0]), at: e[1], sec: e[2] }; });
   var calc = list('calc', function (e) { return num(e[2]) != null && num(e[3]) != null; }).map(function (e) { return { which: str(e[0]) || '', q: e[1] == null ? '' : String(e[1]), at: e[2], sec: e[3] }; });
   var sc = log && log.scratch && typeof log.scratch === 'object' ? log.scratch : {};
@@ -1635,7 +1643,8 @@ function readRecord(r) {
     rule: r.rule && typeof r.rule === 'object' ? { leave: str(r.rule.leave) || 'count', after: num(r.rule.after) } : null, ended: r.ended === 'left' || r.ended === 'teacher' ? r.ended : null, unlocks: num(r.unlocks),
     points: num(r.points), of: num(r.of), parts: parts, questions: qs,
     log: log ? { t0: t0, t1: t1, deviceSeconds: t0 != null && t1 != null && t1 >= t0 ? Math.round((t1 - t0) / 1000) : null, fails: num(log.fails), shaped: own(log, 'v') && Array.isArray(log.visits) } : null,
-    visits: visits, away: away, awaySec: sum(away), calc: calc, scratch: scratch, paper: paper, cut: !!sc.cut, blocked: blocked, idle: idle, idleSec: sum(idle),
+    opened: num(site.opened),
+    visits: visits, away: away, awaySec: started != null && finished != null && finished >= started ? Math.min(sum(away), Math.round((finished - started) / 1000)) : sum(away), calc: calc, scratch: scratch, paper: paper, cut: !!sc.cut, blocked: blocked, idle: idle, idleSec: sum(idle),
     device: dev, drop: { visits: num(drop.visits) || 0, calc: num(drop.calc) || 0, scratch: num(drop.scratch) || 0, away: num(drop.away) || 0, blocked: num(drop.blocked) || 0, idle: num(drop.idle) || 0 }
   };
 }
@@ -1722,8 +1731,31 @@ function flags(c) {
   mineRecs.filter(here).forEach(function (x) {
     if (x.ended === 'left') out.push({ kind: 'left', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test ended itself: they left it ' + (x.after || 'too many') + ' times.',
       todo: 'The score is what was answered when it ended. Open the test to see when and for how long; then decide whether it stands or they sit it again (open the test again in the cockpit).' });
-    if (outsidePeriod(x.finished, c.period)) out.push({ kind: 'period', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + ' finished at ' + hm(x.finished) + ', outside the class period (' + c.period.from + '–' + c.period.to + ').',
-      todo: 'The site\'s clock says when Finish was pressed. If it wasn\'t a make-up you allowed, open the test and look at its timeline.' });
+    var so = outsidePeriod(x.started, c.period), fo = outsidePeriod(x.finished, c.period);
+    if (so || fo) out.push({ kind: 'period', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + (so && fo ? ' took it ' + hm(x.started) + '–' + hm(x.finished) : so ? ' started at ' + hm(x.started) : ' finished at ' + hm(x.finished)) + ', outside the class period (' + c.period.from + '–' + c.period.to + ').',
+      todo: 'The site\'s clock says when Start and Finish were pressed. If it wasn\'t a make-up you allowed, open the test and look at its timeline.' });
+    var r = x.rule, aw = x.awayN;
+    if (r && aw != null && r.after != null && ((r.leave === 'lock' && aw > r.after && !x.unlocks) || (r.leave === 'end' && aw >= r.after && x.ended !== 'left')))
+      out.push({ kind: 'rule', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + ' left the test ' + aw + ' times; the rule was ' + (r.leave === 'lock' ? 'lock after ' + r.after + ', and it was never unlocked' : 'end after ' + r.after + ', and it did not end') + '.',
+        todo: 'The site should have ' + (r.leave === 'lock' ? 'locked' : 'ended') + ' it and did not: the page may have been tampered with. Open the test, look at each time away, and talk to the student.' });
+    if (x.ended === 'teacher') out.push({ kind: 'teacher', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test did not finish: the site closed it with what was saved when the test closed.',
+      todo: 'The score counts only the answers saved before then. Decide whether it stands, or open the test again in the cockpit for them to finish.' });
+  });
+  // against the rest of the class (one class, one test, one day): far from the others' times, another opening, far longer
+  var days = {}; mineRecs.filter(here).filter(function (x) { return x.started != null; }).forEach(function (x) { var d = new Date(x.started), k = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); (days[k] = days[k] || []).push(x); });
+  Object.keys(days).forEach(function (k) {
+    var l = days[k]; if (l.length < 5) return;
+    var med = function (v) { v = v.slice().sort(function (p, q) { return p - q; }); var m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+    var ms = med(l.map(function (x) { return x.started; })), mf = med(l.filter(function (x) { return x.finished != null; }).map(function (x) { return x.finished; }));
+    var rest = function (x) { var o = l.filter(function (y) { return y !== x; }); return hm(Math.min.apply(null, o.map(function (y) { return y.started; }))) + '–' + hm(Math.max.apply(null, o.map(function (y) { return y.finished || y.started; }))); };
+    l.forEach(function (x) { if (x.started < ms - 20 * 60000 || (mf != null && x.started > mf)) out.push({ kind: 'apart', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + ' took it at ' + hm(x.started) + '–' + hm(x.finished) + '; the rest of this class took it ' + rest(x) + '.',
+      todo: 'A test taken apart from the class may have been taken at home while it was open, or started early to see the questions. Open it and look at its clocks and timeline, and ask.' }); });
+    var op = {}; l.forEach(function (x) { if (x.opened != null) op[x.opened] = (op[x.opened] || 0) + 1; }); var top = Object.keys(op).sort(function (p, q) { return op[q] - op[p]; })[0];
+    if (top != null && Object.keys(op).length > 1) l.forEach(function (x) { if (x.opened != null && String(x.opened) !== top) out.push({ kind: 'opening', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test was started in another opening of the test (opened ' + hm(+x.opened) + ') than the rest of this class (opened ' + hm(+top) + ').',
+      todo: 'The test was opened more than once; this one was taken in an opening the class wasn\'t in. If you didn\'t open it for them (a make-up), open the test and ask.' }); });
+    var sm = med(l.filter(function (x) { return x.seconds != null; }).map(function (x) { return x.seconds; }));
+    l.forEach(function (x) { if (x.seconds != null && sm && x.seconds > 2 * sm) out.push({ kind: 'long', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s sitting lasted ' + dur(x.seconds) + ', more than twice the class\'s typical ' + dur(sm) + '.',
+      todo: 'A sitting that long may have been left open and come back to. Open the test: its timeline shows where the time went.' }); });
   });
   // records of this class for another test, or another course
   var other = {}; mineRecs.filter(function (x) { return !here(x); }).forEach(function (x) { var k = testKey(x.course, x.unit); (other[k] = other[k] || { course: x.course, unit: x.unit, n: 0 }).n++; });
@@ -1731,7 +1763,7 @@ function flags(c) {
     todo: (COURSES[o.course] && COURSES[o.course].prep !== c.prep ? 'That is the other course\'s test: the student may have opened the wrong one. ' : '') + 'Open ' + testName(o.course, o.unit) + ' to see ' + (o.n === 1 ? 'it' : 'them') + '.' }); });
   // tests nobody claimed, of this course
   recs.filter(function (x) { return !x.sec && !x.pin && !P.shared[x.code] && !claimed[x.code] && here(x); }).forEach(function (x) {
-    out.push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + 'finished ' + hm(x.finished) + ').',
+    out.push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : '') + ').',
       todo: 'A student finished this test and didn\'t turn the code in, or typed it wrong. Give it to the student it belongs to.' }); });
   // responses Tally could not put a name to, or whose code doesn't read
   rows.filter(function (r) { return !r.who && (r.codes || []).length && !P.shared[(r.codes || [])[0]]; }).forEach(function (r) {
@@ -1746,7 +1778,7 @@ function flags(c) {
 var fmtCode = function (c) { return SEAL.showCode(c); };
 function hm(ms) { if (ms == null) return '?'; var d = new Date(ms); var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
-var api = { COURSES: COURSES, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
+var api = { COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
   qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testKey: testKey, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ExamCore = api;
 })(typeof self !== 'undefined' ? self : this);
@@ -6151,14 +6183,16 @@ function xtCurrent(s) {
 // what one class shows for one test: a row per student (Focus order), the records, the flags
 function xtModel(s, t) {
   const X = examS(); const C = EX();
-  const recs = examAll().map(x => { const r = x.e.r; return { code: x.code, course: r.course, unit: xtNum(r.unit), finished: r.site && xtNum(r.site.finished), ended: r.ended, after: r.rule && r.rule.after, sec: x.sec, n: x.e.n, pin: x.e.pin, points: xtNum(r.points), of: xtNum(r.of) }; });
+  const recs = examAll().map(x => { const v = xtRead(x.e); return { code: x.code, course: v.course, unit: v.unit, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, rule: v.rule, after: v.rule && v.rule.after, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, sec: x.sec, n: x.e.n, pin: x.e.pin, points: v.points, of: v.of }; });
   const fl = C.flags({ sec: s.key, prep: s.prep, course: t.course, unit: t.unit, period: X.period[s.key] || null, rows: X.rows, recs, fails: X.fails, picks: X.picks, known: Object.keys(X.loose), show: shown });
   const studs = classStudents(s); const here = e => e.r.course === t.course && xtNum(e.r.unit) === t.unit;
   const rows = studs.map((n, i) => { const mine = Object.keys(s.exams || {}).filter(c => s.exams[c].n === n && here(s.exams[c])).map(c => ({ code: c, e: s.exams[c] }));
     const pk = X.picks[s.key + '|' + n + '|' + t.key]; const use = mine.length === 1 ? mine[0] : mine.find(x => x.code === pk) || null;
-    return { i, n, mine, use, v: use ? C.readRecord(use.e.r) : null, flags: fl.filter(f => (f.names || []).includes(n)) }; });
+    return { i, n, mine, use, v: use ? xtRead(use.e) : null, flags: fl.filter(f => (f.names || []).includes(n)) }; });
   return { rows, flags: fl, recs };
 }
+// a record read for the screens, once per record object (records never change once kept)
+const xtReadCache = new WeakMap(); function xtRead(e) { let v = xtReadCache.get(e.r); if (!v) { v = EX().readRecord(e.r); xtReadCache.set(e.r, v); } return v; }
 const xtVerdict = (v, almost) => almost ? '<span class="xtV almost">Almost</span>' : v === 'right' ? '<span class="xtV right">Right</span>' : v === 'wrong' ? '<span class="xtV wrong">Not right</span>' : v === 'blank' ? '<span class="xtV blank">Blank</span>' : v === 'some' ? '<span class="xtV some">Part right</span>' : '<span class="xtV unread">Can\'t read</span>';
 const xtWhen = ms => { if (ms == null) return ''; const d = new Date(ms); return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + EX().hm(ms); };
 const xtPct = (p, of) => p != null && of ? Math.round(p / of * 100) : null;
@@ -6184,7 +6218,7 @@ function renderTests(s) {
   const per = X.period[s.key];
   const fact = (lbl, val, sub, cls) => `<div class="gcard ${cls || ''}"><small>${lbl}</small><b>${val}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
   const th = (id, lbl, cls) => `<th class="${cls || ''}" aria-sort="${sort === id ? 'ascending' : 'none'}"><button class="xtSort ${sort === id ? 'on' : ''}" data-xsort="${id}">${lbl}</button></th>`;
-  const flagChip = f => `<span class="xtChip ${f.level}">${esc({ shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code' }[f.kind] || f.kind)}</span>`;
+  const flagChip = f => `<span class="xtChip ${f.level}">${esc({ shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', apart: 'Apart from class', opening: 'Other opening', rule: 'Rule not kept', long: 'Very long', teacher: 'Not finished', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code' }[f.kind] || f.kind)}</span>`;
   const row = r => { const v = r.v;
     if (!r.use) { const f = r.flags; return `<tr class="none"><td class="xtNo">${r.i + 1}</td><td class="stu"><button class="nm nmbtn" data-prof="${esc(r.n)}">${esc(shown(r.n))}</button></td><td colspan="4" class="xtMissing">${r.mine.length > 1 ? `${r.mine.length} tests: choose the one that counts` : f.length ? 'See what to look at, above' : 'No test turned in'}</td><td>${f.map(flagChip).join('')}</td></tr>`; }
     const pc = xtPct(v.points, v.of);
@@ -6196,10 +6230,10 @@ function renderTests(s) {
   const fbtn = f => {   // the button that does something about each flag
     if (f.kind === 'shared') return `<button class="pill small" data-xshare="${f.code}">Say whose it is</button>`;
     if (f.kind === 'who') return `<button class="pill small" data-xwho="${X.rows.indexOf(f.rows[0])}">Choose the student</button>`;
-    if (f.kind === 'unclaimed') return `<button class="pill small" data-xgive="${f.code}">Give it to a student</button>`;
+    if (f.kind === 'unclaimed') return `<span class="xtBtns"><button class="pill small pale" data-xcode="${f.code}">Open</button><button class="pill small" data-xgive="${f.code}">Give it to a student</button></span>`;
     if (f.kind === 'none' && f.near && f.near.length && f.rows && f.rows[0] && f.rows[0].who) return `<button class="pill small" data-xnear="${f.code}" data-to="${f.near[0]}">Give ${esc(SEALX().showCode(f.near[0]))} to ${esc(shown(f.rows[0].who.n))}</button>`;
     if (f.kind === 'twice') return `<button class="pill small" data-xtwice="${esc(f.names[0])}">Choose the one that counts</button>`;
-    if (f.kind === 'left' || f.kind === 'period') return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
+    if (['left', 'period', 'apart', 'opening', 'rule', 'long', 'teacher'].includes(f.kind)) return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
     if (f.kind === 'other') return `<button class="pill small pale" data-xtest="${esc(C.testKey(f.course, f.unit))}">Open ${esc(C.testName(f.course, f.unit))}</button>`;
     if (!examCan()) return '';
     if (f.kind === 'net') return `<button class="pill small" data-xretry="1">Try again</button>`;
@@ -6358,7 +6392,7 @@ function xtConnectPage(s) {
         : `<p>Only this key opens your students' test records. Tally makes it here; it takes a second.</p><button class="pill" id="xtMake" ${can ? '' : 'disabled'}>Make the key</button>`)}
       ${li(2, 'Paste it into the cockpit', `<p>On ${esc(host)}, open the cockpit's <b>Test</b> card and paste the key into <b>Tally's key</b>. The cockpit makes a trial test and shows its code.</p>`)}
       ${li(3, 'Enter the trial code', `<div class="xtTrialRow"><input id="xtTrialIn" class="xtCodeIn" placeholder="K7QF-2M9D-X4TB" autocomplete="off" spellcheck="false" aria-label="The trial code" ${pub && can ? '' : 'disabled'}><button class="pill small" id="xtTrialGo" ${pub && can ? '' : 'disabled'}>Open</button></div><p class="xtTrialOut" id="xtTrialOut" aria-live="polite"></p>`)}
-      ${li(4, 'Compare the four words', X.trial ? `<p>Tally opened the trial and checked the site's signature. The cockpit shows four words too: if they are these, press <b>Confirm</b> in the cockpit.</p><div class="xtWords" aria-label="The four words">${X.trial.words.split(' ').map(w => `<span>${esc(w)}</span>`).join('')}</div><p class="ghint">Checked ${esc(whenText(X.trial.at))} with the trial ${esc(SEALX().showCode(X.trial.code))}. If the words differ, the cockpit holds another key: paste this one again.</p>` : '<p>Tally opens the trial with its key and shows four words; the cockpit shows four too. The same four words mean the cockpit has this Tally\'s key and Tally has the site\'s.</p>')}
+      ${li(4, 'Type the four words into the cockpit', X.trial ? `<p>Tally opened the trial and checked the site's signature. Type these four words into the box under the trial code on the cockpit's <b>Test</b> card, then press <b>Confirm</b>. Only a Tally that opened the trial knows them, so the site knows the pairing works.</p><div class="xtWordsRow"><div class="xtWords" aria-label="The four words">${X.trial.words.split(' ').map(w => `<span>${esc(w)}</span>`).join('')}</div><button class="pill small" id="xtCopyWords">Copy</button></div><p class="ghint">From the trial ${esc(SEALX().showCode(X.trial.code))}, ${esc(whenText(X.trial.at))}. If the cockpit says the words are wrong, it holds another key: paste this Tally's key again and enter the new trial code.</p>` : '<p>Tally opens the trial with its key and shows four words. You type them into the cockpit; the site works them out on its side, and they match only if the cockpit has this Tally\'s key and Tally has the site\'s.</p>')}
     </ol>
     <details class="xtMore"><summary>Address, keys</summary>
       <div class="xtMoreBody">
@@ -6373,6 +6407,7 @@ function xtConnectPage(s) {
   on('#xtMake', async () => { $('#xtMake').disabled = true; $('#xtMake').textContent = 'Making…'; await examMakeKey(); });
   on('#xtCopyKey', () => { const ok = legacyCopy(pub); if (ok) toast('Tally\'s key copied. Paste it into the cockpit.', false); else showCopyBox(pub, 'Tally\'s key'); });
   on('#xtSaveNow', () => { examS().warned = true; saveFull(); });
+  on('#xtCopyWords', () => { const w = X.trial.words; if (legacyCopy(w)) toast('The four words copied. Paste them into the cockpit.', false); else showCopyBox(w, 'the cockpit\'s word box'); });
   on('#xtLater', () => { examS().warned = true; save(); render(); });
   on('#xtTrialGo', () => examTrial($('#xtTrialIn').value)); const ti = $('#xtTrialIn'); if (ti) ti.onkeydown = e => { if (e.key === 'Enter') examTrial(ti.value); };
   on('#xtDone', () => { view.connect = false; render(); });
@@ -6406,12 +6441,14 @@ function renderTestDetail(s, code) {
   const D = v.device || {}; const dv = (x, f) => x == null ? '<span class="xtNone">not reported</span>' : esc(f ? f(x) : String(x));
   wrap.innerHTML = `<div class="grades xt xtD">
     <section class="xtHead">
-      <div class="xtWho1"><h2>${n ? esc(shown(n)) : '<span class="xtNone">Nobody yet</span>'}</h2><p>${esc(C.testName(v.course, v.unit))} · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${e.src === 'file' ? ' · from the cockpit\'s file' : ''}</p></div>
+      <div class="xtWho1"><h2>${n ? esc(shown(n)) : '<span class="xtNone">Nobody yet</span>'}</h2><p>${esc(C.testName(v.course, v.unit))} · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${e.src === 'file' ? ' · from the cockpit\'s file' : ''}</p>
+        ${!n ? `<div class="xtOwn"><span>Nobody turned this code in.</span><button class="pill small" id="xtGiveD">Give it to a student</button></div>` : e.pin ? `<div class="xtOwn"><span>You gave this test to ${esc(shown(n))}.</span><button class="pill small pale" id="xtTakeBack">Take it back</button></div>` : ''}</div>
       <div class="xtBig"><b>${v.points ?? '?'}</b><small>/ ${v.of ?? '?'}</small><span>${pc == null ? '' : pc + '%'}</span></div>
       <dl class="xtFacts">
         <div><dt>Time</dt><dd>${esc(C.clock(v.seconds)) || '—'}</dd></div>
         <div><dt>Finished</dt><dd>${esc(xtWhen(v.finished)) || '—'}</dd></div>
         <div><dt>Left the test</dt><dd class="${v.away.length ? 'away' : ''}">${!L ? '<span class="xtNone">no log</span>' : v.away.length ? `${plural(v.away.length, 'time')} · ${esc(C.dur(v.awaySec))}` : 'never'}</dd></div>
+        <div><dt>Taken</dt><dd>${v.started != null ? esc(EX().hm(v.started)) + '–' + esc(EX().hm(v.finished)) : '—'}${v.opened != null ? `<small class="xtOpenTag">opening of ${esc(EX().hm(v.opened))}</small>` : ''}</dd></div>
         <div><dt>Rule</dt><dd>${v.rule ? esc(v.rule.leave === 'lock' ? `Lock after ${v.rule.after}` : v.rule.leave === 'end' ? `End after ${v.rule.after}` : 'Count only') : '—'}${v.unlocks ? ` · unlocked ${plural(v.unlocks, 'time')}` : ''}${v.ended === 'left' ? ' · <b class="bad">ended: left</b>' : v.ended === 'teacher' ? ' · ended by you' : ''}</dd></div>
       </dl>
     </section>
@@ -6443,6 +6480,8 @@ function renderTestDetail(s, code) {
     <section class="gsec xtRec"><h3>The record</h3><dl class="xtDl wide"><dt>Code</dt><dd>${esc(SEALX().showCode(code))}</dd><dt>Test</dt><dd>${esc(v.course)} · unit ${esc(v.unit)} · content ${esc(v.cv)} · kit ${esc(v.kit)}</dd><dt>Drawn test</dt><dd><code>${esc(v.seed)}</code></dd><dt>Sitting</dt><dd><code>${esc(v.id)}</code></dd><dt>Opened</dt><dd>${esc(whenText(e.got))}, ${e.src === 'file' ? 'from the cockpit\'s results file' : 'from the site'}; the site's signature held.</dd></dl></section>
   </div>`;
   xtDrawTL(v);
+  const gd = $('#xtGiveD'); if (gd) gd.onclick = () => xtChoose(s, code, 'give');
+  const tb = $('#xtTakeBack'); if (tb) tb.onclick = () => { const h = examHeld(code); if (!h) return; const was = h.e.n; h.e.pin = null; examRefile(); save(); const now = examHeld(code); if (!now || !now.e.n) { view.code = null; } render(); toast(`${esc(SEALX().showCode(code))} is no longer ${esc(shown(was || ''))}'s.${now && now.e.n ? '' : ' It is back among the tests nobody turned in.'}`, false, 5000); };
   wrap.querySelectorAll('[data-xq]').forEach(b => b.onclick = () => { const el = document.getElementById('xq-' + b.dataset.xq); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('xtLit'); setTimeout(() => el.classList.remove('xtLit'), 1600); } });
 }
 /* The sitting, drawn: one row per question across the test's length (when it was on screen, when its answer changed, when it

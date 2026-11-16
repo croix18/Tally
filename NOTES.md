@@ -1447,6 +1447,29 @@ fetched (network: Try again) · two tests by one student (choose the one that co
 · finished outside the period (only when the period's times are set in Tests: Tally has no bell schedule) · tests of another
 unit/course (open that test) · a test nobody turned in (give it to a student) · a name Tally isn't sure of · a code that
 isn't one. More than four: the first three show, the rest behind "N more".
+After the adversarial review of the site (16 Nov 2026, `/home/claude/reviews/CHANGES-16NOV.md` §7; the realistic cheats are
+taking the test at home while it is open, taking it twice and turning in the better code, and starting early to see the
+questions), also, per class, test and day once five or more records are in: **apart** (a start more than 20 min before the
+class's median start or after its median finish, said with the times: "took it at 1:05 pm–1:33 pm; the rest of this class
+took it 9:41 am–10:16 am"), **opening** (`site.opened` not the class's most common; an older record without it is left
+alone), **long** (`seconds` over twice the class median); and for each record: **period** now for a start or a finish
+outside the period's times, **rule** (lock after N: more than N times away and never unlocked; end after N: N or more and
+it did not end), **teacher** (`ended: 'teacher'`: the site closed it with what was saved). Times away are counted the
+site's way: `[at, sec, kind, q]` with 0 ≤ sec ≤ 86400, the sum capped at the sitting's seconds.
+
+**A test nobody turned in** (abandoned tests the site now finishes and seals come in the cockpit's results file, whose rows
+carry `opened` and `started`) is a flag with its score, start–finish and opening, an **Open** button and **Give it to a
+student** (a picker: this class's students, anyone else by search); the test page of a given test says "You gave this test
+to …" with **Take it back** (the pin is cleared and it is nobody's again). `state.exam.loose` holds them.
+
+**Text only** (review N4): everything from a record is put on the page through `esc()`; answers and keys are cut at 300
+characters ("… (N more characters)"), a nonsense answer reads "(unreadable)", text is isolated (`unicode-bidi: isolate`) so
+right-to-left characters cannot run into the page. The fixture record of 5th Period's first student carries markup, a
+closing script tag, a 200-character run, RTL and zero-width characters, a 2 KB answer and junk times away;
+`tests/exam-e2e.js` opens it in the built Tally and checks nothing ran and nothing was made an element.
+
+**The pairing** (CHANGES §5): the cockpit no longer shows words. Tally shows its four words (lower case, 30 px, a Copy
+button) and says to type them into the box under the trial code on the cockpit's Test card; the site checks them.
 
 **Scores to Focus:** Copy scores = the Focus gradebook's rows in order (else the roster), the points or blank, through the
 same clipboard path as a unit's IXL (`legacyCopy`, else `showCopyBox`). It does not write a receipt and does not take part in

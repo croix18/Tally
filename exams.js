@@ -206,14 +206,16 @@ function xtCurrent(s) {
 // what one class shows for one test: a row per student (Focus order), the records, the flags
 function xtModel(s, t) {
   const X = examS(); const C = EX();
-  const recs = examAll().map(x => { const r = x.e.r; return { code: x.code, course: r.course, unit: xtNum(r.unit), finished: r.site && xtNum(r.site.finished), ended: r.ended, after: r.rule && r.rule.after, sec: x.sec, n: x.e.n, pin: x.e.pin, points: xtNum(r.points), of: xtNum(r.of) }; });
+  const recs = examAll().map(x => { const v = xtRead(x.e); return { code: x.code, course: v.course, unit: v.unit, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, rule: v.rule, after: v.rule && v.rule.after, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, sec: x.sec, n: x.e.n, pin: x.e.pin, points: v.points, of: v.of }; });
   const fl = C.flags({ sec: s.key, prep: s.prep, course: t.course, unit: t.unit, period: X.period[s.key] || null, rows: X.rows, recs, fails: X.fails, picks: X.picks, known: Object.keys(X.loose), show: shown });
   const studs = classStudents(s); const here = e => e.r.course === t.course && xtNum(e.r.unit) === t.unit;
   const rows = studs.map((n, i) => { const mine = Object.keys(s.exams || {}).filter(c => s.exams[c].n === n && here(s.exams[c])).map(c => ({ code: c, e: s.exams[c] }));
     const pk = X.picks[s.key + '|' + n + '|' + t.key]; const use = mine.length === 1 ? mine[0] : mine.find(x => x.code === pk) || null;
-    return { i, n, mine, use, v: use ? C.readRecord(use.e.r) : null, flags: fl.filter(f => (f.names || []).includes(n)) }; });
+    return { i, n, mine, use, v: use ? xtRead(use.e) : null, flags: fl.filter(f => (f.names || []).includes(n)) }; });
   return { rows, flags: fl, recs };
 }
+// a record read for the screens, once per record object (records never change once kept)
+const xtReadCache = new WeakMap(); function xtRead(e) { let v = xtReadCache.get(e.r); if (!v) { v = EX().readRecord(e.r); xtReadCache.set(e.r, v); } return v; }
 const xtVerdict = (v, almost) => almost ? '<span class="xtV almost">Almost</span>' : v === 'right' ? '<span class="xtV right">Right</span>' : v === 'wrong' ? '<span class="xtV wrong">Not right</span>' : v === 'blank' ? '<span class="xtV blank">Blank</span>' : v === 'some' ? '<span class="xtV some">Part right</span>' : '<span class="xtV unread">Can\'t read</span>';
 const xtWhen = ms => { if (ms == null) return ''; const d = new Date(ms); return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + EX().hm(ms); };
 const xtPct = (p, of) => p != null && of ? Math.round(p / of * 100) : null;
@@ -239,7 +241,7 @@ function renderTests(s) {
   const per = X.period[s.key];
   const fact = (lbl, val, sub, cls) => `<div class="gcard ${cls || ''}"><small>${lbl}</small><b>${val}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
   const th = (id, lbl, cls) => `<th class="${cls || ''}" aria-sort="${sort === id ? 'ascending' : 'none'}"><button class="xtSort ${sort === id ? 'on' : ''}" data-xsort="${id}">${lbl}</button></th>`;
-  const flagChip = f => `<span class="xtChip ${f.level}">${esc({ shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code' }[f.kind] || f.kind)}</span>`;
+  const flagChip = f => `<span class="xtChip ${f.level}">${esc({ shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', apart: 'Apart from class', opening: 'Other opening', rule: 'Rule not kept', long: 'Very long', teacher: 'Not finished', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code' }[f.kind] || f.kind)}</span>`;
   const row = r => { const v = r.v;
     if (!r.use) { const f = r.flags; return `<tr class="none"><td class="xtNo">${r.i + 1}</td><td class="stu"><button class="nm nmbtn" data-prof="${esc(r.n)}">${esc(shown(r.n))}</button></td><td colspan="4" class="xtMissing">${r.mine.length > 1 ? `${r.mine.length} tests: choose the one that counts` : f.length ? 'See what to look at, above' : 'No test turned in'}</td><td>${f.map(flagChip).join('')}</td></tr>`; }
     const pc = xtPct(v.points, v.of);
@@ -251,10 +253,10 @@ function renderTests(s) {
   const fbtn = f => {   // the button that does something about each flag
     if (f.kind === 'shared') return `<button class="pill small" data-xshare="${f.code}">Say whose it is</button>`;
     if (f.kind === 'who') return `<button class="pill small" data-xwho="${X.rows.indexOf(f.rows[0])}">Choose the student</button>`;
-    if (f.kind === 'unclaimed') return `<button class="pill small" data-xgive="${f.code}">Give it to a student</button>`;
+    if (f.kind === 'unclaimed') return `<span class="xtBtns"><button class="pill small pale" data-xcode="${f.code}">Open</button><button class="pill small" data-xgive="${f.code}">Give it to a student</button></span>`;
     if (f.kind === 'none' && f.near && f.near.length && f.rows && f.rows[0] && f.rows[0].who) return `<button class="pill small" data-xnear="${f.code}" data-to="${f.near[0]}">Give ${esc(SEALX().showCode(f.near[0]))} to ${esc(shown(f.rows[0].who.n))}</button>`;
     if (f.kind === 'twice') return `<button class="pill small" data-xtwice="${esc(f.names[0])}">Choose the one that counts</button>`;
-    if (f.kind === 'left' || f.kind === 'period') return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
+    if (['left', 'period', 'apart', 'opening', 'rule', 'long', 'teacher'].includes(f.kind)) return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
     if (f.kind === 'other') return `<button class="pill small pale" data-xtest="${esc(C.testKey(f.course, f.unit))}">Open ${esc(C.testName(f.course, f.unit))}</button>`;
     if (!examCan()) return '';
     if (f.kind === 'net') return `<button class="pill small" data-xretry="1">Try again</button>`;
@@ -413,7 +415,7 @@ function xtConnectPage(s) {
         : `<p>Only this key opens your students' test records. Tally makes it here; it takes a second.</p><button class="pill" id="xtMake" ${can ? '' : 'disabled'}>Make the key</button>`)}
       ${li(2, 'Paste it into the cockpit', `<p>On ${esc(host)}, open the cockpit's <b>Test</b> card and paste the key into <b>Tally's key</b>. The cockpit makes a trial test and shows its code.</p>`)}
       ${li(3, 'Enter the trial code', `<div class="xtTrialRow"><input id="xtTrialIn" class="xtCodeIn" placeholder="K7QF-2M9D-X4TB" autocomplete="off" spellcheck="false" aria-label="The trial code" ${pub && can ? '' : 'disabled'}><button class="pill small" id="xtTrialGo" ${pub && can ? '' : 'disabled'}>Open</button></div><p class="xtTrialOut" id="xtTrialOut" aria-live="polite"></p>`)}
-      ${li(4, 'Compare the four words', X.trial ? `<p>Tally opened the trial and checked the site's signature. The cockpit shows four words too: if they are these, press <b>Confirm</b> in the cockpit.</p><div class="xtWords" aria-label="The four words">${X.trial.words.split(' ').map(w => `<span>${esc(w)}</span>`).join('')}</div><p class="ghint">Checked ${esc(whenText(X.trial.at))} with the trial ${esc(SEALX().showCode(X.trial.code))}. If the words differ, the cockpit holds another key: paste this one again.</p>` : '<p>Tally opens the trial with its key and shows four words; the cockpit shows four too. The same four words mean the cockpit has this Tally\'s key and Tally has the site\'s.</p>')}
+      ${li(4, 'Type the four words into the cockpit', X.trial ? `<p>Tally opened the trial and checked the site's signature. Type these four words into the box under the trial code on the cockpit's <b>Test</b> card, then press <b>Confirm</b>. Only a Tally that opened the trial knows them, so the site knows the pairing works.</p><div class="xtWordsRow"><div class="xtWords" aria-label="The four words">${X.trial.words.split(' ').map(w => `<span>${esc(w)}</span>`).join('')}</div><button class="pill small" id="xtCopyWords">Copy</button></div><p class="ghint">From the trial ${esc(SEALX().showCode(X.trial.code))}, ${esc(whenText(X.trial.at))}. If the cockpit says the words are wrong, it holds another key: paste this Tally's key again and enter the new trial code.</p>` : '<p>Tally opens the trial with its key and shows four words. You type them into the cockpit; the site works them out on its side, and they match only if the cockpit has this Tally\'s key and Tally has the site\'s.</p>')}
     </ol>
     <details class="xtMore"><summary>Address, keys</summary>
       <div class="xtMoreBody">
@@ -428,6 +430,7 @@ function xtConnectPage(s) {
   on('#xtMake', async () => { $('#xtMake').disabled = true; $('#xtMake').textContent = 'Making…'; await examMakeKey(); });
   on('#xtCopyKey', () => { const ok = legacyCopy(pub); if (ok) toast('Tally\'s key copied. Paste it into the cockpit.', false); else showCopyBox(pub, 'Tally\'s key'); });
   on('#xtSaveNow', () => { examS().warned = true; saveFull(); });
+  on('#xtCopyWords', () => { const w = X.trial.words; if (legacyCopy(w)) toast('The four words copied. Paste them into the cockpit.', false); else showCopyBox(w, 'the cockpit\'s word box'); });
   on('#xtLater', () => { examS().warned = true; save(); render(); });
   on('#xtTrialGo', () => examTrial($('#xtTrialIn').value)); const ti = $('#xtTrialIn'); if (ti) ti.onkeydown = e => { if (e.key === 'Enter') examTrial(ti.value); };
   on('#xtDone', () => { view.connect = false; render(); });
@@ -461,12 +464,14 @@ function renderTestDetail(s, code) {
   const D = v.device || {}; const dv = (x, f) => x == null ? '<span class="xtNone">not reported</span>' : esc(f ? f(x) : String(x));
   wrap.innerHTML = `<div class="grades xt xtD">
     <section class="xtHead">
-      <div class="xtWho1"><h2>${n ? esc(shown(n)) : '<span class="xtNone">Nobody yet</span>'}</h2><p>${esc(C.testName(v.course, v.unit))} · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${e.src === 'file' ? ' · from the cockpit\'s file' : ''}</p></div>
+      <div class="xtWho1"><h2>${n ? esc(shown(n)) : '<span class="xtNone">Nobody yet</span>'}</h2><p>${esc(C.testName(v.course, v.unit))} · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${e.src === 'file' ? ' · from the cockpit\'s file' : ''}</p>
+        ${!n ? `<div class="xtOwn"><span>Nobody turned this code in.</span><button class="pill small" id="xtGiveD">Give it to a student</button></div>` : e.pin ? `<div class="xtOwn"><span>You gave this test to ${esc(shown(n))}.</span><button class="pill small pale" id="xtTakeBack">Take it back</button></div>` : ''}</div>
       <div class="xtBig"><b>${v.points ?? '?'}</b><small>/ ${v.of ?? '?'}</small><span>${pc == null ? '' : pc + '%'}</span></div>
       <dl class="xtFacts">
         <div><dt>Time</dt><dd>${esc(C.clock(v.seconds)) || '—'}</dd></div>
         <div><dt>Finished</dt><dd>${esc(xtWhen(v.finished)) || '—'}</dd></div>
         <div><dt>Left the test</dt><dd class="${v.away.length ? 'away' : ''}">${!L ? '<span class="xtNone">no log</span>' : v.away.length ? `${plural(v.away.length, 'time')} · ${esc(C.dur(v.awaySec))}` : 'never'}</dd></div>
+        <div><dt>Taken</dt><dd>${v.started != null ? esc(EX().hm(v.started)) + '–' + esc(EX().hm(v.finished)) : '—'}${v.opened != null ? `<small class="xtOpenTag">opening of ${esc(EX().hm(v.opened))}</small>` : ''}</dd></div>
         <div><dt>Rule</dt><dd>${v.rule ? esc(v.rule.leave === 'lock' ? `Lock after ${v.rule.after}` : v.rule.leave === 'end' ? `End after ${v.rule.after}` : 'Count only') : '—'}${v.unlocks ? ` · unlocked ${plural(v.unlocks, 'time')}` : ''}${v.ended === 'left' ? ' · <b class="bad">ended: left</b>' : v.ended === 'teacher' ? ' · ended by you' : ''}</dd></div>
       </dl>
     </section>
@@ -498,6 +503,8 @@ function renderTestDetail(s, code) {
     <section class="gsec xtRec"><h3>The record</h3><dl class="xtDl wide"><dt>Code</dt><dd>${esc(SEALX().showCode(code))}</dd><dt>Test</dt><dd>${esc(v.course)} · unit ${esc(v.unit)} · content ${esc(v.cv)} · kit ${esc(v.kit)}</dd><dt>Drawn test</dt><dd><code>${esc(v.seed)}</code></dd><dt>Sitting</dt><dd><code>${esc(v.id)}</code></dd><dt>Opened</dt><dd>${esc(whenText(e.got))}, ${e.src === 'file' ? 'from the cockpit\'s results file' : 'from the site'}; the site's signature held.</dd></dl></section>
   </div>`;
   xtDrawTL(v);
+  const gd = $('#xtGiveD'); if (gd) gd.onclick = () => xtChoose(s, code, 'give');
+  const tb = $('#xtTakeBack'); if (tb) tb.onclick = () => { const h = examHeld(code); if (!h) return; const was = h.e.n; h.e.pin = null; examRefile(); save(); const now = examHeld(code); if (!now || !now.e.n) { view.code = null; } render(); toast(`${esc(SEALX().showCode(code))} is no longer ${esc(shown(was || ''))}'s.${now && now.e.n ? '' : ' It is back among the tests nobody turned in.'}`, false, 5000); };
   wrap.querySelectorAll('[data-xq]').forEach(b => b.onclick = () => { const el = document.getElementById('xq-' + b.dataset.xq); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('xtLit'); setTimeout(() => el.classList.remove('xtLit'), 1600); } });
 }
 /* The sitting, drawn: one row per question across the test's length (when it was on screen, when its answer changed, when it
