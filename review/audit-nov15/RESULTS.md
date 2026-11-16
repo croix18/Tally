@@ -10,8 +10,8 @@ How it ran (agents on Opus 5.5):
 2. **12 counter agents**, one per report, tried to refute every finding (`counter-probes/`).
 3. **10 fixers**, one file or region each, fixed what survived. Every fix has a check that fails on the old code:
    `tests/audit-nov15-*.js` (10 suites).
-4. **4 counter-reviewers** attacked the merged fixes (`review-probes/`); they found 24 more problems, including two
-   regressions, and a second round fixed them.
+4. **4 counter-reviewers** attacked the merged fixes (`review-probes/`); they found 26 more problems, several of
+   them caused by the fixes themselves, and a second round fixed all but the limits listed below.
 5. Full suite on the result: 70 suites · 2,228 passed · 0 failed.
 
 To rerun a reproduction: `python3 build.py --test`, then `TALLY_REPO=$PWD node review/audit-nov15/probes/<auditor>/NN-*.js`

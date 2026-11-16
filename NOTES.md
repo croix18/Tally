@@ -1410,7 +1410,7 @@ you think are best."*
 
 **How it ran:** 12 auditors (one per engine, each with its own recount and a reproduction per finding) → 12 counter
 agents (tried to refute every finding) → 10 fixers (one file or region each, a failing-first check per fix) → 4
-counter-reviewers on the merged fixes (24 more problems, two of them regressions) → a second round. Briefs, reports,
+counter-reviewers on the merged fixes (26 more problems, several caused by the fixes themselves) → a second round. Briefs, reports,
 reproductions, fix plans and the reviewers' probes are all in `review/audit-nov15/`.
 
 **Full suite after the fixes: 70 suites · 2,228 passed · 0 failed** (59 suites · 1,933 before; the ten `audit-nov15-*`
