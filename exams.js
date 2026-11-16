@@ -515,8 +515,8 @@ function xtFilePick() {
   inp.click();
 }
 // a dialog listing students: whose is this code / which student is this. extra: more buttons (e.g. Nobody yet)
-function xtPickStudent(title, lead, cands, onPick, extra, onExtra) {
-  const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private'); const roster = examRoster();
+function xtPickStudent(title, lead, cands, onPick, extra, onExtra, not) {
+  const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private'); const roster = examRoster().filter(r => !(not && r.sec === not.sec && r.n === not.n));
   const first = cands.filter(c => roster.some(r => r.sec === c.sec && r.n === c.n)); const firstSet = new Set(first.map(c => c.sec + '|' + c.n));
   const opt = (c, i) => `<button class="xtWho" data-i="${i}"><span class="dot" style="--cc:${classColor(state.sections[c.sec])}"></span><b>${esc(shown(c.n))}</b><small>${esc(labShort(state.sections[c.sec].label))}</small></button>`;
   const all = first.concat(roster.filter(r => !firstSet.has(r.sec + '|' + r.n)).map(r => ({ sec: r.sec, n: r.n })));
@@ -564,7 +564,7 @@ function xtNotTheirs(s, code) {
   const rs = X.rows.filter(r => r.codes.includes(code)); const cands = []; rs.forEach(r => (r.cands || []).concat(r.suggest ? [r.suggest] : []).forEach(c => { if (!(c.sec === off.sec && c.n === off.n) && !cands.some(x => x.sec === c.sec && x.n === c.n)) cands.push(c); }));
   const u = e.sum;
   xtPickStudent('Who turned this in?', `${esc(SEALX().showCode(code))} is no longer ${esc(shown(off.n))}'s.${u ? ` The test: ${u.points} / ${u.of}, taken ${esc(EX().hm(u.started))}–${esc(EX().hm(u.finished))}.` : ''}${rs.length ? ` It was turned in as ${rs.map(r => `<b>${esc(shown(r.name || 'no name'))}</b>`).join(' and ')}.` : ''}`, cands, c => xtGive(code, c),
-    '<button class="pill pale" data-xextra="nobody">Nobody yet</button><button class="pill pale" data-xextra="undo">Undo</button>', w => { if (w === 'undo') return undo(); e.nobody = true; examRefile(); save(); render(); toast(`${esc(SEALX().showCode(code))} is among the tests nobody turned in. <button class="tundo" id="xtNotUndo">Undo</button>`, false, 6000); const b = $('#xtNotUndo'); if (b) b.onclick = undo; });
+    '<button class="pill pale" data-xextra="nobody">Nobody yet</button><button class="pill pale" data-xextra="undo">Undo</button>', w => { if (w === 'undo') return undo(); e.nobody = true; examRefile(); save(); render(); toast(`${esc(SEALX().showCode(code))} is among the tests nobody turned in. <button class="tundo" id="xtNotUndo">Undo</button>`, false, 6000); const b = $('#xtNotUndo'); if (b) b.onclick = undo; }, off);
 }
 function xtChoose(s, code, how) {
   const X = examS(); const rs = X.rows.filter(r => r.codes.includes(code)); const cands = []; rs.forEach(r => { if (r.who && !cands.some(c => c.sec === r.who.sec && c.n === r.who.n)) cands.push(r.who); else (r.cands || []).forEach(c => { if (!cands.some(x => x.sec === c.sec && x.n === c.n)) cands.push(c); }); });

@@ -16,7 +16,7 @@ const post = (site, p, body) => new Promise(res => { const r = http.request(site
   const { ctx, p } = await open(1366, 768);
   await p.setInputFiles('#file', fs.readdirSync(FX('')).filter(f => /^IXL/.test(f)).map(FX)); await p.waitForTimeout(800);
   for (const f of ['focus_gradebook_p4.csv', 'focus_gradebook_p5.csv']) { await p.setInputFiles('#file', [FX(f)]); await p.waitForTimeout(700); await pick(p); await p.waitForTimeout(300); const a = await p.$('#askApply'); if (a) { await a.click(); await p.waitForTimeout(200); } }
-  await p.click('#rail .rc:has-text("4th")'); await p.click('#openTests'); await p.waitForTimeout(300);
+  try { await p.click('#rail .rc:has-text("4th")', { timeout: 8000 }); } catch (e) { await p.screenshot({ path: '/tmp/xshots-fail.png' }); throw e; } await p.click('#openTests'); await p.waitForTimeout(300);
   await p.click('#xtMake'); await p.waitForSelector('#xtKey'); const pub = (await p.textContent('#xtKey')).trim(); const tr = await post(site, '/__ctl/tally', { pub });
   await p.fill('#xtTrialIn', tr.code); await p.click('#xtTrialGo'); await p.waitForSelector('.xtWords');
   await p.screenshot({ path: path.join(OUT, 'r01-trial-1366.png') });
@@ -30,8 +30,12 @@ const post = (site, p, body) => new Promise(res => { const r = http.request(site
       const o = await open(w, tall ? 2600 : h); const q = o.p; await q.setInputFiles('#file', [full]); await q.waitForTimeout(800);
       if (await q.evaluate(() => document.querySelector('#btnHide').getAttribute('aria-pressed') === 'false')) await q.click('#btnHide');
       await q.click('#rail .rc:has-text("4th")'); await q.click('#openTests'); await q.waitForTimeout(400);
+      { const t2 = await post(site, '/__ctl/tally', { pub }); await q.click('#xtConnBtn'); await q.waitForTimeout(200); await q.fill('#xtTrialIn', t2.code); await q.click('#xtTrialGo'); await q.waitForTimeout(1500); await q.click('#xtDone'); await q.waitForTimeout(800); }
       const tag = `${w}${tall ? '-tall' : ''}`; await q.screenshot({ path: path.join(OUT, `r10-class-${tag}.png`) });
-      await q.evaluate(() => { const r = [...document.querySelectorAll('.xtList tbody tr[data-xcode]')].find(x => /O'NEIL/i.test(x.textContent)); r.click(); }); await q.waitForTimeout(500);
+      for (let i = 0; i < 60 && /Checking/.test(await q.evaluate(() => (document.querySelector('#xtProg') || {}).textContent || '')); i++) await q.waitForTimeout(250);
+      await q.screenshot({ path: path.join(OUT, `r10-class-${tag}.png`) });
+      if (!tall && w === 1366) { await q.click('#rail .rc:has-text("5th")'); await q.click('#openTests'); await q.waitForTimeout(600); await q.screenshot({ path: path.join(OUT, 'r13-two-groups-5th-1366.png') }); await q.click('#rail .rc:has-text("4th")'); await q.click('#openTests'); await q.waitForTimeout(400); }
+      await q.evaluate(() => { const r = [...document.querySelectorAll('.xtList tbody tr[data-xcode]')].find(x => /O'NEIL/i.test(x.textContent)); r.click(); }); await q.waitForTimeout(800);
       await q.screenshot({ path: path.join(OUT, `r11-detail-${tag}.png`) });
       if (tall) { await q.evaluate(() => document.querySelector('#gridwrap').scrollTo(0, 1e5)); await q.waitForTimeout(150); await q.screenshot({ path: path.join(OUT, `r12-detail-bottom-${tag}.png`) }); }
       await o.ctx.close();
