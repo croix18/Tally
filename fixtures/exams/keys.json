@@ -1,0 +1,73 @@
+{
+ "note": "Made for these fixtures only (tests/exam/fixtures.js); they lock nothing real.",
+ "site": {
+  "priv": {
+   "key_ops": [
+    "sign"
+   ],
+   "ext": true,
+   "kty": "EC",
+   "x": "F0phlnZivf_7r0S9-gLn8ockJX-P3VvNVB4y-9NheWg",
+   "y": "Mub7FV_E6psbBxmCacT6MO_SA5foHFsAEw3lxFGbq_M",
+   "crv": "P-256",
+   "d": "LCiGQ3RX05hmhA_P3UO-HQdmFX5t1qCy-FrksttwUD8"
+  },
+  "pub": "BBdKYZZ2Yr3_-69EvfoC5_KHJCV_j91bzVQeMvvTYXloMub7FV_E6psbBxmCacT6MO_SA5foHFsAEw3lxFGbq_M"
+ },
+ "old": {
+  "priv": {
+   "key_ops": [
+    "sign"
+   ],
+   "ext": true,
+   "kty": "EC",
+   "x": "WZU9mr55mQ60q8cXnRkLDe2iQEM834V3nyq-uxmaRWk",
+   "y": "at8dys2sviOUHuvlR4pDADXLdOLFccxcf7FksP3bZw4",
+   "crv": "P-256",
+   "d": "nd0Qc-ltUuKCSuwxU5_FDl2WkiypUjNy_LCDiVI_9Uk"
+  },
+  "pub": "BFmVPZq-eZkOtKvHF50ZCw3tokBDPN-Fd58qvrsZmkVpat8dys2sviOUHuvlR4pDADXLdOLFccxcf7FksP3bZw4"
+ },
+ "forger": {
+  "priv": {
+   "key_ops": [
+    "sign"
+   ],
+   "ext": true,
+   "kty": "EC",
+   "x": "b7Ho0mqdzGuHgZnzlgcQ5q-ykk5zCWVPsF4IY_f9gFg",
+   "y": "XARaa4mjW80uaM6Haa1pwyjsANZ92nP10Um9gulAhvY",
+   "crv": "P-256",
+   "d": "9e3aNyk-xzzO7YwyyVHhUgQETAlKNE6ysj9MbEMvOQo"
+  },
+  "pub": "BG-x6NJqncxrh4GZ85YHEOavspJOcwllT7BeCGP3_YBYXARaa4mjW80uaM6Haa1pwyjsANZ92nP10Um9gulAhvY"
+ },
+ "tally": {
+  "priv": {
+   "key_ops": [
+    "deriveBits"
+   ],
+   "ext": true,
+   "kty": "EC",
+   "x": "geQXg6nYEndrR0pjNhZziQrf13W-QFp_rsc3KR_Usqs",
+   "y": "zw24N1kWYnJq72DJlSP11th7TOnPBRPdhV5IT5Sns7E",
+   "crv": "P-256",
+   "d": "W990p5T0k92xCzI4dCPZd7ZtEJouIfA8H_CsxceWRC4"
+  },
+  "pub": "TALLY1.BIHkF4Op2BJ3a0dKYzYWc4kK39d1vkBaf67HNykf1LKrzw24N1kWYnJq72DJlSP11th7TOnPBRPdhV5IT5Sns7E"
+ },
+ "other": {
+  "priv": {
+   "key_ops": [
+    "deriveBits"
+   ],
+   "ext": true,
+   "kty": "EC",
+   "x": "DogBaNuo2QJITKWIU9gR84mlaMdmugnSVYGwqHYIGMU",
+   "y": "JavFevdRQ2D3D_7goD19395F8n4uwQPdr7V2CqmxueA",
+   "crv": "P-256",
+   "d": "XZS97npdKdBI-bzpK8aMmC_nP7ZCU8WkPx6Z4yvHrWQ"
+  },
+  "pub": "TALLY1.BA6IAWjbqNkCSEyliFPYEfOJpWjHZroJ0lWBsKh2CBjFJavFevdRQ2D3D_7goD19395F8n4uwQPdr7V2CqmxueA"
+ }
+}

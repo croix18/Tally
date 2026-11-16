@@ -1399,6 +1399,24 @@ Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 ch
   consistent IXL column per unnamed student: the board's own charts need a look before shuffling), 10 (school-year
   rollover, before August 2027), then the smaller ones in 11.
 
+## Tests: unit tests taken on mrshaffer.org, opened here (16 Nov 2026; branch `tests`, NOT on main yet)
+
+Croix, 15 Nov 2026: *"You build me a descrytor inside tally or something like that."* *"I want literally all the data
+that is possible to get, how long on each question, did they change answers, did they utilize the calculators o[r]
+scratch pad, I want this to be as data forward and collecting as possible."* *"How do I know it'll open on my tally?"*
+The design is Windmill's `practice/exam/DESIGN.md` (branch `exam`), sections 3 and 4. Work log (newest last):
+
+- Branched from `origin/main` at `61d4374` (the brief said `main` at `cfe3c5c`; origin had moved on by the deep audit's
+  two commits, which `main` must keep).
+- **Baseline before any change** (the whole suite, `node tests/run.js`, on `61d4374`): see "Suite runs" below.
+- `vendor/seal.js`: Windmill's `practice/kit/exam/seal.js` copied unchanged (commit `134d46c`, SHA-256 `cb608ebd…dd2a`,
+  recorded in `vendor/seal.json`; `build.py` and `tests/exam-core.js` refuse a copy that differs). `fixtures/seal_vector.json`
+  is Windmill's vector, unchanged.
+- `examcore.js` (window.ExamCore, and a Node module): the response sheet, names, the record read for the screens, the flags.
+- `tests/exam/fixtures.js` writes `fixtures/exams/` (28 + 6 invented students, 42 records of every shape, the sheet as
+  TSV and CSV, the cockpit's results file, keys made for the fixtures); `tests/exam/site.js` is a stand-in for the site's
+  two public routes; `tests/exam-core.js` (no browser) and `tests/exam-e2e.js` (Chromium, the shipped file) are the suites.
+
 ## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 
 Croix: *"I want you to run a deep dive on the cores and engines that make up tally. Look at all edge cases. I need

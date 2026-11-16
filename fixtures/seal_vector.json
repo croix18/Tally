@@ -1,0 +1,208 @@
+{
+ "note": "exam/seal.js, format 01, locked 16 Nov 2026. These keys were made for this file and lock nothing else.",
+ "sitePub": "BKCB_0s5OaQvZoZBOAJo-aRAYVtrKWOKHja90gV01FinC4curWRka3UiSaDQyHwHFGteklD7EA6zFeB-ny7qWZA",
+ "tallyPub": "TALLY1.BPHzRSuz6S0TvLSwU_wPls1PiX_yrsHB9Svuw6p8hBDtFT3HALTPbD1s4vjFMbbO8aUsLBZ7IKcWBlS4DbdQ-RU",
+ "tallyPriv": {
+  "key_ops": [
+   "deriveBits"
+  ],
+  "ext": true,
+  "kty": "EC",
+  "x": "8fNFK7PpLRO8tLBT_A-WzU-Jf_KuwcH1K-7DqnyEEO0",
+  "y": "FT3HALTPbD1s4vjFMbbO8aUsLBZ7IKcWBlS4DbdQ-RU",
+  "crv": "P-256",
+  "d": "P2L1DOyIc8XsVu8n-SQxjNzR8Zxl_pWGzpvOBHnXDXM"
+ },
+ "code": "K7QF2M9DX4TB",
+ "record": {
+  "v": 1,
+  "id": "a3f09c2d5b7e1f60",
+  "code": "K7QF2M9DX4TB",
+  "course": "m7",
+  "unit": 10,
+  "cv": 2,
+  "kit": "0123456789ab",
+  "seed": "ffffffffffffffffffffffffffffffff",
+  "site": {
+   "started": 1794835200000,
+   "finished": 1794837667000,
+   "saves": 41,
+   "timeline": [
+    [
+     12,
+     "1"
+    ],
+    [
+     40,
+     "2a"
+    ],
+    [
+     41,
+     "2b"
+    ]
+   ]
+  },
+  "rule": {
+   "leave": "lock",
+   "after": 3
+  },
+  "ended": null,
+  "unlocks": 1,
+  "parts": [
+   {
+    "id": "1",
+    "type": "text",
+    "typed": "3/1",
+    "v": "wrong",
+    "almost": false,
+    "key": "−1 ½ x²"
+   },
+   {
+    "id": "2",
+    "type": "text",
+    "typed": "3/2",
+    "v": "blank",
+    "almost": false,
+    "key": "−2 ½ x²"
+   },
+   {
+    "id": "3a",
+    "type": "text",
+    "typed": "3/3",
+    "v": "unread",
+    "almost": false,
+    "key": "−3 ½ x²"
+   },
+   {
+    "id": "4",
+    "type": "text",
+    "typed": null,
+    "v": "right",
+    "almost": false,
+    "key": "−4 ½ x²"
+   },
+   {
+    "id": "5",
+    "type": "mc",
+    "typed": "3/5",
+    "v": "wrong",
+    "almost": false,
+    "key": "−5 ½ x²"
+   },
+   {
+    "id": "6a",
+    "type": "text",
+    "typed": "3/6",
+    "v": "blank",
+    "almost": false,
+    "key": "−6 ½ x²"
+   }
+  ],
+  "points": 4,
+  "of": 6,
+  "log": {
+   "q": {},
+   "visits": [
+    [
+     "1",
+     0,
+     7
+    ],
+    [
+     "2",
+     10,
+     44
+    ],
+    [
+     "3",
+     20,
+     81
+    ],
+    [
+     "4",
+     30,
+     28
+    ],
+    [
+     "5",
+     40,
+     65
+    ],
+    [
+     "6",
+     50,
+     12
+    ],
+    [
+     "7",
+     60,
+     49
+    ],
+    [
+     "8",
+     70,
+     86
+    ],
+    [
+     "9",
+     80,
+     33
+    ],
+    [
+     "10",
+     90,
+     70
+    ],
+    [
+     "11",
+     100,
+     17
+    ],
+    [
+     "12",
+     110,
+     54
+    ]
+   ],
+   "away": [
+    {
+     "at": 311,
+     "for": 65,
+     "kind": "tab",
+     "q": "4"
+    }
+   ],
+   "scratch": {
+    "3": {
+     "notes": "é — “quoted” ✓ 12 × 3",
+     "grid": [
+      [
+       1,
+       2
+      ],
+      [
+       3,
+       -4
+      ]
+     ]
+    }
+   },
+   "device": {
+    "w": 1366,
+    "h": 768,
+    "touch": false,
+    "dark": true
+   }
+  }
+ },
+ "locked": "AQSn53iwyfVIeH3NMfItD-QwhYANijlF71F6dqWc7-DsnxLUqfy6I5qFazkiu05C6bGBNDb-pAqcHTPv0sJQrcCX8oV3XO9WeZKcOhYHHz9c1j8zF0mYiKfKoBnp7OyIWIPhsEmRWlKPUWxOcG0OmhjyrWHnftF3zQqDO8L9A04A_LU1LGyK4AQJ1LbQZYaZY6X3P8q8QqktKXDyoDXvxZZ3dtL_TZntrDG2fU-iM8WRLJAHQ7ltYCCE3n_xjKdNLk1eNegWSiaJjOuIOj_MB1HoW1mWu2a3JZZ3hRIT9Ceky-a5JqIrYuGSHbq_imU4TlYjSZtlnqbckKyl_Xn4wtte3hTPPNkm8SQSVDNnATIrmiOSdiTkH3_-_nzNbRlGd_INFqZH-aIMgYcglAd6EypXLLshOZkv1GNiyTru1Y9MYlgsxNiRkv7uN3-Awxv9CLwvcWzFMwFeXdTUf34crIAobqQ8_ABPkPTTawjwc9jhbmAyjVXa1JJdM6NkpN9BOlWoN7GwRxLQOxn5ZOuXe2rbDS76aL-M7YUmNpEbaYBe1RM8RQQ-nhAaUqd_LNfSjFqUpFYlrnW9CdJeXh_Gt4ttk5FIZywwMK1QVNfTWf2pLP00xEgY2k9sU2vNgOhNW7_EyeWFj8Nq-RRrIpJaBRLnzAast2497_2ILONo52ZwH6OWtJjpL2n9in6IyrrfykbHgaCsweSSsqeNrHj-6v_bqVLZC0cES8vmcIBd1k3J5bZl8VgC4N67tqK9OXWiKEVmxwjYAof83y5GpSZ0rZXKvGiACispizxo5ZttaSH--O5qcLHfng2PFUEdUUnH_t8OsWKSEiYNAccZLMfiGh3ODgiZnQBssP-Skr88JPgb0cnSuJ3h3cwbFAaexsWmyVkvA1pXnGVBZZ8KcZxSFUlOZK-uxQFRQh_Pu_cHL9p5PXe6ChUktR0fUMvMpJZYZiN8qwQ3DrGA99Hc1xPNppFPzjY",
+ "trial": {
+  "v": 1,
+  "trial": true,
+  "code": "0TR1A1C0DE00",
+  "nonce": "ABEiM0RVZneImaq7zN3u_w",
+  "made": 1794835200000
+ },
+ "trialLocked": "AQRW876LYaNGnYcXUXF49_3o-yIGGfz5mhpaaqsWDvvKSLMJKv3rZzpe-hcBZqWbgWWndOcHHSV5CUiGyUpKRIZoUJtae0ft8oH0BU4l3KnXdDr8IgSCyImzCiLFWL_5009VLWceNLd285KInoZmoi1w0avRV06E7NMe7_Z06g3jv1oCm8ZjrQVeO1HeEOL1Vp-qdvbI9MJU3fZ0iyeEMhKb0w3dWJ2pKpzalEmpVo6hk-SUcdTH4g2mk4noLS29feISEZ_VW1H61Stxa_VyybHl4Y66XWFkd0dcFoYIuWmh0gl6Vrkpij0X8BkuFs3zBwrFLlwT_B6b",
+ "words": "table peach colt tiger"
+}
