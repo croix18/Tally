@@ -1,9 +1,13 @@
 {
  "file": "vendor/seal.js",
  "from": "croix18/Windmill, branch exam, practice/kit/exam/seal.js",
- "commit": "134d46ca5d79c5ef5aad6d977d373616b7f5c517",
- "sha256": "cb608ebd428d7715ea26b04487524789dedfa44e971363f87f5697ed5a20dd2a",
- "copied": "2026-11-16",
- "vector": {"file": "fixtures/seal_vector.json", "from": "practice/kit/check/seal_vector.json", "sha256": "1b70418c81b2f26311ac7c4116d6660938df804bef33f9fcbc37f8acacedc4fa"},
+ "commit": "d834a781cbc8096571d7879960dbce982c20a66d",
+ "sha256": "b0721dcac1770164d55b71a9b7537535da812073b1df4e854a586d02150d0880",
+ "copied": "2026-11-16 (again: findCodes reads \"code K7QF-2M9D-X4TB\", Tally review L1)",
+ "vector": {
+  "file": "fixtures/seal_vector.json",
+  "from": "practice/kit/check/seal_vector.json",
+  "sha256": "1b70418c81b2f26311ac7c4116d6660938df804bef33f9fcbc37f8acacedc4fa"
+ },
  "note": "Copied unchanged. build.py refuses to build if the copy's SHA-256 is not this one; tests/exam-core.js fails too. To update: copy the new file from Windmill, then change commit and sha256 here."
 }

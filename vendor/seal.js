@@ -14,7 +14,8 @@
      newCode() → 'K7QF2M9DX4TB'          12 Crockford base-32 characters, fresh randomness (60 bits; at least one a digit):
                                          a record's name
      showCode(code) → 'K7QF-2M9D-X4TB'    readCode(text) → the 12 characters, or null (case, hyphens, spaces, I L O forgiven)
-     findCodes(text) → every code in a text, in order, each once (a form's answer cell, a pasted column)
+     findCodes(text) → every code in a text, in order, each once (a form's answer cell, a pasted column); a code as shown
+                       (no I L O U, a digit) before one that needs a letter forgiven; of overlapping runs, the one written as one thing
      makeSiteKey()  → Promise {priv: JWK, pub: base64url of the 65-byte point}        the site's signing pair (ECDSA)
      makeTallyKey() → Promise {priv: JWK, pub: 'TALLY1.' + base64url of the point}    Tally's pair (ECDH); pub is what is pasted
      readTallyPub(text) → the 65 bytes, or throws (why: 'tally-key')
@@ -73,13 +74,30 @@ function readCode(t) {
   return /^[0-9A-HJKMNP-TV-Z]{12}$/.test(s) ? s : null;
 }
 function showCode(c) { var s = readCode(c); return s ? s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8) : String(c == null ? '' : c); }
+/* Every code in a text, in the text's order, each once. A code as the site shows it has no I, L, O or U and at least one digit,
+   so a run that reads as one only after forgiving a letter ("code K7QF-…" → C0DE-K7QF-…) is taken only when the text holds no
+   code as shown. Where runs overlap, the one written as one thing wins: twelve together or the same separator twice
+   (K7QF-2M9D-X4TB, K7QF 2M9D X4TB, K7QF - 2M9D - X4TB, dots, slashes), then the one with more groups holding a digit
+   ("Mary K7QF 2M9D X4TB" is not MARY-K7QF-2M9D), then the leftmost. */
 function findCodes(text) {
-  var out = [], re = /(?:^|[^0-9A-Za-z])([0-9A-Za-z]{4}[\s\-‐-―]?[0-9A-Za-z]{4}[\s\-‐-―]?[0-9A-Za-z]{4})(?![0-9A-Za-z])/g, m;
-  var t = String(text == null ? '' : text);
-  while ((m = re.exec(t))) {                                     /* a run of twelve letters is a word unless it is grouped or has a digit */
-    var c = /[0-9]/.test(m[1]) || /[^0-9A-Za-z]/.test(m[1]) ? readCode(m[1]) : null;
-    if (c && out.indexOf(c) < 0) out.push(c);
+  var t = String(text == null ? '' : text), SEP = '([\\s\\-\\u2010-\\u2015_.\\/]*)', G = '([0-9A-Za-z]{4})';
+  var re = new RegExp('(?=' + G + SEP + G + SEP + G + '(?![0-9A-Za-z]))', 'g'), m, shown = [], forgiven = [];
+  while ((m = re.exec(t))) {
+    var i = m.index; re.lastIndex = i + 1;
+    if (i > 0 && /[0-9A-Za-z]/.test(t.charAt(i - 1))) continue;                      /* a run starts where a word does */
+    var raw = (m[1] + m[3] + m[5]).toUpperCase(), s1 = m[2].replace(/\s+/g, ''), s2 = m[4].replace(/\s+/g, '');
+    var c = readCode(raw); if (!c) continue;
+    var one = (m[2] === '' && m[4] === '') || (m[2] !== '' && m[4] !== '' && s1 === s2);
+    var digits = (/[0-9]/.test(m[1]) ? 1 : 0) + (/[0-9]/.test(m[3]) ? 1 : 0) + (/[0-9]/.test(m[5]) ? 1 : 0);
+    var cand = { c: c, at: i, end: i + m[1].length + m[2].length + m[3].length + m[4].length + m[5].length, rank: (one ? 0 : 10) - digits };
+    if (!/[ILOU]/.test(raw) && digits > 0) shown.push(cand);
+    else if (digits > 0 || ((m[2] !== '' || m[4] !== '') && /[0-9]/.test(c))) forgiven.push(cand);   /* a code has a digit once read; twelve letters together are a word */
   }
+  var list = shown.length ? shown : forgiven, kept = [];
+  list.sort(function (a, b) { return a.rank - b.rank || a.at - b.at; });
+  list.forEach(function (x) { if (!kept.some(function (k) { return x.at < k.end && k.at < x.end; })) kept.push(x); });
+  kept.sort(function (a, b) { return a.at - b.at; });
+  var out = []; kept.forEach(function (x) { if (out.indexOf(x.c) < 0) out.push(x.c); });
   return out;
 }
 

@@ -114,7 +114,7 @@ function migrate() {
     if (typeof s.label !== 'string') s.label = s.autoLabel || k;
     // A gradebook is only usable whole: assignments with values/status arrays of the students' length.
     if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) { loadLost.push({ label: s.label, what: 'gradebook' }); delete s.grades; } else { if (gb.students.every(x => typeof x === 'string')) uniqueNames(gb.students, Array.isArray(gb.ids) ? gb.ids : []); gb.assignments.forEach(a => { a.missing = a.status ? a.status.filter(t => t === 'missing').length : Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); } }
-    s.exams = cleanExamMap(s.exams);   // Tests: the opened records of this class's students (exams.js)
+    examMigrateClass(s);   // Tests: a class's records from before 16 Nov's review move to state.exam.recs (exams.js)
     s.stuNotes = cleanNotes(s.stuNotes); s.family = cleanFamily(s.family); s.practice = cleanPractice(s.practice); s.confForms = cleanConfForms(s.confForms); s.reportLog = cleanReportLog(s.reportLog);
     s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s.overrides = cleanOverrides(s.overrides); s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
@@ -166,7 +166,7 @@ let saveCount = 0;
 const noCache = s => { if (!s || typeof s !== 'object') return s; const o = {}; for (const k of Object.keys(s)) if (k[0] !== '_') o[k] = s[k]; return o; };   // _keys and the like are caches, rebuilt on the next paint: saving them made the same work look changed
 function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = noCache(state.sections[k]); const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
 function save() { if (wiping) return false; saveCount++; if (extPending && !(($('#modal') || {}).classList && !$('#modal').classList.contains('hidden')) && !settingsHolding()) settleExt();   /* round 2 (DAT-01): nor while Settings holds unsaved edits; leaving Settings or its own Save settles */   // another tab saved while something was being typed here: its changes and this tab's go out together (a dialog still open holds the old objects, so that case waits for it to close: extIdle)
-  try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save: this browser\'s storage is full. Make a Full save now (Ctrl+S): it keeps everything. What fills the room is each class\'s IXL history, best scores and grade history; removing a class you no longer teach frees some. Your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
+  try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? `Could not save: this browser's room for Tally is full. Make a Full save now (Ctrl+S): it keeps everything. ${whatFills()} Your changes stay until you close the tab.` : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
 // Two students with the same name in one gradebook: every screen finds a student by name, so both showed the first
@@ -2785,7 +2785,8 @@ const stamp = iso => { const d = new Date(iso); const p2 = n => String(n).padSta
 function saveFull(how) {
   if (state.board) { toast('A Board save holds only the Board. Make a Full save on the computer that has your classes.', true); return; }
   const now = new Date().toISOString(); state.lastBackup = now; state.savedPrint = workPrint(); dirtySince = null; if (how === 'auto') lastAutoSave = Date.now();
-  const cfg = { tally: 4, full: { saved: now, classes: state.order.length, how: how === 'auto' ? 'auto' : 'manual' }, state: stateForSave() };
+  const st0 = stateForSave(); st0.exam = examForSave(st0.exam);   // Tests: a Full save carries every test's locked text (exams.js)
+  const cfg = { tally: 4, full: { saved: now, classes: state.order.length, how: how === 'auto' ? 'auto' : 'manual' }, state: st0 };
   const name = 'tally-full-' + stamp(now) + '.json'; state.lastSaveName = name;
   downloadJson(cfg, name); save(); render();
   toast(how === 'auto' ? `Autosaved: ${esc(name)} is in your Downloads.` : storageFragile ? `Saved as ${esc(name)}. Next visit, open the newest save to pick up here.` : 'Full save downloaded. It holds everything, student names included, so keep it in your school Drive.', false, how === 'auto' ? 4000 : 5000);
@@ -2846,7 +2847,7 @@ async function loadTallyFile(file, cfg) {
     if (cfg.board) { s.board = cfg.board; s.settings = { ...(s.settings || {}), hideNames: true, leaderboard: true }; } else delete s.board;
     const wasHidden = !!(state.settings && state.settings.hideNames) || !state.order.length;   // a Full save opened on a hidden or empty Tally (the panel) keeps names hidden
     const keysHere = cfg.full ? examKeysNow() : null;   // Tests: a Full save never takes away a key this Tally holds (exams.js)
-    adopt(hydrate(s) || s); if (keysHere) examKeepKeys(keysHere); if (cfg.full) { if (wasHidden) state.settings.hideNames = true; state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
+    adopt(hydrate(s) || s); if (keysHere) examKeepKeys(keysHere); examReset(); if (cfg.full) { if (wasHidden) state.settings.hideNames = true; state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
     toast(cfg.board ? `Board save opened: ${plural(state.order.length, 'class')}, no names.` : `Full save from ${esc(whenText(meta.saved))} opened: ${plural(state.order.length, 'class')}.`, false, 5000);
     return true;
   }
@@ -2857,6 +2858,11 @@ async function loadTallyFile(file, cfg) {
 }
 // How full this browser's storage is. Pages opened from files (and every project on one Pages site) share one allowance
 // of about five million characters, so "other saved pages" is counted too.
+// what fills Tally's room in this browser, largest first (a save that fails says what is actually full)
+function whatFills() { try { const mb = n => (n / 1048576).toFixed(1); const parts = [['Tests (responses and test summaries)', JSON.stringify(state.exam || {}).length]]; let ixl = 0, gb = 0, other = 0;
+  for (const k of state.order) { const s = state.sections[k]; ixl += JSON.stringify([s.scores, s.history, s.best, s.skills]).length; gb += JSON.stringify([s.grades, s.gradeHistory, s.qArchive]).length; other += JSON.stringify(s).length; }
+  other -= ixl + gb; parts.push(['IXL scores, history and best scores', ixl], ['gradebooks, grade history and kept quarters', gb], ['everything else', Math.max(0, other)]); const u = storageUse();
+  return `Tally holds about ${mb(u.tally)} MB here: ${parts.sort((x, y) => y[1] - x[1]).map(p => `${p[0]} ${mb(p[1])} MB`).join('; ')}.${u.other > 200000 ? ` Other saved pages hold ${mb(u.other)} MB.` : ''}`; } catch (e) { return ''; } }
 function storageUse() { const quota = 5242880; let total = 0, tally = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); const n = k.length + (localStorage.getItem(k) || '').length; total += n; if (k.indexOf(LS_KEY) === 0) tally += n; } } catch (e) {} return { quota, total, tally, other: total - tally, pct: Math.round(total / quota * 100), mb: n => (n / 1048576).toFixed(1) }; }
 // The newest thing imported (an IXL export or a gradebook), to tell whether the last backup is behind it.
 function latestImportAt() { let m = ''; for (const k of state.order) { const s = state.sections[k]; [s.importedAt, s.grades && s.grades.importedAt].forEach(v => { if (typeof v === 'string' && v > m) m = v; }); } return m || null; }
@@ -2990,8 +2996,9 @@ ${all ? '' : `      <section class="scope stab ${settingsTab === 'class' ? 'on' 
   const fg = $('#forget'); if (fg) fg.onclick = async () => { if (!await ask(`Remove ${s.label} from Tally? Everything Tally holds for it goes: IXL data, gradebook, kept quarters, roster, notes, family contacts and the contact log, weekly reports and signed-report ticks, IXL practice, conference text, seating. ${unsavedWork() ? 'A Full save downloads first, so you can get it back.' : 'Your last Full save still has it.'}`, 'Remove the class')) return; if (unsavedWork()) saveFull(); delete state.sections[s.key]; delete seatWork[s.key]; delete seatCandsBy[s.key]; state.order = state.order.filter(k => k !== s.key); state.active = state.order[0] || null; settingsBack = null; pageGuard = null; view = { mode: 'units', unit: null }; save(); render(); };
   $('#wipe').onclick = async () => {
     const n = state.order.length, r = state.order.filter(k => rosterState(state.sections[k]).count).length;
-    if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals? ${unsavedWork() ? 'A Full save downloads first, so you can get it back.' : 'Your last Full save still has it.'}`, 'Clear everything')) return; if (unsavedWork()) saveFull();
-    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); } catch (e) {} pinClear(); try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; setTimeout(() => location.reload(), 700);   // lets the Full save finish downloading
+    const xk = state.exam && state.exam.pairs && state.exam.pairs.length;
+    if (!await ask(`Clear everything Tally has saved in this browser: ${plural(n, 'class')}, ${plural(r, 'pasted roster')}, goals${xk ? ', and Tests\' key with every test it has opened' : ''}? ${xk ? 'The key is what opens your students\' test records: if no Full save of yours holds it, nobody can open those records again. ' : ''}${unsavedWork() ? 'A Full save downloads first, so you can get it back.' : 'Your last Full save still has it.'}`, 'Clear everything')) return; if (unsavedWork()) saveFull();
+    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '.broken'); localStorage.removeItem('tally.exam.local'); } catch (e) {} try { xdbClear(); } catch (e) {} pinClear(); try { sessionStorage.removeItem(GB_KEY); } catch (e) {} wiping = true; setTimeout(() => location.reload(), 700);   // lets the Full save finish downloading
   };
   $('#addCustom').onclick = () => { openCustomEditor(null, s.prep); };
   document.querySelectorAll('#stabs [data-stab]').forEach(b => b.onclick = () => { settingsTab = b.dataset.stab; document.querySelectorAll('#stabs [data-stab]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); }); m.querySelectorAll('section.stab').forEach(x => x.classList.toggle('on', x.dataset.stab === settingsTab)); const gw = $('#gridwrap'); if (gw) gw.scrollTop = 0; });
@@ -3252,6 +3259,7 @@ $('#toast').addEventListener('click', e => { if (e.target.closest('button')) ret
 // a note on the Overview's card — a toast alone is gone in seconds and never shows when Tally reopens on the Board.
 try { const wi = bootError ? [] : defaultWorkingIn(); if (wi.length) { noteWorkingIn(wi); save(); setTimeout(() => toast(wi.map(x => `${x.prep === 'acc' ? 'Accelerated' : 'On-level'}: ${esc(wiText(x))}`).join('<br>'), false, 9000), 400); } } catch (e) { console.error('Tally: could not set Working in', e); }
 render();
+try { examLoadLocked().then(() => { if (view.mode === 'tests') render(); }); } catch (e) { console.error(e); }   // Tests: the locked texts from IndexedDB (exams.js)
 if (foldedTwins.length && !bootError) { save(); setTimeout(() => toast(`${esc(foldedTwins.join(', '))} ${foldedTwins.length === 1 ? 'was' : 'were'} in Tally twice: an IXL export had made a second copy. ${foldedTwins.length === 1 ? 'It is' : 'They are'} one class again, with the newer IXL data.`, false, 9000), 500); }
 // Saved data that can't be read is downloaded as a file before Tally may write anything (audit, 22 Oct 2026: on a big
 // Tally the in-browser copy failed for space, the message still said it was kept, and the first save wrote over it).

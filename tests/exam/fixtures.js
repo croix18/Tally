@@ -78,6 +78,7 @@ function sitting(r, o) {
       if (tab === 'notes' || o.scratch === 'heavy') end[q] = { n: o.scratch === 'heavy' ? pick(['12 × 3 = 36\n36 + 108 = 144', 'half of 5 is 2.5\nso 5/2', 'x + 4 > 8\nx > 4 … no, ≥', 'total = 18.75\n3 × 6.25']) : '', g: { v: [r() < 0.5 ? 4 : 1, pick([1, 2, 5])], o: tab === 'grid' ? [['p', 10, 10], ['p', 13, 14], ['s', 10, 10, 13, 14], ['l', 4, 2, 6, 6]].slice(0, 2 + Math.floor(r() * 3)) : [] } }; }
     if (o.away && away.length < o.away && r() < Math.max(0.3, o.away / qnums.length)) { const n = Math.min(3, o.away - away.length); for (let i = 0; i < n && away.length < o.away; i++) away.push([t + 10 + i * 9, 3 + Math.floor(r() * (o.awayLong || 40)), (o.kinds || ['tab'])[away.length % (o.kinds || ['tab']).length], q]); }
     if (o.blocked && r() < 0.4) blocked.push([t + 5, pick(['copy', 'menu', 'selectall', 'print', 'cut']), q]);
+    if (o.blocked && q === '5') blocked.push([t + 6, 'find', q], [t + 7, 'zoomhack', q]);   // CHANGES §11: the find bar, and a kind Tally doesn't know
     if (o.idle && o.idle.length && r() < 0.25) idle.push([t + 20, o.idle.shift(), q]);
     t += dwell;
   }
@@ -136,13 +137,14 @@ function build(seed) {
     2: { away: 3, kinds: ['tab'], rule: { leave: 'end', after: 3 }, ended: 'left', blankFrom: 11 },      // the test ended itself
     3: { idle: [612, 75] }, 4: { scratch: 'heavy', cut: true, calc: 0.5 }, 5: { cap: true, away: 3, calc: 0.3 },
     7: { nulls: true, unlocks: 1, rule: { leave: 'lock', after: 2 }, away: 2 },
-    13: { pastes: 2, blocked: true }, 20: { skew: -184, flagEnd: true, extra: 2700 }, 21: { start: at(10, 52) }, 22: { slowQ: '6' },
+    20: { skew: -184, flagEnd: true, extra: 2700 }, 21: { start: at(10, 52) }, 22: { slowQ: '6' },
     11: { rule: { leave: 'end', after: 3 }, away: 3 },                                                 // left 3 times under "end after 3" and it did not end
     14: { rule: { leave: 'lock', after: 2 }, away: 4 },                                                // left 4 times under "lock after 2", never unlocked
     25: { ended: 'teacher' },
-    10: { ended: 'time', limit: 30, extra: 600 },                                                       // ran out of the 30 minutes allowed
+    19: { ended: 'time', limit: 30, extra: 600 },                                                       // ran out of the 30 minutes allowed
     6: { log: false, limit: null },                                                                    // no time limit                                                                          // the site closed it with what was saved
-    27: { start: at(13, 5), opened: at(12, 55) },                                                      // taken in the afternoon, in another opening (at home?)
+    27: { start: at(13, 5) },                                                                          // taken in the afternoon, in the class's opening: apart from the class
+    13: { pastes: 2, blocked: true, start: at(14, 30), opened: at(14, 25) },                          // alone, in an opening of its own: a make-up?
     26: { opened: null } };                                                                            // an older record with no site.opened
   const codes = {};
   P4.forEach((d, i) => { codes[i] = add({ sec: 4, n: d }, { skill: sk[i], start: day(i), calc: 0.15, scratch: 'some', away: i % 4 === 1 ? 1 : 0, ...(kinds[i] || {}) }, i === 23 ? { by: 'old' } : null); });   // Tereza's is signed with the site's key from before it was made again; Daniel finishes after the period
@@ -154,7 +156,7 @@ function build(seed) {
   const a7 = add({ sec: 4, n: P4[19] }, { skill: 0.6, start: at(9, 44), course: 'a7', unit: 4 });            // the other course
   const late = codes[21], oldKey = codes[23];
   const nobody = add(null, { skill: 0.66, start: day(25), ended: 'teacher' });                            // abandoned: the site finished and sealed it                                                  // nobody turned it in (the cockpit's file has it)
-  const p5 = P5.map((d, i) => add({ sec: 5, n: d }, { skill: 0.6 + i * 0.05, start: at(10, 41 + i), calc: 0.1, opened: at(10, 38) }));
+  const p5 = P5.map((d, i) => add({ sec: 5, n: d }, { skill: 0.6 + i * 0.05, start: i < 3 ? at(10, 41 + i) : at(13, 2 + i), calc: 0.1, opened: at(10, 38) }));   // 5th Period sat in two groups: three at 10:41, three at 1:05
   hostile(recs.find(x => x.code === p5[0]).record);                                                       // a genuinely signed record full of a student's own strings
   // the responses, as the form collected them
   P4.forEach((d, i) => {

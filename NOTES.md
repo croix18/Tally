@@ -1407,7 +1407,7 @@ scratch pad, I want this to be as data forward and collecting as possible."* *"H
 The design is Windmill's `practice/exam/DESIGN.md` (branch `exam`), sections 3 and 4. **Not merged to `main`**: `main`
 is what the website hands Croix; this waits for review.
 
-**Files.** `vendor/seal.js` (Windmill `practice/kit/exam/seal.js`, copied unchanged from commit `134d46c`; SHA-256 in
+**Files.** `vendor/seal.js` (Windmill `practice/kit/exam/seal.js`, copied unchanged from commit `d834a78` (first from `134d46c`; re-vendored for review L1); SHA-256 in
 `vendor/seal.json`; `build.py` refuses to build and `tests/exam-core.js` fails if the copy differs; on the page as
 `window.ExamSeal`) · `examcore.js` (pure: the response sheet, names, the record read for the screens, `placeAll`, `flags`;
 `window.ExamCore` and a Node module) · `exams.js` (spliced into app.js at `/*__EXAMS__*/`: keeping, fetching, the screens) ·
