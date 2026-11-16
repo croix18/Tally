@@ -10,6 +10,10 @@ const snap10 = v => Math.round(v / 10) * 10;
 const titleCase = s => String(s || '').toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (m, p, c) => p + c.toUpperCase()).replace(/\bMc([a-z])/g, (m, c) => 'Mc' + c.toUpperCase()).replace(/\bO'([a-z])/g, (m, c) => "O'" + c.toUpperCase());
 const PHOTO_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 const cleanId = id => { const t = String(id == null ? '' : id).replace(/[^\w-]/g, '').slice(0, 24); return t || seatUid(); };
+/* 15 Nov 2026 audit (SEA-03, SEA-11): savedAt is shown as the local day it was saved, and anything that is not a date reads as no date */
+const seatDateOK = v => ((typeof v === 'string' && v.trim()) || (typeof v === 'number' && Number.isFinite(v))) && !isNaN(new Date(v));
+const seatSavedDay = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : seatDateOK(v) ? localDay(v) : '';
+const cleanSavedAt = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : seatDateOK(v) ? new Date(v).toISOString() : new Date().toISOString();
 const numOr = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 // Every seatInfo record is coerced on load, restore and import: nothing but plain strings, small numbers and a
 // bounded JPEG/PNG data URL ever reaches the page (values are also escaped where they are rendered).
@@ -55,12 +59,13 @@ const seatPairs = () => SEAT_PAIRS.some(b => b[0] === state.seatPairs) ? state.s
 // Partner cost in [0,1] for a pair, by mode: mix → 1 only when both are low; tutor → 1 when identical, 0 at ≥50 apart; similar → the reverse.
 function pairCost(a, b) { const m = seatPairs(); if (a.standing == null && b.standing == null) return 0; if (m === 'mix') return lowStanding(a) && lowStanding(b) ? 1 : 0; const diff = Math.abs(standingOf(a) - standingOf(b)); return m === 'tutor' ? Math.max(0, 1 - diff / 50) : Math.min(1, diff / 50); }
 const seatBasis = () => SEAT_BASES.some(b => b[0] === state.seatBasis) ? state.seatBasis : 'blend';
+/* 15 Nov 2026 audit (SEA-12): the students a keep-apart or seat-near links to x, whichever of the two stores the link */
+const seatLinks = (x, stu, f) => stu.filter(o => o.id !== x.id && ((x[f] || []).includes(o.id) || (o[f] || []).includes(x.id)));
 function seatStudents(sec) {
   const rows = buildRows(sec).filter(r => r.status !== 'ixlOnly'); const gb = sec.grades; const gbIdx = gb ? new Map(gb.students.map((n, i) => [n, i])) : null;
   const testsBy = gb ? new Map(ixlVsTests(sec).map(x => [x.i, x.tests])) : null; const basis = seatBasis();
-  const units = unitsOf(sec).filter(u => u.assigned && u.total); const t = sec.threshold;
   const base = rows.map(r => { const info = seatInfoOf(sec, r.display); const gi = gbIdx && gbIdx.has(r.display) ? gbIdx.get(r.display) : null; const g = gi != null ? computeGrade(sec, gi) : null;
-    let ixl = null; if (r.ixl != null && units.length) { let d = 0, p = 0; units.forEach(u => { p += totalFor(sec, u, r.ixl); d += points(sec, u, r.ixl); }); ixl = p ? d / p * 100 : null; }
+    const ixl = r.ixl != null ? ixlFor(sec, r.ixl).pct : null;   /* 15 Nov 2026 audit (SEA-01): the Students screen's own figure, open-quarter units */
     return { ...splitDisplay(r.display), id: r.display, display: r.display, sid: r.id || '', ixl: r.ixl, gi, grade: g ? g.pct : null, tests: gi != null && testsBy ? (testsBy.get(gi) ?? null) : null, ixlPct: ixl, info }; });
   const grades = base.map(s => s.grade), ixls = base.map(s => s.ixlPct), tests = base.map(s => s.tests);
   return base.map(s => { const i = s.info; const gr = rankPct(grades, s.grade), ir = rankPct(ixls, s.ixlPct), tr = rankPct(tests, s.tests);
@@ -78,10 +83,10 @@ const lowStanding = s => standingOf(s) < 25 || s.level === 1;
 const allowedDepth = s => { const p = standingOf(s); return p < 25 ? 0.5 : p < 50 ? 0.75 : 1; };
 // Standing is relative to the class: the FAST state percentile averaged with the class percentile ranks of the Focus grade and IXL completion.
 const standingText = s => { const b = seatBasis(); const bits = [];
-  if (s.pct != null && (b === 'blend' || b === 'fast')) bits.push(`FAST ${s.pct}th pct${s.level ? ' (L' + s.level + ')' : ''}`);
-  if (s.grade != null && (b === 'blend' || b === 'grade')) bits.push(`Focus ${Math.round(s.grade)}% (${s.gradeRank}th percentile in class)`);
-  if (s.tests != null && b === 'tests') bits.push(`assessments ${Math.round(s.tests)}% (${s.testsRank}th percentile in class)`);
-  if (s.ixlPct != null && (b === 'blend' || b === 'ixl')) bits.push(`IXL ${Math.round(s.ixlPct)}% (${s.ixlRank}th percentile)`);
+  if (s.pct != null && (b === 'blend' || b === 'fast')) bits.push(`FAST ${ordinal(s.pct)} pct${s.level ? ' (L' + s.level + ')' : ''}`);
+  if (s.grade != null && (b === 'blend' || b === 'grade')) bits.push(`Focus ${Math.round(s.grade)}% (${ordinal(s.gradeRank)} percentile in class)`);
+  if (s.tests != null && b === 'tests') bits.push(`assessments ${Math.round(s.tests)}% (${ordinal(s.testsRank)} percentile in class)`);
+  if (s.ixlPct != null && (b === 'blend' || b === 'ixl')) bits.push(`IXL ${Math.round(s.ixlPct)}% (${ordinal(s.ixlRank)} percentile)`);
   const name = SEAT_BASES.find(x => x[0] === b)[1];
   return bits.length ? bits.join(' · ') + ` → standing ${standingOf(s)}` : `no ${b === 'blend' ? 'scores' : name + ' data'} yet: treated as mid-level`; };
 
@@ -120,9 +125,9 @@ function buildModel(sec, stu, G, withFresh) {
     const a = stu[i], b = stu[j]; let none = 0, nb = 0, pt = 0; const ha = a.behavior === 'high', hb = b.behavior === 'high', ma = a.behavior === 'medium', mb = b.behavior === 'medium';
     if (ha && hb) { pt += seatW('behavior') * 1.0; nb += seatW('behavior') * 0.5; } else if ((ha && mb) || (hb && ma)) { pt += seatW('behavior') * 0.45; nb += seatW('behavior') * 0.15; } else if (ma && mb) { pt += seatW('behavior') * 0.15; }
     { const pc = pairCost(a, b); if (pc > 0) { pt += seatW('mix') * pc; if (seatPairs() === 'mix') nb += seatW('mix') * 0.3; } }
-    if (a.together.includes(b.id)) { none += seatW('together') * 1.0; nb += seatW('together') * 0.4; }
+    if (a.together.includes(b.id) || b.together.includes(a.id)) { none += seatW('together') * 1.0; nb += seatW('together') * 0.4; }
     if (prevPartners.has(a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id)) pt += seatW('fresh') * 1.0;
-    if (a.apart.includes(b.id)) hard.push([i, j]);
+    if (a.apart.includes(b.id) || b.apart.includes(a.id)) hard.push([i, j]);   /* 15 Nov 2026 audit (SEA-12): a link stored on either student counts */
     P[i].push([none, nb, pt]); } }
   return { U, P, hard, n, m };
 }
@@ -138,7 +143,7 @@ function scoreSeats(sec, seats, stu, G, M) {
   const asg = asgFromSeats(seats, stu, G); let t = 0, h = 0;
   for (let i = 0; i < M.n; i++) { if (asg[i] < 0) continue; t += M.U[i][asg[i]]; for (let j = i + 1; j < M.n; j++) { if (asg[j] < 0) continue; t += M.P[i][j][G.rel[asg[i]][asg[j]]]; } }
   for (const [i, j] of M.hard) if (asg[i] >= 0 && asg[j] >= 0 && G.rel[asg[i]][asg[j]] > 0) h++;
-  const b = seatBaseline(sec, M, G); const fit = h ? 0 : Math.min(100, b > 0 ? Math.round(100 * Math.max(0, 1 - t / b)) : (M.m && M.n ? 100 : 0));
+  const b = seatBaseline(sec, M, G); const fit = h ? 0 : Math.min(100, b > 0 ? Math.round(100 * Math.max(0, 1 - t / b)) : (M.m && M.n && M.n <= M.m ? 100 : 0));
   return { fit, soft: t, hard: h };
 }
 const SEAT_WORKER = `
@@ -184,14 +189,14 @@ function explainSeats(seats, stu, G) {
   for (const a of stu) { const da = at[a.id]; if (da == null) { issues.push({ t: 'hard', msg: `${nm(a)} has no seat` }); continue; }
     for (const b of stu) { if (a.id >= b.id) continue; const db = at[b.id]; if (db == null) continue; const r = G.rel[da][db]; if (!r) continue; const key = a.id + '|' + b.id; if (seen.has(key)) continue; seen.add(key);
       const where = r === 2 ? 'partners' : 'neighbors';
-      if (a.apart.includes(b.id)) issues.push({ t: 'hard', msg: `${nm(a)} & ${nm(b)} are ${where}: keep-apart rule` });
+      if (a.apart.includes(b.id) || b.apart.includes(a.id)) issues.push({ t: 'hard', msg: `${nm(a)} & ${nm(b)} are ${where}: keep-apart rule` });
       else if (seatW('behavior') && a.behavior === 'high' && b.behavior === 'high') issues.push({ t: 'warn', msg: `${nm(a)} & ${nm(b)} are ${where}: both high behavior` });
       else if (seatW('behavior') && r === 2 && ((a.behavior === 'high' && b.behavior === 'medium') || (b.behavior === 'high' && a.behavior === 'medium'))) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} partners: high + medium behavior` });
-      if (seatW('mix') && r === 2 && !(a.standing == null && b.standing == null)) { const m = seatPairs(); const diff = Math.abs(standingOf(a) - standingOf(b));
+      if (seatW('mix') && r === 2 && !(a.standing == null && b.standing == null)) { const m = seatPairs();
         if (m === 'mix' && lowStanding(a) && lowStanding(b)) issues.push({ t: 'warn', msg: `${nm(a)} & ${nm(b)} partners: both low standing` });
-        else if (m === 'tutor' && diff < 15) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} partners: similar standing (${standingOf(a)} / ${standingOf(b)}), not a tutor pair` });
-        else if (m === 'similar' && diff > 50) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} partners: far apart in standing (${standingOf(a)} / ${standingOf(b)})` }); } }
-    if (seatW('together')) for (const tid of a.together) { const b = stu.find(s => s.id === tid); if (!b || a.id > b.id) continue; const db = at[b.id]; if (db != null && !G.rel[da][db]) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} wanted near each other: not near` }); }
+        else if (m === 'tutor' && pairCost(a, b) >= 0.5) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} partners: similar standing (${standingOf(a)} / ${standingOf(b)}), not a tutor pair` });
+        else if (m === 'similar' && pairCost(a, b) >= 0.5) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} partners: far apart in standing (${standingOf(a)} / ${standingOf(b)})` }); } }
+    if (seatW('together')) for (const b of stu) { if (a.id >= b.id || !(a.together.includes(b.id) || b.together.includes(a.id))) continue; const db = at[b.id]; if (db != null && !G.rel[da][db]) issues.push({ t: 'info', msg: `${nm(a)} & ${nm(b)} wanted near each other: not near` }); }
     const dep = G.depth[da];
     if (seatW('front') && a.front && dep > 0.34) issues.push({ t: 'warn', msg: `${nm(a)} needs a front seat: sitting ${dep > 0.67 ? 'in the back' : 'mid-room'}` });
     if (seatW('teacher') && a.nearTeacher && G.tdist[da] > 0.4) issues.push({ t: 'warn', msg: `${nm(a)} should be near the teacher desk: isn't` });
@@ -203,20 +208,22 @@ function whyHere(sec, work, sid, deskId, stu, G) {
   const at = {}; for (const [dk, id] of Object.entries(work.seats)) if (di[dk] != null) at[id] = di[dk];
   const lines = []; const rows = rowIndex(G); const dep = G.depth[d];
   lines.push({ ok: true, msg: `Row ${rows.of[d]} of ${rows.count} · desk ${G.nums[deskId]}` });
-  if (s.standing != null) { const band = allowedDepth(s); const okb = dep <= band + 0.05; lines.push({ ok: okb, msg: `${standingText(s)} → ${band <= 0.5 ? 'front half' : band <= 0.75 ? 'front three-quarters' : 'anywhere'}${okb ? '' : ': sitting further back'}`, tick: true }); }
+  if (s.standing != null) { const band = allowedDepth(s); const okb = dep <= band + 0.05 || !seatW('fast'); lines.push({ ok: okb, msg: `${standingText(s)} → ${band <= 0.5 ? 'front half' : band <= 0.75 ? 'front three-quarters' : 'anywhere'}${okb ? '' : ': sitting further back'}`, tick: true }); }
   else lines.push({ ok: true, msg: 'No scores yet: treated as mid-level' });
-  if (s.front) lines.push({ ok: dep <= 0.34, msg: `Front-seat flag${dep <= 0.34 ? '' : ': not in the front third'}`, tick: true });
-  if (s.nearTeacher) lines.push({ ok: G.tdist[d] <= 0.4, msg: `Near-teacher flag${G.tdist[d] <= 0.4 ? '' : ': far from your desk'}`, tick: true });
+  /* 15 Nov 2026 audit (SEA-06): a priority at weight 0 raises nothing here, as in the issues list */
+  if (s.front && seatW('front')) lines.push({ ok: dep <= 0.34, msg: `Front-seat flag${dep <= 0.34 ? '' : ': not in the front third'}`, tick: true });
+  if (s.nearTeacher && seatW('teacher')) lines.push({ ok: G.tdist[d] <= 0.4, msg: `Near-teacher flag${G.tdist[d] <= 0.4 ? '' : ': far from your desk'}`, tick: true });
   if (s.plan && !seatHidden()) lines.push({ ok: true, msg: `${s.plan}${s.accom ? ': ' + s.accom : ''}`, plan: true });
   const partners = [], neighbors = [];
   for (const o of stu) { if (o.id === s.id || at[o.id] == null) continue; const r = G.rel[d][at[o.id]]; if (r === 2) partners.push(o); else if (r === 1) neighbors.push(o); }
   const tag = o => `${seatName(o)}${o.behavior === 'high' ? ' (H)' : o.behavior === 'medium' ? ' (M)' : ''}${o.standing != null ? ' · ' + o.standing : ''}`;
-  lines.push({ ok: !partners.some(o => s.apart.includes(o.id) || (o.behavior === 'high' && s.behavior === 'high')), msg: partners.length ? `Partner${partners.length > 1 ? 's' : ''}: ${partners.map(tag).join(', ')}` : 'No partner (empty desk beside)' });
+  lines.push({ ok: !partners.some(o => s.apart.includes(o.id) || o.apart.includes(s.id) || (seatW('behavior') && o.behavior === 'high' && s.behavior === 'high')), msg: partners.length ? `Partner${partners.length > 1 ? 's' : ''}: ${partners.map(tag).join(', ')}` : 'No partner (empty desk beside)' });
   if (partners.length && seatW('mix')) { const m = seatPairs(); const worst = Math.max(...partners.map(o => pairCost(s, o))); lines.push({ ok: worst < 0.5, msg: m === 'tutor' ? `Tutor pairs: standing ${standingOf(s)} with ${partners.map(o => standingOf(o)).join(', ')}${worst < 0.5 ? '' : ': too close to be a tutor pair'}` : m === 'similar' ? `Similar level: standing ${standingOf(s)} with ${partners.map(o => standingOf(o)).join(', ')}${worst < 0.5 ? '' : ': far apart'}` : `Lows apart${worst ? ': two low-standing partners' : ''}` , tick: true }); }
-  if (neighbors.length) lines.push({ ok: !neighbors.some(o => s.apart.includes(o.id) || (o.behavior === 'high' && s.behavior === 'high')), msg: `Nearby: ${neighbors.map(tag).join(', ')}` });
-  for (const tid of s.apart) { const o = stu.find(x => x.id === tid); if (!o) continue; const r = at[o.id] == null ? 0 : G.rel[d][at[o.id]]; lines.push({ ok: r === 0, msg: `Keep apart from ${seatName(o)}${r ? ': TOO CLOSE' : ''}`, tick: true }); }
-  for (const tid of s.together) { const o = stu.find(x => x.id === tid); if (!o) continue; const r = at[o.id] == null ? 0 : G.rel[d][at[o.id]]; lines.push({ ok: r > 0, msg: `Wants to sit near ${seatName(o)}${r ? '' : ': not near'}`, tick: true }); }
-  if (s.behavior === 'high') lines.push({ ok: true, msg: 'High behavior: the solver keeps other H students away' });
+  if (neighbors.length) lines.push({ ok: !neighbors.some(o => s.apart.includes(o.id) || o.apart.includes(s.id) || (seatW('behavior') && o.behavior === 'high' && s.behavior === 'high')), msg: `Nearby: ${neighbors.map(tag).join(', ')}` });
+  const linked = f => seatLinks(s, stu, f);   /* SEA-12: links stored on either student */
+  for (const o of linked('apart')) { const r = at[o.id] == null ? 0 : G.rel[d][at[o.id]]; lines.push({ ok: r === 0, msg: `Keep apart from ${seatName(o)}${r ? ': TOO CLOSE' : ''}`, tick: true }); }
+  if (seatW('together')) for (const o of linked('together')) { const r = at[o.id] == null ? 0 : G.rel[d][at[o.id]]; lines.push({ ok: r > 0, msg: `Wants to sit near ${seatName(o)}${r ? '' : ': not near'}`, tick: true }); }
+  if (s.behavior === 'high' && seatW('behavior')) lines.push({ ok: true, msg: 'High behavior: the solver keeps other H students away' });
   if (s.notes && !seatHidden()) lines.push({ ok: true, msg: 'Note: ' + s.notes });
   return lines;
 }
@@ -310,7 +317,7 @@ const SEAT_SVG_CSS = `.chartSvg{width:100%;height:auto;display:block;font-family
 /* ---- Seating view ---- */
 function renderSeatingBar(s) {
   const room = roomOK(); const sub = view.sub === 'room' ? 'room' : 'chart';
-  return `<span class="meta">${sub === 'room' ? `${plural(room.desks.length, 'desk')} · one room for every class` : (s.seating ? `saved ${esc(fmtDate((s.seating.savedAt || '').slice(0, 10)))}` : 'no saved chart yet')}</span>
+  return `<span class="meta">${sub === 'room' ? `${plural(room.desks.length, 'desk')} · one room for every class` : (s.seating ? (d => d ? `saved ${esc(fmtDate(d))}` : 'saved')(seatSavedDay(s.seating.savedAt)) : 'no saved chart yet')}</span>
     <div class="spacer"></div>
     <div class="seg small" id="seatSub"><button data-sub="chart" class="${sub === 'chart' ? 'on' : ''}">Chart</button><button data-sub="room" class="${sub === 'room' ? 'on' : ''}">Room</button></div>
     ${sub === 'chart' ? `<button class="pill toggle" id="seatPrint" ${workFor(s) ? '' : 'disabled'}>Print</button><button class="pill toggle" id="seatWeights" title="What the solver weighs">Priorities</button>` : ''}`;
@@ -336,17 +343,17 @@ function renderSeating(s) {
   side += `<button class="pill big ${w && (w.dirty || w.source === 'cand') ? 'pale' : ''}" id="seatGen" ${can ? '' : 'disabled'}>${seatSolving ? 'Thinking…' : (w ? 'Generate new options' : 'Generate seating')}${nLocks ? ` (keeping ${nLocks} locked)` : ''}</button>`;
   if (!w && nd && stu.length && !seatSolving) side += `<button class="pill pale" id="seatHand">Seat by hand</button>`;
   if (seatSolving) side += `<div class="prog"><i id="seatBar"></i></div>`;
-  if (seatCands.length) side += `<div class="cand">` + seatCands.map((c, i) => `<button class="${w && w.candIdx === i && w.source === 'cand' ? 'on' : ''}" data-cand="${i}">Option ${i + 1}<small>fit ${c.fit}${c.hard ? ' · ' + c.hard + ' hard' : ''}</small></button>`).join('') + `</div>`;
+  if (seatCands.length) side += `<div class="cand">` + seatCands.map((c, i) => `<button class="${w && w.candIdx === i && w.source === 'cand' ? 'on' : ''}" data-cand="${i}">Option ${i + 1}<small>fit ${(ids => stu.some(x => !ids.has(x.id)))(new Set(Object.values(c.seats))) ? '–' : c.fit}${c.hard ? ' · ' + c.hard + ' hard' : ''}</small></button>`).join('') + `</div>`;
   if (w) {
     const M = buildModel(s, stu, G); const sc = scoreSeats(s, w.seats, stu, G, M); const iss = explainSeats(w.seats, stu, G);
-    side += `<div class="fit"><div class="n ${sc.hard ? 'bad' : sc.fit >= 85 ? 'good' : sc.fit >= 60 ? 'mid' : 'bad'}">${sc.fit}</div><div><b>Fit</b>${w.dirty ? ' <span class="hchip">edited</span>' : w.source === 'saved' ? ' <span class="hchip ok">saved</span>' : ''}<div class="ghint">${sc.hard ? `<b class="ddown">${sc.hard} hard rule${sc.hard > 1 ? 's' : ''} broken</b>: fit is 0 until they're fixed` : `${sc.fit}% less priority cost than a random seating (the fill-from-front and standing bands always cost something, so 100 isn't reachable)`}</div></div></div>`;
+    const unseated = stu.filter(x => !Object.values(w.seats).includes(x.id));   /* 15 Nov 2026 audit (SEA-02): no fit number while anyone is without a seat (the fit counts only seated students) */
+    side += `<div class="fit"><div class="n ${unseated.length ? '' : sc.hard ? 'bad' : sc.fit >= 85 ? 'good' : sc.fit >= 60 ? 'mid' : 'bad'}">${unseated.length ? '–' : sc.fit}</div><div><b>Fit</b>${w.dirty ? ' <span class="hchip">edited</span>' : w.source === 'saved' ? ' <span class="hchip ok">saved</span>' : ''}<div class="ghint">${unseated.length ? `${unseated.length} without a seat: ${stu.length > nd ? `${plural(stu.length - nd, 'more student')} than desks, so add desks in Room to get a fit` : 'the fit shows once everyone has a desk'}${sc.hard ? ` · <b class="ddown">${sc.hard} hard rule${sc.hard > 1 ? 's' : ''} broken</b>` : ''}` : sc.hard ? `<b class="ddown">${sc.hard} hard rule${sc.hard > 1 ? 's' : ''} broken</b>: fit is 0 until they're fixed` : `${sc.fit}% less priority cost than a random seating (the fill-from-front and standing bands always cost something, so 100 isn't reachable)`}</div></div></div>`;
     side += `<div class="rp-actions"><button class="pill" id="seatSave" ${w.dirty || w.source === 'cand' ? '' : 'disabled'}>Save${w.source === 'saved' ? ' changes' : ' as this class’s chart'}</button><button class="pill pale" id="seatUndo" ${w.undo.length ? '' : 'disabled'}>Undo</button>${w.dirty || w.source === 'cand' ? `<button class="pill pale" id="seatRevert">${s.seating ? 'Back to saved' : 'Discard'}</button>` : ''}${s.seating && !w.dirty && w.source === 'saved' ? `<button class="pill pale danger small" id="seatClear">Clear saved</button>` : ''}</div>`;
     side += `<details ${iss.length && iss.length <= 6 ? 'open' : ''}><summary>${iss.length ? plural(iss.length, 'issue') : 'No issues'}${iss.some(x => x.t === 'hard') ? ` · <b class="ddown">${iss.filter(x => x.t === 'hard').length} hard</b>` : ''}</summary><div class="seatIssues">${iss.length ? iss.map(x => `<div class="issue ${x.t}">${esc(x.msg)}</div>`).join('') : '<div class="issue info">Every priority is satisfied.</div>'}</div></details>`;
-    const unseated = stu.filter(x => !Object.values(w.seats).includes(x.id));
     if (unseated.length) side += `<div class="notice"><span>${ico('warn')}</span><span><b>Not seated${stu.length > nd ? ` (${stu.length - nd} more students than desks)` : ''}:</b> ${unseated.map(x => `<button class="chip ${seatPending === x.id ? 'on' : ''}" data-unseated="${stu.indexOf(x)}">${esc(seatName(x))}</button>`).join(' ')}</span></div>`;
   }
   const noScore = stu.filter(x => x.standing == null).length;
-  side += `<h3 class="seatH">Students <small>${stu.length}</small></h3>${stu.length > 8 ? `<input class="txt seatSearch" id="seatSearch" placeholder="Find a student…" aria-label="Find a student" autocomplete="off">` : ''}${noScore ? `<p class="ghint">${plural(noScore, 'student')} with no scores yet: treated as mid-level for placement.</p>` : ''}<div class="seatList">${stu.map((x, i) => `<div class="seatStu" data-n="${esc(norm(x.display + ' ' + seatName(x)))}"><button class="seatOpen" data-sheet="${i}" aria-label="Edit ${esc(seatName(x))}"><span class="ph">${x.photo && !H ? `<img src="${x.photo}" alt="">` : esc(((x.first[0] || '') + (x.last[0] || '')).toUpperCase())}</span><span class="col"><span class="nm">${esc(seatName(x))}</span><span class="tags">${x.standing != null ? `<i class="st" title="${esc(standingText(x))}">${x.standing}</i>` : ''}${H ? '' : `${x.plan ? `<i class="plan">${esc(x.plan)}</i>` : ''}${x.nearTeacher ? '<i>Near</i>' : ''}${x.apart.length ? `<i class="apart">${x.apart.length} apart</i>` : ''}${x.together.length ? `<i class="near">${x.together.length} near</i>` : ''}`}</span></span></button>${H ? '' : `<span class="quick"><span class="seg tiny" role="group" aria-label="Behavior">${['low', 'medium', 'high'].map(b => `<button data-qb="${i}|${b}" class="${x.behavior === b ? (b === 'high' ? 'on hot' : 'on') : ''}" aria-pressed="${x.behavior === b}" title="${b} behavior">${b[0].toUpperCase()}</button>`).join('')}</span><button class="ft ${x.front ? 'on' : ''}" data-qf="${i}" aria-pressed="${!!x.front}" title="Needs a front seat">F</button></span>`}</div>`).join('')}</div>`;
+  side += `<h3 class="seatH">Students <small>${stu.length}</small></h3>${stu.length > 8 ? `<input class="txt seatSearch" id="seatSearch" placeholder="Find a student…" aria-label="Find a student" autocomplete="off">` : ''}${noScore ? `<p class="ghint">${plural(noScore, 'student')} with no scores yet: treated as mid-level for placement.</p>` : ''}<div class="seatList">${stu.map((x, i) => `<div class="seatStu" data-n="${esc(norm(x.display + ' ' + seatName(x)))}"><button class="seatOpen" data-sheet="${i}" aria-label="Edit ${esc(seatName(x))}"><span class="ph">${x.photo && !H ? `<img src="${x.photo}" alt="">` : esc(((x.first[0] || '') + (x.last[0] || '')).toUpperCase())}</span><span class="col"><span class="nm">${esc(seatName(x))}</span><span class="tags">${x.standing != null ? `<i class="st" title="${esc(standingText(x))}">${x.standing}</i>` : ''}${H ? '' : `${x.plan ? `<i class="plan">${esc(x.plan)}</i>` : ''}${x.nearTeacher ? '<i>Near</i>' : ''}${(n => n ? `<i class="apart">${n} apart</i>` : '')(seatLinks(x, stu, 'apart').length)}${(n => n ? `<i class="near">${n} near</i>` : '')(seatLinks(x, stu, 'together').length)}`}</span></span></button>${H ? '' : `<span class="quick"><span class="seg tiny" role="group" aria-label="Behavior">${['low', 'medium', 'high'].map(b => `<button data-qb="${i}|${b}" class="${x.behavior === b ? (b === 'high' ? 'on hot' : 'on') : ''}" aria-pressed="${x.behavior === b}" title="${b} behavior">${b[0].toUpperCase()}</button>`).join('')}</span><button class="ft ${x.front ? 'on' : ''}" data-qf="${i}" aria-pressed="${!!x.front}" title="Needs a front seat">F</button></span>`}</div>`).join('')}</div>`;
   if (departed.length) side += `<details class="departed"><summary>Not on the roster <small>${departed.length}</small></summary><p class="ghint">Kept 45 days in case they return, then forgotten. Photos, flags and notes go with them.</p>${departed.map((d, i) => `<div class="seatStu gone"><span class="ph">${d.photo && !H ? `<img src="${d.photo}" alt="">` : '·'}</span><span class="nm">${esc(H ? mask(d.id) : d.id)}</span><span class="tags"><i>since ${esc(fmtDate(d.gone))}</i></span><button class="pill pale small" data-forget="${i}">Forget</button></div>`).join('')}<button class="pill pale small" id="forgetAll">Forget all ${departed.length}</button></details>`;
   const hint = w ? (seatSel ? '<b>Tap another desk</b> to swap or move · tap the same desk to cancel' : seatPending ? '<b>Tap an empty desk</b> to seat them' : '') : '';
   wrap.innerHTML = `<div class="seat"><aside class="seatSide">${side}</aside><section class="seatMain"><p class="ghint seatHint">${hint}</p><div class="chart-stage">${svgChart(s, w ? w.seats : {}, stu, G, 'screen', w)}</div><div class="seatLegend">${H ? '<span>Names off: initials only</span>' : `<span><b class="planTag">H</b> high behavior</span><span>FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')}</span><span><b class="planTag">ESE</b>/<b class="planTag">504</b> plan</span>`}<span>${ico('lock')} locked</span><span>partners: <b>${esc(SEAT_PAIRS.find(b => b[0] === seatPairs())[1])}</b></span>${stu.length && stu.every(x => x.standing == null) ? `<span class="ddown">no ${esc(SEAT_BASES.find(b => b[0] === seatBasis())[1])} data for this class: everyone is treated as mid-level</span>` : ''}<span>number = standing by <b>${esc(SEAT_BASES.find(b => b[0] === seatBasis())[1])}</b>${seatBasis() === 'blend' ? ' (FAST · Focus · IXL, relative to the class)' : ' (relative to the class)'}</span></div></section></div>`;
@@ -416,7 +423,8 @@ function openSeatSheet(sec, display) {
   const stu = seatStudents(sec); const x = stu.find(z => z.id === display); if (!x) return; const info = seatInfoOf(sec, display); const H = state.settings.hideNames;
   const others = stu.filter(z => z.id !== display);
   const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private'); $('#toast').classList.remove('show');
-  const list = (field, cls) => others.length ? `<div class="picks">${others.map(o => `<button class="chip rel ${(info[field] || []).includes(o.id) ? cls : ''}" data-rel="${field}|${stu.indexOf(o)}">${esc(seatName(o))}</button>`).join('')}</div>` : '<p class="ghint">No other students.</p>';
+  const linkedTo = (field, o) => (info[field] || []).includes(o.id) || (seatInfoOf(sec, o.id)[field] || []).includes(display);   /* SEA-12: either side */
+  const list = (field, cls) => others.length ? `<div class="picks">${others.map(o => `<button class="chip rel ${linkedTo(field, o) ? cls : ''}" data-rel="${field}|${stu.indexOf(o)}">${esc(seatName(o))}</button>`).join('')}</div>` : '<p class="ghint">No other students.</p>';
   m.innerHTML = `<div class="panel"><header><h2>${esc(seatName(x))} <span class="hsub">${esc(sec.label)} · seating</span></h2><button id="mClose" aria-label="Close">×</button></header><div class="body one stucard">
     <div class="who">${x.photo && !H ? `<img class="ph big" src="${x.photo}" alt="">` : ''}<div><div class="ghint">${esc(H ? '' : x.display)}</div><div><b>Standing:</b> ${esc(standingText(x))}${x.gi != null ? ` · <button class="linkbtn" id="toGrades">Grades card</button>` : ''}</div></div></div>
     ${H ? '<p class="warnline">Names are hidden: nickname, plan, accommodations and notes are not shown or editable until Names is on.</p>' : `<div class="field"><label>Shown as <small>(how the name reads on the chart and prints: Focus has “${esc(x.display)}”)</small></label><div class="two"><input id="shNick" class="txt" value="${esc(info.nick || '')}" placeholder="${esc(titleCase(x.first))}" aria-label="First name shown"><input id="shLast" class="txt" value="${esc(info.shownLast || '')}" placeholder="${esc(titleCase(x.last))}" aria-label="Last name shown"></div></div>`}
@@ -435,7 +443,7 @@ function openSeatSheet(sec, display) {
   m.querySelectorAll('[data-beh]').forEach(b => b.onclick = () => { info.behavior = b.dataset.beh; m.querySelectorAll('[data-beh]').forEach(z => { z.classList.toggle('on', z === b); z.classList.toggle('hot', z === b && b.dataset.beh === 'high'); }); });
   m.querySelectorAll('[data-flag]').forEach(b => b.onclick = () => { info[b.dataset.flag] = !info[b.dataset.flag]; b.classList.toggle('pale', !info[b.dataset.flag]); b.setAttribute('aria-pressed', String(!!info[b.dataset.flag])); b.innerHTML = (info[b.dataset.flag] ? ico('check') + ' ' : '') + (b.dataset.flag === 'front' ? 'Front seat' : 'Near teacher'); });
   m.querySelectorAll('[data-plan]').forEach(b => b.onclick = () => { info.plan = b.dataset.plan; m.querySelectorAll('[data-plan]').forEach(z => z.classList.toggle('on', z === b)); });
-  m.querySelectorAll('[data-rel]').forEach(b => b.onclick = () => { const [field, idx] = b.dataset.rel.split('|'); const o = stu[+idx]; if (!o) return; const tid = o.id; const other = seatInfoOf(sec, tid); const on = (info[field] || []).includes(tid);
+  m.querySelectorAll('[data-rel]').forEach(b => b.onclick = () => { const [field, idx] = b.dataset.rel.split('|'); const o = stu[+idx]; if (!o) return; const tid = o.id; const other = seatInfoOf(sec, tid); const on = linkedTo(field, o);
     info[field] = on ? info[field].filter(z => z !== tid) : [...(info[field] || []), tid]; other[field] = on ? (other[field] || []).filter(z => z !== display) : [...new Set([...(other[field] || []), display])];
     const oppo = field === 'apart' ? 'together' : 'apart'; if (!on) { info[oppo] = (info[oppo] || []).filter(z => z !== tid); other[oppo] = (other[oppo] || []).filter(z => z !== display); }
     b.classList.toggle(field === 'apart' ? 'apart' : 'near', !on); if (!on) { const ob = m.querySelector(`[data-rel="${oppo}|${idx}"]`); if (ob) ob.classList.remove(oppo === 'apart' ? 'apart' : 'near'); } });
@@ -456,7 +464,7 @@ function printSeating(sec, mode, all) {
   const G = geometry(); const safe = mode === 'safe'; seatPlain = true;   // the teacher asked for the page: full names and photos, whatever the Names toggle says
   const legend = safe ? '' : `<p class="lg"><b>H</b> high behavior · FAST level ${[1, 2, 3, 4, 5].map(l => `<i style="background:${SEAT_LV[l]}"></i>${l}`).join(' ')} · <b>ESE</b>/<b>504</b> plan · desk number = empty desk</p>`;
   const course = s => s.prep === 'acc' ? 'Accelerated 7th Grade Math (MA.7 + MA.8)' : '7th Grade Math (MA.7)';
-  const page = (s, seats) => { const stu = seatStudents(s); const L = roomOK(); return `<section class="pp"><h1>${esc(s.label)}${safe ? '' : ': seating chart'}</h1><p>${esc(course(s))}${L.name ? ' · Room ' + esc(L.name) : ''} · ${new Date().toLocaleDateString()} · ${Object.keys(seats).length} students${safe ? '' : ' · teacher copy'}</p>${legend}${svgChart(s, seats, stu, G, safe ? 'safe' : 'teacher', null)}</section>`; };
+  const page = (s, seats) => { const stu = seatStudents(s); const L = roomOK(); return `<section class="pp"><h1>${esc(s.label)}${safe ? '' : ': seating chart'}</h1><p>${esc(course(s))}${L.name ? ' · Room ' + esc(L.name) : ''} · ${new Date().toLocaleDateString()} · ${(ids => Object.values(seats).filter(id => ids.has(id)).length)(new Set(stu.map(x => x.id)))} students${safe ? '' : ' · teacher copy'}</p>${legend}${svgChart(s, seats, stu, G, safe ? 'safe' : 'teacher', null)}</section>`; };
   let body = '';
   try {
     if (all) { for (const k of state.order) { const s = state.sections[k]; const seats = s.key === sec.key ? workFor(sec).seats : (s.seating && s.seating.seats); if (seats) body += page(s, seats); } }
@@ -480,7 +488,10 @@ function roomPush() {
 }
 function roomUndoPop() {
   const snap = JSON.parse(roomUndo.pop()); if (!snap.room) { state.room = snap; return; }   // (older shape: the room alone)
-  state.room = snap.room; for (const k in snap.seats) { const sec = state.sections[k]; if (!sec) continue; const e = snap.seats[k]; if (e.saved) sec.seating = e.saved; else delete sec.seating; if (e.work) seatWork[k] = e.work; else delete seatWork[k]; }
+  /* 15 Nov 2026 audit (SEA-04): charts are never put back wholesale, so nothing saved or placed since this room edit is lost: seats on desks the undo takes away are freed, and only students whose desks come back are seated again */
+  const had = new Set(((state.room && state.room.desks) || []).map(d => d.id)); const now = new Set(((snap.room && snap.room.desks) || []).map(d => d.id)); const back = new Set([...now].filter(id => !had.has(id)));
+  const reseat = (cur, old) => { if (!cur || !cur.seats) return; for (const d of Object.keys(cur.seats)) if (!now.has(d)) delete cur.seats[d]; if (!old || !old.seats) return; const taken = new Set(Object.values(cur.seats)); for (const [d, sid] of Object.entries(old.seats)) { if (!back.has(d) || cur.seats[d] != null || taken.has(sid)) continue; cur.seats[d] = sid; taken.add(sid); if (old.locks && old.locks[sid]) { cur.locks = cur.locks || {}; cur.locks[sid] = true; } } };
+  state.room = snap.room; for (const k of Object.keys(state.sections)) { const sec = state.sections[k]; const e = (snap.seats || {})[k] || {}; reseat(sec.seating, e.saved); reseat(seatWork[k], e.work || e.saved); }
 }
 function roomDropDesks(keep) { for (const k of state.order) { const s = state.sections[k]; for (const w of [s.seating, seatWork[k]]) { if (!w || !w.seats) continue; for (const d of Object.keys(w.seats)) if (!keep.has(d)) { const sid = w.seats[d]; delete w.seats[d]; if (w.locks) delete w.locks[sid]; } } } }
 function svgRoom() {
@@ -522,7 +533,7 @@ function bindRoom(s, wrap) {
   const rt = $('#rmTeacher'); if (rt) rt.onclick = () => { roomPush(); L.teacher = { x: Math.max(0, L.w - 150), y: Math.max(0, L.h - 90), w: 130, h: 64 }; rr(); };
   const rd = $('#rmDoor'); if (rd) rd.onclick = () => { roomPush(); L.door = { x: 20, y: Math.max(0, L.h - 40) }; rr(); };
   $('#rmUndo').onclick = () => { if (!roomUndo.length) return; roomUndoPop(); roomSel = null; rr(); };
-  $('#rmClear').onclick = () => seatConfirm('Clear every desk?', 'Saved seating for every class will be cleared too. Undo in the room editor brings the desks back, not the seats.', 'Clear desks', () => { roomPush(); L.desks = []; roomDropDesks(new Set()); roomSel = null; rr(); });
+  $('#rmClear').onclick = () => seatConfirm('Clear every desk?', 'Saved seating for every class will be cleared too. Undo in the room editor brings the desks and the seats back, until you close Tally.', 'Clear desks', () => { roomPush(); L.desks = []; roomDropDesks(new Set()); roomSel = null; rr(); });
   const selObj = () => roomSel ? (roomSel.type === 'desk' ? L.desks.find(d => d.id === roomSel.id) : L[roomSel.type]) : null;
   wrap.querySelectorAll('[data-rot]').forEach(b => b.onclick = () => { roomPush(); const o = selObj(); if (!o) return; if (roomSel.type === 'desk') o.r = ((o.r || 0) + +b.dataset.rot + 360) % 360; else [o.w, o.h] = [o.h, o.w]; rr(); });
   wrap.querySelectorAll('[data-nudge]').forEach(b => b.onclick = () => { const o = selObj(); if (!o) return; roomPush(); const [dx, dy] = b.dataset.nudge.split(',').map(Number); const w = roomSel.type === 'desk' ? DESK : roomSel.type === 'teacher' ? o.w : 44, hh = roomSel.type === 'desk' ? DESK : roomSel.type === 'teacher' ? o.h : 14; o.x = Math.max(0, Math.min(L.w - w, o.x + dx)); o.y = Math.max(0, Math.min(L.h - hh, o.y + dy)); rr(); });
@@ -625,7 +636,7 @@ async function importSeatingBackup(obj) {
   obj.students = obj.students.filter(st => st && typeof st === 'object' && typeof st.raw === 'string'); obj.periods = obj.periods.filter(per => per && typeof per === 'object');
   obj.students = obj.students.filter(st => SAFE_KEY(String(st.periodId))); obj.periods = obj.periods.filter(per => SAFE_KEY(String(per.id)));
   const byPer = Object.create(null); obj.students.forEach(st => { (byPer[st.periodId] = byPer[st.periodId] || []).push(st); });
-  const idMap = {};   // v8 student id → [sec.key, display]
+  const idMap = Object.create(null);   // v8 student id → [sec.key, display]
   for (const per of obj.periods) {
     const sec = seatingTargetFor(per); if (!sec) { (byPer[per.id] || []).forEach(st => out.unmatched.push(st.raw)); continue; }
     const rows = buildRows(sec).filter(r => r.status !== 'ixlOnly'); const byNorm = new Map(rows.map(r => [norm(r.display), r.display])); let hit = 0;
@@ -645,7 +656,7 @@ async function importSeatingBackup(obj) {
   const room = roomOK(); const L = obj.layout;
   if (!room.desks.length && Array.isArray(L.desks) && L.desks.length) { state.room = { w: L.w, h: L.h, front: L.front, desks: L.desks.map(d => ({ id: d && d.id, x: d && d.x, y: d && d.y, r: d && d.r })), teacher: L.teacher || null, door: L.door || null }; roomOK(); out.room = true; }
   const deskIds = new Set(state.room.desks.map(d => d.id));
-  for (const per of obj.periods) { const c = (obj.charts || {})[per.id]; const sec = seatingTargetFor(per); if (!c || !c.seats || !sec || sec.seating) continue; const seats = {}; for (const [d0, sid] of Object.entries(c.seats)) { const d = cleanId(d0); const me = idMap[sid]; if (me && me[0] === sec.key && deskIds.has(d)) seats[d] = me[1]; } if (Object.keys(seats).length) { sec.seating = { seats, locks: {}, savedAt: c.savedAt || new Date().toISOString() }; out.charts++; } }
+  for (const per of obj.periods) { const c = (obj.charts || {})[per.id]; const sec = seatingTargetFor(per); if (!c || !c.seats || !sec || sec.seating) continue; const seats = {}; for (const [d0, sid] of Object.entries(c.seats)) { const d = cleanId(d0); const me = idMap[sid]; if (me && me[0] === sec.key && deskIds.has(d)) seats[d] = me[1]; } if (Object.keys(seats).length) { sec.seating = { seats, locks: {}, savedAt: cleanSavedAt(c.savedAt) }; out.charts++; } }
   if (obj.weights && typeof obj.weights === 'object') { state.seatWeights = state.seatWeights || {}; SEAT_FACTORS.forEach(f => { if (obj.weights[f.k] != null) state.seatWeights[f.k] = numOr(obj.weights[f.k], f.def, 0, 10); }); }
   seatBase = { key: '', v: 0 }; return out;
 }

@@ -1,0 +1,46 @@
+--- /tmp/ci-app.orig.js	2026-11-15 18:34:08.547447216 -0500
++++ repo/app.js	2026-11-15 18:42:16.768473144 -0500
+@@ -197,7 +197,8 @@
+     if (name.includes(',')) { const [l, f] = name.split(',', 2); n = norm(f + ' ' + l); }
+     const k = seen[n] = (seen[n] || 0) + 1;
+     const tokens = stripSuffix(n.split(' ').filter(Boolean));
+-    return { i, name, n, key: name + '#' + (k - 1), first: tokens[0] || '', last: tokens[tokens.length - 1] || '', tokens, dup: false };
++    const pk = sec.pool && !sec.fromSection && Array.isArray(sec.poolKeys) && sec.poolKeys.length === sec.students.length ? sec.poolKeys[i] : null;
++    return { i, name, n, key: pk || name + '#' + (k - 1), first: tokens[0] || '', last: tokens[tokens.length - 1] || '', tokens, dup: false };
+   }).map((x, _, arr) => { x.dup = arr.some(y => y !== x && y.n === x.n); return x; });
+ }
+ // Roster text -> [{display,last,first,alias}]. Alias syntax on a line:  Last, First = IXL Name
+@@ -548,7 +549,7 @@
+         const width = Math.max(...rows.slice(0, 60).map(r => r.length));
+         students = []; for (let c = first; c < width; c++) students.push('Student ' + (c - first + 1));
+         const hi = rows.indexOf(hdr);
+-        g.scores = []; for (let i = hi + 1; i < rows.length; i++) { const r = rows[i] || []; if (r[cSkill] == null || String(r[cSkill]).trim() === '') continue; g.scores.push(students.map((_, j) => asScore(r[first + j]))); }
++        { const h2 = hdr.slice(); students.forEach((n, j) => { h2[first + j] = n; }); const g2 = parseIxlGrid(rows.map((r, i) => i === hi ? h2 : r)); g.skills = g2.skills; g.scores = g2.scores; }   // counter-audit: the same reader, so a skill listed twice folds
+         placeholder = true;
+       }
+       const allBlank = !g.scores.some(row => row.some(v => v != null));
+@@ -645,6 +646,7 @@
+     if (sec.pool) { materialize(sec); if (!ok.includes(sec)) ok.push(sec); }
+     gbImported.push({ key: sec.key, label: sec.label, text: `${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}${keptNote}${qNote}${how}` });
+   } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); } }
++  { const preps = new Set(gbImported.map(g => state.sections[g.key]).filter(x => x && x.pool).map(x => x.prep)); state.order.map(k => state.sections[k]).filter(x => x && x.pool && preps.has(x.prep)).forEach(x => materialize(x)); }   // counter-audit: re-carve once every roster is final
+   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
+   const workingIn = defaultWorkingIn();
+   // The result stays on the Overview until the next import (one line per file, failures in red); the toast is one line.
+@@ -1787,6 +1789,7 @@
+   if (!pool) { sec.students = sec.students || []; sec.skills = sec.skills || []; sec.scores = sec.scores || []; sec.awaitingPool = true; return; }
+   // No roster means no students — never the whole course (an emptied roster once handed a class all 91 pool students).
+   const idx = rosterState(sec).count ? poolIdx(sec) : [];
++  const pkeys = ixlList({ students: pool.students }).map(x => x.key); sec.poolKeys = idx.map(i => pkeys[i]);
+   sec.students = idx.map(i => pool.students[i]); sec.skills = pool.skills; sec.scores = pool.scores.map(row => idx.map(i => row[i]));
+   sec.date = pool.date; sec.file = pool.file; sec.importedAt = pool.importedAt; sec.awaitingPool = false; sec.placeholder = false; sec.allBlank = !sec.scores.some(r => r.some(v => v != null));
+   sec._keys = null; mergeBest(sec); snapshot(sec);
+@@ -1796,7 +1799,7 @@
+ // A student another class of the course matches by exact name (or alias) is that class's: a loose match here may not
+ // take them (audit, 22 Oct 2026: "PRYOR, GRE" on one roster took GREER PRYOR's IXL row from another class).
+ function poolRows(sec) { const pool = state.pools[sec.prep]; if (!pool) return [];
+-  const view = x => ({ ...x, students: pool.students, skills: pool.skills, scores: pool.scores, _keys: null, ignored: {} });
++  const view = x => ({ ...x, students: pool.students, skills: pool.skills, scores: pool.scores, _keys: null, poolKeys: null, ignored: {} });
+   const taken = {}; state.order.map(k => state.sections[k]).filter(x => x && x !== sec && x.pool && x.prep === sec.prep && rosterState(x).count).forEach(o => { try { buildRows(view(o)).forEach(r => { if (r.ixl != null && r.key && (r.tier === 'exact' || r.tier === 'alias')) taken[r.key] = true; }); } catch (e) {} });
+   const mine = buildRows(view(sec)); const own = new Set(mine.filter(r => r.key && (r.tier === 'exact' || r.tier === 'alias')).map(r => r.key));
+   Object.keys(taken).forEach(k => { if (own.has(k)) delete taken[k]; });   // two classes naming the same student exactly: leave it to the roster fixer, as before

@@ -18,12 +18,32 @@ const mean = a => { const v = a.filter(x => x != null); return v.length ? v.redu
 let rowCache = new Map();
 const cachedRows = (sec, kind) => { const k = sec.key + '|' + kind; if (!rowCache.has(k)) rowCache.set(k, kind === 'gb' ? gbRows(sec) : buildRows(sec)); return rowCache.get(k); };
 // Where a student sits in a class: their gradebook row (gi, -1 if none) and IXL row (ixl, null if unmatched).
+// Where a name sits in a list: the exact name when one entry has it, else the plain name (norm) when one entry has that.
+// Two students of one name are told apart by the mark the import gives them (uniqueNames), which norm() strips, so a
+// plain name two entries share finds neither (15 Nov 2026 audit, WIF-01: the second of a pair got the first one's numbers).
+function nameAt(names, name, ok) { const one = t => { let hit = -1, n = 0; names.forEach((x, j) => { if (t(x) && (!ok || ok(j))) { hit = j; n++; } }); return n === 1 ? hit : n ? -2 : -1; };
+  const e = one(x => x === name); if (e !== -1) return e < 0 ? -1 : e; const nn = norm(name); const r = one(x => norm(x) === nn); return r < 0 ? -1 : r; }
+// A student's row in one gradebook: the Focus ID first (a kept quarter can hold the names without the mark), then the
+// name as nameAt reads it, never a row that carries another student's ID.
+function gbIndex(gb, name, id) {
+  if (!gb || !Array.isArray(gb.students)) return -1; const ids = Array.isArray(gb.ids) ? gb.ids : []; const key = gbIdKey; const me = key(id);
+  if (me) { const k = ids.findIndex(x => key(x) === me); if (k >= 0) return k; }
+  return nameAt(gb.students, name, me ? j => !key(ids[j]) : null);
+}
+// The key a student's own records are kept under (notes, family, the report log, conference edits): the plain name, as
+// always, unless another student of the class has the same plain name; then the Focus ID (the marked name when the
+// export has no IDs). An entry already kept under a plain name two students share is shown to neither, and kept
+// (15 Nov 2026 audit, round 2: the second of a pair was shown the first one's notes and parent's phone number).
+function stuKey(sec, name) {
+  const nn = norm(name); const gb = sec && sec.grades; if (!gb || !Array.isArray(gb.students) || gb.students.filter(x => norm(x) === nn).length < 2) return nn;
+  const i = gbIndex(gb, name); const id = i >= 0 && Array.isArray(gb.ids) ? String(gb.ids[i] == null ? '' : gb.ids[i]).replace(/\s+/g, '') : ''; return id ? 'id:' + id : 'n:' + name;
+}
 function findStudent(sec, name) {
   const nn = norm(name); const gb = sec.grades;
-  // the exact name first: two students with one name are told apart by the mark the import gives them (uniqueNames), which norm() would strip
-  let gi = gb ? gb.students.indexOf(name) : -1; if (gi < 0 && gb) gi = gb.students.findIndex(n => norm(n) === nn);
+  let gi = gbIndex(gb, name);
   let row = gi >= 0 ? cachedRows(sec, 'gb')[gi] : null;
-  if (!row || row.ixl == null) { const r2 = cachedRows(sec, 'all').find(r => norm(r.display) === nn && r.status !== 'ixlOnly'); if (r2) row = r2; }
+  /* the roster's row by plain name only when that name is no one else's (15 Nov 2026 audit, CON-01: the second of a pair was shown the first one's IXL) */
+  if (!row || row.ixl == null) { const same = cachedRows(sec, 'all').filter(r => norm(r.display) === nn && r.status !== 'ixlOnly'); const r2 = same.length === 1 && (!gb || gb.students.filter(n => norm(n) === nn).length <= 1) ? same[0] : null; if (r2) row = r2; }
   return { gi, ixl: row && row.ixl != null ? row.ixl : null, row, noAccount: !!(row && row.status === 'noAccount'), id: row && row.id ? row.id : (gb && gi >= 0 && gb.ids ? gb.ids[gi] : '') };
 }
 // The students of a class, in Focus order: the roster rows (the gradebook's list when one is loaded).
@@ -45,18 +65,20 @@ function ixlFor(sec, si) {
   return { units, open, done, poss, pct: poss ? done / poss * 100 : null, basisClosed: !open.length && units.length > 0 };
 }
 // Skills at goal on today's assigned units at each IXL import (the same reading the Race uses), and the class mean.
+// Counted on the units ixlFor counts (the open ones once a quarter closes), so the tile's figures share one basis (15 Nov
+// 2026 audit, WIF-10); an import kept without per-unit counts has no figure on that narrower basis.
 function ixlTrend(sec, si) {
   const hist = sec.history || []; if (!hist.length || si == null) return null; const key = ixlKeyAt(sec, si);
-  const units = unitsOf(sec).filter(u => u.assigned);
-  const val = (h, k) => h.pu ? units.reduce((a, u) => a + ((h.pu[u.name] || {})[k] || 0), 0) : (h.per[k] != null ? h.per[k] : null);
+  const all = unitsOf(sec).filter(u => u.assigned); const ix = ixlFor(sec, si); const units = ix && ix.open.length ? ix.open.map(x => x.u) : all; const whole = all.filter(u => u.total).every(u => units.some(x => x.name === u.name));
+  const val = (h, k) => h.pu ? units.reduce((a, u) => a + ((h.pu[u.name] || {})[k] || 0), 0) : (whole && h.per[k] != null ? h.per[k] : null);
   const pop = new Set(population(sec).map(x => x.key)); const inClass = h => { const ks = Object.keys(h.per).filter(k => pop.has(k)); return ks.length ? ks : Object.keys(h.per); };   // the roster-matched class, as on the Race and the grid
   return { dates: hist.map(h => h.date), mine: hist.map(h => h.per[key] == null ? null : val(h, key)), cls: hist.map(h => mean(inClass(h).map(k => val(h, k)))) };
 }
 // Every gradebook this student appears in, oldest quarter first: the closed archives, then the open gradebook.
 function studentBooks(sec, name) {
-  const out = [];
-  for (let n = 1; n <= 4; n++) { const s = qSec(sec, n); if (!s || !s._arch) continue; const i = s.grades.students.findIndex(x => norm(x) === norm(name)); if (i >= 0) out.push({ q: n, closed: true, final: s._closed, s, i }); }
-  if (sec.grades) { const s = openSec(sec); const i = s.grades.students.findIndex(x => norm(x) === norm(name)); if (i >= 0 && s.grades.assignments.length) out.push({ q: snapBasis(sec).q, closed: false, s, i }); }
+  const out = []; const id = findStudent(sec, name).id;
+  for (let n = 1; n <= 4; n++) { const s = qSec(sec, n); if (!s || !s._arch) continue; const i = gbIndex(s.grades, name, id); if (i >= 0) out.push({ q: n, closed: true, final: s._closed, s, i }); }
+  if (sec.grades) { const s = openSec(sec); const i = gbIndex(s.grades, name, id); if (i >= 0 && s.grades.assignments.length) out.push({ q: snapBasis(sec).q, closed: false, s, i }); }
   return out;
 }
 const cellOf = (a, i) => { const st = a.status ? a.status[i] : (a.values[i] == null ? 'blank' : 'score'); return { st, v: a.values[i] }; };
@@ -71,7 +93,7 @@ function studentSummary(sec, name) {
     const prev = prevGradeSnap(o); if (prev && r && r.rounded != null) { const j = prev.students.indexOf(name); if (j >= 0 && prev.grade[j] != null) out.d = r.rounded - prev.grade[j]; if (j >= 0) out.dMissing = out.missing - prev.missing[j]; }
     out.sliding = (out.d != null && out.d <= -3) || out.dMissing > 0;
   }
-  for (let n = 1; n <= 4; n++) { const k = qSec(sec, n); if (!k || !k._arch) continue; const a = sec.qArchive[n]; const i = a.gb.students.findIndex(x => norm(x) === norm(name)); if (i >= 0 && a.final[i] != null) out.finals.push({ q: n, g: a.final[i], closed: k._closed }); }
+  for (let n = 1; n <= 4; n++) { const k = qSec(sec, n); if (!k || !k._arch) continue; const a = sec.qArchive[n]; const i = gbIndex(a.gb, name, f.id); if (i >= 0 && a.final[i] != null) out.finals.push({ q: n, g: a.final[i], closed: k._closed }); }
   const ix = ixlFor(sec, f.ixl); if (ix) out.ixl = ix;
   return out;
 }
@@ -81,9 +103,9 @@ function studentSummary(sec, name) {
    hidden while names are hidden, never on Show student, never in a Board file; carried by the backup and a full save. */
 const NOTE_MAX = 2000;
 function cleanNotes(o) { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !Array.isArray(o[k])) continue; const list = o[k].filter(n => n && typeof n.text === 'string' && n.text.trim() && typeof n.at === 'string').map(n => ({ id: typeof n.id === 'string' ? n.id.slice(0, 20) : Math.random().toString(36).slice(2, 10), at: n.at.slice(0, 30), text: n.text.slice(0, 2000) })).slice(-200); if (list.length) out[k] = list; } return out; }   /* a declaration: migrate() runs before this file's consts exist */
-const notesOf = (sec, name) => ((sec.stuNotes || {})[norm(name)] || []);
-function addNote(sec, name, text) { text = String(text || '').trim().slice(0, NOTE_MAX); if (!text) return null; sec.stuNotes = sec.stuNotes || {}; const k = norm(name); const n = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: new Date().toISOString(), text }; (sec.stuNotes[k] = sec.stuNotes[k] || []).push(n); return n; }
-function dropNote(sec, name, id) { const k = norm(name); const l = (sec.stuNotes || {})[k]; if (!l) return; sec.stuNotes[k] = l.filter(n => n.id !== id); if (!sec.stuNotes[k].length) delete sec.stuNotes[k]; }
+const notesOf = (sec, name) => ((sec.stuNotes || {})[stuKey(sec, name)] || []);
+function addNote(sec, name, text) { text = String(text || '').trim().slice(0, NOTE_MAX); if (!text) return null; sec.stuNotes = sec.stuNotes || {}; const k = stuKey(sec, name); const n = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: new Date().toISOString(), text }; (sec.stuNotes[k] = sec.stuNotes[k] || []).push(n); return n; }
+function dropNote(sec, name, id) { const k = stuKey(sec, name); const l = (sec.stuNotes || {})[k]; if (!l) return; sec.stuNotes[k] = l.filter(n => n.id !== id); if (!sec.stuNotes[k].length) delete sec.stuNotes[k]; }
 function notesSection(sec, name) {
   const H = state.settings.hideNames; const list = notesOf(sec, name).slice().reverse();
   if (H) return `<section class="gsec" id="pNotes"><h3>Notes${list.length ? ` <small>${list.length}</small>` : ''}</h3><p class="ghint">Hidden while names are hidden.</p></section>`;
@@ -239,9 +261,9 @@ function cleanFamily(o) { const out = {}; const str = (v, n) => typeof v === 'st
     const log = (Array.isArray(v.log) ? v.log : []).map(e => e && typeof e === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(String(e.at)) ? { id: str(e.id, 20) || rid(), at: String(e.at), how: HOWS.includes(e.how) ? e.how : 'Note home', who: str(e.who, 80), text: str(e.text, 2000) } : null).filter(e => e && (e.text || e.who)).slice(-300);
     if (contacts.length || log.length) out[k] = { contacts, log }; }
   return out; }
-const familyOf = (sec, name) => { const f = (sec.family || {})[norm(name)]; return f ? { contacts: f.contacts || [], log: f.log || [] } : { contacts: [], log: [] }; };
-function setFamily(sec, name, f) { sec.family = sec.family || {}; const k = norm(name); if (f.contacts.length || f.log.length) sec.family[k] = f; else delete sec.family[k]; }
-const reportsOf = (sec, name) => ((sec.reportLog || {})[norm(name)] || []);
+const familyOf = (sec, name) => { const f = (sec.family || {})[stuKey(sec, name)]; return f ? { contacts: f.contacts || [], log: f.log || [] } : { contacts: [], log: [] }; };
+function setFamily(sec, name, f) { sec.family = sec.family || {}; const k = stuKey(sec, name); if (f.contacts.length || f.log.length) sec.family[k] = f; else delete sec.family[k]; }
+const reportsOf = (sec, name) => ((sec.reportLog || {})[stuKey(sec, name)] || []);
 function markReportBack(sec, name, date, back) { const l = reportsOf(sec, name); const e = l.find(x => x.date === date); if (!e) return; if (back) e.back = todayISO(); else delete e.back; }
 function familySection(sec, name) {
   const H = state.settings.hideNames; const f = familyOf(sec, name); const reps = reportsOf(sec, name).slice(-6).reverse(); const n = f.contacts.length;
@@ -284,8 +306,9 @@ const weekOf = d => { const x = new Date(String(d).slice(0, 10) + 'T12:00:00'); 
    expecting and tracking for them to come back. Is there a way to delete that instance?" Clear only stopped the
    list counting them; the reports stayed on every student's page). A print is a day's reports for the class: Remove
    takes that day's report off every student of the class as if it had never been printed, with one undo. */
-function printsOf(s) { const by = {}; Object.keys(s.reportLog || {}).forEach(k => (s.reportLog[k] || []).forEach(e => { const d = by[e.date] || (by[e.date] = { date: e.date, n: 0, back: 0 }); d.n++; if (e.back) d.back++; })); return Object.values(by).sort((a, b) => b.date.localeCompare(a.date)); }
-function removePrint(s, date) { let n = 0; Object.keys(s.reportLog || {}).forEach(k => { const l = s.reportLog[k] || []; const keep = l.filter(e => e.date !== date); n += l.length - keep.length; if (keep.length) s.reportLog[k] = keep; else delete s.reportLog[k]; }); return n; }
+/* 15 Nov 2026 audit (RPT-01): a week's entry counts under every day it was printed (e.printed; an older entry is one print on its date), its back tick under the last print before the tick */
+function printsOf(s) { const by = {}; Object.keys(s.reportLog || {}).forEach(k => (s.reportLog[k] || []).forEach(e => { const days = e.printed || [e.date]; const bd = e.back ? (days.filter(x => x <= e.back).pop() || days[0]) : null; days.forEach(day => { const d = by[day] || (by[day] = { date: day, n: 0, back: 0 }); d.n++; if (day === bd) d.back++; }); })); return Object.values(by).sort((a, b) => b.date.localeCompare(a.date)); }
+function removePrint(s, date) { let n = 0; Object.keys(s.reportLog || {}).forEach(k => { const l = s.reportLog[k] || []; const keep = []; l.forEach(e => { const days = e.printed || [e.date]; if (!days.includes(date)) { keep.push(e); return; } n++; const rest = days.filter(x => x !== date); if (!rest.length) return; const e2 = { ...e, date: rest[rest.length - 1] }; if (rest.length > 1) e2.printed = rest; else delete e2.printed; keep.push(e2); }); if (keep.length) s.reportLog[k] = keep; else delete s.reportLog[k]; }); return n; }
 function openRemovePrint(s) {
   const m = $('#modal'); const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
   const draw = () => { const prints = printsOf(s); m.classList.remove('hidden');
@@ -351,23 +374,27 @@ function wireReturnsAll() { document.querySelectorAll('#rpBack [data-retk]').for
    One function decides; every screen shows its answer. */
 function retakeStatus(sec, name) {
   const f = findStudent(sec, name); const o = openSec(sec); const gb = o && o.grades && f.gi >= 0 ? o.grades : null;
-  const missing = gb ? gb.assignments.filter(a => a.status && a.status[f.gi] === 'missing' && !/\bixl\b/i.test(a.name)).map(a => a.name) : [];   // an IXL column is judged by the skills below, not by its Focus cell (one meaning of "missing" everywhere)
+  const missing = gb ? gb.assignments.filter(a => a.max > 0 && a.status && a.status[f.gi] === 'missing' && !gbUnitFor(sec, a)).map(a => a.name) : [];   // a 0-point (extra credit) column is never missing work (Croix's call, 15 Nov 2026 audit, WIF-03); a unit's IXL column is judged by the skills below, not by its Focus cell (one meaning of "missing" everywhere); an IXL column no unit claims has no skills to judge it by, so its cell counts (15 Nov 2026 audit, IXL-08)
   const cur = (state.settings.currentUnit || {})[sec.prep]; const units = unitsOf(sec); const unit = (cur && units.find(u => u.num === cur)) || units.filter(u => u.assigned).pop() || null;
-  let short = [], noIxl = f.ixl == null, nUnit = 0; const behind = [];
+  let short = [], need = 0, noIxl = f.ixl == null, nUnit = 0; const behind = [];
   const shortIn = u => { const t = sec.threshold; return activeFor(sec, u, f.ixl).filter(k => { const v = eff(sec, k, f.ixl); return v == null || v < t; }).map(k => ({ name: sec.skills[k].name, v: eff(sec, k, f.ixl) })); };
   // "Caught up on everything" means everything Focus grades (Croix, 24 Oct 2026: "if I haven't graded unit 4 IXLs yet,
   // it shouldn't be required to be finished before a retake"): a unit's IXL counts only while the open gradebook has an
   // IXL column for it and that cell isn't already at full credit. The unit being worked in is listed first.
   const checked = [];   // the units this check looked at, in gradebook order: the eligible line names these and no others (audit, 25 Oct 2026)
   if (!noIxl && gb) { const seen = new Set();
-    gb.assignments.forEach(a => { if (!/\bixl\b/i.test(a.name) || aClosed(a, gb)) return; const u = gbUnitFor(sec, a); if (!u || seen.has(u.name) || unitClosed(sec, u)) return; seen.add(u.name); checked.push(u);
+    gb.assignments.forEach(a => { if (!/\bixl\b/i.test(a.name) || aClosed(a, gb)) return; if (a.status && a.status[f.gi] === 'excused') return;   /* excused for this student: Focus does not grade it, so it is not owed (Croix's call, 15 Nov 2026 audit, WIF-07) */
+      const u = gbUnitFor(sec, a); if (!u || seen.has(u.name) || unitClosed(sec, u)) return; seen.add(u.name); checked.push(u);
       // full credit in Focus, or IXL points enough for it that wait to be copied: the same answer before and after the copy (review, 3 Nov 2026)
       const full = a.max > 0 && ((a.status && a.status[f.gi] === 'score' && Number(a.values[f.gi]) >= a.max) || points(sec, u, f.ixl) >= a.max); if (full) return;
-      const sh = shortIn(u); if (!sh.length) return; if (unit && u.name === unit.name) short = sh; else behind.push({ unit: u, short: sh, col: a.name }); }); }
+      const sh = shortIn(u); if (!sh.length) return;
+      /* 15 Nov 2026 audit (WIF-02): the skills still needed to fill the column, not every skill below goal (Unit 1 has 23 skills, its column 15 points) */
+      const nd = a.max > 0 ? Math.max(1, Math.min(sh.length, a.max - points(sec, u, f.ixl))) : sh.length;
+      if (unit && u.name === unit.name) { short = sh; need = nd; } else behind.push({ unit: u, short: sh, need: nd, col: a.name }); }); }
   if (unit && !noIxl) nUnit = activeFor(sec, unit, f.ixl).length;
   const unitDone = !!(unit && !noIxl && nUnit && !shortIn(unit).length);   // every skill in the unit being worked in at goal, whether or not Focus grades it yet
   const ok = !missing.length && !noIxl && !short.length && !behind.length;
-  return { ok, missing, short, unit, nUnit, noIxl, behind, checked, unitDone, hasGrades: !!(gb && gb.assignments.length) };
+  return { ok, missing, short, need, unit, nUnit, noIxl, behind, checked, unitDone, hasGrades: !!(gb && gb.assignments.length) };
 }
 // "nothing missing and Unit 3 IXL at goal": the words for an eligible student, naming only the units that were checked.
 function retakeOkWhy(r, forStudent) {
@@ -380,8 +407,8 @@ function retakeWhy(r, forStudent) {
   const parts = [];
   if (r.missing.length) parts.push(forStudent ? `turn in ${plural(r.missing.length, 'missing assignment')}` : `${r.missing.length} missing`);
   if (r.noIxl) parts.push(forStudent ? 'ask your teacher to check your IXL' : 'IXL not linked');
-  else { const units = [...(r.short.length ? [{ unit: r.unit, short: r.short }] : []), ...(r.behind || [])];
-    units.forEach(x => parts.push(forStudent ? `finish ${plural(x.short.length, 'IXL skill')} in ${x.unit.short}` : `${plural(x.short.length, 'IXL skill')} in ${x.unit.short}`)); }
+  else { const units = [...(r.short.length ? [{ unit: r.unit, short: r.short, need: r.need }] : []), ...(r.behind || [])];
+    units.forEach(x => { const n = x.need || x.short.length; parts.push(forStudent ? `finish ${plural(n, 'IXL skill')} in ${x.unit.short}` : `${plural(n, 'IXL skill')} in ${x.unit.short}`); }); }
   return parts.join(forStudent ? ' and ' : ' · ');
 }
 const retakeChip = r => r.ok ? `<span class="rtag ok" title="Eligible: ${esc(retakeOkWhy(r))}">${ico('check', 'eligible')} retake</span>` : `<span class="rtag" title="To retake: ${esc(retakeWhy(r, true))}">${esc(retakeWhy(r))}</span>`;
@@ -450,7 +477,7 @@ function renderProfile() {
   const H = state.settings.hideNames; const name = st.name; const shownName = H ? mask(name) : niceName(name); const nm = d => esc(H ? mask(d) : niceName(d));
   const f = findStudent(sec, name); const sum = studentSummary(sec, name); const books = studentBooks(sec, name);
   const openB = books.find(b => !b.closed); const cq = liveQuarter(sec);
-  const list = classStudents(sec); const at = list.findIndex(n => norm(n) === norm(name));
+  const list = classStudents(sec); const at = nameAt(list, name);
   const backLabel = profileBack && profileBack.mode === 'grades' ? 'Grades' : profileBack && profileBack.mode === 'home' ? 'Overview' : profileBack && profileBack.mode === 'seating' ? 'Seating' : profileBack && (profileBack.mode === 'units' || profileBack.mode === 'unit') ? sec.label : 'Students';
   $('#bar').innerHTML = `<div class="crumb"><button id="back">‹ ${esc(backLabel)}</button><h2>${esc(shownName)}</h2></div><span class="meta"><span class="qdot" style="--cc:${classColor(sec)}"></span>${esc(sec.label)}${f.id && !H ? ` · ID ${esc(f.id)}` : ''}${at >= 0 ? ` · ${at + 1} of ${list.length}` : ''}</span><div class="spacer"></div>
     <span class="pnav"><button class="pill toggle" id="pPrev" ${at > 0 ? '' : 'disabled'} title="Previous student in this class">‹ Prev</button><button class="pill toggle" id="pNext" ${at >= 0 && at < list.length - 1 ? '' : 'disabled'} title="Next student in this class">Next ›</button></span>
@@ -500,7 +527,11 @@ function renderProfile() {
     return `<div class="catline">${(b.s._cats || gradingFor(sec.prep).cats).map(c => { const x = g && g.cats[c.name]; return `<div class="catbar"><span>${esc(c.name)} <small>${c.w}%</small></span><div class="bar"><i style="width:${x && x.pct != null ? Math.max(0, Math.min(100, x.pct)) : 0}%;background:${gradeFill(x && x.pct)}"></i></div><b>${x && x.pct != null ? pct1(x.pct) : '—'}</b><small>${x && x.possible ? `${+x.earned.toFixed(1)} / ${x.possible} pts` : ''}</small></div>`; }).join('')}</div>
       <table class="checkTable sasg"><thead><tr><th>Assignment</th><th>Category</th><th>Due</th><th class="n">Score</th><th class="n">%</th><th class="n">Class avg</th></tr></thead><tbody>${rows.map(x => `<tr class="${x.c.st === 'missing' ? 'miss' : ''}"><td>${esc(x.a.name)}</td><td>${esc(x.cat)}</td><td>${esc(x.a.due || '')}</td><td class="n">${scoreTxt(x.c, x.a)}</td><td class="n">${x.c.st === 'score' && x.a.max ? Math.round(x.c.v / x.a.max * 100) + '%' : x.c.st === 'missing' ? '0%' : ''}</td><td class="n">${pct1(x.avg)}</td></tr>`).join('')}</tbody></table>`; };
   const asgSecs = books.slice().reverse().map(b => { const g = computeGrade(b.s, b.i); const miss = b.s.grades.assignments.filter(a => cellOf(a, b.i).st === 'missing').length;
-    const head = `${esc(Q_NAMES[b.q - 1])}${b.closed ? (b.final ? ' · final' : ' · kept') : ''} · ${g && g.rounded != null ? `${g.rounded}% ${g.letter}` : '—'} · ${plural(b.s.grades.assignments.length, 'assignment')}${miss ? ` · ${miss} missing` : ''}`;
+    /* a closed quarter's grade is the kept Focus final, the grade of record; Tally's recount of the kept cells beside it when it differs (15 Nov 2026 audit, GRD-05 / CON-10) */
+    const kf = b.final && sec.qArchive && sec.qArchive[b.q] && Array.isArray(sec.qArchive[b.q].final) ? sec.qArchive[b.q].final[b.i] : null; const rc = g && g.rounded != null ? g.rounded : null;
+    /* "final" names only the kept Focus final; a closed quarter with none shows Tally's recount, labelled (round 2) */
+    const hasKf = kf != null && isFinite(kf); const gTxt = hasKf ? `${Math.round(kf)}% ${letterOf(Math.round(kf))}${rc != null && rc !== Math.round(kf) ? ` · Tally's recount ${rc}% ${g.letter}` : ''}` : rc != null ? `${b.final ? "Tally's recount " : ''}${rc}% ${g.letter}` : '—';
+    const head = `${esc(Q_NAMES[b.q - 1])}${b.closed ? (b.final ? (hasKf ? ' · final' : ' · closed') : ' · kept') : ''} · ${gTxt} · ${plural(b.s.grades.assignments.length, 'assignment')}${miss ? ` · ${miss} missing` : ''}`;
     return b.closed ? `<details class="gsec qbook"><summary><h3>${head}</h3><small>${b.final ? `closed ${esc(fmtDate((quarters().closed[b.q].at || '').slice(0, 10)))}: nothing here raises alerts` : 'kept when the next quarter\'s export arrived: close the quarter under Quarters'}</small></summary>${table(b)}</details>` : `<section class="gsec qbook"><h3>${head}</h3>${table(b)}</section>`; }).join('');
 
   // IXL by unit
@@ -550,8 +581,10 @@ function pendingCopies(sec, s, i, ixlIdx) {
 // plan starts from the grade they make, aims at the letter above that, and lists no copy step: the report says once,
 // above the plan, which points go in. The teacher's pages keep the copy as the plan's first step.
 function quickestPath(sec, s, i, ixlIdx, opt) {
-  const focus = computeGrade(s, i); if (!focus || focus.rounded == null) return null;
-  const gb = s.grades; const ixlCol = a => ixlColOf(a, i);
+  /* each column's category, worked out once for this plan's many computeGrade calls (15 Nov 2026 audit, HLT-01: 85 % of the Students screen's time) */
+  const cm = {}; if (s.grades) s.grades.assignments.forEach(a => { cm[a.name] = catIn(s, a); });
+  const focus = computeGrade(s, i, null, cm); if (!focus || focus.rounded == null) return null;
+  const gb = s.grades; const ixlCol = a => ixlColOf(a, i) && !!gbUnitFor(sec, a);   /* an IXL-named column no unit claims is plain work to turn in, as retakeStatus counts it (15 Nov 2026 audit, round 2) */
   // IXL as it really stands: Tally's points can be ahead of the Focus column (a copy), and no student is planned more
   // skills than their own list holds.
   const focusOf = a => focusPts(a, i);
@@ -560,7 +593,7 @@ function quickestPath(sec, s, i, ixlIdx, opt) {
     const tp = points(sec, unit, ixlIdx), n = activeFor(sec, unit, ixlIdx).length; ixlInfo[a.name] = { tp, cap: Math.min(a.max, Math.max(n, focusOf(a))), unit: u }; });
   const copies = pendingCopies(sec, s, i, ixlIdx);
   const fromCopies = !!(opt && opt.fromCopies && copies.length);
-  const base = fromCopies ? computeGrade(s, i, Object.fromEntries(copies.map(c => [c.a.name, c.to]))) : focus;
+  const base = fromCopies ? computeGrade(s, i, Object.fromEntries(copies.map(c => [c.a.name, c.to])), cm) : focus;
   const tgt = NEXT_UP.find(([t]) => base.rounded < t); if (!tgt) return { top: true, base, focus, copies };
   const [target, letter] = tgt;
   const copyTo = n => { const c = copies.find(x => x.a.name === n); return c ? c.to : null; };
@@ -570,13 +603,13 @@ function quickestPath(sec, s, i, ixlIdx, opt) {
   // whole, like any assignment to turn in
   const nhi = gb.assignments.filter(a => a.max > 0 && a.status && a.status[i] === 'missing' && (!ixlCol(a) || ixlIdx == null));
   const ixl = ixlIdx == null ? [] : gb.assignments.filter(a => ixlCol(a) && nowOf(a) < capOf(a));   // no IXL link: Tally can't name the skills, so it doesn't plan them (the retake line says "IXL not linked")
-  const over = {}; copies.forEach(c => over[c.a.name] = c.to); const done = new Set(); const ixlPlus = {}; const g = () => computeGrade(s, i, over).rounded;
+  const over = {}; copies.forEach(c => over[c.a.name] = c.to); const done = new Set(); const ixlPlus = {}; const g = () => computeGrade(s, i, over, cm).rounded;
   let cur = g(); let guard = 0;
   // phase 1: missing work and IXL skills, best gain first (ties go to missing work: one assignment, done)
   while (cur < target && guard++ < 400) {
     let best = null;
-    nhi.forEach(a => { if (done.has(a.name)) return; over[a.name] = a.max; const v = computeGrade(s, i, over).pct; delete over[a.name]; if (!best || v > best.v + 1e-9) best = { v, kind: 'nhi', a }; });
-    ixl.forEach(a => { const at = nowOf(a) + (ixlPlus[a.name] || 0); if (at >= capOf(a)) return; const prev = over[a.name]; over[a.name] = at + 1; const v = computeGrade(s, i, over).pct; if (prev == null) delete over[a.name]; else over[a.name] = prev; if (!best || v > best.v + 1e-9) best = { v, kind: 'ixl', a }; });
+    nhi.forEach(a => { if (done.has(a.name)) return; over[a.name] = a.max; const v = computeGrade(s, i, over, cm).pct; delete over[a.name]; if (!best || v > best.v + 1e-9) best = { v, kind: 'nhi', a }; });
+    ixl.forEach(a => { const at = nowOf(a) + (ixlPlus[a.name] || 0); if (at >= capOf(a)) return; const prev = over[a.name]; over[a.name] = at + 1; const v = computeGrade(s, i, over, cm).pct; if (prev == null) delete over[a.name]; else over[a.name] = prev; if (!best || v > best.v + 1e-9) best = { v, kind: 'ixl', a }; });
     if (!best) break;
     if (best.kind === 'nhi') { over[best.a.name] = best.a.max; done.add(best.a.name); }
     else { ixlPlus[best.a.name] = (ixlPlus[best.a.name] || 0) + 1; over[best.a.name] = nowOf(best.a) + ixlPlus[best.a.name]; }
@@ -597,18 +630,18 @@ function quickestPath(sec, s, i, ixlIdx, opt) {
     const rt = retakeStatus(sec, gb.students[i]);
     nhi.forEach(a => { over[a.name] = a.max; done.add(a.name); });
     if (rt.noIxl) retakeBlocked = 'IXL is not linked to this student in Tally, so retake readiness is unknown';
-    else { const units = [...(rt.short.length && rt.unit ? [{ unit: rt.unit, short: rt.short }] : []), ...(rt.behind || [])];
+    else { const units = [...(rt.short.length && rt.unit ? [{ unit: rt.unit, short: rt.short, need: rt.need }] : []), ...(rt.behind || [])];
       units.forEach(x => { const col = gb.assignments.find(a => ixlCol(a) && (gbUnitFor(sec, a) || {}).name === x.unit.name);
         const need = col ? Math.min(x.short.length, capOf(col) - nowOf(col)) : 0;
         if (col && need > 0) { if (need > (ixlPlus[col.name] || 0)) { ixlPlus[col.name] = need; over[col.name] = nowOf(col) + need; } }
-        else needUnits.push({ unit: x.unit, n: x.short.length, full: !!col }); });   // the unit's IXL isn't in Focus yet, or Focus already gives full credit: required, but no grade change
+        else needUnits.push({ unit: x.unit, n: x.need || x.short.length, full: !!col }); });   /* the skills that fill the column, as retakeWhy says (WIF-02) */   // the unit's IXL isn't in Focus yet, or Focus already gives full credit: required, but no grade change
     }
     cur = g();
   }
   if (cur < target && !retakeBlocked) {
     const tests = gb.assignments.filter(a => isAssess(s, a) && a.status && a.status[i] === 'score' && (Number(a.values[i]) || 0) < a.max);
     while (cur < target) {
-      let best = null; tests.forEach(a => { if (over[a.name] != null) return; over[a.name] = a.max; const v = computeGrade(s, i, over).pct; delete over[a.name]; if (!best || v > best.v) best = { v, a }; });
+      let best = null; tests.forEach(a => { if (over[a.name] != null) return; over[a.name] = a.max; const v = computeGrade(s, i, over, cm).pct; delete over[a.name]; if (!best || v > best.v) best = { v, a }; });
       if (!best) break; over[best.a.name] = best.a.max; retakes.push(best.a); cur = g();
     }
     if (cur >= target && retakes.length) { const a = retakes[retakes.length - 1]; for (let p = Math.ceil((Number(a.values[i]) || 0) * 2) / 2; p <= a.max; p += 0.5) { over[a.name] = p; if (g() >= target) break; } cur = g(); }
@@ -617,16 +650,16 @@ function quickestPath(sec, s, i, ixlIdx, opt) {
   const ixlSteps = Object.keys(ixlPlus).map(name => { const a = gb.assignments.find(x => x.name === name); const u = gbUnitFor(sec, a); let skills = [];
     if (u && ixlIdx != null) { const t = sec.threshold; const unit = unitsOf(sec).find(x => x.name === u.name); if (unit) skills = activeFor(sec, unit, ixlIdx).map(k => ({ name: sec.skills[k].name, v: eff(sec, k, ixlIdx) })).filter(x => x.v == null || x.v < t).sort((x, y) => (y.v ?? -1) - (x.v ?? -1)).slice(0, ixlPlus[name]); }
     return { a, n: ixlPlus[name], unit: u, skills }; });
-  const result = computeGrade(s, i, over);
+  const result = computeGrade(s, i, over, cm);
   // The order to do it in: what adds the most comes first (an IXL line is judged per skill, since each skill is a piece
   // of work), retakes last — and the grade after each line, so the list adds up to the result in front of whoever reads it.
   // (Croix, 7 Oct: the list was in gradebook order, so a +3 worksheet sat above a +7 one and read as the tool's first pick.)
   const pend = [...nhi.filter(a => done.has(a.name)).map(a => ({ kind: 'nhi', a, n: 1, to: a.max })), ...ixlSteps.map(x => ({ kind: 'ixl', a: x.a, n: x.n, to: nowOf(x.a) + x.n, unit: x.unit, skills: x.skills }))];
   const plan = []; const acc = {}; let at = base.pct;
-  copies.forEach(c => { acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; if (!fromCopies) plan.push({ kind: 'copy', a: c.a, n: 0, from: c.from, to: c.to, unit: c.unit, after: r.rounded }); });   // the teacher's copy comes first: it needs no student work (from copies, it is the starting point)
-  while (pend.length) { let bi = 0, bv = -Infinity; pend.forEach((c, k) => { acc[c.a.name] = c.to; const v = (computeGrade(s, i, acc).pct - at) / c.n; delete acc[c.a.name]; if (v > bv + 1e-9) { bv = v; bi = k; } });
-    const c = pend.splice(bi, 1)[0]; acc[c.a.name] = c.to; const r = computeGrade(s, i, acc); at = r.pct; plan.push({ ...c, after: r.rounded }); }
-  retakes.forEach(a => { acc[a.name] = over[a.name]; plan.push({ kind: 'retake', a, n: 1, to: over[a.name], after: computeGrade(s, i, acc).rounded }); });
+  copies.forEach(c => { acc[c.a.name] = c.to; const r = computeGrade(s, i, acc, cm); at = r.pct; if (!fromCopies) plan.push({ kind: 'copy', a: c.a, n: 0, from: c.from, to: c.to, unit: c.unit, after: r.rounded }); });   // the teacher's copy comes first: it needs no student work (from copies, it is the starting point)
+  while (pend.length) { let bi = 0, bv = -Infinity; pend.forEach((c, k) => { acc[c.a.name] = c.to; const v = (computeGrade(s, i, acc, cm).pct - at) / c.n; delete acc[c.a.name]; if (v > bv + 1e-9) { bv = v; bi = k; } });
+    const c = pend.splice(bi, 1)[0]; acc[c.a.name] = c.to; const r = computeGrade(s, i, acc, cm); at = r.pct; plan.push({ ...c, after: r.rounded }); }
+  retakes.forEach(a => { acc[a.name] = over[a.name]; plan.push({ kind: 'retake', a, n: 1, to: over[a.name], after: computeGrade(s, i, acc, cm).rounded }); });
   if (needUnits.length && retakes.length) { needUnits.forEach(nu => { const ri = plan.findIndex(x => x.kind === 'retake'); plan.splice(ri, 0, { kind: 'ixlreq', full: nu.full, a: { name: nu.unit.short + ' IXL', max: nu.n }, n: nu.n, unit: nu.unit, after: ri > 0 ? plan[ri - 1].after : base.rounded, skills: [] }); }); }
   return { base, focus, copies, target, letter, reached: result.rounded >= target, result, over, plan, retakeBlocked, nhi: plan.filter(x => x.kind === 'nhi').map(x => x.a), ixl: ixlSteps, retakes: retakes.map(a => ({ a, pts: over[a.name] })), steps: done.size + ixlSteps.reduce((x, y) => x + y.n, 0) + retakes.length + (needUnits.length && retakes.length ? needUnits.reduce((x, y) => x + y.n, 0) : 0) };
 }
@@ -662,9 +695,9 @@ const whatIfArrow = r => x => { if (!x || x.rounded == null) return ''; const d 
 function whatIfMarkup(s, i, rt) {
   const gb = s.grades; const r = computeGrade(s, i); if (!r) return ''; if (r.rounded == null) return '<p class="ghint">Nothing is graded for this student yet this quarter.</p>';
   const arrow = whatIfArrow(r);
-  const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing'); const allIn = {}; missing.forEach(a => allIn[a.name] = a.max);
+  const missing = gb.assignments.filter(a => a.max > 0 && a.status && a.status[i] === 'missing'); const allIn = {};   /* not a 0-point column (WIF-03) */ missing.forEach(a => allIn[a.name] = a.max);
   const assess = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
-  const ixlCols = assess.filter(a => /\bixl\b/i.test(a.name) && (a.values[i] == null || a.values[i] < a.max));
+  const ixlCols = assess.filter(a => /\bixl\b/i.test(a.name) && gbUnitFor(s, a) && (a.values[i] == null || a.values[i] < a.max));
   // A retake needs a first take: an assessment that was never handed in (NHI) is missing work, listed above, not here.
   const tests = assess.filter(a => !/\bixl\b/i.test(a.name) && a.status[i] === 'score' && a.values[i] != null && a.values[i] < a.max);
   const nx = nextSize(s);
@@ -702,13 +735,14 @@ function gradeWith(s, i, over, next) {
   return computeGrade({ ...s, grades: { ...gb, assignments: gb.assignments.concat([x]) }, _map: { ...(s._map || {}), '\u0000next': 'Assessments' } }, i, over);
 }
 function openShow(sec, name) {
-  const s = openSec(sec); const i = s.grades ? s.grades.students.findIndex(n => norm(n) === norm(name)) : -1; if (i < 0 || !s.grades.assignments.length) return;
+  const s = openSec(sec); const i = s.grades ? gbIndex(s.grades, name, findStudent(sec, name).id) : -1; if (i < 0 || !s.grades.assignments.length) return;
   const gb = s.grades; const cats = gradingFor(sec.prep).cats; const base = computeGrade(s, i); if (!base || base.rounded == null) { toast('Nothing is graded for this student yet this quarter: there is nothing to show.', false); return; }
-  const missing = gb.assignments.filter(a => a.status && a.status[i] === 'missing');
   const retake = gb.assignments.filter(a => isAssess(s, a) && a.status && a.status[i] === 'score' && a.values[i] < a.max);
-  const ixlCols = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && /\bixl\b/i.test(a.name) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && (a.values[i] == null || a.values[i] < a.max));
+  const ixlCols = gb.assignments.filter(a => catIn(s, a) === 'Assessments' && /\bixl\b/i.test(a.name) && gbUnitFor(sec, a) && a.max > 0 && a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && (a.values[i] == null || a.values[i] < a.max));
+  /* 15 Nov 2026 audit (WIF-05): for a student linked to IXL an NHI IXL column is its "Finish IXL" slider only, as quickestPath plans it */
+  const linked = findStudent(sec, name).ixl != null; const missing = gb.assignments.filter(a => a.max > 0 && a.status && a.status[i] === 'missing' && !(linked && ixlCols.includes(a)));   /* not a 0-point column (WIF-03) */
   const nx = nextSize(s);
-  const ownAvg = base.cats.Assessments && base.cats.Assessments.pct != null ? base.cats.Assessments.pct / 100 : 0.8; const nxStart = Math.round(nx * ownAvg * 2) / 2;
+  const ownAvg = base.cats.Assessments && base.cats.Assessments.pct != null ? base.cats.Assessments.pct / 100 : 0.8; const nxStart = Math.min(nx, Math.round(nx * ownAvg * 2) / 2);   /* never above the test's points (WIF-06) */
   const plan = quickestPath(sec, s, i, findStudent(sec, name).ixl);
   const H = state.settings.hideNames; const who = H ? mask(name) : firstName(name);
   // state of every control: missing → { on, pts }, retake/ixl → pts, next → { on, max, pts }
@@ -761,8 +795,8 @@ function openShow(sec, name) {
   const sp = $('#shPlan'); if (sp && plan && plan.reached) sp.onclick = () => {   // set every switch and slider to the plan
     el.querySelectorAll('.shRow').forEach(rw => { const k = rw.dataset.k, nm = rw.dataset.n; const rg = rw.querySelector('.shPts'), on = rw.querySelector('.shOn'), out = rw.querySelector('output'), box = rw.querySelector('.shS');
       if (k === 'miss') { const yes = plan.nhi.some(a => a.name === nm); on.checked = yes; box.classList.toggle('off', !yes); st.miss[nm] = { on: yes, pts: Number(rg.max) }; rg.value = rg.max; out.textContent = `${fmtN(Number(rg.max))} / ${rg.max}`; }
-      else if (k === 'ix' && plan.over[nm] != null) { st.ix[nm] = plan.over[nm]; rg.value = plan.over[nm]; out.textContent = `${fmtN(plan.over[nm])} / ${rg.max}`; }
-      else if (k === 're' && plan.over[nm] != null) { st.re[nm] = plan.over[nm]; rg.value = plan.over[nm]; out.textContent = `${fmtN(plan.over[nm])} / ${rg.max}`; } });
+      else if (k === 'ix' || k === 're') { const v = plan.over[nm] != null ? plan.over[nm] : Number(rg.defaultValue); (k === 'ix' ? st.ix : st.re)[nm] = v; rg.value = v; out.textContent = `${fmtN(v)} / ${rg.max}`; }   /* a row the plan does not use goes back to now (15 Nov 2026 audit, WIF-04) */
+      else if (k === 'next') { st.next.on = false; on.checked = false; box.classList.add('off'); } });
     recompute(); const t = el.querySelector('.shGrade'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   recompute(); el.tabIndex = -1; el.focus({ preventScroll: true });
 }

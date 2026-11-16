@@ -11,7 +11,8 @@ function gradeSummary(sec0) {
   const prevIdx = prev ? new Map(prev.students.map((n, i) => [n, i])) : null; let sliding = 0, missingStudents = 0;
   sec.grades.students.forEach((name, i) => { const r = gs[i]; const miss = sec.grades.assignments.filter(a => a.status && a.status[i] === 'missing').length; if (miss) missingStudents++;
     if (prevIdx && prevIdx.has(name)) { const j = prevIdx.get(name); const d = r && r.rounded != null && prev.grade[j] != null ? r.rounded - prev.grade[j] : null; if ((d != null && d <= -3) || miss > (prev.missing[j] || 0)) sliding++; } });
-  return { avg, prevAvg, prevDate: prev ? prev.date : null, letters, missing: sec.grades.assignments.reduce((a, x) => a + x.missing, 0), missingStudents, sliding, fit: sec === sec0 ? fitCategories(sec) : null, date: localDayOf(sec.grades.importedAt), qFinal };
+  const ruled = prev ? null : gradeRulesChanged(sec);   // an earlier import graded under other settings: nothing to compare (15 Nov 2026 audit, GRD-04)
+  return { avg, prevAvg, prevDate: prev ? prev.date : null, ruledDate: ruled ? ruled.date : null, letters, missing: sec.grades.assignments.reduce((a, x) => a + x.missing, 0), missingStudents, sliding, fit: sec === sec0 ? fitCategories(sec) : null, date: localDayOf(sec.grades.importedAt), qFinal };
 }
 // Reminders dismissed by hand: key → the day (the newest 100 kept).
 function cleanDismissed(d) { const out = {}; if (d && typeof d === 'object' && !Array.isArray(d)) Object.keys(d).filter(k => SAFE_KEY(k) && k.length <= 200 && typeof d[k] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d[k])).sort((a, b) => d[b].localeCompare(d[a])).slice(0, 100).forEach(k => out[k] = d[k]); return out; }
@@ -56,8 +57,9 @@ function attentionItems(sec) {
   if (!sec.placeholder && sec.students.length && !(state.settings.currentUnit || {})[sec.prep] && sec.skills.some(sk => /^Unit\s+\d+/i.test(sk.unit))) out.push({ level: 'info', text: 'pick the unit you\'re working in: no unit counts until you do', go: 'grid', shared: true });
   const rvg = rosterVsGradebook(sec); if (rvg) out.push({ level: 'info', text: `gradebook list differs from the roster (${rvg.added.length} new, ${rvg.gone.length} gone)`, go: 'grid', act: 'gbroster', detail: `${rvg.added.length ? `In the gradebook but not on the roster${names(rvg.added)}. ` : ''}${rvg.gone.length ? `On the roster but not in the gradebook${names(rvg.gone)}.` : ''}` });
   const od = overdue(sec); if (od) out.push({ level: 'info', text: `IXL export is ${plural(od, 'day')} old`, go: 'import', shared: true, act: 'import', detail: `${fmtDate(dataDate(sec))}. You asked to be reminded after ${state.settings.remindDays} days: export a fresh copy and import it.` });
-  if (sec.grades && state.settings.remindDays && ageDays(localDayOf(sec.grades.importedAt)) > state.settings.remindDays) out.push({ level: 'info', text: `Focus gradebook is ${plural(ageDays(localDayOf(sec.grades.importedAt)), 'day')} old`, go: 'import', shared: true, act: 'import', detail: `${fmtDate(localDayOf(sec.grades.importedAt))}. Export a fresh gradebook and import it.` });
-  if (rs.count && sec.rosterAt && sec.date && sec.rosterAt.slice(0, 10) < sec.date && (Date.now() - new Date(sec.rosterAt)) > 21 * 86400000) out.push({ level: 'info', text: `roster pasted ${fmtDate(sec.rosterAt.slice(0, 10))}, older than this export`, go: 'settings', act: 'roster', detail: 'If anyone enrolled or left since, re-paste it before you copy.' });
+  const gd = sec.grades ? localDayOf(sec.grades.exportedAt || sec.grades.importedAt) : '';   /* 15 Nov 2026 audit (RPT-03): Focus is dated by the file, as the print check does */
+  if (sec.grades && state.settings.remindDays && ageDays(gd) > state.settings.remindDays) out.push({ level: 'info', text: `Focus gradebook is ${plural(ageDays(gd), 'day')} old`, go: 'import', shared: true, act: 'import', detail: `${fmtDate(gd)}. Export a fresh gradebook and import it.` });
+  if (rs.count && sec.rosterAt && sec.date && localDayOf(sec.rosterAt) < sec.date && (Date.now() - new Date(sec.rosterAt)) > 21 * 86400000) out.push({ level: 'info', text: `roster pasted ${fmtDate(localDayOf(sec.rosterAt))}, older than this export`, go: 'settings', act: 'roster', detail: 'If anyone enrolled or left since, re-paste it before you copy.' });
   if (!sec.grades && !sec.awaitingPool) out.push({ level: 'info', text: 'no Focus gradebook yet', go: 'import', shared: true, act: 'import' });
   return out;
 }
@@ -74,7 +76,9 @@ function attentionGroups(secs) {
 function fixCount(secs) { return attentionGroups(secs).filter(g => g.level === 'warn').length + (quarterDue() ? 1 : 0) + (storageUse().pct >= 80 ? 1 : 0); }
 function renderHome() {
   const qd = quarterDue(); const cq = currentQuarter();
-  const secs = state.order.map(k => state.sections[k]); const race = leaderboardData(); const byKey = new Map(race.map(r => [r.key, r]));
+  const secs = state.order.map(k => state.sections[k]);
+  /* 15 Nov 2026 audit (TIM-08): the header names the quarter of the grades under it when every class with grades is in the same one */
+  const gq = new Set(secs.filter(s => s.grades && !s.board && !s.placeholder).map(liveQuarter)); const metaQ = gq.size === 1 ? [...gq][0] : cq; const race = leaderboardData(); const byKey = new Map(race.map(r => [r.key, r]));
   const H = state.settings.hideNames;
   const card = s => { const r = byKey.get(s.key); const g = gradeSummary(s); const att = attentionItems(s); const warn = att.filter(a => a.level === 'warn').length;
     const checks = s.grades ? reconcile(s) : []; const off = checks.filter(c => c.counts.differ + c.counts.missing > 0 || !c.maxOK).length; const staleN = off ? 0 : checks.reduce((n, c) => n + (c.counts.stale || 0), 0);
@@ -87,11 +91,11 @@ function renderHome() {
     return `<article class="hcardW" style="--cc:${classColor(s)}"><button class="hcard ${warn ? 'warn' : ''}" data-go="${esc(s.key)}" aria-label="Open ${esc(s.label)}">
       <div class="hhead"><b>${esc(s.label)}</b>${D ? `<small>${plural(s.students.length, 'student')} · goal ${s.threshold}${s.date ? ' · IXL ' + esc(fmtDate(s.date)) : ''}</small>` : ''}</div>
       <div class="hnums">
-        <div><small>IXL work at goal</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b>${sub(r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : 'first import', !r)}</div>
+        <div><small>IXL work at goal${r && r.assignedUnits.length ? ' · ' + esc(unitSpan(r.assignedUnits)) : ''}</small><b>${r ? Math.round(r.completion * 100) + '%' : '—'}</b>${sub(r && r.gain != null ? `${r.gain >= 0 ? '+' : '−'}${Math.abs(r.gain).toFixed(1)} skills/student since ${esc(fmtDate(r.prevDate))}` : r && r.thrChanged ? 'goal changed' : r && r.basisChanged ? 'skills counted changed' : r ? 'first import' : s.placeholder ? 'no names in the IXL export' : s.students.length ? 'no students counted' : 'no IXL export yet', !r)}</div>
         ${waiting ? `<div><small>Focus${g.qFinal && g.qFinal.avg != null ? ` · Q${g.qFinal.q} final` : ''}</small><b>${g.qFinal && g.qFinal.avg != null ? Math.round(g.qFinal.avg) + '%' : '—'}</b>${sub([1, 2, 3, 4].every(qClosed) ? 'every quarter is closed' : `Q${g.q} gradebook not in yet`, true)}</div>` : `
-        <div><small>Focus average${anyClosed() ? ' · Q' + liveQuarter(s) : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b>${sub(g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : '', false)}</div>
+        <div><small>Focus average${anyClosed() ? ' · Q' + liveQuarter(s) : ''}</small><b>${g && g.avg != null ? Math.round(g.avg) + '%' : '—'}</b>${sub(g && g.prevAvg != null ? `${Math.round(g.avg) - Math.round(g.prevAvg) >= 0 ? '+' : '−'}${Math.abs(Math.round(g.avg) - Math.round(g.prevAvg))} since ${esc(fmtDate(g.prevDate))}` : g && g.ruledDate ? `grading settings changed since ${esc(fmtDate(g.ruledDate))}` : g ? (g.qFinal && g.qFinal.avg != null ? `Q${g.qFinal.q} final ${Math.round(g.qFinal.avg)}%` : 'first gradebook') : '', false)}</div>
         <div><small>Missing work</small><b>${g ? g.missing : '—'}</b>${sub(g ? plural(g.missingStudents, 'student') : '', false)}</div>
-        <div title="Students whose grade is down 3 points or more, or who have more missing work, since the last gradebook"><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b>${sub(g && g.prevDate ? 'since ' + esc(fmtDate(g.prevDate)) : 'needs 2 gradebooks', !(g && g.prevDate))}</div>`}
+        <div title="Students whose grade is down 3 points or more, or who have more missing work, since the last gradebook"><small>Sliding</small><b>${g && g.prevDate ? g.sliding : '—'}</b>${sub(g && g.prevDate ? 'since ' + esc(fmtDate(g.prevDate)) : g && g.ruledDate ? 'grading settings changed since ' + esc(fmtDate(g.ruledDate)) : 'needs 2 gradebooks', !(g && g.prevDate))}</div>`}
       </div>
       <div class="hchips">${focusChip}${g && !waiting ? `<span class="hchip letters">${['A', 'B', 'C', 'D', 'F'].map(l => `<i class="${l}">${l}<em>${g.letters[l]}</em></i>`).join('')}</span>` : ''}</div>
     </button><button class="hchip act hdigest" data-digest="${esc(s.key)}">What changed ›</button></article>`; };
@@ -102,7 +106,7 @@ function renderHome() {
   const row = g => g.each ? `<li class="${g.level} each${dis(g) ? ' dis' : ''}"><div><i></i><span>${esc(g.text.charAt(0).toUpperCase() + g.text.slice(1))}:</span>${g.each.map(c => `<button class="hgo" data-go="${esc(c.key)}" data-where="${g.go}" style="--cc:${c.color}">${esc(c.label)}</button>`).join('')}</div>${dis(g)}</li>`
     : `<li class="${g.level}${dis(g) ? ' dis' : ''}"><button data-go="${esc(g.secs[0].key)}" data-where="${g.go}"${g.stu ? ` data-stu="${esc(g.stu)}"` : ''}><i></i><span><b>${esc(g.who)}</b>: ${esc(g.text)}</span><em>›</em></button>${dis(g)}</li>`;
   const qdLine = qd ? `<li class="warn"><button id="qdGo"><i></i><span><b>${esc(Q_NAMES[qd - 1])}</b> ended ${esc(fmtDate(quarters().ends[qd - 1]))}: close it so its missing work and Focus checks stop coming up</span><em>›</em></button></li>` : '';
-  const ce = closedEarly(); const ceLine = ce ? `<div class="notice qce"><span>${ico('warn')}</span><span><b>${esc(Q_NAMES[ce - 1])} was closed early</b> on ${esc(fmtDate((quarters().closed[ce].at || '').slice(0, 10)))}. It runs until ${esc(fmtDate(quarters().ends[ce - 1]))}, so its missing work isn't showing on student pages or conference forms.</span><button class="pill small" id="ceReopen">Reopen ${esc(Q_NAMES[ce - 1])}</button></div>` : '';
+  const ce = closedEarly(); const ceLine = ce ? `<div class="notice qce"><span>${ico('warn')}</span><span><b>${esc(Q_NAMES[ce - 1])} was closed early</b> on ${esc(fmtDate(localDayOf(quarters().closed[ce].at)))}. It runs until ${esc(fmtDate(quarters().ends[ce - 1]))}, so its missing work isn't showing on student pages or conference forms.</span><button class="pill small" id="ceReopen">Reopen ${esc(Q_NAMES[ce - 1])}</button></div>` : '';
   const lb = state.lastBackup; const bkDue = backupBehind();
   const bkLine = bkDue ? `<li class="info"><button id="hBackup" title="Download a Full save: everything in Tally. Keep it in your school Drive"><i></i><span><b>Full save</b>: ${storageFragile ? 'work on this page is in no Full save yet' : lb ? `new imports since the last one (${esc(ageDays(day(lb)) === 0 ? 'earlier today' : fmtDate(day(lb)))})` : 'nothing has been saved from this browser yet'}</span><em>Save</em></button></li>` : '';
   const su = storageUse(); const stLine = su.pct >= 80 ? `<li class="warn"><button id="hStore"><i></i><span><b>This browser's storage is ${su.pct}% full</b>: ${su.other > su.tally ? `other saved pages hold most of it (${su.mb(su.other)} MB; Tally ${su.mb(su.tally)} MB). Make a Full save first` : 'make a Full save, then remove an old class or gradebook in Settings'}</span><em>›</em></button></li>` : '';
@@ -120,9 +124,9 @@ function renderHome() {
   const missLines = dates.length >= 2 ? chartLines(dates.map(fmtDate), withHist.map(s => ({ name: s.label, color: classColor(s), values: dates.map(d => { const h = s.gradeHistory.filter(h => h.date === d).pop(); return h ? h.missing.reduce((a, b) => a + b, 0) : null; }) })), { min: 0, h: 260, w: 900, labelW: 200, aria: 'missing assignments by import' }) : '';
   const lettersRows = secs.filter(s => s.grades).map(s => ({ s, g: gradeSummary(s) })).filter(x => !x.g.waiting).map(x => ({ label: x.s.label, parts: x.g.letters }));
   const lettersChart = lettersRows.length ? chartStacked(lettersRows, ['A', 'B', 'C', 'D', 'F'], { colors: LETTER_COLORS, dark: LETTER_DARK, labelW: 180, aria: 'letter grades by class' }) : '';
-  const asOf = secs.map(s => s.date).filter(Boolean).sort().pop();
+  const asOf = asOfLine(secs.map(s => s.date));   /* 15 Nov 2026 audit, round 2: both ends when the classes' IXL exports are from different days (as the Board does) */
   const withGb = secs.filter(s => s.grades).length, waitN = anyClosed() ? secs.filter(s => s.grades && !hasOpenGrades(s)).length : 0;
-  $('#bar').innerHTML = `<span class="meta">${asOf ? 'IXL as of ' + esc(fmtDate(asOf)) + ' · ' : ''}${esc(Q_NAMES[cq - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · saved ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button>`;
+  $('#bar').innerHTML = `<span class="meta">${asOf ? 'IXL ' + esc(asOf) + ' · ' : ''}${esc(Q_NAMES[metaQ - 1])}${waitN ? (waitN === withGb ? ' · no gradebooks yet' : ` · ${waitN} of ${withGb} gradebooks still to come`) : ''}${lb && !bkLine ? ` · saved ${esc(ageDays(day(lb)) === 0 ? 'today' : fmtDate(day(lb)))}` : ''}</span><div class="spacer"></div><button class="pill ${qd ? '' : 'toggle'}" id="homeQuarters" title="Quarter dates; close a quarter so its work stops raising alerts">${qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters'}</button>`;
   $('#bar').classList.remove('detail');
   const li0 = state.lastImport; const curU = state.settings.currentUnit || {};
   const li = li0 ? { ...li0, lines: li0.lines.filter(l => !l.wi || String(curU[l.wi.split(':')[0]]) === l.wi.split(':')[1]) } : null;   // a "Working in set to…" line retires once the teacher picks another unit
@@ -168,10 +172,11 @@ function digestFor(sec) {
   const hist = sec.history || []; const cur = hist[hist.length - 1]; const prev = hist.filter(h => h.date < (cur ? cur.date : '')).pop();
   const mv = movement(sec, cur, prev, true);   // open units only: a closed quarter's IXL doesn't make the digest
   if (mv && !mv.reason) {
-    const keys = Object.keys(cur.per); const deltas = keys.map(k => ({ key: k, name: k.replace(/#\d+$/, ''), d: mv.deltas[k] ? mv.deltas[k].d : 0, now: mv.deltas[k] ? mv.deltas[k].now : cur.per[k], had: !!mv.deltas[k] }));
+    /* 15 Nov 2026 audit (IXL-12): the counted class, as the Race measures it (a skipped or not-on-roster account is out); "New in IXL" still lists every new account */
+    const counted = new Set(population(sec).map(x => x.key)); const keys = Object.keys(cur.per).filter(k => counted.has(k)); const deltas = keys.map(k => ({ key: k, name: k.replace(/#\d+$/, ''), d: mv.deltas[k] ? mv.deltas[k].d : 0, now: mv.deltas[k] ? mv.deltas[k].now : cur.per[k], had: !!mv.deltas[k] }));
     const measured = deltas.filter(x => x.had); const up = measured.filter(x => x.d > 0), down = measured.filter(x => x.d < 0);
     const total = measured.reduce((a, x) => a + x.d, 0);
-    const newNames = keys.filter(k => prev.per[k] == null).map(k => k.replace(/#\d+$/, '')), gone = Object.keys(prev.per).filter(k => cur.per[k] == null).map(k => k.replace(/#\d+$/, ''));
+    const newNames = Object.keys(cur.per).filter(k => prev.per[k] == null).map(k => k.replace(/#\d+$/, '')), gone = Object.keys(prev.per).filter(k => cur.per[k] == null).map(k => k.replace(/#\d+$/, ''));
     // units that became complete for everyone counted (no student below the unit's total) between the two dates can't be read from snapshots; use the grid now
     const units = unitsOf(sec).filter(u => u.assigned && u.total && !unitClosed(sec, u)); const pop = population(sec);
     const unitDone = units.map(u => ({ u, done: pop.filter(x => points(sec, u, x.i) >= totalFor(sec, u, x.i)).length })).filter(x => x.done === pop.length && pop.length).map(x => x.u.short);
@@ -179,7 +184,7 @@ function digestFor(sec) {
       down: down.sort((a, b) => a.d - b.d).slice(0, 5).map(x => ({ name: disp(x.name), d: x.d })), stuck: measured.filter(x => x.d === 0 && x.now === 0).length, newNames: newNames.map(disp), gone: gone.map(disp), unitDone };
   } else if (mv) out.ixl = { thrChanged: mv.reason === 'thr', basisChanged: mv.reason === 'basis', from: prev.date, to: cur.date };
   const gh = sec.gradeHistory || []; const gc0 = gh[gh.length - 1]; const gc = gc0 && !qClosed(snapQ(gc0)) ? gc0 : null;   // a closed quarter has nothing to report
-  const gp = gc ? gh.filter(h => h.date < gc.date && snapQ(h) === snapQ(gc)).pop() : null;   // a new quarter starts fresh: nothing "slid" across the break
+  const gp0 = gc ? gh.filter(h => h.date < gc.date && snapQ(h) === snapQ(gc)).pop() : null; const gp = gp0 && snapsComparable(gp0, gc) ? gp0 : null; if (gp0 && !gp) out.focusRuled = gp0.date;   // a new quarter starts fresh: nothing "slid" across the break; nor across a change of weights, categories or text-grade rules (15 Nov 2026 audit, GRD-04)
   if (gc && gp) {
     const idxP = new Map(gp.students.map((n, i) => [n, i])); const rows = gc.students.map((n, i) => { const j = idxP.get(n); return { name: n, g: gc.grade[i], m: gc.missing[i], pg: j == null ? null : gp.grade[j], pm: j == null ? null : gp.missing[j] }; });
     const both = rows.filter(r => r.pg != null && r.g != null); const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
@@ -211,7 +216,7 @@ function digestMarkup(d) {
     ${x.unitDone.length ? `<p><b>Units everyone has finished:</b> ${esc(x.unitDone.join(', '))}</p>` : ''}
     ${x.newNames.length ? `<p><b>New in IXL:</b> ${esc(x.newNames.join(' · '))}</p>` : ''}${x.gone.length ? `<p><b>No longer in IXL:</b> ${esc(x.gone.join(' · '))}</p>` : ''}`; }
   let focus = '';
-  if (!d.focus) focus = `<p class="ghint">Focus: needs two gradebook imports on different days.</p>`;
+  if (!d.focus) focus = d.focusRuled ? `<p class="ghint">Focus: the grading settings (weights, categories or how a text grade counts) changed since the import of ${esc(fmtDate(d.focusRuled))}, so this week's grades can't be compared with it.</p>` : `<p class="ghint">Focus: needs two gradebook imports on different days.</p>`;
   else { const f = d.focus; focus = `<div class="dgrid">
       <div class="dstat"><b>${f.avg != null ? Math.round(f.avg) + '%' : '—'}</b><small>class average${f.prevAvg != null ? ` (${sgn(Math.round(f.avg) - Math.round(f.prevAvg))} since ${esc(fmtDate(f.from))})` : ''}</small></div>
       <div class="dstat"><b>${f.missingNow}</b><small>missing assignments (${sgn(f.missingNow - f.missingThen)})</small></div>

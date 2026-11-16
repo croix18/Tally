@@ -172,7 +172,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more , fullSave, l
   // (5) retention: a departed student's info is stamped, listed, forgettable
   await p.evaluate(K=>{ const T=window.__tally; const s=T.state.sections[K]; s.seatInfo['GONE, ZED']={...s.seatInfo[Object.keys(s.seatInfo)[0]], gone:undefined}; s.seatInfo['OLD, ZED']={...s.seatInfo[Object.keys(s.seatInfo)[0]], gone:'2026-01-01'}; T.save(); T.render(); }, K); await p.waitForTimeout(300);
   const ret=await p.evaluate(K=>{ const i=window.__tally.state.sections[K].seatInfo; return { stamped:i['GONE, ZED'] && i['GONE, ZED'].gone, old:!!i['OLD, ZED'] }; }, K);
-  check(ret.stamped===new Date().toISOString().slice(0,10) && !ret.old,'a vanished student is stamped today; one gone 45+ days is dropped');
+  check(ret.stamped===(d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date()) && !ret.old,'a vanished student is stamped today; one gone 45+ days is dropped');
   await p.click('.departed summary'); await p.waitForTimeout(150); check(/GONE, ZED/.test(await p.textContent('.departed')),'departed students are listed under Not on the roster');
   await p.locator('.seatStu.gone').filter({hasText:'GONE, ZED'}).locator('[data-forget]').click(); await p.waitForTimeout(300); check(!(await p.evaluate(K=>'GONE, ZED' in window.__tally.state.sections[K].seatInfo, K)),'Forget removes them now');
   // (1b) print header carries the room name and course

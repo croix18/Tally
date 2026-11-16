@@ -186,7 +186,8 @@ body.veiled>*:not(#veil){filter:blur(28px) saturate(.5);pointer-events:none;user
 .pinBox{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}.pinBox span{color:var(--ink-soft)}.pinForm{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.pinBox small{flex-basis:100%;color:var(--ink-soft)}
 .veilCard #veilHelp{max-width:300px;font-size:var(--t-s);color:var(--ink-soft)}.veilCard #veilHelp p{margin:4px 0 8px}.veilCard #veilHelpMsg{display:block;margin-top:8px;color:var(--bad);font-weight:var(--w-bold)}.veilCard .vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}#veil:has(#veilForm){cursor:default}
 .veilCard{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:28px 40px;text-align:center}.veilCard b{font-size:var(--t-xl);font-weight:var(--w-black);color:var(--navy)}.veilCard span{color:var(--ink-soft)}.veilCard .pill{margin-top:8px}.veilCard small{color:var(--ink-soft);font-size:var(--t-s)}
-@media print{#veil{display:none!important}body.veiled>*:not(#veil){filter:none}}
+/* 15 Nov 2026 audit (DAT-02): a hidden Tally prints nothing but the veil card, so a print never shows names */
+@media print{body.veiled>*:not(#veil){display:none!important}#veil{position:static;background:none}}
 .pill:active,.chip:active,.tab:active,.copy:active,.ulink:active{transform:translateY(1px) scale(.97)}
 
 /* ---- the rail and the shell ---- */

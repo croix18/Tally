@@ -57,7 +57,7 @@ function load() { let raw = null; try { raw = localStorage.getItem(LS_KEY); } ca
 // along for good).
 function safeObj(o) { if (!o || typeof o !== 'object' || Array.isArray(o)) return {}; const out = {}; for (const k of Object.keys(o)) if (SAFE_KEY(k)) out[k] = o[k]; return out; }
 // The printed-report log per student: { [norm(name)]: [{ date, grade, missing, ixl }] }, the last dozen.
-function cleanReportLog(o) { const out = {}; const num = v => v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v); const day = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && !isNaN(new Date(v + 'T12:00:00')); if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !Array.isArray(o[k])) continue; const l = o[k].filter(e => e && day(e.date)).map(e => ({ date: String(e.date), ...(day(e.back) ? { back: String(e.back) } : {}), ...(e.cleared ? { cleared: true } : {}), q: [1, 2, 3, 4].includes(Number(e.q)) ? Number(e.q) : null, gb: day(e.gb) ? String(e.gb) : '', ...(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(String(e.gbAt)) ? { gbAt: String(e.gbAt) } : {}), ix: day(e.ix) ? String(e.ix) : '', grade: num(e.grade), missing: Math.max(0, Math.round(num(e.missing) || 0)), ixl: num(e.ixl) })).sort((a, b) => a.date.localeCompare(b.date)).slice(-12); if (l.length) out[k] = l; } return out; }
+function cleanReportLog(o) { const out = {}; const num = v => v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v); const day = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && !isNaN(new Date(v + 'T12:00:00')); if (o && typeof o === 'object') for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !Array.isArray(o[k])) continue; const l = o[k].filter(e => e && day(e.date)).map(e => ({ date: String(e.date), ...(day(e.back) ? { back: String(e.back) } : {}), ...(e.cleared ? { cleared: true } : {}), ...(Array.isArray(e.printed) && e.printed.some(day) ? (x => x.length > 1 ? { printed: x } : {})([...new Set([String(e.date), ...e.printed.filter(day).map(String)])].sort()) : {}), q: [1, 2, 3, 4].includes(Number(e.q)) ? Number(e.q) : null, gb: day(e.gb) ? String(e.gb) : '', ...(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(String(e.gbAt)) ? { gbAt: String(e.gbAt) } : {}), ix: day(e.ix) ? String(e.ix) : '', grade: num(e.grade), missing: Math.max(0, Math.round(num(e.missing) || 0)), ixl: num(e.ixl) })).sort((a, b) => a.date.localeCompare(b.date)).slice(-12); if (l.length) out[k] = l; } return out; }
 function hydrate(s) {
   try {
     if (!s || !s.sections) return null;
@@ -122,9 +122,9 @@ function migrate() {
     s.gradeHistory = Array.isArray(s.gradeHistory) ? s.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade) && Array.isArray(h.students) && Array.isArray(h.missing) && Array.isArray(h.assignments)) : [];
     // snapshots once carried per-student mastered/touched arrays that nothing reads; keep only the aggregate fields
     { const okDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d + 'T12:00:00')); if (s.date != null && !okDay(s.date)) s.date = null; if (Array.isArray(s.history)) s.history = s.history.filter(h => h && okDay(h.date)); if (Array.isArray(s.gradeHistory)) s.gradeHistory = s.gradeHistory.filter(h => h && okDay(h.date)); }   // one bad date used to blank Tally for good (audit)
-    s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
+    s.history = (Array.isArray(s.history) ? s.history : []).filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua, ...(h.own ? { own: h.own } : {}), ...(h.best != null ? { best: h.best } : {}) })); if (s.team) { s.label = s.team; s.team = ''; } s.prep = s.prep === 'acc' || s.prep === 'on' ? s.prep : (s.accelerated ? 'acc' : 'on');
     { const course = state.skips[s.prep === 'acc' ? 'acc' : 'on']; if (s.excluded && s.excluded !== course) Object.keys(s.excluded).forEach(key => { if (s.excluded[key]) course[key] = true; }); s.excluded = course; }   // older saves kept skips per class
-    if (s.threshold == null) s.threshold = s.accelerated ? (st.thrAcc || DEFAULT_THR.acc) : (st.thrOn || DEFAULT_THR.on);
+    if (s.threshold == null) s.threshold = s.prep === 'acc' ? (st.thrAcc || DEFAULT_THR.acc) : (st.thrOn || DEFAULT_THR.on);
     s.threshold = clampThr(s.threshold);
     // ignored used to be keyed by normalized name; now by "Name#occurrence"
     const ig = {}; for (const key in (s.ignored || {})) { if (key.includes('#')) ig[key] = true; else ixlList(s).forEach(x => { if (x.n === key) ig[x.key] = true; }); }
@@ -162,8 +162,8 @@ function clampThr(v, fallback) { const n = parseInt(v, 10); return isNaN(n) ? (f
 let saveCount = 0;
 const noCache = s => { if (!s || typeof s !== 'object') return s; const o = {}; for (const k of Object.keys(s)) if (k[0] !== '_') o[k] = s[k]; return o; };   // _keys and the like are caches, rebuilt on the next paint: saving them made the same work look changed
 function stateForSave() { const secs = {}; for (const k of Object.keys(state.sections)) { const s = noCache(state.sections[k]); const pool = s && s.pool && state.pools && state.pools[s.prep]; secs[k] = pool && s.skills === pool.skills ? { ...s, skills: [], poolSkills: true } /* [] not null: an earlier Tally.html drops a class whose skills aren't a list */ : s; } return { ...state, sections: secs }; }
-function save() { saveCount++; if (extPending && !(($('#modal') || {}).classList && !$('#modal').classList.contains('hidden'))) settleExt();   // another tab saved while something was being typed here: its changes and this tab's go out together (a dialog still open holds the old objects, so that case waits for it to close: extIdle)
-  try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save: this browser\'s storage is full. Remove a gradebook or photos, or clear old classes; your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
+function save() { if (wiping) return false; saveCount++; if (extPending && !(($('#modal') || {}).classList && !$('#modal').classList.contains('hidden')) && !settingsHolding()) settleExt();   /* round 2 (DAT-01): nor while Settings holds unsaved edits; leaving Settings or its own Save settles */   // another tab saved while something was being typed here: its changes and this tab's go out together (a dialog still open holds the old objects, so that case waits for it to close: extIdle)
+  try { localStorage.setItem(LS_KEY, JSON.stringify(stateForSave())); return true; } catch (e) { if (storageFragile && !/quota/i.test(String(e && e.name + e.message))) return false; /* the strip under the header already says so */ lastSaveFail = Date.now(); toast(e && /quota/i.test(String(e.name + e.message)) ? 'Could not save: this browser\'s storage is full. Make a Full save now (Ctrl+S): it keeps everything. What fills the room is each class\'s IXL history, best scores and grade history; removing a class you no longer teach frees some. Your changes stay until you close the tab.' : 'Could not save to this browser (storage blocked). Your data stays until you close the tab.', true, 8000); return false; } }
 
 /* ---------- names ---------- */
 // Two students with the same name in one gradebook: every screen finds a student by name, so both showed the first
@@ -197,14 +197,15 @@ function ixlList(sec) {
     if (name.includes(',')) { const [l, f] = name.split(',', 2); n = norm(f + ' ' + l); }
     const k = seen[n] = (seen[n] || 0) + 1;
     const tokens = stripSuffix(n.split(' ').filter(Boolean));
-    return { i, name, n, key: name + '#' + (k - 1), first: tokens[0] || '', last: tokens[tokens.length - 1] || '', tokens, dup: false };
+    const pk = sec.pool && !sec.fromSection && Array.isArray(sec.poolKeys) && sec.poolKeys.length === sec.students.length ? sec.poolKeys[i] : null;   /* 15 Nov 2026 audit (IMP-01): a carved class keys its students by the course export's keys, so two students of one name keep their own rows */
+    return { i, name, n, key: pk || name + '#' + (k - 1), first: tokens[0] || '', last: tokens[tokens.length - 1] || '', tokens, dup: false };
   }).map((x, _, arr) => { x.dup = arr.some(y => y !== x && y.n === x.n); return x; });
 }
 // Roster text -> [{display,last,first,alias}]. Alias syntax on a line:  Last, First = IXL Name
 const HEADER_WORDS = /^(student|students|student name|name|names|last name|first name|last|first|#|no\.?|id|grade|period|section)$/i;
 function parseRosterText(text) {
   const out = [];
-  for (let raw of String(text || '').split(/\r?\n/)) {
+  for (let raw of String(text || '').split(/\r\n?|\n/)) {   // a bare CR is a line break too (15 Nov 2026 audit)
     let line = raw.trim(); if (!line) continue;
     let alias = '';
     const eq = line.match(/^(.*?[A-Za-z].*?)\s*=\s*([A-Za-z][^\t]*)$/);
@@ -273,7 +274,10 @@ function merge3(base, mine, theirs) {
   return mine;
 }
 const typingNow = () => { const dirty = el => !!el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|button|file|range|color|submit)$/i.test(el.type || ''))) && el.value !== el.defaultValue;
-  const m = $('#modal'); return (m && !m.classList.contains('hidden') && [...m.querySelectorAll('textarea, input')].some(dirty)) || dirty(document.activeElement); };
+  const m = $('#modal'); return (m && !m.classList.contains('hidden') && [...m.querySelectorAll('textarea, input')].some(dirty)) || dirty(document.activeElement)
+    || settingsHolding(); };   /* 15 Nov 2026 audit (DAT-01): an edit left unsaved on the Settings page counts too, focused or not */
+// the Settings page is open with edits not yet saved: its handlers hold the class objects, so another tab's save must not swap them out (it waits, as for an open dialog)
+function settingsHolding() { if (view.mode !== 'settings' || !settingsUnsaved) return false; try { return !!settingsUnsaved(); } catch (e) { return false; } }
 // Take the waiting save in. Returns true when this tab's state was replaced by the merge.
 function settleExt() {
   if (!extPending) return false; const { base, theirs } = extPending; extPending = null;
@@ -282,6 +286,7 @@ function settleExt() {
 function takeExt(raw) { const s2 = hydrate(JSON.parse(raw)); if (!s2) return; const m = $('#modal'); if (m && !m.classList.contains('hidden')) { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; }
   adopt(s2); printCache = { n: -1, v: '' }; saveCount++; render(); toast('Updated with the changes made in another Tally tab.', false, 3500); }
 window.addEventListener('storage', e => {
+  if (e.key === LS_KEY && e.newValue == null && !wiping && !bootError) { wiping = true; extPending = null; location.reload(); return; }   /* 15 Nov 2026 audit (DAT-09): "Clear all Tally data" in another tab: this tab stops saving and starts over empty, so it can't write the cleared data back */
   if (e.key !== LS_KEY || e.newValue == null || wiping || bootError) return;
   try {
     if (extPending || typingNow()) { if (!extPending) extPending = { base: JSON.stringify(stateForSave()) }; extPending.theirs = e.newValue;
@@ -470,7 +475,7 @@ function eff(sec, k, si) {
   const b = sec.best[skillKey(sec.skills[k])]; const bv = b ? b[ixlKeyAt(sec, si)] : undefined;
   return bv == null ? cur : cur == null ? bv : Math.max(cur, bv);
 }
-function ixlKeyAt(sec, si) { if (!sec._keys || sec._keys.length !== sec.students.length) sec._keys = ixlList(sec).map(x => x.key); return sec._keys[si]; }
+function ixlKeyAt(sec, si) { if (!sec._keys || sec._keysOf !== sec.students) { sec._keys = ixlList(sec).map(x => x.key); sec._keysOf = sec.students; } return sec._keys[si]; }   // the cache belongs to the students list it was built from (15 Nov 2026 audit, IXL-02: a same-size list once read the old keys)
 function mergeBest(sec) {
   sec.best = sec.best || {};
   sec.skills.forEach((sk, k) => { const key = skillKey(sk); const row = sec.best[key] = sec.best[key] || {}; sec.scores[k].forEach((v, si) => { if (v == null) return; const kk = ixlKeyAt(sec, si); if (row[kk] == null || v > row[kk]) row[kk] = v; }); });
@@ -517,8 +522,11 @@ async function importFiles(files) {
         deferred.push({ f, gb });   // attached after every IXL grid in this drop has been imported, so a mixed drop works in any order
         continue;
       }
+      if (!g.skills.length) throw new Error('This IXL Score Grid has no skill rows, so there is nothing to import. Export the Score Grid from IXL again and import that file.');   // 15 Nov 2026 audit: it made an empty class and said "Imported 1 file"
       const meta = parseIxlFilename(f.name);
       if (!SAFE_KEY(meta.key)) throw new Error('unusable file name');
+      if (meta.lastYear && g.students.length) { const whose = !meta.section ? `the ${meta.accelerated ? 'accelerated' : 'on-level'} course` : (state.sections[meta.key] || periodTwin(meta) || { label: meta.label }).label;   /* 15 Nov 2026 audit (IMP-03): nothing read this part of the name */
+        if (!await ask(`${f.name}\n\nThis is last school year's IXL Score Grid ("Last-School-Year" in its name). Importing it puts last year's scores in place of this year's for ${whose}: the class shows last year's file as its current one, and the history gets a week that is not this year's. Kept best scores stay. To use this year's scores, export the Score Grid again with "This school year" and import that file. Import last year's file anyway?`, 'Import last year\'s file')) { skipped++; continue; } }
       if (!meta.section && g.students.length) {   // a course-wide export (no section code): the pool every class of that course is carved from
         // Which course: the file name says, but a renamed file can't (audit, 22 Oct 2026: "Accel IXL 10-20.csv" was read as
         // on-level and put the on-level classes on the accelerated plan). The skills themselves settle it when a course
@@ -548,8 +556,9 @@ async function importFiles(files) {
         const width = Math.max(...rows.slice(0, 60).map(r => r.length));
         students = []; for (let c = first; c < width; c++) students.push('Student ' + (c - first + 1));
         const hi = rows.indexOf(hdr);
-        g.scores = []; for (let i = hi + 1; i < rows.length; i++) { const r = rows[i] || []; if (r[cSkill] == null || String(r[cSkill]).trim() === '') continue; g.scores.push(students.map((_, j) => asScore(r[first + j]))); }
+        { const h2 = hdr.slice(); students.forEach((n, j) => { h2[first + j] = n; }); const g2 = parseIxlGrid(rows.map((r, i) => i === hi ? h2 : r)); g.skills = g2.skills; g.scores = g2.scores; }   // 15 Nov 2026 audit (IMP-02): the same reader with the names filled in, so a skill listed twice folds into one row as it does everywhere else
         placeholder = true;
+        if (!students.length) throw new Error(`This IXL Score Grid has no student columns Tally can read${hdr.some(v => typeof v === 'string' && v.includes(';')) ? ': its columns are separated by semicolons (;), not commas' : ''}. Export the Score Grid from IXL again and import that file without saving it in another program first.`);   // 15 Nov 2026 audit: a semicolon file made an empty class and said "Imported 1 file"
       }
       const allBlank = !g.scores.some(row => row.some(v => v != null));
       /* A class's own IXL export for a period Tally already has (made from the course export and a gradebook, so keyed
@@ -571,7 +580,7 @@ async function importFiles(files) {
         accelerated: meta.accelerated,
         threshold: clampThr(keep.threshold != null ? keep.threshold : (meta.accelerated ? DEFAULT_THR.acc : DEFAULT_THR.on)),
         date: meta.date, file: f.name, importedAt: new Date().toISOString(),
-        students, skills: g.skills, scores: g.scores,
+        students, skills: g.skills, scores: g.scores, _keys: null,   // 15 Nov 2026 audit (IXL-02): never the previous export's key cache
         roster: keep.roster || '', rosterAt: keep.rosterAt || null, skipRoster: !!keep.skipRoster,
         excluded: state.skips[keep.prep || (meta.accelerated ? 'acc' : 'on')], ignored: keep.ignored || {}, aliases: keep.aliases || {}, hiddenUnits: {}, studentSkips: keep.studentSkips || {},
         history: keep.history || [], team: keep.team || '', prep: keep.prep || (meta.accelerated ? 'acc' : 'on'),
@@ -645,6 +654,7 @@ async function importFiles(files) {
     if (sec.pool) { materialize(sec); if (!ok.includes(sec)) ok.push(sec); }
     gbImported.push({ key: sec.key, label: sec.label, text: `${plural(gb.assignments.length, 'assignment')}, ${plural(gb.students.length, 'student')}${rosterNote}${cats.proved ? ` · ${cats.proved === gb.assignments.length ? 'every category' : plural(cats.proved, 'category')} confirmed by the Focus grade column` : gb.overall ? '' : ' · no Grade column, so categories are guesses'}${keptNote}${qNote}${how}` });
   } catch (e) { fails.push(f.name + ': ' + e.message); console.error(e); } }
+  { const preps = new Set(gbImported.map(g => state.sections[g.key]).filter(x => x && x.pool).map(x => x.prep)); if (preps.size) state.order.map(k => state.sections[k]).filter(x => x && x.pool && preps.has(x.prep)).forEach(x => materialize(x)); }   /* 15 Nov 2026 audit (IMP-06): a class's carve reads the other classes' rosters, so carve every class of a course again once this drop's rosters are all in (not added to `ok`: no "IXL export" line for a class that kept its own) */
   state.order.sort((a, b) => state.sections[a].label.localeCompare(state.sections[b].label, undefined, { numeric: true }));
   const workingIn = defaultWorkingIn();
   // The result stays on the Overview until the next import (one line per file, failures in red); the toast is one line.
@@ -723,15 +733,17 @@ function assignedIdx(sec) { const out = []; unitsOf(sec).forEach(u => { if (u.as
 // Snapshots are re-taken whenever the basis changes (skips, goal), so the newest one always reflects the grid.
 function snapshot(sec) {
   if (sec.placeholder) return;
-  const t = sec.threshold, per = {}, pu = {}, ua = {}; const list = ixlList(sec); const units = unitsOf(sec);
+  const t = sec.threshold, per = {}, pu = {}, ua = {}, own = {}; const list = ixlList(sec); const units = unitsOf(sec);   /* 15 Nov 2026 audit (IXL-13): `own` = a student's own counted total for a unit, kept only where it differs from `ua` */
   list.forEach(x => per[x.key] = 0);
-  units.forEach(u => { const m = {}; ua[u.name] = u.active.length; list.forEach((x, si) => { let n = 0; activeFor(sec, u, si).forEach(k => { const v = eff(sec, k, si); if (v != null && v >= t) n++; }); m[x.key] = n; if (u.assigned) per[x.key] += n; }); pu[u.name] = m; });
-  const snap = { date: sec.date || localDayOf(sec.importedAt), at: sec.importedAt, thr: t, students: sec.students.length, per, pu, ua };
-  sec.history = (sec.history || []).filter(h => h.date !== snap.date).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua }));
+  units.forEach(u => { const m = {}; ua[u.name] = u.active.length; list.forEach((x, si) => { let n = 0; const act = activeFor(sec, u, si); if (act.length !== u.active.length) (own[u.name] = own[u.name] || {})[x.key] = act.length; act.forEach(k => { const v = eff(sec, k, si); if (v != null && v >= t) n++; }); m[x.key] = n; if (u.assigned) per[x.key] += n; }); pu[u.name] = m; });
+  const snap = { date: sec.date || localDayOf(sec.importedAt), at: sec.importedAt, thr: t, students: sec.students.length, per, pu, ua, own, best: !!state.settings.useBest };   /* 15 Nov 2026 audit (IXL-07): the best-score basis the snapshot was counted on */
+  sec.history = (sec.history || []).filter(h => h.date !== snap.date).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua, ...(h.own ? { own: h.own } : {}), ...(h.best != null ? { best: h.best } : {}) }));
   sec.history.push(snap); sec.history.sort((a, b) => a.date.localeCompare(b.date));
   if (sec.history.length > 60) sec.history = sec.history.slice(-60);
 }
 // Every class of a course shares skips, so a skip re-snapshots all of them.
+/* 15 Nov 2026 audit (IXL-07): best score on or off changes every count, so every class's newest snapshot is re-taken */
+function setUseBest(v) { v = !!v; const was = !!state.settings.useBest; state.settings.useBest = v; if (v !== was) state.order.map(k => state.sections[k]).forEach(x => { if (x && !x.placeholder) snapshot(x); }); }
 function resnapshotPrep(prep) { state.order.map(k => state.sections[k]).forEach(s => { if (s.prep === prep && !s.placeholder) snapshot(s); }); }
 // Movement between two snapshots on the units assigned NOW. Returns per-student deltas for students in both, or a reason
 // they can't be compared: 'thr' (goal changed), 'basis' (a unit's counted skills changed, or an older snapshot without
@@ -741,10 +753,14 @@ function snapTotals(sec, h) { if (!h.pu) return Object.values(h.per); const unit
 function movement(sec, cur, prev, openOnly) {
   if (!cur || !prev) return null;
   if (prev.thr !== cur.thr) return { reason: 'thr' };
+  if (prev.best != null && cur.best != null && prev.best !== cur.best) return { reason: 'basis' };   /* 15 Nov 2026 audit (IXL-07): best score switched between the two snapshots; snapshots saved without the field are read as before */
   const units = unitsOf(sec).filter(u => u.assigned && !(openOnly && unitClosed(sec, u)));
   if (!prev.pu || !cur.pu || units.some(u => !prev.pu[u.name] || !cur.pu[u.name] || (prev.ua || {})[u.name] !== (cur.ua || {})[u.name])) return { reason: 'basis' };
   const deltas = {};
-  Object.keys(cur.per).forEach(key => { if (prev.per[key] == null) return; let now = 0, before = 0; units.forEach(u => { now += cur.pu[u.name][key] || 0; before += prev.pu[u.name][key] || 0; }); deltas[key] = { d: now - before, now }; });
+  /* 15 Nov 2026 audit (IXL-13): a student whose own list changed between the two snapshots (a skill skipped just for them) isn't measured; snapshots saved before `own` existed are read as before */
+  const ownOf = (h, u, key) => { const v = ((h.own || {})[u.name] || {})[key]; return v == null ? (h.ua || {})[u.name] : v; };
+  const listChanged = key => !!(prev.own && cur.own) && units.some(u => ownOf(prev, u, key) !== ownOf(cur, u, key));
+  Object.keys(cur.per).forEach(key => { if (prev.per[key] == null || listChanged(key)) return; let now = 0, before = 0; units.forEach(u => { now += cur.pu[u.name][key] || 0; before += prev.pu[u.name][key] || 0; }); deltas[key] = { d: now - before, now }; });
   return { reason: null, deltas };
 }
 // "Assigned" is defined once per prep: the union of units no class in that prep has hidden.
@@ -755,9 +771,11 @@ function assignedUnitsForPrep(prep) {
 }
 function leaderboardData() {
   const out = []; const assignedByPrep = { acc: assignedUnitsForPrep('acc'), on: assignedUnitsForPrep('on') };
-  // One baseline date per prep, so every class in a league is measured over the same window even when they
-  // were imported on different days: the latest date on which every class (that has any earlier snapshot)
-  // already had one. Each class then compares its newest snapshot with its latest snapshot on or before that date.
+  // One baseline date per prep: each class with two or more imports has a previous import (its latest snapshot before
+  // its newest), and the baseline is the earliest of those, so it reaches back to the class whose previous import is
+  // oldest. Each class then compares its newest snapshot with its latest snapshot on or before that date. A class whose
+  // earlier imports all came after the baseline has nothing on or before it to start from: it is not measured this
+  // week, ranks with the classes that have no baseline, and reads "joined the race after <baseline>" (CHT-09, 15 Nov 2026).
   const baseline = {};
   ['acc', 'on'].forEach(prep => {
     const dates = state.order.map(k => state.sections[k]).filter(s => s.prep === prep && !s.placeholder && s.history && s.history.length > 1)
@@ -774,18 +792,19 @@ function leaderboardData() {
     const masteredAll = done;   // skills at goal on the assigned units (the same basis as "% complete")
     const cur = s.history[s.history.length - 1];
     const prev = cur && baseline[s.prep] ? s.history.filter(h => h.date <= baseline[s.prep] && h.date < cur.date).pop() : null;
+    const joinedAfter = !prev && cur && baseline[s.prep] && s.history.some(h => h.date < cur.date) ? baseline[s.prep] : null;   // imported before, but only after the baseline
     let gain = null, active = null, movers = 0, measured = 0, thrChanged = false, basisChanged = false;
     const mv = movement(s, cur, prev);
     if (mv && mv.reason === 'thr') thrChanged = true;
     else if (mv && mv.reason === 'basis') basisChanged = true;
     else if (mv) { let g = 0, a = 0, m = 0; list.forEach(x => { const e = mv.deltas[x.key]; if (!e) return; m++; g += e.d; if (e.d > 0) a++; }); if (m) { gain = g / m; active = a / m; movers = a; measured = m; } }
     out.push({ key: k, prep: s.prep, name: s.label, label: s.label, students: n, assignedUnits: aUnits.map(u => u.short), assignedSkills: aUnits.reduce((a, u) => a + u.active.length, 0), done, possible, doneEach: done / n,
-      completion: possible ? done / possible : 0, masteredAll, gain, active, movers, measured, thrChanged, basisChanged, prevDate: prev ? prev.date : null, date: s.date });
+      completion: possible ? done / possible : 0, masteredAll, gain, active, movers, measured, thrChanged, basisChanged, prevDate: prev ? prev.date : null, joinedAfter, date: s.date });
   }
   // The race is MOVEMENT: the share of the class that reached at least one more skill since the league's baseline,
   // with average skills gained as the tiebreak and completion after that. Reaching the goal and stopping earns nothing
   // next week, a class that starts behind can win, and one student can't swing it. Competition ranking (1, 1, 3) on ties.
-  // Classes with no baseline yet (first week, or the goal changed) rank by completion below the classes with movement.
+  // Classes with no baseline yet (first week, joined after the baseline, or the goal changed) rank by completion below the classes with movement.
   // The furthest-along class in each league is tagged so steady progress is still seen.
   ['acc', 'on'].forEach(p => {
     const rows = out.filter(r => r.prep === p); if (!rows.length) return;
@@ -815,8 +834,8 @@ function lbMarkup(data, focus) {
   if (focus === 'acc' || focus === 'on') data = data.filter(r => r.prep === focus);
   if (!data.length) return `<div class="lbEmpty">Import at least one class to start the race.</div>`;
   const pct = x => Math.round(x * 100);
-  const asOf = data.map(r => r.date).filter(Boolean).sort().pop();
-  const signed = x => (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1);
+  const asOf = data.map(r => r.date);   // every class's export date: the line gives both ends when they differ (CHT-13)
+  const signed = x0 => { const x = tenth(x0); return (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1); };
   // "% of class moved up" is the headline, but a 1- or 2-student remainder would point at those students, so the
   // number is shown only when everyone moved or at least three didn't; otherwise it reads "nearly all".
   const headline = r => {
@@ -836,7 +855,7 @@ function lbMarkup(data, focus) {
       <div class="lbMain">
         <div class="lbName">${esc(shortName(r))}${r.tied ? ' <span class="lbTie">tied</span>' : ''}${r.lead ? ' <span class="lbTie lead">furthest along</span>' : ''}</div>
         <div class="lbBarRow" title="${r.done.toLocaleString()} of ${r.possible.toLocaleString()} skill-points · ${plural(r.students, 'student')}"><div class="lbBarWrap"><div class="lbBar" style="--w:${pct(r.completion)}%"></div></div>${r.active == null ? '' : `<span class="lbDone">${pct(r.completion)}% complete</span>`}</div>
-        <div class="lbLine ${r.gain != null && !r.thrChanged && !r.basisChanged ? 'gain' : ''}">${r.thrChanged ? 'goal changed, so a fresh start this week' : r.basisChanged ? 'skills counted changed, so a fresh start this week' : r.gain != null ? `${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}` : 'first week in the race'}</div>
+        <div class="lbLine ${r.gain != null && !r.thrChanged && !r.basisChanged ? 'gain' : ''}">${r.thrChanged ? 'goal changed, so a fresh start this week' : r.basisChanged ? 'skills counted changed, so a fresh start this week' : r.gain != null ? `${signed(r.gain)} skills per student since ${fmtDate(r.prevDate)}` : r.joinedAfter ? `joined the race after ${fmtDate(r.joinedAfter)}` : 'first week in the race'}</div>
       </div>
       <div class="lbPct">${headline(r)}</div>
     </div>`;
@@ -849,7 +868,7 @@ function lbMarkup(data, focus) {
     </section>`;
   };
   const one = !multi && leagues[0] ? leagues[0].rows[0].assignedUnits : null;
-  return `${boardHead('Race', [one ? (one.length ? 'counting ' + unitSpan(one) : 'nothing assigned yet') : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
+  return `${boardHead('Race', [one ? (one.length ? 'counting ' + unitSpan(one) : 'nothing assigned yet') : '', asOfLine(asOf)])}
     <div class="lbLeagues ${multi ? 'two' : ''}" style="--rows:${rowsMax}">${leagues.map(league).join('')}</div>`;
 }
 const LB_CSS = `
@@ -980,12 +999,13 @@ function labSeries(prep, id, forcePct) {
     else if (id === 'grade:course') { if (Array.isArray(s.boardGrades)) { vals = s.boardGrades.slice(); } else { const o = openSec(s); if (!o || !o.grades || !o.grades.assignments.length) return null; vals = gradeAll(o).map(r => r && r.rounded != null ? r.rounded : null); } missing = vals.filter(v => v == null).length; max = 100; unit = 'course grade'; grade = true; }   // a Board file carries the grades as one shuffled list
     else return null;
     let pct = grade;   // a course grade is a percent already
-    if (!grade && (forcePct || state.settings.labPct) && max > 0 && unit !== 'SmartScore') { vals = vals.map(v => v == null ? null : Math.round(v / max * 100)); unit = '% of ' + unit; max = 100; pct = true; }   // percent of the maximum, whole numbers
+    if (!grade && (forcePct || state.settings.labPct) && max > 0 && unit !== 'SmartScore') { vals = vals.map(v => v == null ? null : roundPct(v / max * 100));   /* round 2: half up with the grade engine's slack, so 23 of 40 is 58 */ unit = '% of ' + unit; max = 100; pct = true; }   // percent of the maximum, whole numbers
     const st = stats(vals) || { n: 0 };
     return { name: s.team || s.label, st, max, missing, excused, unit, total: vals.length, kind: grade ? 'gb' : id.split(':')[0], values: vals, thr: s.threshold, sec: s, pct, grade, cells, qUnits, each };
   }).filter(Boolean);
 }
-const fmtN = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
+/* 15 Nov 2026 audit (CHT-14): a value with at most two decimals (a median or quartile of data in tenths, 2.25) is shown exactly; anything finer to the nearest tenth, half up (HLT-03). Whole-number data (the % view) shows as before. */
+const fmtN = x => Number.isInteger(x) ? String(x) : Math.abs(x * 100 - Math.round(x * 100)) < 1e-6 ? String(+x.toFixed(2)) : fmt1(x);
 function boxSVG(st, scale, w, o) {
   const U = o.pct ? '%' : '';
   // horizontal box plot above an optional dot plot, on a shared scale
@@ -1008,7 +1028,7 @@ function boxSVG(st, scale, w, o) {
   h += `<line x1="${X(wLo)}" y1="${boxY + 6}" x2="${X(wLo)}" y2="${boxY + bh - 6}" class="labWhisk"/><line x1="${X(wHi)}" y1="${boxY + 6}" x2="${X(wHi)}" y2="${boxY + bh - 6}" class="labWhisk"/>`;
   h += `<rect x="${X(st.q1)}" y="${boxY}" width="${Math.max(X(st.q3) - X(st.q1), 2)}" height="${bh}" rx="4" class="labBox"><title>Q1 ${fmtN(st.q1)}${U} · median ${fmtN(st.median)}${U} · Q3 ${fmtN(st.q3)}${U} · IQR ${fmtN(st.iqr)}${U}</title></rect>`;
   h += `<line x1="${X(st.median)}" y1="${boxY}" x2="${X(st.median)}" y2="${boxY + bh}" class="labMed"><title>Median ${fmtN(st.median)}${U}</title></line>`;
-  if (o.mean) h += `<line x1="${X(st.mean)}" y1="${mid}" x2="${X(st.mean)}" y2="${axisY - 12}" class="labMeanLine"/><g transform="translate(${X(st.mean)},${mid}) rotate(45)"><rect x="-6" y="-6" width="12" height="12" class="labMean"><title>Mean ${st.mean.toFixed(1)}</title></rect></g>`;
+  if (o.mean) h += `<line x1="${X(st.mean)}" y1="${mid}" x2="${X(st.mean)}" y2="${axisY - 12}" class="labMeanLine"/><g transform="translate(${X(st.mean)},${mid}) rotate(45)"><rect x="-6" y="-6" width="12" height="12" class="labMean"><title>Mean ${fmt1(st.mean)}${U}</title></rect></g>`;
   if (o.tukey) st.outliers.forEach(o2 => { h += `<circle cx="${X(o2)}" cy="${mid}" r="6" class="labOut"><title>Outlier ${fmtN(o2)}${U}</title></circle>`; });
   if (o.dots) Object.entries(counts).forEach(([v, c]) => { for (let i = 0; i < c; i++) h += `<circle cx="${X(+v)}" cy="${dotBase - i * rowH}" r="${r}" class="labDot"><title>${fmtN(+v)} · ${c} student${c > 1 ? 's' : ''}</title></circle>`; });
   if (o.stats) h += `<text x="${X(st.median)}" y="${boxY - 7}" class="labLbl mid">median = ${fmtN(st.median)}${U}</text><text x="${X(st.q1) - 4}" y="${boxY + bh + 15}" class="labLbl end">Q1 = ${fmtN(st.q1)}${U}</text><text x="${X(st.q3) + 4}" y="${boxY + bh + 15}" class="labLbl">Q3 = ${fmtN(st.q3)}${U}</text>`;
@@ -1024,16 +1044,16 @@ function valuesMarkup(st, tukey, pct) {
   const chip = (x, cls) => `<span class="${cls}${tukey && st.outliers.includes(x) ? ' out' : ''}">${fmtN(x)}${pct ? '%' : ''}</span>`;
   const group = (arr, cls, label) => arr.length ? `<div class="labHalf"><div class="labChips">${arr.map((x, i) => chip(x, medIdx(arr).includes(i) ? 'q' : '')).join('')}</div><small>${label}</small></div>` : '';
   return `<div class="labValues">
-    ${group(lower, 'q', `lower half · median = Q1 = ${fmtN(st.q1)}`)}
-    ${mid.length ? `<div class="labHalf mid"><div class="labChips">${chip(mid[0], 'm')}</div><small>middle value = median</small></div>` : `<div class="labHalf mid"><div class="labChips"><span class="m gap">${fmtN(st.median)}</span></div><small>median = mean of the two middle values</small></div>`}
-    ${group(upper, 'q', `upper half · median = Q3 = ${fmtN(st.q3)}`)}
+    ${group(lower, 'q', `lower half · median = Q1 = ${fmtN(st.q1)}${pct ? '%' : ''}`)}
+    ${mid.length ? `<div class="labHalf mid"><div class="labChips">${chip(mid[0], 'm')}</div><small>middle value = median</small></div>` : `<div class="labHalf mid"><div class="labChips"><span class="m gap">${fmtN(st.median)}${pct ? '%' : ''}</span></div><small>median = mean of the two middle values</small></div>`}
+    ${group(upper, 'q', `upper half · median = Q3 = ${fmtN(st.q3)}${pct ? '%' : ''}`)}
   </div>`;
 }
 // One class's plot in the chosen form. Box plots keep their own drawing (whiskers, outliers, dots); the rest use charts.js.
 function labPlot(kind, x, scale, id, o) {
   const vals = x.values.filter(v => v != null); const max = Math.max(scale, 1);
   if (x.kind === 'gb' && !o.full && !FOCUS_KINDS.includes(kind)) return `<div class="labNotYet">Focus scores are shown as a box plot, histogram, circle graph, line graph or class averages only.</div>`;
-  const mk = { stack: o.stack, top: o.top, share: o.share, ...(o.avg ? { mean: x.st.mean, meanLabel: 'Average ' + fmtAvg(x) } : {}) };
+  const mk = { stack: o.stack, top: o.top, share: o.share, ints: o.ints, ...(o.avg ? { mean: x.st.mean, meanLabel: 'Average ' + fmtAvg(x) } : {}) };
   if (kind === 'dots') return chartDots(vals, max, mk);
   if (kind === 'hist') return chartHist(vals, max, o.bin || 0, mk);
   if (kind === 'stem') return chartStem(vals, max);
@@ -1043,17 +1063,20 @@ function labPlot(kind, x, scale, id, o) {
 }
 // A row's circle-graph slices: at goal / below / not started for a skill, letter grades for Focus scores, else four
 // quarters of the maximum, red to green. `chip` is the short name under a pie in the grid, beside its count.
-function pieParts(x) {
+function pieParts(x, total) {   // total: one maximum for every pie drawn together (our own data, round 2), so each is quarters of the same thing
   const vals = x.values.filter(v => v != null);
   if (x.cells) { const goals = [...new Set(x.thrs || [x.thr])];   // the quarter's IXL: slices count skills (each student's own list), not students
     return [{ label: goals.length === 1 ? 'At goal (' + goals[0] + '+)' : 'At goal (each class\'s goal)', chip: 'At goal', value: x.cells.at, color: QUARTER_COLORS[3] }, { label: 'Below goal', chip: 'Below', value: x.cells.below, color: QUARTER_COLORS[1] }, { label: 'Not started', chip: 'Not started', value: x.cells.none, color: NEUTRAL_FILL }]; }
   if (x.kind === 'skill') { let at = 0, below = 0; x.values.forEach((v, i) => { if (v == null) return; if (v >= (x.thrs ? x.thrs[i] : x.thr)) at++; else below++; }); const goals = [...new Set(x.thrs || [x.thr])];
     return [{ label: goals.length === 1 ? 'At goal (' + goals[0] + '+)' : 'At goal (each class\'s goal)', chip: 'At goal', value: at, color: QUARTER_COLORS[3] }, { label: 'Below goal', chip: 'Below', value: below, color: QUARTER_COLORS[1] }, { label: 'Not started', chip: 'Not started', value: x.missing, color: NEUTRAL_FILL }]; }
   if (x.kind === 'gb' && x.max) { const b = { A: 0, B: 0, C: 0, D: 0, F: 0 }; vals.forEach(v => b[letterOf(Math.round(v / x.max * 100))]++); return ['A', 'B', 'C', 'D', 'F'].map(k => ({ label: k, short: k, chip: k, value: b[k], color: LETTER_COLORS[k] })); }
-  const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.min(3, Math.floor(v / (x.max || 1) * 4))]++); const m = x.max || 1;
+  const m = total || x.max || 1; const q = [0, 0, 0, 0]; vals.forEach(v => q[Math.max(0, Math.min(3, Math.floor(v / m * 4)))]++); const low = Math.min(0, Math.floor(Math.min(0, ...vals)));   /* 15 Nov 2026 audit (CHT-06): a value below 0 is in the first slice, not dropped, and that slice's range says so */
   if (x.pct) return [0, 1, 2, 3].map(i => ({ label: ['Under 25%', '25–49%', '50–74%', '75–100%'][i], chip: ['0–24%', '25–49%', '50–74%', '75–100%'][i], value: q[i], color: QUARTER_COLORS[i] }));
   // Quarter i holds whole-number scores from ceil(m·i/4) up to the next quarter's start, so no score sits in two ranges.
-  const edge = i => Math.ceil(m * i / 4); const rng = i => { const lo = edge(i), hi = i === 3 ? m : edge(i + 1) - 1; return hi < lo ? 'no whole score' : lo === hi ? `${lo}` : `${lo}–${hi}`; };
+  /* data with decimals (CHT-06, round 2): each slice is labelled by its real edges, "1.175 to under 2.35", so it names every value in it */
+  if (vals.some(v => !Number.isInteger(v)) || !Number.isInteger(m)) { const f = e => String(+e.toFixed(4)); const e = i => i ? m * i / 4 : Math.min(0, ...vals); const rd = i => i === 3 ? `${f(e(3))} to ${f(m)}` : `${f(e(i))} to under ${f(m * (i + 1) / 4)}`;
+    return [0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${rd(i)} of ${f(m)})`, chip: rd(i), value: q[i], color: QUARTER_COLORS[i] })); }
+  const edge = i => Math.ceil(m * i / 4); const rng = i => { const lo = i ? edge(i) : low, hi = i === 3 ? m : edge(i + 1) - 1; return hi < lo ? 'no whole score' : lo === hi ? `${lo}` : `${lo}–${hi}`; };
   return [0, 1, 2, 3].map(i => ({ label: `${['Under a quarter', 'A quarter to half', 'Half to three quarters', 'Three quarters or more'][i]} (${rng(i)} of ${m})`, chip: rng(i), value: q[i], color: QUARTER_COLORS[i] }));
 }
 // The Board's heading. The title is the thing being shown; the line under it is an ordinary phrase — who, what is
@@ -1065,8 +1088,10 @@ const unitSpan = names => names.length > 1 && names.every((n, i) => /^Unit \d+$/
 const LAB_KINDS = [['box', 'Box plot'], ['dots', 'Dot plot'], ['hist', 'Histogram'], ['stem', 'Stem-and-leaf'], ['bar', 'Bar graph'], ['circle', 'Circle graph'], ['line', 'Line graph'], ['avg', 'Class averages'], ['corr', 'IXL and a test']];
 // Focus data (an assignment's scores, the course grade) stays aggregate on the Board: these forms only, never one mark per student.
 const FOCUS_KINDS = ['box', 'hist', 'circle', 'line', 'avg', 'corr']; /* IXL and a test draws groups of 3 or more, never a student */ const focusSet = id => /^(gb|grade):/.test(id || '');
-const labAsOf = (secs, focus) => secs.map(s => focus ? (s.grades && s.grades.importedAt ? localDayOf(s.grades.importedAt) : null) : s.date).filter(Boolean).sort().pop();   // a Focus data set is as of its gradebook, not the IXL export
-const fmtAvg = x => x.st.mean.toFixed(1) + (x.pct ? '%' : '');   // a class average, one decimal, everywhere it is shown
+const labAsOf = (secs, focus) => secs.map(s => focus ? (s.grades && s.grades.importedAt ? localDayOf(s.grades.importedAt) : null) : s.date).filter(Boolean);   // a Focus data set is as of its gradebook, not the IXL export
+/* 15 Nov 2026 audit (CHT-13): the dates the drawn classes' data are from, both ends when they differ ("as of Oct 30 to Nov 13"), so a class an export behind is not passed off as current */
+const asOfLine = ds => { const d = ds.filter(Boolean).sort(); return !d.length ? '' : 'as of ' + fmtDate(d[0]) + (d[0] === d[d.length - 1] ? '' : ' to ' + fmtDate(d[d.length - 1])); };
+const fmtAvg = x => fmt1(x.st.mean) + (x.pct ? '%' : '');   // a class average, one decimal, everywhere it is shown
 const labShort = n => String(n).replace(/\s*·\s*(Accelerated|On-level)$/i, '');
 /* ---------- Comparing the two courses (Croix, 23 Oct 2026: "show the on-level kids directly their comparison to
    accelerated in terms of specific (let me choose) assignment comparison and still get the full suite of graphs") ----------
@@ -1212,12 +1237,12 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     // a row with no line says why, as in every other form (a class too small to show, or one with nothing for this yet)
     const offL = (both && rowsBy === 'class' ? [] : seriesAll).filter(x => x.st.n < MIN_N); const few = offL.filter(x => x.st.n), none = offL.filter(x => !x.st.n);
     const why = `${few.length ? `<div class="labNotYet">${esc(few.map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}${none.length ? `<div class="labNotYet">${esc(none.map(x => labShort(x.name)).join(', '))}: no scores for this yet</div>` : ''}`;
-    return `${boardHead(dsTitle(title), [labCmpWords(prep, cmp), lk === 'qtr' ? qSpan : '', what, asOfL ? 'as of ' + fmtDate(asOfL) : ''])}
+    return `${boardHead(dsTitle(title), [labCmpWords(prep, cmp), lk === 'qtr' ? qSpan : '', what, asOfLine(asOfL)])}
       <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot">${body}${why}</div></div></div>`;
   }
   let scale = Math.max(...series.map(x => x.max), 1);
   const ref0 = seriesAll.find(x => !x.empty) || seriesAll[0];   // the first row with data (an empty row for a class with nothing says nothing about units)
-  if (ref0 && ref0.pct) scale = 100;
+  if (ref0 && ref0.pct) { const topP = Math.max(0, ...series.map(x => x.st.max || 0)); scale = topP > 100 ? Math.ceil(topP / 10) * 10 : 100; }   /* 15 Nov 2026 audit (CHT-03): extra credit over 100% widens the axis to meet it; 0-100 otherwise */
   else if (anyId === 'unit:__all__' || series.some(x => x.st.max > x.max)) { const top = Math.max(...series.map(x => Math.max(x.st.max, anyId === 'unit:__all__' ? 0 : x.max)), 1); const step = top > 100 ? 20 : top > 40 ? 10 : 5; scale = Math.ceil((top + 1) / step) * step; }
   const mixedMax = both && new Set(seriesAll.filter(x => !x.empty).map(x => x.unit)).size > 1;   // two assignments out of different totals: say so, not one side's total
   const unitLabel = mixedMax ? 'the maximum' : ref0 && ref0.unit ? ref0.unit : 'points';
@@ -1228,14 +1253,14 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
   if (both && units && labNorm(units.acc) !== labNorm(units.on)) facts.push(`accelerated: ${units.acc}; on-level: ${units.on}`);
   if (kind === 'avg') {   // one bar per row, in period order (the Race ranks; this compares)
     const what = isGrade ? 'course grade' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')}` : unitLabel;
-    const bars = series.length ? chartBars(series.map(x => ({ label: labShort(x.name), value: x.st.mean, color: color(x), hint: 'n = ' + x.st.n })), { max: scale, pct: isPct, fmt: v => v.toFixed(1) + (isPct ? '%' : ''), w: 760, labelW: 170, rowH: 46, barH: 26, ticks: (() => { const st = scale > 60 ? 25 : scale > 30 ? 10 : scale > 12 ? 5 : scale > 6 ? 2 : 1; const a = []; for (let v = 0; v <= scale + 1e-9; v += st) a.push(v); return a; })(), aria: 'average, one bar per ' + perWord }) : '<div class="labNotYet">No class has enough scores for an average yet.</div>';
-    return `${boardHead(dsTitle(title), [...facts, perWord === 'row' ? `average ${what}` : `average ${what} per ${perWord}`, asOf ? 'as of ' + fmtDate(asOf) : ''])}
+    const bars = series.length ? chartBars(series.map(x => ({ label: labShort(x.name), value: x.st.mean, color: color(x), hint: 'n = ' + x.st.n })), { max: scale, pct: isPct, fmt: v => fmt1(v) + (isPct ? '%' : ''), w: 760, labelW: 170, rowH: 46, barH: 26, ticks: (() => { const st = scale > 60 ? 25 : scale > 30 ? 10 : scale > 12 ? 5 : scale > 6 ? 2 : 1; const a = []; for (let v = 0; v <= scale + 1e-9; v += st) a.push(v); return a; })(), aria: 'average, one bar per ' + perWord }) : '<div class="labNotYet">No class has enough scores for an average yet.</div>';
+    return `${boardHead(dsTitle(title), [...facts, perWord === 'row' ? `average ${what}` : `average ${what} per ${perWord}`, asOfLine(asOf)])}
       <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labAvgBars">${bars}${thin.filter(x => x.st.n).length ? `<div class="labNotYet">${esc(thin.filter(x => x.st.n).map(x => labShort(x.name)).join(', '))}: not enough students yet (needs ${MIN_N})</div>` : ''}${thin.filter(x => !x.st.n).length ? `<div class="labNotYet">${esc(thin.filter(x => !x.st.n).map(x => labShort(x.name)).join(', '))}: no scores for this yet</div>` : ''}</div></div></div>`;
   }
   const cell = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
   const statsOf = x => { const fp = v => fmtN(v) + (x.pct ? '%' : ''); return statsLevel > 0 ? `<div class="labStats">
         ${cell('min', fp(x.st.min))}${cell('Q1', fp(x.st.q1))}${cell('median', fp(x.st.median))}${cell('Q3', fp(x.st.q3))}${cell('max', fp(x.st.max))}${cell('range', fp(x.st.range))}${cell('IQR', fp(x.st.iqr))}${cell('mode', x.st.mode ? x.st.mode.map(fp).join(', ') : 'none')}
-        ${statsLevel > 1 ? `${cell('mean', x.st.mean.toFixed(1) + (x.pct ? '%' : ''))}${cell('MAD', x.st.mad.toFixed(1) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)}, too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
+        ${statsLevel > 1 ? `${cell('mean', fmt1(x.st.mean) + (x.pct ? '%' : ''))}${cell('MAD', fmt1(x.st.mad) + (x.pct ? '%' : ''))}<div class="wide"><span>shape</span><b>${x.st.shape}</b></div>${tukey ? `<div class="wide"><span>outliers (1.5 × IQR)</span><b>${x.st.bunched ? `IQR is ${fmtN(x.st.iqr)}, too tight for the 1.5 × IQR rule, so none are marked (whiskers run min to max)` : x.st.outliers.length ? [...new Set(x.st.outliers)].map(v => { const c = x.st.outliers.filter(y => y === v).length; return fmtN(v) + (c > 1 ? ' ×' + c : ''); }).join(', ') : 'none'}</b></div>` : ''}` : ''}
       </div>` : ''; };
   const nameSmall = x => `<b>n = ${x.st.n}</b>${x.cells && x.each ? ` · ${x.each} skills each` : ''}${x.classes ? ` · ${x.classes.length > 3 ? x.classes.length + ' classes' : esc(x.classes.join(', '))}` : ''}${x.missing ? ` · ${x.missing} ${unitLabel === 'SmartScore' ? 'not started' : 'no score'}` : ''}${x.excused && !gbSet ? ` · ${x.excused} excused` : ''}`;
   const perStudent = isGrade ? 'course grade per student, in percent' : isPct ? `percent of ${unitLabel.replace(/^% of /, '')} per student, rounded to whole percents` : `${unitLabel} per student`;
@@ -1243,7 +1268,8 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
      of the comparisons but it views as kinda small on the board"): one per row, as many columns as fill the screen,
      each pie as tall as its share of the height allows. Under each pie, its counts in the key's order. */
   if (kind === 'circle') {
-    const pies = series.map(x => ({ x, parts: pieParts(x) }));
+    const pieTot = series.length > 1 && series.every(x => x.kind === 'custom' && !x.pct) ? Math.max(...series.map(x => x.max)) : null;   // our own data: every class's pie in quarters of the largest maximum (round 2)
+    const pies = series.map(x => ({ x, parts: pieParts(x, pieTot) }));
     // one key for every pie: a skill's goal is named only when every class has the same one
     const key = !pies.length ? [] : (pies[0].x.kind === 'skill' || pies[0].x.cells) && new Set(series.flatMap(x => x.thrs || [x.thr])).size > 1 ? pies[0].parts.map((p, i) => i ? p : { ...p, label: 'At goal (each class\'s goal)' }) : pies[0].parts;
     // Columns: as many as fill the board (1, 2, 3; 4 as 2×2; 5 or 6 as 3×2; more, 4 across). By course, as many as the
@@ -1263,8 +1289,8 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
     const thinCard = x => `<div class="labPie thin" style="--cc:${color(x)}"><div class="labPieHead"><span class="labName">${esc(labShort(x.name))}</span><small>n = ${x.st.n || 0}</small></div><div class="labNotYet">${x.st.n ? `Not enough students yet (needs ${MIN_N})` : 'No scores for this yet'}</div></div>`;
     let cards = '', at = null; seriesAll.forEach(x => { if (grouped && x.course !== at) { at = x.course; cards += `<div class="labGroupHead" style="--cc:${COURSE_COLORS[at]}">${COURSE_NAMES[at]}</div>`; } cards += x.st.n >= MIN_N ? card(pies.find(q => q.x === x)) : thinCard(x); });
     const pieWhat = pies.length && pies.every(q => q.x.cells) ? 'every skill counted once for each student' : perStudent;   // the quarter's pies count skills, and say so
-    return `${boardHead(dsTitle(title), [...facts, pieWhat, asOf ? 'as of ' + fmtDate(asOf) : ''])}
-      ${key.length ? `<div class="labLegend labPieLegend">${key.map(p => `<span><i style="background:${p.color}"></i>${esc(p.label)}</span>`).join('')}</div>` : ''}
+    return `${boardHead(dsTitle(title), [...facts, pieWhat, asOfLine(asOf)])}
+      ${key.length ? `<div class="labLegend labPieLegend">${key.map(p => `<span><i style="background:${p.color}"></i>${esc(p.label)}</span>`).join('')}${pies.some(q => pctOff(q.parts)) ? ROUND_NOTE : ''}</div>` : ''}
       <div class="labPies${narrow ? ' narrow' : ''}" style="${fit}">${cards}${!seriesAll.length ? '<div class="lbEmpty">No class has data for that yet.</div>' : ''}</div>`;
   }
   const marks = avgOn && ['box', 'dots', 'hist', 'bar'].includes(kind);   // the forms that can carry a mark at the average; the others show the number only
@@ -1277,19 +1303,20 @@ function labMarkup(prep, unitName, statsLevel, tukey, dotsOn, valuesOn, kindNow)
   // percent of the row's students, so the bars compare fairly
   const share = (pooled || both && rowsBy === 'course') && new Set(series.map(x => x.st.n)).size > 1;   // a whole course beside a class: bars as a percent of each row's students
   const binOf = gbSet && !fullSuite ? Math.max(5, state.settings.labBin || 5) : state.settings.labBin;
-  const topAll = ['hist', 'bar'].includes(kind) ? Math.max(1, ...series.map(x => histTop(kind, x.values, Math.max(scale, 1), binOf, share))) : null;
+  const intsAll = series.every(x => x.values.every(v => v == null || Number.isInteger(v)));   // whole numbers in every row: decided once, so every row's bars and labels sit on one axis (CHT-01, round 2)
+  const topAll = ['hist', 'bar'].includes(kind) ? Math.max(1, ...series.map(x => histTop(kind, x.values, Math.max(scale, 1), binOf, share, intsAll))) : null;
   const head = x => both && rowsBy === 'class' && x === seriesAll.find(y => y.course === x.course) ? `<div class="labGroupHead" style="--cc:${COURSE_COLORS[x.course]}">${COURSE_NAMES[x.course]}</div>` : '';
   const row = x => `${head(x)}<div class="labRow${x.pool ? ' course' : ''}" style="--cc:${color(x)}">
       <div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>${nameSmall(x)}</small></div>${avgOn ? `<div class="labAvg"><b>${fmtAvg(x)}</b><span>average</span></div>` : ''}</div>
-      <div class="labPlot">${labPlot(kind, x, scale, anyId, { stack: ownStack && x.pool ? stackOf(x) : stackAll, top: topAll, share, full: fullSuite, stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 || avgOn, avg: avgOn, bin: binOf, pct: x.pct })}</div>
+      <div class="labPlot">${labPlot(kind, x, scale, anyId, { stack: ownStack && x.pool ? stackOf(x) : stackAll, top: topAll, share, full: fullSuite, stats: statsLevel > 0, tukey, dots: dotsOn, mean: statsLevel > 1 || avgOn, avg: avgOn, bin: binOf, pct: x.pct, ints: intsAll })}</div>
       ${valuesOn ? valuesMarkup(x.st, tukey, x.pct) : ''}
       ${statsOf(x)}
     </div>`;
   const thinRow = x => `${head(x)}<div class="labRow thin${x.pool ? ' course' : ''}" style="--cc:${color(x)}"><div class="labSide"><div class="labName">${esc(labShort(x.name))}<small>n = ${x.st.n || 0}</small></div></div><div class="labPlot"><div class="labNotYet">${x.st.n ? `Not enough students yet (needs ${MIN_N})` : 'No scores for this yet'}</div></div></div>`;
   // two whole courses side by side: one line on how their centers and spreads compare (MA.7.DP.1.2)
-  const versus = (both && rowsBy === 'course' || rowsBy === 'vs') && series.length === 2 && statsLevel > 1 ? (() => { const [a, b] = series; const U = isPct ? ' percentage points' : ' points'; const d = Math.abs(a.st.median - b.st.median); return `<div class="labVersus">Medians ${fmtN(d)}${U} apart · IQR ${fmtN(a.st.iqr)} vs ${fmtN(b.st.iqr)}${isPct ? '' : ''}</div>`; })() : '';
+  const versus = (both && rowsBy === 'course' || rowsBy === 'vs') && series.length === 2 && statsLevel > 1 ? (() => { const [a, b] = series; const U = isPct ? ' percentage points' : ' points'; const d = Math.abs(a.st.median - b.st.median); return `<div class="labVersus">Medians ${fmtN(d)}${U} apart · IQR ${fmtN(a.st.iqr)} vs ${fmtN(b.st.iqr)}</div>`; })() : '';
   const meanKey = '<span><i class="lgMean"></i>average (mean)</span>';
-  return `${boardHead(dsTitle(title), [...facts, perStudent, share && ['hist', 'bar'].includes(kind) ? `bars show the percent of ${perWord === 'course' ? 'each course\'s students' : 'the students in each row'}` : '', asOf ? 'as of ' + fmtDate(asOf) : ''])}
+  return `${boardHead(dsTitle(title), [...facts, perStudent, share && ['hist', 'bar'].includes(kind) ? `bars show the percent of ${perWord === 'course' ? 'each course\'s students' : 'the students in each row'}` : '', asOfLine(asOf)])}
     ${kind !== 'box' ? (marks ? `<div class="labLegend">${meanKey}</div>` : '') : `<div class="labLegend"><span><i class="lgBox"></i>middle 50% (Q1–Q3)</span><span><i class="lgMed"></i>median</span>${statsLevel > 1 || avgOn ? meanKey : ''}${tukey ? '<span><i class="lgOut"></i>outlier (past 1.5 × IQR)</span><span class="lgNote">Whiskers stop at the last value inside 1.5 × IQR.</span>' : '<span class="lgNote">Whiskers run from the minimum to the maximum.</span>'}${dotsOn ? '<span><i class="lgDot"></i>one student</span>' : ''}</div>`}
     ${versus}<div class="labRows" style="--lrows:${Math.max(1, series.length + thin.length)}${kind !== 'box' && !marks ? ';--lhead:9.5' : ''}">${seriesAll.map(x => x.st.n >= MIN_N ? row(x) : thinRow(x)).join('')}${!seriesAll.length ? '<div class="lbEmpty">No class has data for that yet.</div>' : ''}</div>`;   // every row in its place, a class too small to draw included
 }
@@ -1368,8 +1395,8 @@ function labCorrMarkup(prep, cmp) {
     : `<div class="labNotYet">${all.length ? `Not enough students in each range yet: a point needs ${CORR_MIN} or more.` : `No student has both a score on ${esc(yName)} and ${esc(xShort)} yet.`}</div>`;
   const main = lines.find(l => l.ref || cmp === 'pool') || lines[0]; const mineL = vs ? lines.find(l => !l.ref && l !== main) : null;
   const rLine = main && main.r != null ? `r = ${main.r.toFixed(2)} for the ${main.pairs.length} ${lines.length > 1 || cmp === 'pool' ? COURSE_NAMES[prep].toLowerCase() + ' ' : ''}students with both: ${corrWords(main.r)}.${mineL && mineL.r != null ? ` ${esc(mineL.name)}'s ${mineL.pairs.length}: r = ${mineL.r.toFixed(2)}.` : ''}` : '';
-  const ixlAt = labAsOf(secs, false), gbAt = labAsOf(secs, true);   // the IXL export and the gradebook can be from different days: say both
-  const asOfC = ixlAt && gbAt && ixlAt !== gbAt ? `IXL as of ${fmtDate(ixlAt)}, Focus as of ${fmtDate(gbAt)}` : (ixlAt || gbAt) ? 'as of ' + fmtDate(ixlAt || gbAt) : '';
+  const ixlAt = asOfLine(labAsOf(secs, false)), gbAt = asOfLine(labAsOf(secs, true));   // the IXL export and the gradebook can be from different days: say both
+  const asOfC = ixlAt && gbAt && ixlAt !== gbAt ? `IXL ${ixlAt}, Focus ${gbAt}` : ixlAt || gbAt;
   return `${boardHead(title, [labCmpWords(prep, cmp), `average score on ${yName} by how much of ${xShort} is at goal`, asOfC])}
     <div class="labRows" style="--lhead:9.5"><div class="labRow one"><div class="labPlot labCorr">${body}
       <p class="labAxis"><b>Across:</b> ${esc(xShort)} skills at goal${m ? ` (of ${m})` : ''}. <b>Up:</b> the average on ${esc(yName)} of the students in each range, ${CORR_MIN} or more to a point.${rLine ? ` ${rLine}` : ''}</p>
@@ -1378,16 +1405,17 @@ function labCorrMarkup(prep, cmp) {
 // Every chart for Focus scores only when comparing whole courses, each row 15 students or more.
 function labFullSuite(prep, ids, rowsBy, series) { return prep === 'both' && rowsBy === 'course' && series.length > 0 && series.every(x => x.st.n >= 15); }
 // The tallest bar a histogram or bar graph would draw for these values (a count, or a percent of the row's students).
-function histTop(kind, values, max, bin, share) {
+function histTop(kind, values, max, bin, share, ints) {
   const v = values.filter(x => x != null); if (!v.length) return 1; const c = {};
-  if (kind === 'bar' && max <= 26) v.forEach(x => { const k = Math.round(x); c[k] = (c[k] || 0) + 1; });
-  else { const b = kind === 'bar' ? Math.ceil(max / 20) : (bin || autoBin(max)); const nb = Math.max(1, Math.ceil(max / b - 1e-9)); v.forEach(x => { const k = Math.max(0, Math.min(nb - 1, Math.floor(x / b))); c[k] = (c[k] || 0) + 1; }); }
+  const whole = ints != null ? ints : v.every(x => Number.isInteger(x));
+  if (kind === 'bar' && whole && Math.floor(max) <= FREQ_MAX) v.forEach(x => { c[x] = (c[x] || 0) + 1; });
+  else { const b = kind === 'bar' ? (Math.floor(max) > FREQ_MAX ? Math.ceil(max / 20) : 1) : (bin || autoBin(max)); const { at } = histBins(max, b); v.forEach(x => { const k = at(x); c[k] = (c[k] || 0) + 1; }); }   /* the same bins chartFreq and chartHist draw (CHT-01, CHT-12) */
   const m = Math.max(...Object.values(c)); return share ? m / v.length * 100 : m;
 }
 const LAB_ONLY_CSS = `
 .labLegend{display:flex;gap:calc(var(--bu)*.9);flex-wrap:wrap;font-weight:var(--w-bold);font-size:calc(var(--bu)*1.15);color:var(--navy)}
 .labLegend i{display:inline-block;width:16px;height:12px;vertical-align:-1px;margin-right:6px;border-radius:var(--r-xs)}
-.lgNote{color:var(--ink-soft);font-weight:var(--w-med)}
+.lgNote,.labRoundNote{color:var(--ink-soft);font-weight:var(--w-med)}
 .lgBox{background:#E4E7EC;border:2px solid var(--navy)} .lgMed{background:var(--navy);width:4px!important} .lgMean{background:var(--white);border:2px solid var(--navy);transform:rotate(45deg);width:10px!important;height:10px!important} .lgOut{border:2px solid var(--navy);border-radius:50%!important;width:12px!important;height:12px!important} .lgDot{background:#9AA3B2;border:2px solid var(--white);outline:1px solid #9AA3B2;border-radius:50%!important;width:12px!important;height:12px!important}
 .labRows{display:flex;flex-direction:column;gap:14px}
 .labRow{background:var(--white);border-radius:var(--r-l);box-shadow:var(--shadow-2);padding:10px 22px 6px;display:grid;grid-template-columns:calc(var(--bu)*13) 1fr;gap:8px 18px;align-items:center}
@@ -1615,14 +1643,15 @@ function tokensCss() { return (document.getElementById('tallyTokens') || {}).tex
 function printFontCss() { const m = ((document.getElementById('tallyFont') || {}).textContent || '').match(/@font-face\s*\{[^}]*\}/); return m ? m[0] : ''; }
 function downloadLeaderboard(which) {
   const data = leaderboardData(); const st = state.settings; const lab = which === 'lab';
-  const dotsOn = focusSet(st.labUnit) ? false : (st.labDots[st.labUnit] != null ? !!st.labDots[st.labUnit] : dotsDefault(st.labUnit));   // Focus scores are never one dot per student on a projected screen
+  const both = st.labPrep === 'both', pickA = both ? labPickFor('acc') : null, dotKey = both ? 'both|' + pickA + '|' + labPickFor('on') : st.labUnit;   // the same key the screen reads (15 Nov 2026 audit); labMarkup still keeps Focus scores off the dots unless two whole courses are compared
+  const dotsOn = !both && focusSet(st.labUnit) ? false : (st.labDots[dotKey] != null ? !!st.labDots[dotKey] : dotsDefault(both ? pickA : st.labUnit));   // Focus scores are never one dot per student on a projected screen
   const body = lab ? labMarkup(st.labPrep, st.labUnit, st.labStats, st.labTukey, dotsOn, st.labValues, ($('#labKind') || {}).value) : lbMarkup(data, st.lbFocus);
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${lab ? 'Data Lab' : 'IXL Race'}</title>
 <style>${printFontCss()}</style>
 <style>${tokensCss()}
 *{box-sizing:border-box}html,body{margin:0;height:100%}body{font-family:"DM Sans",system-ui,sans-serif;color:var(--navy);background:var(--cream)}
 ${LB_CSS}${LAB_CSS}</style></head><body><div class="lbWrap">${body}</div></body></html>`;
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = (lab ? 'Data-Lab-' : 'IXL-Race-') + (data.map(r => r.date).filter(Boolean).sort().pop() || new Date().toISOString().slice(0, 10)) + '.html'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = (lab ? 'Data-Lab-' : 'IXL-Race-') + (data.map(r => r.date).filter(Boolean).sort().pop() || todayISO()) + '.html';   /* the local day, not the UTC one (15 Nov 2026 audit) */ a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast(lab ? 'Saved the Data Lab page: no names; it does contain each class\'s values.' : 'Saved the Race page: class totals only, no names.', false, 4500, true);
 }
 
@@ -1786,17 +1815,33 @@ function materialize(sec) {
   if (pool) sec.fromSection = false;
   if (!pool) { sec.students = sec.students || []; sec.skills = sec.skills || []; sec.scores = sec.scores || []; sec.awaitingPool = true; return; }
   // No roster means no students — never the whole course (an emptied roster once handed a class all 91 pool students).
-  const idx = rosterState(sec).count ? poolIdx(sec) : [];
+  const idx = rosterState(sec).count ? poolIdx(sec) : []; const was = Array.isArray(sec.students) ? sec.students.slice() : [], wasKeys = Array.isArray(sec.students) ? ixlList(sec).map(x => x.key) : [];
+  const pkeys = ixlList({ students: pool.students }).map(x => x.key); sec.poolKeys = idx.map(i => pkeys[i]);
   sec.students = idx.map(i => pool.students[i]); sec.skills = pool.skills; sec.scores = pool.scores.map(row => idx.map(i => row[i]));
   sec.date = pool.date; sec.file = pool.file; sec.importedAt = pool.importedAt; sec.awaitingPool = false; sec.placeholder = false; sec.allBlank = !sec.scores.some(r => r.some(v => v != null));
-  sec._keys = null; mergeBest(sec); snapshot(sec);
+  sec._keys = null; rekeyCarved(sec, was, wasKeys); carryBest(sec, was); mergeBest(sec); snapshot(sec);
 }
+// 15 Nov 2026 audit (IMP-01): a class keyed its students "Name#n" in its own order and now keys them by the course export.
+// The same names in the same places are the same roster lines, so what the class keeps by key (best scores, a student's
+// skill skips, IXL accounts set aside, history) moves to each student's new key; otherwise nothing moves.
+function rekeyClass(sec, map) { if (!Object.keys(map).length) return; const to = new Set(Object.values(map)); const re = o => { if (!o || typeof o !== 'object') return o; const out = {}; for (const k in o) if (!(k in map) && !to.has(k)) out[k] = o[k]; for (const k in o) if (k in map) out[map[k]] = o[k]; return out; };
+  if (sec.best) for (const sk in sec.best) sec.best[sk] = re(sec.best[sk]); sec.studentSkips = re(sec.studentSkips || {}); sec.ignored = re(sec.ignored || {}); if (sec.bestIds) sec.bestIds = re(sec.bestIds); (sec.history || []).forEach(h => { h.per = re(h.per); if (h.pu) for (const u in h.pu) h.pu[u] = re(h.pu[u]); if (h.own) for (const u in h.own) h.own[u] = re(h.own[u]); }); }
+function rekeyCarved(sec, was, wasKeys) { if (was.length !== sec.students.length || was.some((n, i) => n !== sec.students[i])) return; const now = ixlList(sec).map(x => x.key), map = {}; wasKeys.forEach((k, i) => { if (k !== now[i]) map[k] = now[i]; }); rekeyClass(sec, map); }
+// 15 Nov 2026 audit (CTR-01): the best score is kept per class, so a student who moves to another class of the course
+// brings his kept best scores with him, matched by his course key. Only on proof that it is the same person: the class he
+// left saw the same Focus Student ID on his roster line (`bestIds`, kept like `best`) as the class he joined. And only a
+// student new to the class, a name the course export holds once and no class of the course ever kept as a second "#1".
+// No ID on either side: nothing moves (round 2: a withdrawn student's bests once went to a later student of his name).
+function carryBest(sec, was) { const pool = state.pools[sec.prep]; if (!pool || !sec.students.length) return; const ids = {}; try { buildRows(sec).forEach(r => { if (r.ixl != null && r.key && r.id) ids[r.key] = String(r.id); }); } catch (e) {} sec.bestIds = { ...(sec.bestIds || {}), ...ids }; const pl = ixlList({ students: pool.students }); const once = new Set(pl.filter(x => !x.dup).map(x => x.key)); const had = new Set(was || []);
+  const sibs = state.order.map(k => state.sections[k]).filter(x => x && x.pool && x.prep === sec.prep && x.best); const twin = new Set(); sibs.forEach(o => { for (const sk in o.best) for (const k in (o.best[sk] || {})) { const m = k.match(/^(.*)#([1-9]\d*)$/); if (m) twin.add(m[1]); } });
+  const mine = ixlList(sec).filter(x => !had.has(x.name) && once.has(x.key) && !twin.has(x.name) && ids[x.key]).map(x => x.key); if (!mine.length) return; sec.best = sec.best || {};
+  sibs.filter(x => x !== sec).forEach(o => { for (const sk in o.best) { const from = o.best[sk]; if (!from) continue; mine.forEach(k => { if (!o.bestIds || o.bestIds[k] !== ids[k]) return; const v = from[k]; if (v == null) return; const row = sec.best[sk] = sec.best[sk] || {}; if (row[k] == null || v > row[k]) row[k] = v; }); } }); }
 // The pool students a class could still claim: everyone in the course not already matched by another class of the same prep.
 // Returns pool ixlList entries (with their pool keys, so two students who share a name stay distinct).
 // A student another class of the course matches by exact name (or alias) is that class's: a loose match here may not
 // take them (audit, 22 Oct 2026: "PRYOR, GRE" on one roster took GREER PRYOR's IXL row from another class).
 function poolRows(sec) { const pool = state.pools[sec.prep]; if (!pool) return [];
-  const view = x => ({ ...x, students: pool.students, skills: pool.skills, scores: pool.scores, _keys: null, ignored: {} });
+  const view = x => ({ ...x, students: pool.students, skills: pool.skills, scores: pool.scores, _keys: null, poolKeys: null, ignored: {} });
   const taken = {}; state.order.map(k => state.sections[k]).filter(x => x && x !== sec && x.pool && x.prep === sec.prep && rosterState(x).count).forEach(o => { try { buildRows(view(o)).forEach(r => { if (r.ixl != null && r.key && (r.tier === 'exact' || r.tier === 'alias')) taken[r.key] = true; }); } catch (e) {} });
   const mine = buildRows(view(sec)); const own = new Set(mine.filter(r => r.key && (r.tier === 'exact' || r.tier === 'alias')).map(r => r.key));
   Object.keys(taken).forEach(k => { if (own.has(k)) delete taken[k]; });   // two classes naming the same student exactly: leave it to the roster fixer, as before
@@ -1982,7 +2027,7 @@ function renderBoardOnly() {
   document.body.classList.remove('home', 'grades', 'seating', 'has'); document.body.classList.add('boardOnly');
   state.settings.hideNames = true;
   $('#chead').innerHTML = ''; $('#notices').innerHTML = '';
-  const b = state.board; const when = b && b.saved ? fmtDate(b.saved.slice(0, 10)) : '';
+  const b = state.board; const when = b && b.saved ? fmtDate(localDayOf(b.saved)) : '';
   $('#gridwrap').innerHTML = `<div class="boardCard"><h2>Board save</h2><p>${when ? 'Saved ' + esc(when) + ' · ' : ''}${plural(state.order.length, 'class')} · no names</p><button class="pill" id="openBoard">Open the Board</button></div>`;
   $('#openBoard').onclick = () => enterProjected();
   renderLeaderboard();
@@ -2036,7 +2081,7 @@ function renderChead() {
   const actions = all
     ? `${item('mQuarters', qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters', qd ? 'ended ' + fmtDate(quarters().ends[qd - 1]) : '')}<hr>${item('mBoardSave', 'Board save', 'no names')}${item('mFullSave', 'Full save')}<hr>${item('mSettings', 'Settings')}`
     : (() => { const s = state.sections[state.active]; const u = unitsOf(s).find(u => u.current);
-      return `${u && !s.placeholder ? item('mCopy', `Copy ${esc(u.short)} to Focus`, s.receipts && s.receipts[u.name] ? 'copied ' + fmtDate(s.receipts[u.name].at.slice(0, 10)) : '') : ''}${item('mDigest', 'What changed this week')}<hr>${item('mQuarters', qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters', qd ? 'ended ' + fmtDate(quarters().ends[qd - 1]) : '')}${item('mBoardSave', 'Board save', 'no names')}<hr>${item('mSettings', 'Class settings', 'roster, goal')}`; })();
+      return `${u && !s.placeholder ? item('mCopy', `Copy ${esc(u.short)} to Focus`, s.receipts && s.receipts[u.name] ? 'copied ' + fmtDate(localDayOf(s.receipts[u.name].at)) : '') : ''}${item('mDigest', 'What changed this week')}<hr>${item('mQuarters', qd ? `Close ${esc(Q_NAMES[qd - 1])}` : 'Quarters', qd ? 'ended ' + fmtDate(quarters().ends[qd - 1]) : '')}${item('mBoardSave', 'Board save', 'no names')}<hr>${item('mSettings', 'Class settings', 'roster, goal')}`; })();
   const actBtn = `<div class="more actWrap"><button class="pill toggle" id="actBtn" aria-haspopup="true" aria-expanded="false">Actions ${ico('down')}</button><div class="menu hidden" id="actMenu">${actions}</div></div>`;
   if (all) {
     const n = state.order.length; const studs = state.order.reduce((a, k) => a + classStudents(state.sections[k]).length, 0);
@@ -2110,7 +2155,7 @@ function renderBar() {
     html = `<div class="crumb"><button id="back">‹ Grid</button><h2>${esc(u.short)}</h2></div>${noticeChip()}<span class="vh">Legend: filled cells are at goal, sand cells below goal, a dot is not started, hatched is skipped. Tap a skill to skip it for the course, a cell to skip it for one student.</span><span class="meta">${esc(u.title)} · ${plural(u.active.length, 'skill')} toward the goal${ex ? ` · ${ex} skipped` : ''} · goal ${t}</span>
       <div class="spacer"></div>
       <button class="pill toggle soft" id="hideUnit" aria-pressed="${u.assigned}" title="Whether this unit counts for the course: tap to change">${u.assigned ? 'Assigned' : 'Not assigned'}</button>
-      ${s.receipts[u.name] ? `<button class="pill toggle" id="rcUnit" title="What was copied to Focus, and when">Copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : ''}
+      ${s.receipts[u.name] ? `<button class="pill toggle" id="rcUnit" title="What was copied to Focus, and when">Copied ${fmtDate(localDayOf(s.receipts[u.name].at))}</button>` : ''}
       <button class="pill toggle" id="csvUnit" title="Download this unit as a CSV keyed by student ID">CSV</button>
       <button class="pill onbar" id="copyUnit"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>`;
   }
@@ -2193,7 +2238,7 @@ function renderGrid() {
         : uq ? `<span class="qtag" title="${qClosed(uq) ? `Quarter ${uq} is closed` : `From Quarter ${uq}, which the class has moved past`}: this unit is still tracked but raises no alerts">Q${uq}${qClosed(uq) ? ' closed' : ''}</span>`
         : u.current && !s.receipts[u.name] ? '<span class="utag now">now</span>' : '';
       // when it was copied stays in the header whatever the badge says (the slot holds both; Copy sits on the row's bottom line)
-      const copied = s.receipts[u.name] && !uq ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(s.receipts[u.name].at.slice(0, 10))}</button>` : '';
+      const copied = s.receipts[u.name] && !uq ? `<button class="rlink" data-rc="${esc(u.name)}" title="What was copied to Focus, and when">copied ${fmtDate(localDayOf(s.receipts[u.name].at))}</button>` : '';
       h += `<th class="unit ${u.hidden ? 'quiet' : ''} ${u.current ? 'current' : ''} ${uq ? 'qclosed' : ''}" scope="col"><div class="uh"><button class="ulink" data-u="${ui}" aria-label="Open ${esc(u.short)}${u.title ? ': ' + esc(u.title) : ''}, out of ${u.total}" title="${esc(u.title)} · out of ${u.total}"><span class="t">${esc(u.short)}</span><span class="s">${esc(u.title)}</span></button><span class="ustat">${stat}${copied}</span><span class="usub det">out of ${u.total}${u.idx.length !== u.total ? ` · ${u.idx.length - u.total} skipped` : ''}</span><span class="uact"><button class="copy" data-c="${ui}" ${s.placeholder ? 'disabled' : ''} aria-label="Copy ${esc(u.short)} points"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></span></div></th>`; });
     if (ahead.length) h += `<th class="ahead" scope="col"><div class="uh"><button class="ulink" id="aheadBtn" aria-haspopup="true" aria-expanded="false" aria-label="Ahead: ${esc(span)}: open one" title="Later units: open one to see its skills, or to count it early"><span class="t">Ahead</span><span class="s">${esc(span)} · skills at goal</span></button></div></th>`;
     h += `</tr></thead><tbody>`;
@@ -2213,7 +2258,7 @@ function renderGrid() {
       h += `</tr>`;
     });
     h += `</tbody><tfoot><tr><td class="idx"></td><td class="stu">Class average</td>`;
-    shownUnits.forEach(u => { let sum = 0, n = 0; allRows.forEach(r => { if (r.ixl != null) { sum += points(s, u, r.ixl); n++; } }); h += `<td>${n ? (sum / n).toFixed(1) : '—'}</td>`; });
+    shownUnits.forEach(u => { let sum = 0, n = 0; allRows.forEach(r => { if (r.ixl != null && r.status !== 'ixlOnly') { sum += points(s, u, r.ixl); n++; } });   /* 15 Nov 2026 audit (IXL-10): the counted class, as the Race and Data Lab measure it: not the NOT ON ROSTER accounts */ h += `<td>${n ? (sum / n).toFixed(1) : '—'}</td>`; });
     if (ahead.length) h += `<td class="aheadc">${nAhead ? plural(nAhead, 'student') + ' ahead' : 'nobody yet'}</td>`;
     h += `</tr></tfoot></table>`;
     wrap.innerHTML = h;
@@ -2253,7 +2298,7 @@ function renderGrid() {
       h += `</tr>`;
     });
     h += `</tbody><tfoot><tr><td class="idx"></td><td class="stu">% of class at goal</td><td class="ptsd"></td>`;
-    u.idx.forEach(k => { let n = 0, p = 0; allRows.forEach(r => { if (r.ixl != null) { n++; const v = eff(s, k, r.ixl); if (v != null && v >= t) p++; } }); h += `<td>${n ? Math.round(p / n * 100) + '%' : '—'}</td>`; });
+    u.idx.forEach(k => { let n = 0, p = 0; allRows.forEach(r => { if (r.ixl != null && r.status !== 'ixlOnly') { n++; const v = eff(s, k, r.ixl); if (v != null && v >= t) p++; } }); h += `<td>${n ? Math.round(p / n * 100) + '%' : '—'}</td>`; });
     h += `</tr></tfoot></table>`;
     wrap.innerHTML = h;
     fitSkillHeads(wrap, s.prep + '|' + u.name + '|' + u.idx.map(k => s.skills[k].name.length).join(','));
@@ -2292,7 +2337,7 @@ function openNotOnRoster(s, key) {
     <header><h2>${esc(shown(ixlDisplay(name)))} is in IXL but not on the roster</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one">
       <p>Their scores show in the grid, but <b>Copy leaves them out</b> until the roster says where their row goes.</p>
-      <div class="choice"><b>New student?</b><p>Re-paste the roster from Focus so they get a row in Focus order.</p><button class="pill" id="nrRoster">Re-paste roster</button></div>
+      <div class="choice"><b>New student?</b>${openGb(s) ? `<p>Export a new gradebook from Focus and drop it on Tally. Copy follows the gradebook's rows, so the new export is what gives them a row in Focus order.</p><button class="pill pale" id="nrRoster">Re-paste roster</button>` : `<p>Re-paste the roster from Focus so they get a row in Focus order.</p><button class="pill" id="nrRoster">Re-paste roster</button>`}</div>
       <div class="choice"><b>Withdrawn, moved, or a duplicate IXL account?</b><p>Skip them: they leave the grid, copies, and the race. Undo any time in Settings.</p><button class="pill pale" id="nrSkip">Skip this account</button></div>
       <div class="rp-actions"><button class="pill pale" id="mCancel">Not now</button></div>
     </div></div>`;
@@ -2325,9 +2370,11 @@ function openFixer(s, display) {
 }
 
 /* ---------- copy ---------- */
-function unitColumn(sec, unit, mode) {
+// The rows the teacher marked "Keep Focus" for a unit: display -> Focus's number (null = the cell stays blank).
+function keptFor(sec, unit) { const rc = sec.grades ? reconcile(sec).find(c => c.unit.name === unit.name) : null; return rc ? new Map(rc.rows.filter(x => x.status === 'accepted').map(x => [x.display, x.focus])) : new Map(); }
+function unitColumn(sec, unit, mode, keptIn) {
   const rows = copyRows(sec);
-  const rc = sec.grades ? reconcile(sec).find(c => c.unit.name === unit.name) : null; const kept = rc ? new Map(rc.rows.filter(x => x.status === 'accepted').map(x => [x.display, x.focus])) : new Map();
+  const kept = keptIn || keptFor(sec, unit);
   return rows.map(r => {
     const p = r.ixl == null ? '' : kept.has(r.display) ? (kept.get(r.display) == null ? '' : String(kept.get(r.display))) : String(points(sec, unit, r.ixl));   // "Keep Focus" on a blank means the cell stays blank
     const own = r.ixl != null && totalFor(sec, unit, r.ixl) !== unit.total ? '\t/' + totalFor(sec, unit, r.ixl) : '';
@@ -2365,17 +2412,23 @@ async function copyUnit(sec, unit) {
   if (!unit.total) { toast(`${esc(unit.short)} has no skills that count: include at least one.`, true); return; }
   const rs = rosterState(sec);
   const rowsAll = copyRows(sec);
+  const gbo = openGb(sec); if (gbo && gbo.students.length && rowsAll.length !== gbo.students.length) { toast(`Copy stopped: Tally has ${plural(rowsAll.length, 'row')} for the ${plural(gbo.students.length, 'student')} in the Focus gradebook, so the points would land on the wrong rows. Export the gradebook from Focus again and drop it on Tally.`, true, 10000); return; }   /* 15 Nov 2026 audit (IXL-06): never paste a column that is not one row per Focus student */
+  /* 15 Nov 2026 audit (IXL-11): Copy follows the gradebook; a roster student matched in IXL who isn't in it would put every row below them off by one in Focus */
+  const inGb = new Set(rowsAll.map(r => r.ixl).filter(i => i != null)); const notInGb = gbo && gbo.students.length ? buildRows(sec).filter(r => r.status === 'ok' && r.ixl != null && !inGb.has(r.ixl)) : [];
+  if (notInGb.length && !await ask(`${notInGb.length === 1 ? '1 student on your roster is' : notInGb.length + ' students on your roster are'} not in the Focus gradebook Tally has: ${notInGb.map(r => shown(r.display)).join('; ')}. Copy follows the gradebook's rows, so in Focus every row below ${notInGb.length === 1 ? 'that student' : 'them'} would be off by one. Export a new gradebook from Focus and drop it on Tally to fix it.`, 'Copy anyway')) return;
+  const unread = rowsAll.map((r, i) => r.unreadable ? i : -1).filter(i => i >= 0);
+  if (unread.length && !await ask(`Tally can't read ${unread.length === 1 ? 'the name' : 'the names'} on ${unread.length === 1 ? 'row' : 'rows'} ${unread.map(i => i + 1).join(', ')} of the Focus gradebook (${unread.map(i => shown(rowsAll[i].display)).join('; ')}). ${unread.length === 1 ? 'That row is' : 'Those rows are'} left blank in the copy, and every other row stays on its own student. Type ${unread.length === 1 ? 'that student\'s' : 'their'} points into Focus by hand.`, 'Copy anyway')) return;
   const anyPts = rowsAll.some(r => r.ixl != null && points(sec, unit, r.ixl) > 0);
   if (!anyPts && !await ask(`Nobody in ${sec.label} has earned a point in ${unit.short} yet. Copy a column of zeros anyway?`)) return;
   const mode = !rs.count ? 'names' : state.settings.copyMode;   // no roster → always a checklist, never a bare column
-  const lines = unitColumn(sec, unit, mode); const text = lines.join('\n');
+  const kept = keptFor(sec, unit); const lines = unitColumn(sec, unit, mode, kept); const text = lines.join('\n');   /* 15 Nov 2026 audit (IXL-04): the receipt records the same kept numbers that were pasted */
   const modified = rowsAll.filter(r => r.ixl != null && totalFor(sec, unit, r.ixl) !== unit.total).length;
   let ok = false;
   ok = legacyCopy(text);   // synchronous first, while the tap still counts as a user gesture (needed on Android and anywhere without the clipboard API)
   if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} }
   const blanks = rowsAll.filter(r => r.ixl == null).length; const leftOut = buildRows(sec).filter(r => r.status === 'ixlOnly').length;
-  if (ok) { sec.receipts[unit.name] = { at: new Date().toISOString(), exportDate: sec.date, goal: sec.threshold, outOf: unit.total, skipped: unit.idx.filter(k => !unit.active.includes(k)).map(k => sec.skills[k].name), rows: rowsAll.map(r => [r.display, r.ixl == null ? null : points(sec, unit, r.ixl), r.ixl == null ? null : totalFor(sec, unit, r.ixl)]) }; save(); if (view.mode === 'units') { const sl = $('#gridwrap').scrollLeft; renderGrid(); $('#gridwrap').scrollLeft = sl; } }
-  if (ok) toast(`<b>${esc(unit.short)}</b> copied: ${plural(lines.length, 'row')}${rs.count ? ' in Focus order' : ' with names (no roster, so order is by last name)'} · Focus title: <b>IXL ${esc(unit.short)} · ${fmtDate(sec.date) || 'today'} · /${unit.total}</b>${blanks ? ` · ${plural(blanks, 'blank row')} (not in IXL)` : ''}${leftOut ? ` · <b>${plural(leftOut, 'IXL student')} not on the roster: left out</b> (tap their flag)` : ''}${modified ? ` · <b>${plural(modified, 'student')} on a modified list</b>: set their max by hand in Focus` : ''}`, false, (modified || blanks || leftOut) ? 10000 : 6000);   // carries the title to type and who was left out, so it stays long enough to read twice
+  if (ok) { sec.receipts[unit.name] = { at: new Date().toISOString(), exportDate: sec.date, goal: sec.threshold, outOf: unit.total, skipped: unit.idx.filter(k => !unit.active.includes(k)).map(k => sec.skills[k].name), rows: rowsAll.map(r => [r.display, r.ixl == null ? null : kept.has(r.display) ? kept.get(r.display) : points(sec, unit, r.ixl), r.ixl == null ? null : totalFor(sec, unit, r.ixl)]) }; save(); if (view.mode === 'units') { const sl = $('#gridwrap').scrollLeft; renderGrid(); $('#gridwrap').scrollLeft = sl; } }
+  if (ok) toast(`<b>${esc(unit.short)}</b> copied: ${plural(lines.length, 'row')}${rs.count ? ' in Focus order' : ' with names (no roster, so order is by last name)'} · Focus title: <b>IXL ${esc(unit.short)} · ${fmtDate(sec.date) || 'today'} · /${unit.total}</b>${blanks ? ` · ${plural(blanks, 'blank row')} (not in IXL)` : ''}${leftOut ? ` · <b>${plural(leftOut, 'IXL student')} not on the roster: left out</b> (tap their flag)` : ''}${notInGb.length ? ` · <b>${plural(notInGb.length, 'roster student')} not in the Focus gradebook: export a new gradebook</b>` : ''}${modified ? ` · <b>${plural(modified, 'student')} on a modified list</b>: set their max by hand in Focus` : ''}`, false, (modified || blanks || leftOut || notInGb.length) ? 10000 : 6000);   // carries the title to type and who was left out, so it stays long enough to read twice
   else showCopyBox(text, `IXL ${unit.short} · ${fmtDate(sec.date) || 'today'} · /${unit.total}`);
 }
 
@@ -2541,9 +2594,10 @@ function openReceipt(sec, unitName) {
   const rc = sec.receipts[unitName]; const u = unitsOf(sec).find(x => x.name === unitName); if (!rc || !u) return;
   const m = $('#modal'); m.classList.remove('hidden');
   const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : d);
-  const rows = buildRows(sec).filter(r => r.status !== 'ixlOnly');
-  const now = new Map(rows.map(r => [r.display, r.ixl == null ? null : points(sec, u, r.ixl)]));
-  const list = rc.rows.map(([d, p, own]) => { const cur = now.has(d) ? now.get(d) : undefined; const diff = p != null && cur != null ? cur - p : 0; return { d, p, own, cur, diff, gone: !now.has(d) }; });
+  const rows = copyRows(sec);   /* 15 Nov 2026 audit (IXL-09): the copy's own rows (the gradebook's spelling when one is open), so a fresh receipt finds every student it copied */
+  const now = new Map(rows.map(r => [r.display, r.ixl == null ? null : points(sec, u, r.ixl)])); const nowN = new Map(rows.map(r => [norm(r.display), now.get(r.display)]));
+  const has = d => now.has(d) || nowN.has(norm(d)); const at = d => now.has(d) ? now.get(d) : nowN.get(norm(d));   // a receipt saved under the other spelling still finds its student
+  const list = rc.rows.map(([d, p, own]) => { const cur = has(d) ? at(d) : undefined; const diff = p != null && cur != null ? cur - p : 0; return { d, p, own, cur, diff, gone: !has(d) }; });
   const up = list.filter(x => x.diff > 0).length, down = list.filter(x => x.diff < 0).length, gone = list.filter(x => x.gone).length;
   const line = x => `<tr class="${x.diff > 0 ? 'stale' : x.diff < 0 ? 'down' : ''}"><td>${nm(x.d)}</td><td>${x.p == null ? '<i>blank</i>' : x.p + (x.own !== rc.outOf ? ` <small>/${x.own}</small>` : '')}</td><td>${x.gone ? '<i>not on the roster now</i>' : x.cur == null ? '—' : x.cur}</td><td>${x.diff > 0 ? 'up ' + x.diff : x.diff < 0 ? 'down ' + (-x.diff) : ''}</td></tr>`;
   m.innerHTML = `<div class="panel"><header><h2>Copied · ${esc(u.short)}</h2><button id="mClose" aria-label="Close">×</button></header>
@@ -2585,8 +2639,12 @@ function rosterFromGradebook(sec, gb) {
 const stampGb = (gb, f, exportedAt) => ({ ...gb, importedAt: gb.importedAt || new Date().toISOString(), exportedAt: gb.exportedAt || exportedAt, file: gb.file || (f && f.name) || '' });
 function gbRows(sec) {
   if (!sec.grades) return [];
-  const roster = rosterFromGradebook(sec, sec.grades).split('\n').map(l => l.replace(/^[^\t]*\t/, '')).join('\n');   // Focus order, with any "= IXL name" typed on the roster (audit, 24 Oct: a typed alias matched on the grid but Copy pasted a blank)
-  const rows = buildRows({ ...sec, roster }).slice(0, sec.grades.students.length);
+  const gb = sec.grades; const lines = rosterFromGradebook(sec, gb).split('\n');   /* 15 Nov 2026 audit (IXL-01): keep the gradebook's Student IDs for ID + points */   // Focus order, with any "= IXL name" typed on the roster (audit, 24 Oct: a typed alias matched on the grid but Copy pasted a blank)
+  /* 15 Nov 2026 audit (IXL-06): one row per gradebook student. A name the roster reader can't read (another script, one word) keeps its row, matched to no one, so the rows below it don't shift up */
+  const bad = new Set(lines.map((l, i) => parseRosterText(l).length === 1 ? -1 : i).filter(i => i >= 0));
+  const roster = lines.map((l, i) => bad.has(i) ? (gb.ids && gb.ids[i] ? gb.ids[i] + '\t' : '') + 'Zzunreadable, Zzrow' : l).join('\n');
+  const rows = buildRows({ ...sec, roster }).slice(0, gb.students.length);
+  bad.forEach(i => { if (rows[i]) rows[i] = { display: String(gb.students[i]), id: rows[i].id, ixlName: null, key: null, sub: "Tally can't read this name", ixl: null, status: 'rosterOnly', tier: '', unreadable: true }; });
   return rows;
 }
 function reconcile(sec) {
@@ -2604,7 +2662,7 @@ function reconcile(sec) {
       let status = 'match';
       if (focus == null) status = tally > 0 ? 'missing' : (excused || (a.status && (a.status[i] === 'missing' || a.status[i] === 'excused')) ? 'match' : 'missing');   // a blank cell is left out of the grade, a 0 is not (audit): only NHI or an excused code equals Tally's 0
       else if (Math.abs(focus - tally) < 0.01) status = 'match';
-      else if (rcv != null && Math.abs(focus - rcv) < 0.01) status = 'stale';   // Focus has exactly what was copied; the student moved since
+      else if (rcv != null && Math.abs(focus - rcv) < 0.01 && tally > focus) status = 'stale';   // Focus has exactly what was copied; the student moved UP since (15 Nov 2026 audit, IXL-03: a drop below what was copied means Focus is too high, so it differs)
       else status = 'differ';
       const ov = overrideFor(sec, u.name, r.display); const honoured = ov && status !== 'match' && ((ov.focus == null && focus == null) || (ov.focus != null && focus != null && Math.abs(ov.focus - focus) < 0.01));
       if (honoured) status = 'accepted';   // the teacher chose Focus's number on purpose; it stays quiet until Focus changes
@@ -2621,7 +2679,7 @@ function openFocusCheck(sec, unitName) {
   m.classList.remove('hidden');
   const H = state.settings.hideNames; const nm = d => esc(H ? mask(d) : d);
   const bad = rc.rows.filter(r => r.status !== 'match' && r.status !== 'accepted'); const kept = rc.rows.filter(r => r.status === 'accepted');
-  const line = r => `<tr class="${r.status}"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${r.tally == null ? '—' : fmtN(r.tally) + (r.own !== rc.unit.total ? ` <small>/${r.own}</small>` : '')}</td><td>${r.status === 'match' ? '' : r.status === 'stale' ? `matches what you copied${rc.copiedAt ? ' ' + fmtDate(rc.copiedAt.slice(0, 10)) : ''}; up ${fmtN(r.tally - r.focus)} since` : r.status === 'missing' ? 'nothing in Focus yet' : r.status === 'unmatched' ? 'not found in IXL' : `<span class="vh">Focus differs from Tally</span>`}${r.staleOverride ? ` <small class="ghint">(you kept ${r.staleOverride.focus == null ? 'blank' : fmtN(r.staleOverride.focus)} on ${esc(fmtDate((r.staleOverride.at || '').slice(0, 10)))}: Focus has changed since)</small>` : ''}</td><td>${r.status === 'unmatched' ? '' : `<button class="pill pale small" data-keep="${esc(r.display)}" title="Focus is right for this student: stop flagging it">Keep Focus</button>`}</td></tr>`;
+  const line = r => `<tr class="${r.status}"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${r.tally == null ? '—' : fmtN(r.tally) + (r.own !== rc.unit.total ? ` <small>/${r.own}</small>` : '')}</td><td>${r.status === 'match' ? '' : r.status === 'stale' ? `matches what you copied${rc.copiedAt ? ' ' + fmtDate(localDayOf(rc.copiedAt)) : ''}; up ${fmtN(r.tally - r.focus)} since` : r.status === 'missing' ? 'nothing in Focus yet' : r.status === 'unmatched' ? 'not found in IXL' : `<span class="vh">Focus differs from Tally</span>`}${r.staleOverride ? ` <small class="ghint">(you kept ${r.staleOverride.focus == null ? 'blank' : fmtN(r.staleOverride.focus)} on ${esc(fmtDate(localDayOf(r.staleOverride.at)))}: Focus has changed since)</small>` : ''}</td><td>${r.status === 'unmatched' ? '' : `<button class="pill pale small" data-keep="${esc(r.display)}" title="Focus is right for this student: stop flagging it">Keep Focus</button>`}</td></tr>`;
   // Two jobs, never both at once. SETUP (once per unit): Focus's column and Tally disagree on what the unit is out of, so
   // every student "differs" and the student table is noise — the dialog is only "which skills don't count?". CHECK
   // (weekly): the count is the headline, then only the students who differ, then one primary button. Which Focus column
@@ -2631,7 +2689,7 @@ function openFocusCheck(sec, unitName) {
   const mapFold = `<details class="fold fcmap"><summary>Wrong column?</summary><div class="field"><label for="gbMap">Focus's "${esc(rc.assignment.name)}" is</label><select id="gbMap">${[['', '— not an IXL unit —']].concat(unitsOf(sec).map(u => [u.name, u.short + (u.title ? ' · ' + u.title : '')])).map(([v, l]) => `<option value="${esc(v)}" ${v === rc.unit.name ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div></details>`;
   const summary = `<span class="ok">${rc.counts.match} match</span>${rc.counts.stale ? ` · <span class="stale">${rc.counts.stale} up since you copied</span>` : ''}${rc.counts.differ ? ` · <span class="bad">${rc.counts.differ} differ</span>` : ''}${rc.counts.missing ? ` · <span class="bad">${rc.counts.missing} blank in Focus</span>` : ''}${rc.counts.unmatched ? ` · ${rc.counts.unmatched} not matched to IXL` : ''}`;
   const table = bad.length ? `<table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th></th><th></th></tr></thead><tbody>${bad.map(line).join('')}</tbody></table>` : `<p class="ok">Every student matches${kept.length ? ' or is kept on purpose' : ''}. Nothing to fix.</p>`;
-  const keptFold = kept.length ? `<details class="fold kept"><summary>${plural(kept.length, 'difference')} kept on purpose</summary><table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th>Why</th><th></th></tr></thead><tbody>${kept.map(r => `<tr class="accepted"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${fmtN(r.tally)}</td><td><small>${esc(fmtDate((r.override.at || '').slice(0, 10)))}${r.override.why ? ' · ' + esc(r.override.why) : ''}</small></td><td><button class="pill pale small" data-unkeep="${esc(r.display)}">Flag again</button></td></tr>`).join('')}</tbody></table><p class="ghint">Kept rows copy Focus's number, not Tally's, when you copy the column. If Focus changes for that student, the row is flagged again.</p></details>` : '';
+  const keptFold = kept.length ? `<details class="fold kept"><summary>${plural(kept.length, 'difference')} kept on purpose</summary><table class="checkTable"><thead><tr><th>Student</th><th>Focus</th><th>Tally</th><th>Why</th><th></th></tr></thead><tbody>${kept.map(r => `<tr class="accepted"><td>${nm(r.display)}</td><td>${r.focus == null ? '<i>blank</i>' : fmtN(r.focus)}</td><td>${fmtN(r.tally)}</td><td><small>${esc(fmtDate(localDayOf(r.override.at)))}${r.override.why ? ' · ' + esc(r.override.why) : ''}</small></td><td><button class="pill pale small" data-unkeep="${esc(r.display)}">Flag again</button></td></tr>`).join('')}</tbody></table><p class="ghint">Kept rows copy Focus's number, not Tally's, when you copy the column. If Focus changes for that student, the row is flagged again.</p></details>` : '';
   let body;
   if (setup) {
     // the skills fewest students touched are almost always the "also consider" extras that weren't required
@@ -2648,7 +2706,7 @@ function openFocusCheck(sec, unitName) {
   } else {
     const nFix = bad.filter(r => r.tally != null).length;
     body = `<p class="checkSummary lead">${summary}</p>
-      <p class="ghint fcpair">Focus "${esc(rc.assignment.name)}" (${rc.assignment.max != null ? rc.assignment.max + ' points' : 'points unknown'}) against Tally ${esc(rc.unit.short)} (out of ${rc.unit.total}${rc.copiedAt ? ', copied ' + fmtDate(rc.copiedAt.slice(0, 10)) : ', never copied'}).</p>
+      <p class="ghint fcpair">Focus "${esc(rc.assignment.name)}" (${rc.assignment.max != null ? rc.assignment.max + ' points' : 'points unknown'}) against Tally ${esc(rc.unit.short)} (out of ${rc.unit.total}${rc.copiedAt ? ', copied ' + fmtDate(localDayOf(rc.copiedAt)) : ', never copied'}).</p>
       ${table}
       <div id="keepForm" class="keepForm hidden"></div>
       ${keptFold}
@@ -2698,7 +2756,7 @@ function matchReport(s, rosterText) {
   if (am.length) h += `<div>Two IXL matches (tap the flag to pick):<ul>${am.map(r => `<li>${nm(r.display)}</li>`).join('')}</ul></div>`;
   if (io.length) h += `<div>In IXL but not on roster:<ul>${io.map(r => `<li>${nm(r.ixlName)} <button data-ign="${esc(r.key)}">skip</button></li>`).join('')}</ul></div>`;
   if (ign.length) h += `<div>Skipped IXL accounts:<ul>${ign.map(k => `<li>${nm(k.replace(/#\d+$/, ''))} <button data-unign="${esc(k)}">count</button></li>`).join('')}</ul></div>`;
-  if (s.rosterAt) h += `<div class="hint">Roster pasted ${fmtDate(s.rosterAt.slice(0, 10))}.</div>`;
+  if (s.rosterAt) h += `<div class="hint">Roster pasted ${fmtDate(localDayOf(s.rosterAt))}.</div>`;
   return h;
 }
 /* ---------- Saving and loading Tally files ----------
@@ -2748,7 +2806,7 @@ function boardFile() {
     const scores = s.skills.map((sk, k) => perm.map(i => eff(s, k, i)));   // best scores baked in, so `best` need not travel
     const sec = { key: s.key, label: s.label, prep: s.prep, period: s.period, openUnits: openUnits(s).map(u => u.name), threshold: s.threshold, date: s.date, importedAt: s.importedAt, file: '', skills: s.skills.map(sk => ({ unit: sk.unit, lesson: sk.lesson, name: sk.name, id: sk.id })), students: perm.map((_, j) => pseudoName(j)), scores,
       studentSkips: remap(s.studentSkips), hiddenUnits: s.hiddenUnits || {}, roster: '', ignored: {}, aliases: {}, excluded: {}, overrides: {}, receipts: {}, seatInfo: {}, qArchive: {}, pool: false, allBlank: !scores.some(r => r.some(v => v != null)),
-      history: (s.history || []).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: remap(h.per), pu: Object.fromEntries(Object.entries(h.pu || {}).map(([u, m]) => [u, remap(m)])), ua: h.ua })) };
+      history: (s.history || []).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: remap(h.per), pu: Object.fromEntries(Object.entries(h.pu || {}).map(([u, m]) => [u, remap(m)])), ua: h.ua, ...(h.own ? { own: Object.fromEntries(Object.entries(h.own).map(([u, m]) => [u, remap(m)])) } : {}), ...(h.best != null ? { best: h.best } : {}) })) };   /* 15 Nov 2026 audit (IXL-13, IXL-07): each student's own totals (keys remapped like per and pu) and the best-score basis travel with the Board's snapshots */
     if (s.grades && s.grades.assignments.length) {
       const gb = s.grades, n = gb.students.length;
       sec.grades = { importedAt: gb.importedAt, file: '', students: gb.students.map((_, j) => pseudoName(j, 'G')), assignments: gb.assignments.map(a => { const idx = shuffled(n); return { name: a.name, category: a.category, categoryFromFile: a.categoryFromFile, max: a.max, percent: a.percent, due: a.due, assignedOn: a.assignedOn, missing: a.missing, excused: a.excused, unread: a.unread, values: idx.map(j => a.values[j]), status: a.status ? idx.map(j => a.status[j]) : undefined }; }) };
@@ -2783,7 +2841,7 @@ async function loadTallyFile(file, cfg) {
     return true;
   }
   if (state.order.length && !state.board) {
-    if (!await ask(`${file && file.name ? file.name + '\n\n' : ''}This is an old-style backup${cfg.exported ? ` from ${whenText(cfg.exported)}` : ''}: rosters, goals, skips and history, no scores. Add it to what is here? Nothing here is removed.`, 'Add it')) return false;
+    if (!await ask(`${file && file.name ? file.name + '\n\n' : ''}This is an old-style backup${cfg.exported ? ` from ${whenText(cfg.exported)}` : ''}: rosters, goals, skips and history, no scores. Add it to what is here? Its history, skips, notes and family contacts join the ones here. Its goals, grading, Focus check choices, hidden units, seating notes, seating charts and room replace the ones here.`, 'Add it')) return false;
   }
   return loadSettingsBackup(cfg);
 }
@@ -2808,8 +2866,9 @@ function openSettings(key, tab) {
   view = { mode: 'settings', unit: null, all }; noticesOpen = false; render();
   const t = $('#stabs button.on'); if (t) { try { t.focus({ preventScroll: true }); } catch (e) {} }
 }
+let settingsUnsaved = null;   // the open Settings page's own "anything not saved yet?" test, so another tab's save waits for it (DAT-01)
 function leaveSettings() {
-  const b = settingsBack; settingsBack = null; pageGuard = null; settingsCancel = null;
+  const b = settingsBack; settingsBack = null; pageGuard = null; settingsCancel = null; settingsUnsaved = null; setTimeout(extIdle, 0);
   if (b && b.view && b.view.mode && b.view.mode !== 'settings') { if (b.active && state.sections[b.active]) state.active = b.active; if (typeof b.stuClass === 'string') stuClass = b.stuClass; view = { ...b.view }; }
   else view = view.all ? { mode: 'home', unit: null } : { mode: 'units', unit: null };
   render();
@@ -2892,7 +2951,7 @@ ${all ? '' : `      <section class="scope stab ${settingsTab === 'class' ? 'on' 
   const unsaved = () => dirty() || (!all && (($('#secLabel').value.trim() || s.autoLabel) !== s.label || String($('#thr').value) !== String(s.threshold) || prep !== s.prep || skipTouched)) || remind !== state.settings.remindDays || copyMode !== state.settings.copyMode || $('#useBest').checked !== !!state.settings.useBest;
   const close = () => leaveSettings();
   const cancel = async () => { if (dirty() && !await ask('Discard the roster changes you pasted?')) return; close(); };
-  settingsCancel = cancel;
+  settingsCancel = cancel; settingsUnsaved = unsaved;
   pageGuard = async () => !unsaved() || await ask(dirty() ? 'Discard the roster changes you pasted?' : `Discard the changes to ${all ? 'Tally' : s.label} you haven't saved?`);   // the rail, the tabs and the search box ask before leaving edits behind
   $('#setBack').onclick = cancel;
   m.querySelectorAll('[data-setk]').forEach(b => b.onclick = () => { settingsTab = 'class'; openSettings(b.dataset.setk); }); m.querySelectorAll('[data-setcourse]').forEach(b => b.onclick = () => { settingsTab = 'course'; openSettings(b.dataset.setcourse); });
@@ -2905,11 +2964,11 @@ ${all ? '' : `      <section class="scope stab ${settingsTab === 'class' ? 'on' 
   wireReport();
   if (rosterEl) { rosterEl.oninput = () => { $('#matchReport').innerHTML = matchReport(s, rosterEl.value); wireReport(); }; }
   $('#mSave').onclick = () => {
-    if (all) { state.settings.copyMode = copyMode; state.settings.remindDays = remind; state.settings.useBest = $('#useBest').checked; save(); close(); toast('Saved', false); return; }
+    if (all) { state.settings.copyMode = copyMode; state.settings.remindDays = remind; setUseBest($('#useBest').checked); save(); close(); toast('Saved', false); return; }
     const tv = parseInt($('#thr').value, 10); if (!isNaN(tv) && clampThr(tv) !== s.threshold) { s.threshold = clampThr(tv); snapshot(s); }
     state.settings.copyMode = copyMode; state.settings.remindDays = remind; state.settings.skipFirst = state.settings.skipFirst || { acc: 0, on: 1 }; if (skipTouched) state.settings.skipFirst[prep] = skipFirst;   /* defaultWorkingIn() below re-seats a Working in that the new count has swallowed */   // untouched: the other course's review count must not follow a course change
     const prepChanged = prep !== s.prep;
-    s.label = $('#secLabel').value.trim() || s.autoLabel; s.team = ''; s.prep = prep; s.accelerated = prep === 'acc'; s.excluded = state.skips[prep]; state.settings.useBest = $('#useBest').checked;
+    s.label = $('#secLabel').value.trim() || s.autoLabel; s.team = ''; s.prep = prep; s.accelerated = prep === 'acc'; s.excluded = state.skips[prep]; setUseBest($('#useBest').checked);
     if (prepChanged) { if (s.pool) { s.autoLabel = `${PERIOD_ORD(s.period)} Period · ${prep === 'acc' ? 'Accelerated' : 'On-level'}`; if ($('#secLabel').value.trim() === '' || /Period · (Accelerated|On-level)$/.test(s.label)) s.label = s.autoLabel; } if (!$('#thr').value.trim() || clampThr($('#thr').value) === (prep === 'acc' ? DEFAULT_THR.on : DEFAULT_THR.acc)) { s.threshold = prep === 'acc' ? DEFAULT_THR.acc : DEFAULT_THR.on; } }
     const rosterChanged = !!rosterEl && rosterEl.value !== s.roster;
     if (rosterChanged) { s.roster = rosterEl.value; s.rosterAt = new Date().toISOString(); if (parseRosterText(s.roster).length) s.skipRoster = false; }
@@ -2942,7 +3001,7 @@ ${all ? '' : `      <section class="scope stab ${settingsTab === 'class' ? 'on' 
     try { const cfg = JSON.parse(await e.target.files[0].text()); if (cfg.tally !== 'course' || !['acc', 'on'].includes(cfg.prep)) throw 0;
       const targets = state.order.map(k => state.sections[k]).filter(x => x.prep === cfg.prep);
       if (!await ask(`Apply the ${cfg.prep === 'acc' ? 'accelerated' : 'on-level'} course settings (goal ${cfg.goal}, ${Object.keys(cfg.assigned || {}).length} unit marks, ${(cfg.skipped || []).length} skipped skills) to ${plural(targets.length, 'class')}?`)) return;
-      state.assigned[cfg.prep] = Object.assign({}, state.assigned[cfg.prep], cfg.assigned || {});
+      state.assigned[cfg.prep] = { ...state.assigned[cfg.prep], ...Object.fromEntries(Object.entries(cfg.assigned && typeof cfg.assigned === 'object' ? cfg.assigned : {}).filter(([k]) => SAFE_KEY(k))) };   /* 15 Nov 2026 audit: keys from a file go through SAFE_KEY, as in loadSettingsBackup */
       targets.forEach(x => { x.threshold = clampThr(cfg.goal, x.threshold); (cfg.skipped || []).forEach(sk => { x.excluded[sk.key] = true; }); snapshot(x); });
       save(); render(); toast(`Course settings applied to ${plural(targets.length, 'class')}`, false);
     } catch (err) { toast('That file is not a Tally course settings file.', true); }
@@ -2989,7 +3048,7 @@ function loadSettingsBackup(cfg) {
         aliases: c.aliases && typeof c.aliases === 'object' ? c.aliases : {}, hiddenUnits: c.hiddenUnits && typeof c.hiddenUnits === 'object' ? c.hiddenUnits : {},
         overrides: c.overrides && typeof c.overrides === 'object' ? cleanOverrides(c.overrides) : (prev ? prev.overrides : {}),
         seatInfo: c.seatInfo && typeof c.seatInfo === 'object' ? c.seatInfo : (prev ? prev.seatInfo : {}), stuNotes: c.stuNotes && typeof c.stuNotes === 'object' ? { ...(prev ? prev.stuNotes : {}), ...cleanNotes(c.stuNotes) } : (prev ? prev.stuNotes : {}), family: c.family && typeof c.family === 'object' ? { ...(prev ? prev.family : {}), ...cleanFamily(c.family) } : (prev ? prev.family : {}), practice: c.practice && typeof c.practice === 'object' ? { ...(prev ? prev.practice : {}), ...cleanPractice(c.practice) } : (prev ? prev.practice : {}), confForms: c.confForms && typeof c.confForms === 'object' ? { ...(prev ? prev.confForms : {}), ...cleanConfForms(c.confForms) } : (prev ? prev.confForms : {}), seating: c.seating && typeof c.seating === 'object' && c.seating.seats ? c.seating : (prev ? prev.seating : undefined),
-        studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, qArchive: mergeArchives(prev ? prev.qArchive : {}, cleanArchive(c.qArchive)), prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, gradeHistory: Array.isArray(c.gradeHistory) ? c.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : (prev ? prev.gradeHistory : []), history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua })) : (prev ? prev.history : [])
+        studentSkips: c.studentSkips && typeof c.studentSkips === 'object' ? c.studentSkips : {}, qArchive: mergeArchives(prev ? prev.qArchive : {}, cleanArchive(c.qArchive)), prep: c.prep === 'acc' || c.prep === 'on' ? c.prep : undefined, gradeHistory: Array.isArray(c.gradeHistory) ? c.gradeHistory.filter(h => h && typeof h.date === 'string' && Array.isArray(h.grade)) : (prev ? prev.gradeHistory : []), history: Array.isArray(c.history) ? c.history.filter(h => h && typeof h.date === 'string' && h.per).map(h => ({ date: h.date, at: h.at, thr: h.thr, students: h.students, per: h.per, pu: h.pu, ua: h.ua, ...(h.own ? { own: h.own } : {}), ...(h.best != null ? { best: h.best } : {}) })) : (prev ? prev.history : [])
       });
       let applied = 0, held = 0;
       // An old backup adds to what is here, never takes it away (audit, 22 Oct 2026: its histories, skips, ignores and
@@ -3151,7 +3210,8 @@ let dragDepth = 0;
 document.addEventListener('dragenter', e => { e.preventDefault(); if (document.body.classList.contains('lbMode')) return; dragDepth++; document.body.classList.add('dragging'); });
 document.addEventListener('dragleave', e => { e.preventDefault(); if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
 document.addEventListener('dragover', e => e.preventDefault());
-document.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (document.body.classList.contains('lbMode') || document.body.classList.contains('showMode')) return; const fs = [...e.dataTransfer.files].filter(f => /\.(xlsx|csv|xls|txt|tsv|html?|json|pdf)$/i.test(f.name)); if (fs.length) importFiles(fs); else toast('Drop an IXL Score Grid, a Focus gradebook export (.xlsx, .csv, .xls), a Seating Chart backup (.json), or a FAST score report or IXL Quickview (.pdf).', true); });
+document.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (document.body.classList.contains('lbMode') || document.body.classList.contains('showMode')) return; if (document.body.classList.contains('veiled') && pinOn()) { const vm = $('#veilMsg'); if (vm) vm.textContent = 'Enter the PIN first, then drop the file again.'; return; }   /* 15 Nov 2026 audit (DAT-04): nothing is imported behind the PIN screen */
+  const fs = [...e.dataTransfer.files].filter(f => /\.(xlsx|csv|xls|txt|tsv|html?|json|pdf)$/i.test(f.name)); if (fs.length) importFiles(fs); else toast('Drop an IXL Score Grid, a Focus gradebook export (.xlsx, .csv, .xls), a Seating Chart backup (.json), or a FAST score report or IXL Quickview (.pdf).', true); });
 // Every dialog goes through #modal, so one observer gives them all the same manners: focus moves into the panel on
 // open (to the panel itself — never an input, which would raise the tablet's keyboard), Tab stays inside, the dialog is
 // named by its own heading, and focus goes back to whatever opened it on close.

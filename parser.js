@@ -229,8 +229,9 @@ function csvToRows(text, delim) {
 
 // A score is a number 0–100, or a string that is exactly a number (some writers store numbers as text).
 function asScore(v) {
-  if (typeof v === 'number') return isNaN(v) ? null : v;
-  if (typeof v === 'string') { const m = v.trim().match(/^(\d{1,3})(\.\d+)?%?$/); if (m) return Number(m[1] + (m[2] || '')); }
+  const ok = n => n >= 0 && n <= 100 ? n : null;   // a SmartScore is 0 to 100: anything else is not one (15 Nov 2026 audit)
+  if (typeof v === 'number') return isNaN(v) ? null : ok(v);
+  if (typeof v === 'string') { const m = v.trim().match(/^(\d{1,3})(\.\d+)?%?$/); if (m) return ok(Number(m[1] + (m[2] || ''))); }
   return null;
 }
 const isText = v => typeof v === 'string' && v.trim() !== '';
@@ -285,7 +286,8 @@ function parseIxlFilename(fn) {
   const pm = section && section.match(/^\d?T(\d)[A-Z]?$/i); const period = pm ? Number(pm[1]) : null;
   const ord = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
   const label = period ? `${ord(period)} Period · ${accelerated ? 'Accelerated' : 'On-level'}` : section ? section + (courseTag ? ' · ' + courseTag : '') : base.slice(0, 40);
-  return { date, courseNum, section, courseTag, accelerated, key, label, period };
+  const lastYear = /_Last[-_ ]School[-_ ]Year(_|$)/i.test(base);   // IXL's own date-range word: last school year's grid (15 Nov 2026 audit, IMP-03)
+  return { date, courseNum, section, courseTag, accelerated, key, label, period, lastYear };
 }
 
 /* FAST progress-monitoring report (Focus "FAST report", one row per student). Three header rows: column names, then the
@@ -318,7 +320,8 @@ function parseFastReport(rows) {
   const wins = []; cols.forEach(x => { if (!wins.some(v => v.year === x.year && v.pm === x.pm)) wins.push({ year: x.year, pm: x.pm }); });
   const order = v => v.year + v.pm; wins.sort((a, b) => order(a).localeCompare(order(b)));
   const pm3s = wins.filter(v => v.pm === 'PM3'); const pctWin = pm3s.length ? pm3s[pm3s.length - 1] : null;   // the report's one Percentile column belongs to its PM3
-  const lastYear = wins.length ? wins[wins.length - 1].year : null;
+  /* 15 Nov 2026 audit (CNF-03): the newest year is this year only if it holds a window other than PM3 (fastYearNow's rule); a report from August holds only last spring's PM3 */
+  const newest = wins.length ? wins[wins.length - 1].year : null; const lastYear = newest && wins.some(v => v.year === newest && v.pm !== 'PM3') ? newest : null;
   const num = v => { const t = txt(v); return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : null; };
   const students = []; let blank = 0;
   for (let i = h + 3; i < rows.length; i++) {
@@ -328,7 +331,7 @@ function parseFastReport(rows) {
       cols.filter(x => x.year === w.year && x.pm === w.pm).forEach(x => { const v = num(r[x.c]); if (v != null) t[x.kind] = v; });
       if (pctWin && w === pctWin && cPct >= 0 && num(r[cPct]) != null && t.scale != null) t.pct = num(r[cPct]);
       if (w.pm === 'PM3' && cTestLvl >= 0 && num(r[cTestLvl]) != null && w.year !== lastYear) t.grade = num(r[cTestLvl]);
-      if (w.year === lastYear && cAbove >= 0 && /^y/i.test(txt(r[cAbove]))) t.above = true;
+      if (cAbove >= 0) t.above = w.year === lastYear && /^y/i.test(txt(r[cAbove]));   /* said on every window, so a later report clears a mark an older one put on the wrong window */
       return t; }).filter(t => t.scale != null || t.level != null);
     if (!id && !name) { blank++; continue; }
     const info = {}; extra.forEach(x => { const v = txt(r[x.c]); if (v && x.label) info[x.label] = v.slice(0, 80); });

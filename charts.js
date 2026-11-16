@@ -16,7 +16,7 @@ const LETTER_DARK = ['B', 'F'];
 // Ordered bands (least → most done) on the same scale: red, orange, yellow, green.
 const QUARTER_COLORS = [LETTER_COLORS.F, LETTER_COLORS.D, LETTER_COLORS.C, LETTER_COLORS.A];
 // A bar that shows a percent grade wears the colour of the letter that percent earns.
-const gradeFill = pct => pct == null ? 'var(--teal)' : LETTER_COLORS[letterOf(Math.round(pct))] || 'var(--teal)';
+const gradeFill = pct => pct == null ? 'var(--teal)' : LETTER_COLORS[letterOf(roundPct(pct))] || 'var(--teal)';
 const NEUTRAL_FILL = '#C9CED8';   // "not started" and other no-data slices: a grey that still shows on a white card
 // One colour per class, fixed by period when known (1st = slot 1, …) else by position, so every screen agrees.
 function classColor(sec) { const i = sec && Number.isInteger(sec.period) ? sec.period - 1 : Math.max(0, state.order.indexOf(sec ? sec.key : '')); return seriesColor(i); }
@@ -24,7 +24,10 @@ function classColor(sec) { const i = sec && Number.isInteger(sec.period) ? sec.p
 const PHONE = () => typeof matchMedia === 'function' && matchMedia('(max-width:640px), (max-height:500px) and (pointer:coarse)').matches;   // the same test as the phone stylesheet in app.html (a phone on its side counts)
 const CW = n => PHONE() ? Math.min(n, Math.max(360, Math.round(innerWidth * 0.95))) : n;
 const phoneLabel = t => PHONE() ? String(t).split(' · ')[0] : t;   // "1st Period · Accelerated" → "1st Period"
-const fmtV = v => v == null ? '—' : (Math.round(v * 10) / 10).toString();
+/* 15 Nov 2026 audit (HLT-03): to the nearest tenth, half up, as the grade engine rounds (roundPct): 60.05 is 60.1 though the float is 60.0499...; -0.05 is -0.1, and -0.04 is 0, not -0 */
+const tenth = x => Math.sign(x) * Math.round(Math.abs(x) * 10 + 1e-9) / 10 + 0;
+const fmt1 = x => tenth(x).toFixed(1);
+const fmtV = v => v == null ? '—' : tenth(v).toString();
 const niceMax = (v, step) => { if (!(v > 0)) return step || 10; const s = step || (v > 200 ? 50 : v > 100 ? 20 : v > 40 ? 10 : v > 10 ? 5 : 1); return Math.ceil(v / s) * s; };
 
 // Horizontal bars: items [{ label, value, max?, hint? }]. One hue; value labels on every bar (few bars, so they're the point).
@@ -55,11 +58,13 @@ function chartLines(labels, series, o) {
   o = o || {}; const w = CW(o.w || 640), h = o.h || 220, l = o.pct ? 58 : 44, t = 12, b = 30;   // a percent axis needs room for "100%" in the board's larger type
   const longest = Math.max(0, ...series.map(x => String(phoneLabel(x.name)).length)) + 6; const r = PHONE() ? Math.min(w * 0.34, longest * 6.8 + 24) : Math.max(o.labelW || 170, Math.min(w * 0.45, longest * 6.8 + 24));   // room for the longest direct label
   const ys = series.flatMap(x => x.values).filter(v => v != null); if (!ys.length) return '<div class="lbEmpty">Nothing to plot yet.</div>';
-  const lo = o.min != null ? o.min : Math.max(0, Math.floor(Math.min(...ys) / 10) * 10 - 10), hi = o.max != null ? o.max : niceMax(Math.max(...ys), 10);
+  const lo = o.min != null ? o.min : Math.max(0, Math.floor(Math.min(...ys) / 10) * 10 - 10); let hi = o.max != null ? o.max : niceMax(Math.max(...ys), 10);
+  /* CHT-15 (round 2): with no fixed top, the top is raised to a whole number of round steps (0, 20, 40, 60, 80 for 67), so every tick is a whole number */
+  const stepL = o.max != null ? null : [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000].find(d => d >= (hi - lo) / 4 - 1e-9); if (stepL) hi = lo + stepL * Math.ceil((hi - lo) / stepL - 1e-9);
   const px = o.padX || 0;   // o.padX: room between the axis and the first and last points (ranges, not dates)
   const X = i => l + px + (labels.length > 1 ? i / (labels.length - 1) : 0.5) * (w - l - r - 2 * px), Y = v => h - b - (v - lo) / (hi - lo || 1) * (h - t - b);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.aria || 'line chart')}">`;
-  const ticks = 4; for (let i = 0; i <= ticks; i++) { const v = lo + (hi - lo) * i / ticks; s += `<line x1="${l}" y1="${Y(v)}" x2="${w - r}" y2="${Y(v)}" class="gl"/><text x="${l - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; }
+  const span = hi - lo, ticks = stepL ? Math.round(span / stepL) : Number.isInteger(span / 4) ? 4 : ([1, 2, 5, 10, 20, 25, 50, 100].map(d => span / d).find(n => Number.isInteger(n) && n <= 5) || 4); for (let i = 0; i <= ticks; i++) { const v = lo + span * i / ticks;   /* 15 Nov 2026 audit (CHT-15): four steps when they are whole numbers, else the fewest whole steps that divide the axis */ s += `<line x1="${l}" y1="${Y(v)}" x2="${w - r}" y2="${Y(v)}" class="gl"/><text x="${l - 6}" y="${Y(v) + 4}" text-anchor="end" class="tl">${o.pct ? Math.round(v) + '%' : fmtV(v)}</text>`; }
   // Optional x labels thinned so dates don't collide; optional marks = vertical dividers before index i (quarter boundaries).
   const every = Math.max(1, Math.ceil(labels.length / Math.max(2, Math.floor((w - l - r) / 64))));
   labels.forEach((lb, i) => { if (i % every && i !== labels.length - 1) return; s += `<text x="${X(i)}" y="${h - 8}" text-anchor="middle" class="tl">${esc(lb)}</text>`; });
@@ -89,43 +94,62 @@ const meanMark = (x, yTop, yAxis, label) => `<g class="mean"><line x1="${x.toFix
 function chartDots(values, max, o) {
   o = o || {}; const w = CW(o.w || 800), v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[x] = (counts[x] || 0) + 1);
   const tallest = Math.max(1, o.stack || 0, ...Object.values(counts));   /* o.stack: the tallest stack across the rows drawn together */ const r = tallest > 12 ? 4 : 6; const pad = o.mean != null ? 18 : 0; const h = Math.max(60, tallest * (r * 2 + 1) + 34) + pad;   /* dots hang from the axis, so extra height is headroom for the average's diamond */
-  const X = x => 30 + x / (max || 1) * (w - 60);
+  /* 15 Nov 2026 audit (CHT-06): the axis starts at 0, or below it to meet a negative value, so no dot sits left of it; (CHT-15) the maximum gets a tick of its own */
+  const vMin = v.length ? Math.min(...v) : 0; const span0 = max - Math.min(0, vMin); const step = span0 > 40 ? 10 : span0 > 10 ? 5 : 1; const lo = Math.min(0, Math.floor(vMin / step) * step);
+  const X = x => 30 + (x - lo) / ((max - lo) || 1) * (w - 60);
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="dot plot">`;
-  const step = max > 40 ? 10 : max > 10 ? 5 : 1; for (let x = 0; x <= max; x += step) s += `<line x1="${X(x)}" y1="${h - 26}" x2="${X(x)}" y2="${h - 20}" class="ax"/><text x="${X(x)}" y="${h - 6}" text-anchor="middle" class="tl">${x}</text>`;
-  s += `<line x1="${X(0)}" y1="${h - 26}" x2="${X(max)}" y2="${h - 26}" class="ax"/>`;
+  const ticks = []; for (let x = lo; x <= max + 1e-9; x += step) ticks.push(x); if (ticks[ticks.length - 1] < max - 1e-9) { if (ticks.length > 1 && X(max) - X(ticks[ticks.length - 1]) < 22) ticks.pop(); ticks.push(max); }
+  ticks.forEach(x => { s += `<line x1="${X(x)}" y1="${h - 26}" x2="${X(x)}" y2="${h - 20}" class="ax"/><text x="${X(x)}" y="${h - 6}" text-anchor="middle" class="tl">${x}</text>`; });
+  s += `<line x1="${X(lo)}" y1="${h - 26}" x2="${X(max)}" y2="${h - 26}" class="ax"/>`;
   Object.keys(counts).map(Number).sort((a, b) => a - b).forEach(x => { for (let i = 0; i < counts[x]; i++) s += `<circle cx="${X(x)}" cy="${h - 28 - r - i * (r * 2 + 1)}" r="${r}" class="dot"><title>${x}: ${counts[x]} student${counts[x] === 1 ? '' : 's'}</title></circle>`; });
   if (o.mean != null) s += meanMark(X(o.mean), 10, h - 26, o.meanLabel || 'Average');
   return s + '</svg>';
 }
 // Histogram with a bin size; bars touch (histograms do), 1px surface gap for legibility.
 const autoBin = max => max > 40 ? 10 : max > 10 ? 5 : 1;
+/* 15 Nov 2026 audit (CHT-01): in bins of 1 up to a whole-number maximum there is a bar for each whole number, 0 to the
+   maximum, so the maximum is not counted in the bar below it; the bars do not depend on the data, so rows drawn together
+   line up (round 2). Otherwise bins are [lo, hi) with the top bin closed at max. Shared with histTop. */
+const histBins = (max, bin) => { const one = bin === 1 && Number.isInteger(max); const nb = one ? Math.max(1, Math.floor(max) + 1) : Math.max(1, Math.ceil(max / bin - 1e-9)); return { one, nb, at: x => Math.max(0, Math.min(nb - 1, Math.floor(x / bin))) }; };
+const FREQ_MAX = 25;   /* a bar graph draws a bar per value up to this maximum, and bins above it (CHT-12: chartFreq and histTop agree) */
 function chartHist(values, max, bin, o) {
   o = o || {}; const pad = o.mean != null ? 16 : 0; const w = CW(o.w || 800), h = 200 + pad, v = values.filter(x => x != null); bin = bin || autoBin(max);
   // Bins are [lo, hi) with the top bin closed at max, so 100 with bins of 10 gives ten bins, not an empty 100–110.
-  const nb = Math.max(1, Math.ceil(max / bin - 1e-9)); const c = new Array(nb).fill(0); v.forEach(x => c[Math.max(0, Math.min(nb - 1, Math.floor(x / bin)))]++);
-  const ints = v.every(x => Number.isInteger(x)); const range = (lo, hi, last) => !ints ? `${lo}–${hi}` : bin === 1 ? `${lo}` : last ? `${lo}–${Math.max(lo, Math.round(max))}` : `${lo}–${hi - 1}`;
+  const { one, nb, at } = histBins(max, bin); const c = new Array(nb).fill(0); v.forEach(x => c[at(x)]++);
+  const ints = o.ints != null ? o.ints : v.every(x => Number.isInteger(x));   /* o.ints: whole numbers in every row drawn together, so the rows share one axis */ const vals1 = one && ints;   // a bar per value, labelled under its middle
+  const range = (lo, hi, last) => !ints ? (one && last ? `${lo}` : `${lo}–${hi}`) : bin === 1 ? `${lo}` : last ? `${lo}–${Math.max(lo, Math.round(max))}` : `${lo}–${hi - 1}`;
   const sh = o.share ? (x => x / Math.max(v.length, 1) * 100) : (x => x); const cv = c.map(sh);   // share: each bar as a percent of the row's students
   const top = o.share ? Math.ceil(Math.max(o.top || 0, ...cv, 1) / 10) * 10 : niceMax(Math.max(o.top || 0, ...cv, 1), Math.max(o.top || 0, ...cv) > 10 ? 5 : 1); const X = i => 40 + i / nb * (w - 60), Yv = t => h - 30 - t / top * (h - 50 - pad), Y = n => Yv(sh(n));
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="histogram">`;
   for (let n = 0; n <= top; n += o.share ? (top > 50 ? 20 : 10) : Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Yv(n)}" x2="${w - 20}" y2="${Yv(n)}" class="gl"/><text x="34" y="${Yv(n) + 4}" text-anchor="end" class="tl">${n}${o.share ? '%' : ''}</text>`;
-  c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--cc,var(--teal))"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
-  s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${nb * bin}</text>`;
-  if (o.mean != null) s += meanMark(X(Math.max(0, Math.min(nb, o.mean / bin))), 10, Y(0), o.meanLabel || 'Average');   /* the axis is labelled at bin edges, so a value sits at value ÷ bin */
+  c.forEach((n, i) => { const lo = i * bin, hi = (i + 1) * bin, last = i === nb - 1; s += `<rect x="${X(i) + 1}" y="${Y(n)}" width="${X(i + 1) - X(i) - 2}" height="${Y(0) - Y(n)}" class="bar" style="fill:var(--cc,var(--teal))"><title>${range(lo, hi, last)}: ${n} student${n === 1 ? '' : 's'}</title></rect>${n ? `<text x="${(X(i) + X(i + 1)) / 2}" y="${Y(n) - 4}" text-anchor="middle" class="val">${n}</text>` : ''}<text x="${vals1 ? (X(i) + X(i + 1)) / 2 : X(i)}" y="${h - 10}" text-anchor="middle" class="tl">${lo}</text>`; });
+  if (!one) s += `<text x="${X(nb)}" y="${h - 10}" text-anchor="middle" class="tl">${nb * bin}</text>`;   /* a bar per value is labelled under its middle, as the bar graph is; bins at their edges */
+  if (o.mean != null) s += meanMark(X(Math.max(0, Math.min(nb, vals1 ? o.mean + 0.5 : o.mean / bin))), 10, Y(0), o.meanLabel || 'Average');   /* the axis is labelled at bin edges, so a value sits at value ÷ bin */
   return s + '</svg>';
 }
-// Stem-and-leaf as a table: stems are always tens, leaves ones (the form students learn), so 0–23 data reads 0 | 3 5 8 / 1 | 0 2 / 2 | 1.
+// Stem-and-leaf as a table: stems are tens and leaves ones (the form students learn), so 0–23 data reads 0 | 3 5 8 / 1 | 0 2 / 2 | 1.
+/* 15 Nov 2026 audit (CHT-06): data with decimals use ones as stems and tenths as leaves, with a key written from the
+   data ("1 | 2 means 1.2"); a spread too wide for that is rounded to whole numbers and the key says so. A value below 0
+   has no stem a student would recognize, so the graph says it cannot draw them rather than inventing one. */
 function chartStem(values, max) {
-  const v = values.filter(x => x != null).map(x => Math.round(x)).sort((a, b) => a - b); if (!v.length) return '';
+  const raw = values.filter(x => x != null); if (!raw.length) return '';
+  if (raw.some(x => x < 0)) return '<div class="labNotYet">A stem-and-leaf plot here can only show values of 0 or more, and these data have values below 0. Pick another graph.</div>';
+  const dec = raw.some(x => !Number.isInteger(x)), tenths = dec && Math.floor(Math.max(...raw)) - Math.floor(Math.min(...raw)) <= 20;
+  const f = tenths ? 10 : 1, v = raw.map(x => Math.round(x * f)).sort((a, b) => a - b);   // tenths: 1.2 is 12 tenths, stem 1, leaf 2
   const stems = {}; v.forEach(x => { const st = Math.floor(x / 10); (stems[st] = stems[st] || []).push(x % 10); });
-  const lo = Math.min(0, Math.floor(v[0] / 10)), hi = Math.max(Math.floor(v[v.length - 1] / 10), Math.floor((max || 0) / 10)); let rows = '';
+  const lo = tenths ? Math.floor(v[0] / 10) : Math.min(0, Math.floor(v[0] / 10)), hi = Math.max(Math.floor(v[v.length - 1] / 10), tenths ? 0 : Math.floor((max || 0) / 10)); let rows = '';
   for (let st = lo; st <= hi; st++) rows += `<tr><th>${st}</th><td>${(stems[st] || []).join(' ')}</td></tr>`;
-  return `<table class="stem"><tbody>${rows}</tbody></table><p class="ghint">Key: 1 | 3 means 13</p>`;
+  const k = v[0], ks = Math.floor(k / 10), kl = k % 10;
+  const key = tenths ? `Key: ${ks} | ${kl} means ${ks}.${kl}${raw.some(x => Math.abs(x * 10 - Math.round(x * 10)) > 1e-9) ? ' (values rounded to the nearest tenth)' : ''}` : `Key: 1 | 3 means 13${dec ? ' (values rounded to whole numbers)' : ''}`;
+  return `<table class="stem"><tbody>${rows}</tbody></table><p class="ghint">${key}</p>`;
 }
 // Bar graph of how many students at each value (0..max); a bar per value.
 function chartFreq(values, max, o) {
-  const v = values.filter(x => x != null); const counts = {}; v.forEach(x => counts[Math.round(x)] = (counts[Math.round(x)] || 0) + 1);
+  const v = values.filter(x => x != null); const ints = o && o.ints != null ? o.ints : v.every(x => Number.isInteger(x));
+  /* too many bars: bin them; decimals (CHT-06, round 2): ranges of 1 ("1–2", the top one the maximum), never a value rounded under a whole-number bar */
+  if (!ints || Math.floor(max) > FREQ_MAX) return chartHist(values, max, Math.floor(max) > FREQ_MAX ? Math.ceil(max / 20) : 1, { ...(o || {}), ints });
+  const counts = {}; v.forEach(x => counts[x] = (counts[x] || 0) + 1);
   const items = []; for (let x = 0; x <= max; x++) items.push({ label: String(x), value: counts[x] || 0 });
-  if (items.length > 26) return chartHist(values, max, Math.ceil(max / 20), o);   // too many bars: bin them
   o = o || {}; const pad = o.mean != null ? 16 : 0; const sh = o.share ? (x => x / Math.max(v.length, 1) * 100) : (x => x); const w = CW(o.w || 800), h = 200 + pad, top = o.share ? Math.ceil(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1) / 10) * 10 : niceMax(Math.max(o.top || 0, ...items.map(i => sh(i.value)), 1), 1); const X = i => 40 + i / items.length * (w - 60), Yv = t => h - 30 - t / top * (h - 50 - pad), Y = n => Yv(sh(n));
   let s = `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="bar graph">`;
   for (let n = 0; n <= top; n += o.share ? (top > 50 ? 20 : 10) : Math.max(1, Math.round(top / 4))) s += `<line x1="40" y1="${Yv(n)}" x2="${w - 20}" y2="${Yv(n)}" class="gl"/><text x="34" y="${Yv(n) + 4}" text-anchor="end" class="tl">${n}${o.share ? '%' : ''}</text>`;
@@ -136,6 +160,10 @@ function chartFreq(values, max, o) {
 // Circle graph: parts [{ label, value, short? }]. Each slice is labeled outside with its share (and its letter when it
 // has one), anchored away from the circle so a label never runs into the legend beside it. The graph sets its own type
 // sizes and its own width (from the longest legend line), so it reads the same on the Board and on a saved page.
+/* Croix's call on CHT-02 (15 Nov 2026 audit): each slice keeps its own correctly rounded share; when those do not add to 100, one line under the key says why */
+const pctOff = parts => { const t = parts.reduce((a, p) => a + p.value, 0); return t > 0 && parts.reduce((a, p) => a + (p.value ? Math.round(p.value / t * 100) : 0), 0) !== 100; };
+const ROUND_NOTE = '<small class="labRoundNote">Percents are rounded, so they may not add to exactly 100%.</small>';
+const roundNote = parts => pctOff(parts) ? `<p class="ghint">${ROUND_NOTE}</p>` : '';
 function chartCircle(parts, o) {
   o = o || {}; const tot = parts.reduce((a, p) => a + p.value, 0); if (!tot) return '<div class="lbEmpty">Nothing to plot yet.</div>';
   const cx = 156, cy = 108, R = 82, H = 216, lx = 316, pitch = 30; const fs = 'style="font-size:19px"', fl = 'style="font-size:21px"';
@@ -150,7 +178,7 @@ function chartCircle(parts, o) {
   s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/>`;
   const ly = cy - parts.length * pitch / 2 + 6;   // the legend sits level with the middle of the circle
   parts.forEach((p, i) => { s += `<rect x="${lx}" y="${ly + i * pitch}" width="17" height="17" rx="4" style="fill:${p.color || seriesColor(i)}" stroke="#16213A" stroke-opacity=".45" stroke-width="1"/><text x="${lx + 25}" y="${ly + 15.5 + i * pitch}" class="lbl" ${fl}>${esc(p.label)} <tspan class="tl" ${fs}>${p.value}</tspan></text>`; });
-  return s + '</svg>';
+  return s + '</svg>' + roundNote(parts);
 }
 /* A circle graph without its key, for a grid of them that share one (Croix, 4 Nov 2026: "bigger pies that's my favorite
    of the comparisons but it views as kinda small on the board"). The same slices and outside labels as chartCircle; the

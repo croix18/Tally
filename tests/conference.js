@@ -39,7 +39,7 @@ function fastCsv(rows) {
   const pr=parsed||await p.evaluate(t=>{ return window.__tally.parseFastReport(csvToRows(t)); }, fs.readFileSync(f1,'utf8'));
   check(pr && pr.windows.map(w=>w.pm+' '+w.year).join(',')==='PM3 2025-26,PM1 2026-27','the two windows are read from the second and third header rows, through the mangled dash: '+(pr&&pr.windows.map(w=>w.pm+' '+w.year).join(', ')));
   const r0=pr.students.find(s=>s.id===ids[0]);
-  check(JSON.stringify(r0.tests)===JSON.stringify([{test:'FAST',pm:'PM3',year:'2025-26',level:4,scale:247,pct:81,grade:6},{test:'FAST',pm:'PM1',year:'2026-27',level:2,scale:231,above:true}]),'one student: last year\'s PM3 with its percentile and the grade of the test, this year\'s PM1 marked above grade');
+  check(JSON.stringify(r0.tests)===JSON.stringify([{test:'FAST',pm:'PM3',year:'2025-26',level:4,scale:247,pct:81,grade:6,above:false},{test:'FAST',pm:'PM1',year:'2026-27',level:2,scale:231,above:true}]),'one student: last year\'s PM3 with its percentile and the grade of the test, this year\'s PM1 marked above grade');
   check(pr.students.find(s=>s.id===ids[4]).tests.length===1 && pr.blank===1 && pr.students.length===6,'a student with only PM1 has one record; the row with no ID and no name is counted and skipped');
   const i2=pr.students.find(s=>s.id===ids[2]).info;
   check(i2.Race==='H' && i2.ELL==='LY' && i2['504']==='Y' && i2.L30==='Y' && i2.Teacher && i2.GradeLevel==='07' && i2.Percentile==='30' && i2['Scale growth PM1']==='15' && Object.values(i2).every(v=>v!==''),'every other column is kept under its own heading, growth included (Croix: "I want it to log it. It\'s all important"): '+Object.keys(i2).join(', '));

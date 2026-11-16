@@ -62,7 +62,8 @@ small{color:var(--teal);font-weight:700}
     const k = role + ':' + real.toLowerCase();
     if (key[k]) return cap(key[k], real);
     const pool = role === 'last' ? LAST : FIRST;
-    let f; do { f = pool[(ctr++ * 7 + Math.floor(Math.random() * pool.length)) % pool.length]; if (used.size >= pool.length) f += (ctr % 90 + 10); } while (used.has(f) && used.size < pool.length * 2);
+    let f = null; for (let n = 0; n < pool.length * 2 && (f == null || used.has(f)); n++) f = pool[(ctr++ * 7 + Math.floor(Math.random() * pool.length)) % pool.length];
+    const base = f; for (let n = 10; used.has(f); n++) f = base + n;   /* 15 Nov 2026 audit (DAT-07): a number is added until the name is unused, so two real names never share one fake */
     used.add(f); key[k] = f; return cap(f, real);
   }
   // Replace the alphabetic runs of a name while preserving separators, particles, suffixes, and initials.

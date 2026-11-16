@@ -31,23 +31,23 @@ function conferenceData(sec, name) {
   const ixlCol = a => /\bixl\b/i.test(a.name);
   const classAvg = a => { const v = []; a.values.forEach((x, j) => { if (a.status && a.status[j] === 'score' && x != null) v.push(Number(x) / a.max * 100); }); return v.length >= 3 ? v.reduce((p, q) => p + q, 0) / v.length : null; };
   const all = gb ? gb.assignments.filter(a => a.max > 0) : [];
-  const missingAll = all.filter(a => a.status && a.status[i] === 'missing' && !ixlCol(a));
-  const missing = missingAll.filter(a => !isAssess(s, a)).map(a => ({ name: a.name, max: a.max, due: a.due || '', cat: catIn(s, a) }));
-  const missedTests = missingAll.filter(a => isAssess(s, a)).map(a => ({ name: a.name, max: a.max, due: a.due || '' }));
+  const owedIxl = gb ? owedWork(sec, s, i, f.ixl).owed : [];   /* 15 Nov 2026 audit (CON-03): an IXL column with skills still to do is missing work (Croix, 31 Oct) */
+  const missingAll = all.filter(a => a.status && a.status[i] === 'missing' && (!ixlCol(a) || owedIxl.includes(a)));
+  const madeUp = a => looksLikeTest(a.name);   /* 15 Nov 2026 audit (CNF-06): a family reads "not taken yet" only for a test or quiz by name (the weekly report's rule); a notebook check is turned in */
+  const missing = missingAll.filter(a => !madeUp(a)).map(a => ({ name: a.name, max: a.max, due: a.due || '', cat: catIn(s, a) }));
+  const missedTests = missingAll.filter(madeUp).map(a => ({ name: a.name, max: a.max, due: a.due || '' }));
   const tests = gb ? all.filter(a => isAssess(s, a) && a.status && a.status[i] === 'score' && a.values[i] != null).map(a => ({ name: a.name, v: Number(a.values[i]), max: a.max, pct: Number(a.values[i]) / a.max * 100, real: REAL_TEST(a), unit: /\b(unit|module)\b.*\b(assessment|test|exam)\b|\b(assessment|test|exam)\b/i.test(a.name) && !/quiz/i.test(a.name), avg: classAvg(a), due: a.due || '' })) : [];
   const redo = tests.filter(t => confRound(t.pct) < 70);
   const graded = gb ? all.filter(a => a.status && (a.status[i] === 'score' || a.status[i] === 'missing') && catIn(s, a) !== 'Participation').length : 0;
-  // what turning in every missing assignment and making up every missed test at full credit would do to the grade
-  let ifDone = null; if (r && missingAll.length) { const over = {}; missingAll.forEach(a => over[a.name] = a.max); ifDone = computeGrade(s, i, over).rounded; }
   const ifWith = list => { if (!r || !list.length) return null; const over = {}; list.forEach(a => over[a.name] = a.max); return computeGrade(s, i, over).rounded; };
-  const ifWork = ifWith(missingAll.filter(a => !isAssess(s, a))), ifTests = ifWith(missingAll.filter(a => isAssess(s, a)));
+  const ifWork = ifWith(missingAll.filter(a => !madeUp(a))), ifTests = ifWith(missingAll.filter(madeUp));
   // the Focus IXL columns: how much of the grade's IXL is done
   const ixlCols = all.filter(a => ixlCol(a) && a.status && (a.status[i] === 'score' || a.status[i] === 'missing'));
   const ixlGrade = ixlCols.length ? { got: ixlCols.reduce((p, a) => p + (a.status[i] === 'score' ? Number(a.values[i]) || 0 : 0), 0), max: ixlCols.reduce((p, a) => p + a.max, 0) } : null;
   const prev = s && !s._closed ? prevGradeSnap(s) : null;
   const rt = retakeStatus(sec, name); const ix = ixlFor(sec, f.ixl);
   const first = state.settings.hideNames ? mask(name) : niceName(name).split(' ')[0];
-  return { sec, name, first, f, sum, r, q: liveQuarter(sec), rc, missing, missedTests, tests, redo, graded, ifDone, ifWork, ifTests, ixlGrade, prevDate: prev ? prev.date : null, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
+  return { sec, name, first, f, sum, r, q: liveQuarter(sec), rc, missing, missedTests, tests, redo, graded, ifWork, ifTests, ixlGrade, prevDate: prev ? prev.date : null, rt, ix, hist: testHistory(sec, name), notes: notesOf(sec, name), cats: r ? r.cats : {} };
 }
 
 // Strengths and Concerns as short notes (Croix, 23 Oct 2026: "short notes, but give me space to edit and write in
@@ -89,9 +89,8 @@ function conferenceWork(d) {
   const out = []; const due = a => a.due ? ` (due ${a.due})` : ''; const group = (head, items) => { if (!items.length) return; if (out.length) out.push(''); out.push(head); items.forEach(x => out.push('• ' + x)); };
   group('Turn in (zeros until turned in):', d.missing.map(a => a.name + due(a)));
   group('Not taken yet:', d.missedTests.map(a => a.name + due(a)));
-  const ixlUnits = d.redo.length && !d.rt.noIxl ? [...(d.rt.unit && d.rt.short.length ? [{ unit: d.rt.unit, short: d.rt.short }] : []), ...(d.rt.behind || [])] : [];   // listed only when it stands between the student and a retake
-  const ixlLeft = ixlUnits.reduce((n, x) => n + x.short.length, 0);
-  group('Finish on IXL:', ixlUnits.map(x => `${x.unit.short}: ${plural(x.short.length, 'skill')} left`));
+  const ixlUnits = d.redo.length && !d.rt.noIxl ? [...(d.rt.unit && d.rt.short.length ? [{ unit: d.rt.unit, short: d.rt.short, need: d.rt.need }] : []), ...(d.rt.behind || [])] : [];   // listed only when it stands between the student and a retake
+  group('Finish on IXL:', ixlUnits.map(x => `${x.unit.short}: ${plural(x.need || x.short.length, 'skill')} left`));   /* the skills still needed for the retake (15 Nov 2026 audit, WIF-02) */
   group('Can be retaken (below 70%):', d.redo.map(t => `${t.name}: ${confRound(t.pct)}%`));
   if (d.redo.length) { const need = [d.rt.missing.length ? 'missing work' : '', ...ixlUnits.map(x => `${x.unit.short} IXL`)].filter(Boolean);
     out.push(d.rt.ok ? 'Retake: allowed now' : `Retake allowed after: ${need.length ? need.join(' + ') : `all work is caught up${d.rt.unit ? `, including ${d.rt.unit.short} IXL` : ''}`}`); }
@@ -123,13 +122,19 @@ function conferenceTests(d) { return d.hist.map(testLine).join('; '); }
    report's Student ID settles two students with the same name and a spelling that differs. Teacher-only: hidden while
    names are hidden, never on Show student, never in a Board save. */
 const looseName = n => { const m = String(n || '').match(/^([^,]+),\s*(\S+)/); if (m) return norm(m[1]) + '|' + norm(m[2]); const w = norm(n).split(' '); return w.length > 1 ? w[w.length - 1] + '|' + w[0] : norm(n); };
-const testKeys = (id, name) => [id ? 'id:' + String(id).trim() : null, name ? 'n:' + norm(name) : null, name ? 'n:' + looseName(name) : null].filter(Boolean);   // the last: saves from before name matching
+/* 15 Nov 2026 audit (CNF-02): a name key belongs to no one when two people on the rosters share the name (rosterPeople's rule: one person per name and ID), so it is neither read nor written then */
+function sharedNameKeys(people) { const c = {}; people.forEach(p => { const nm = p.name; ['n:' + p.nn, 'n:' + looseName(nm)].forEach(k => { (c[k] = c[k] || new Set()).add(p.nn + '|' + p.id); }); }); return new Set(Object.keys(c).filter(k => c[k].size > 1)); }
+let sharedMemo = null;   // never outlives one render, like rowCache
+function sharedNow() { if (!sharedMemo || sharedMemo.c !== rowCache) { const out = []; state.order.forEach(k => { const s = state.sections[k]; if (!s || s.board || s.placeholder) return; classStudents(s).forEach(n => out.push({ name: n, nn: norm(n), id: '' })); });
+  const by = {}; out.forEach(p => (by[p.nn] = by[p.nn] || []).push(p)); out.forEach(p => { if (by[p.nn].length > 1) { const sec = state.order.map(k => state.sections[k]).find(s => s && !s.board && !s.placeholder && classStudents(s).includes(p.name)); const f = sec ? findStudent(sec, p.name) : null; p.id = f && f.id ? String(f.id).trim() : ''; } });
+  const seen = new Set(); sharedMemo = { c: rowCache, set: sharedNameKeys(out.filter(p => { const k = p.nn + '|' + p.id; if (seen.has(k)) return false; seen.add(k); return true; })) }; } return sharedMemo.set; }
+const testKeys = (id, name) => { const sh = name ? sharedNow() : null; return [id ? 'id:' + String(id).trim() : null, name ? 'n:' + norm(name) : null, name ? 'n:' + looseName(name) : null].filter(k => k && !(k.startsWith('n:') && sh.has(k))); };   // the last: saves from before name matching
 const testSig = h => [h.test, h.pm || '', h.year || ''].join('|');
 function cleanTests(o) {   // a declaration: migrate() runs before this file's consts exist
   const out = {}; if (!o || typeof o !== 'object') return out; const n = v => typeof v === 'number' && isFinite(v) ? v : undefined;
   for (const k of Object.keys(o)) { if (!SAFE_KEY(k) || !/^(id|n):/.test(k) || !Array.isArray(o[k])) continue;
     const list = o[k].filter(h => h && typeof h.test === 'string').slice(-40).map(h => { const x = { test: h.test.slice(0, 20), pm: typeof h.pm === 'string' ? h.pm.slice(0, 6) : '', year: typeof h.year === 'string' ? h.year.slice(0, 9) : '' };
-      ['level', 'scale', 'pct', 'grade'].forEach(f => { if (n(h[f]) != null) x[f] = h[f]; }); if (h.above) x.above = true;
+      ['level', 'scale', 'pct', 'grade'].forEach(f => { if (n(h[f]) != null) x[f] = h[f]; }); if (h.above) x.above = true; else if (h.above === false) x.above = false;   /* a report's explicit "not above" replaces an old mark when merged (audit CNF-03) */
       if (h.cats && typeof h.cats === 'object') { const c = {}; Object.keys(h.cats).slice(0, 8).forEach(name => { const v = h.cats[name]; if (typeof name === 'string' && name.length <= 80 && ['below', 'near', 'above'].includes(v)) c[name] = v; }); if (Object.keys(c).length) x.cats = c; }   // the score report's reporting categories
       return x; }).filter(h => h.level != null || h.scale != null);
     if (list.length) out[k.slice(0, 120)] = list; }
@@ -151,21 +156,21 @@ function mergeTests(a, b) { const out = { ...(a || {}) }; for (const k in b) { c
 function rosterPeople() { const out = []; rowCache = new Map(); state.order.forEach(k => { const s = state.sections[k]; if (!s || s.board || s.placeholder) return; classStudents(s).forEach(n => { const f = findStudent(s, n); const m = String(n).match(/^([^,]+),\s*(.+)$/);
   out.push({ name: n, id: f.id ? String(f.id).trim() : '', nn: norm(n), last: m ? norm(m[1]) : norm(n).split(' ').pop(), first: (m ? norm(m[2]) : norm(n)).split(' ')[0] || '' }); }); });
   const seen = new Set(); return out.filter(p => { const k = p.nn + '|' + p.id; if (seen.has(k)) return false; seen.add(k); return true; }); }
-function matchPerson(people, name, id) {
+function matchPerson(people, name, id, clash) {
   const m = String(name || '').match(/^([^,]+),\s*(.+)$/); const nn = norm(name); const last = m ? norm(m[1]) : nn.split(' ').pop(); const first = (m ? norm(m[2]) : nn).split(' ')[0] || '';
   const byId = id ? people.filter(p => p.id && p.id === String(id).trim()) : [];
   const passes = [p => p.nn === nn, p => p.last === last && p.first === first, p => p.last === last && first && p.first && (p.first.startsWith(first) || first.startsWith(p.first))];
   const idClash = p => id && p.id && p.id !== String(id).trim();   // both have an ID and they differ: not this student (audit: a near-name took another student's scores)
-  if (name) for (const pass of passes) { const c = people.filter(pass).filter(p => !idClash(p)); if (c.length === 1) return { p: c[0], how: 'name' }; if (c.length > 1) { const pick = c.find(p => byId.includes(p)); if (pick) return { p: pick, how: 'name' }; break; } }
+  if (name) for (const pass of passes) { const c = people.filter(pass).filter(p => !idClash(p) && !(clash && clash(p))); if (c.length === 1) return { p: c[0], how: 'name' }; if (c.length > 1) { const pick = c.find(p => byId.includes(p)); if (pick) return { p: pick, how: 'name' }; break; } }
   if (byId.length === 1) return { p: byId[0], how: 'id' };
   return null;
 }
 function importFast(fx, file) {
   if (!fx.students.length) { toast(fx.blank ? `${esc(file)}: this FAST report has no student names or IDs, so Tally can't tell whose scores they are.` : `${esc(file)}: no FAST scores in this report.`, true, 8000); return; }
-  const people = rosterPeople(); const add = {}, info = {}; const unmatched = []; let byName = 0, byId = 0; const at = new Date().toISOString();
+  const people = rosterPeople(); const shared = sharedNameKeys(people); const add = {}, info = {}; const unmatched = []; let byName = 0, byId = 0; const at = new Date().toISOString();
   fx.students.forEach(st => {
     const hit = matchPerson(people, st.name, st.id); if (hit) { if (hit.how === 'id') byId++; else byName++; } else unmatched.push(st);
-    const keys = hit ? [hit.p.id ? 'id:' + hit.p.id : null, 'n:' + hit.p.nn, st.id && st.id !== hit.p.id ? 'id:' + st.id : null].filter(Boolean) : [st.id ? 'id:' + st.id : null, st.name ? 'n:' + norm(st.name) : null].filter(Boolean);
+    const keys = (hit ? [hit.p.id ? 'id:' + hit.p.id : null, 'n:' + hit.p.nn, st.id && st.id !== hit.p.id ? 'id:' + st.id : null] : [st.id ? 'id:' + st.id : null, st.name ? 'n:' + norm(st.name) : null]).filter(k => k && !shared.has(k));
     keys.forEach(k => { add[k] = (add[k] || []).filter(h => !st.tests.some(x => testSig(x) === testSig(h))).concat(st.tests.map(t => ({ ...t }))); const fl = ((((state.testInfo || {})[k] || {}).FAST || {}).fields || {}).FLEID; info[k] = { FAST: { fields: { ...st.info, ...(st.name ? { Student: st.name } : {}), ...(st.id ? { ID: st.id } : {}), ...(fl ? { FLEID: fl } : {}) }, at, file: String(file || '') } }; });   // the score report's FLEID survives a Focus re-import (audit, 25 Oct 2026)
   });
   state.tests = mergeTests(state.tests, cleanTests(add));
@@ -219,13 +224,16 @@ function parseFastItemsPdf(pages) {
 // window already on file, and keep the FLEID so the next report matches by it.
 function importFastItems(fx, file, collect) {
   if (!fx.students.length) { const t = `${file}: no student rows in this score report`; if (collect) collect.fails.push(t); else toast(esc(t) + '.', true, 8000); return; }
-  const people = rosterPeople(); const byFleid = {}; Object.keys(state.testInfo || {}).forEach(k => { const f = ((state.testInfo[k] || {}).FAST || {}).fields || {}; if (f.FLEID) byFleid[f.FLEID] = k; });
+  const people = rosterPeople(); const shared = sharedNameKeys(people); const byFleid = {}; Object.keys(state.testInfo || {}).forEach(k => { const f = ((state.testInfo[k] || {}).FAST || {}).fields || {}; if (f.FLEID) byFleid[f.FLEID] = k; });
   const add = {}, info = {}; const unmatched = []; let matched = 0, byFl = 0; const at = new Date().toISOString();
   fx.students.forEach(st => {
-    let keys = null; const prev = byFleid[st.fleid]; let hit = matchPerson(people, st.name, '');
+    /* 15 Nov 2026 audit (CNF-07): a student whose FLEID Tally already holds is not this row when the row's FLEID differs (as idClash guards the Focus report) */
+    const flOf = q => { for (const k of [q.id ? 'id:' + q.id : null, 'n:' + q.nn]) { const f = k && ((((state.testInfo || {})[k] || {}).FAST || {}).fields || {}).FLEID; if (f) return f; } return ''; };
+    let keys = null; const prev = byFleid[st.fleid]; let hit = matchPerson(people, st.name, '', q => { const f = flOf(q); return !!(f && st.fleid && f !== st.fleid); });
     if (hit) { matched++; keys = [hit.p.id ? 'id:' + hit.p.id : null, 'n:' + hit.p.nn].filter(Boolean); }
     else if (prev) { matched++; byFl++; keys = [prev]; }
     else { unmatched.push(st); keys = ['n:' + norm(st.name)]; }
+    keys = keys.filter(k => !shared.has(k));
     const t = { test: 'FAST', pm: fx.pm, year: fx.year, grade: fx.grade }; if (st.scale != null) t.scale = st.scale; if (st.level != null) t.level = st.level; if (st.pct != null) t.pct = st.pct; if (Object.keys(st.cats).length) t.cats = st.cats;
     keys.forEach(k => { add[k] = [t]; const was = ((state.testInfo || {})[k] || {}).FAST || {}; info[k] = { FAST: { fields: { ...(was.fields || {}), FLEID: st.fleid, Student: (was.fields || {}).Student || st.name }, at, file: String(file || '') } }; });
   });
@@ -450,7 +458,7 @@ function printFast(groups, title) {
   const failed = []; const body = groups.map(g => g.names.map(nm => safeSection(() => fastReportSection(g.sec, nm), nm, failed)).join('')).join('');
   const html = printDoc(title, REPORT_CSS + FAST_REPORT_CSS, body, n);
   const go = () => { openPrint(html, n === 1 ? 'FAST-report.html' : `${title.replace(/[^\w-]+/g, '_')}.html`, n === 1);
-    if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(x => shown(x)).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
+    if (failed.length) toast(`${plural(failed.length, 'report')} could not be made: ${failed.slice(0, 3).map(x => esc(shown(x))).join('; ')}${failed.length > 3 ? '…' : ''}.`, true, 6000); };
   if (state.settings.hideNames) { ask(`Names are hidden, but the ${n === 1 ? 'report opens with the student\'s full name and scores' : 'reports open with every student\'s full name and scores'} on screen. Open ${n === 1 ? 'it' : 'them'}?`, 'Open').then(ok => { if (ok) go(); }); return; }
   go();
 }
@@ -472,7 +480,7 @@ function cleanConfForms(o) { const out = {}; const BOX = ['tests', 'strengths', 
   return out; }
 
 function openConference(sec, name) {
-  const d = conferenceData(sec, name); const st = state.settings; const k = norm(name);
+  const d = conferenceData(sec, name); const st = state.settings; const k = stuKey(sec, name);
   sec.confForms = sec.confForms || {}; const kept = sec.confForms[k] || null;
   const draft = conferenceDraft(d);
   const v = { grade: st.gradeLevel || '7', teacher: st.teacherName || '', course: (st.courseNames || {})[sec.prep] || (sec.prep === 'acc' ? 'Grade 7 Accelerated Math' : 'Grade 7 Math'), period: sec.period != null ? String(sec.period) : '',
@@ -491,7 +499,7 @@ function openConference(sec, name) {
         <div class="row3 r2"><div class="field"><label for="cfName">Student name</label><input type="text" id="cfName" value="${esc(H ? '' : niceName(name))}" ${H ? 'placeholder="hidden while names are hidden"' : ''}></div><div class="field sm"><label for="cfGrade">Grade</label><input type="text" id="cfGrade" value="${esc(v.grade)}" maxlength="4"></div></div>
         <div class="row3 r3"><div class="field"><label for="cfTeacher">Teacher</label><input type="text" id="cfTeacher" value="${esc(v.teacher)}"></div><div class="field"><label for="cfCourse">Course</label><input type="text" id="cfCourse" value="${esc(v.course)}"></div><div class="field sm"><label for="cfPeriod">Period</label><input type="text" id="cfPeriod" value="${esc(v.period)}" maxlength="4"></div></div>
         <div class="row3 r4"><div class="field sm"><label for="cfCurrent">Current grade %</label><input type="text" id="cfCurrent" value="${esc(v.current)}" maxlength="5"></div><div class="field cf-rcs"><label>Report card grades</label><div>${['Q1', 'Q2', 'S1', 'Q3', 'Q4', 'S2'].map(rcCell).join('')}</div></div></div>
-        <div class="field"><label for="cfTests">FAST / EBA test history</label><textarea id="cfTests" rows="2" placeholder="No test results in Tally yet">${esc(v.tests)}</textarea>${boxNote('tests')}</div>
+        <div class="field"><label for="cfTests">FAST / EBA test history</label>${H ? '<textarea id="cfTests" rows="2" readonly placeholder="hidden while names are hidden"></textarea>' : `<textarea id="cfTests" rows="2" placeholder="No test results in Tally yet">${esc(v.tests)}</textarea>${boxNote('tests')}`}</div>
         <div class="field"><label for="cfStrengths">Strengths in class</label><textarea id="cfStrengths" rows="5">${esc(v.strengths)}</textarea>${boxNote('strengths')}${!has('strengths') && !draft.strengths ? '<p class="ghint" style="margin:2px 0 0">Nothing in the numbers stands out yet. Add something you have seen in class, or one of the notes beside the form.</p>' : ''}</div>
         <div class="field"><label for="cfConcerns">Concerns in class</label><textarea id="cfConcerns" rows="5">${esc(v.concerns)}</textarea>${boxNote('concerns')}</div>
         <div class="field"><label for="cfWork">Missing assignments &amp; assignments needing to be redone</label><textarea id="cfWork" rows="7">${esc(v.work)}</textarea>${boxNote('work')}</div>
@@ -502,14 +510,15 @@ function openConference(sec, name) {
         ${H ? '<p class="ghint">Hidden while names are hidden.</p>' : d.notes.length ? `<ul class="cfNotes">${d.notes.slice().reverse().map(n => `<li><time>${esc(fmtDate(localDay(n.at)))}</time><p>${esc(n.text)}</p><span><button class="pill pale small" data-cfadd="strengths" data-nid="${esc(n.id)}">+ Strengths</button><button class="pill pale small" data-cfadd="concerns" data-nid="${esc(n.id)}">+ Concerns</button></span></li>`).join('')}</ul>` : '<p class="ghint">No notes for this student.</p>'}
         ${(() => { const fl = H ? [] : fastFlags(fastInfo(sec, name)); return fl.length ? `<h3>From FAST</h3><div class="fflags">${fl.map(x => `<span class="fflag ${x.cls}">${esc(x.t)}</span>`).join('')}</div>` : ''; })()}
         <h3>From the gradebook</h3>
-        <ul class="cfFacts">${[(() => { const t = H ? null : fastTargets(sec, name); return t && t.gain ? `FAST gain: ${t.gain.score} or more on PM3${t.latest ? ` (${esc(t.latest.pm)} ${t.latest.scale}${t.latest.scale >= t.gain.score ? ', a gain already' : ''})` : ''}` : t && t.latest ? `FAST ${esc(t.latest.pm)}: ${t.latest.scale}, ${esc(t.latestBucket ? t.latestBucket.label : '')}` : ''; })(), d.r ? `${esc(Q_NAMES[d.q - 1])}: ${d.r.rounded}% ${d.r.letter}` : '', ...Object.entries(d.cats).filter(([, x]) => x.pct != null).map(([c, x]) => `${esc(c)}: ${Math.round(x.pct)}%`), d.ix && d.ix.poss ? `IXL: ${d.ix.done} of ${d.ix.poss} skills at goal` : '', `Missing: ${d.missing.length + d.missedTests.length}`, d.rt.ok ? 'Retake: eligible' : `Retake: ${esc(retakeWhy(d.rt))}`, d.ixlGrade && d.ixlGrade.max ? `IXL in Focus: ${d.ixlGrade.got} of ${d.ixlGrade.max}` : ''].filter(Boolean).map(x => `<li>${x}</li>`).join('')}</ul>
+        <ul class="cfFacts">${[(() => { const t = H ? null : fastTargets(sec, name); return t && t.gain ? `FAST gain: ${t.gain.score} or more on PM3${t.latest ? ` (${esc(t.latest.pm)} ${t.latest.scale}${t.latest.scale >= t.gain.score ? ', a gain already' : ''})` : ''}` : t && t.latest ? `FAST ${esc(t.latest.pm)}: ${t.latest.scale}, ${esc(t.latestBucket ? t.latestBucket.label : '')}` : ''; })(), d.r ? (d.r.rounded != null ? `${esc(Q_NAMES[d.q - 1])}: ${d.r.rounded}% ${d.r.letter}` : `${esc(Q_NAMES[d.q - 1])}: nothing graded yet`) : '',   /* audit CON-05: no "null%" */ ...Object.entries(d.cats).filter(([, x]) => x.pct != null).map(([c, x]) => `${esc(c)}: ${Math.round(x.pct)}%`), d.ix && d.ix.poss ? `IXL: ${d.ix.done} of ${d.ix.poss} skills at goal` : '', `Missing: ${d.missing.length + d.missedTests.length}`, d.rt.ok ? 'Retake: eligible' : `Retake: ${esc(retakeWhy(d.rt))}`, d.ixlGrade && d.ixlGrade.max ? `IXL in Focus: ${d.ixlGrade.got} of ${d.ixlGrade.max}` : ''].filter(Boolean).map(x => `<li>${x}</li>`).join('')}</ul>
       </aside>
     </div>
     <footer>${kept ? `<small class="ghint" style="margin:0">Your edits from ${esc(fmtDate(localDay(kept.saved)))}</small><button class="linkbtn" id="cfRefill">Start over from Tally</button>` : ''}<div class="spacer"></div><button class="pill pale" id="mCancel">Close</button><button class="pill" id="cfPrint">Print</button></footer></div>`;
   const val = id => ($('#' + id) || {}).value || '';
   const keep = () => {   // remember the teacher, course and grade for next time; the student's text for this student
+    /* 15 Nov 2026 audit (CNF-05): while names are hidden the FAST box shows nothing and is read-only, so his saved words in it stay as they were */
     st.teacherName = val('cfTeacher').slice(0, 80); st.gradeLevel = val('cfGrade').slice(0, 4); st.courseNames = { ...(st.courseNames || {}), [sec.prep]: val('cfCourse').slice(0, 80) };
-    const now = { tests: val('cfTests').slice(0, 600), strengths: val('cfStrengths').slice(0, 4000), concerns: val('cfConcerns').slice(0, 4000), work: val('cfWork').slice(0, 4000) };
+    const now = { tests: H ? v.tests : val('cfTests').slice(0, 600), strengths: val('cfStrengths').slice(0, 4000), concerns: val('cfConcerns').slice(0, 4000), work: val('cfWork').slice(0, 4000) };
     const out = {}, b2 = {}; Object.keys(now).forEach(b => { if (now[b] !== fresh[b]) { out[b] = now[b]; b2[b] = base[b] != null ? base[b] : fresh[b]; } });   // each box on its own: an untouched box keeps following the numbers
     if (Object.keys(out).length) sec.confForms[k] = { ...out, base: b2, saved: Object.keys(out).every(b => has(b) && kept[b] === out[b]) && kept.saved ? kept.saved : new Date().toISOString() }; else delete sec.confForms[k];
     save(); };
@@ -523,7 +532,7 @@ function openConference(sec, name) {
   m.querySelectorAll('[data-cfdraft]').forEach(x => x.onclick = () => { const b = x.dataset.cfdraft; $('#' + BOXID[b]).value = fresh[b]; base[b] = fresh[b]; const n = noteOf(b); if (n) n.remove(); });
   const rf = $('#cfRefill'); if (rf) rf.onclick = async () => { if (!await ask('Replace your edits with a fresh draft from Tally?')) return; delete sec.confForms[k]; save(); openConference(sec, name); };
   $('#cfPrint').onclick = () => { keep(); printConference({ name: val('cfName') || niceName(name), grade: val('cfGrade'), teacher: val('cfTeacher'), course: val('cfCourse'), period: val('cfPeriod'), current: val('cfCurrent'),
-    rc: Object.fromEntries(['Q1', 'Q2', 'S1', 'Q3', 'Q4', 'S2'].map(q => [q, val('cf' + q)])), tests: val('cfTests'), strengths: val('cfStrengths'), concerns: val('cfConcerns'), work: val('cfWork') }); };
+    rc: Object.fromEntries(['Q1', 'Q2', 'S1', 'Q3', 'Q4', 'S2'].map(q => [q, val('cf' + q)])), tests: H ? v.tests : val('cfTests'), strengths: val('cfStrengths'), concerns: val('cfConcerns'), work: val('cfWork') }); };
 }
 
 // The form as the school prints it: banner, title, underlined fields, three writing blocks, footer — one Letter page.

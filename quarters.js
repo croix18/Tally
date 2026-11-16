@@ -8,11 +8,15 @@
        no "still owed", no what-ifs. They stay visible (Grades → the quarter's tab, each student's page).
    An assignment's quarter comes from its due date (then its assigned date, then the day the gradebook was imported). */
 const Q_ENDS = ['2026-10-09', '2026-12-18', '2027-03-04', '2027-05-28'];   // Lake County Schools 2026-27: end of each grading period
+/* 15 Nov 2026 audit (RPT-09): Lake County Schools 2026-27 student calendar, the days with no school (Veterans Day, Thanksgiving week, winter break, spring break), first and last day of each; rolls over with Q_ENDS */
+const NO_SCHOOL = [['2026-11-11', '2026-11-11'], ['2026-11-23', '2026-11-27'], ['2026-12-21', '2027-01-05'], ['2027-03-22', '2027-03-26']];
+const LAST_SCHOOL_DAY = '2027-05-28';   // round 2 (RPT-09): the year's last day of school; no HOWL date after it
+const schoolDay = d => d <= LAST_SCHOOL_DAY && !NO_SCHOOL.some(([a, b]) => d >= a && d <= b);
 const Q_NAMES = ['Quarter 1', 'Quarter 2', 'Quarter 3', 'Quarter 4'];
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 function quarters() {
   const q = state.quarters && typeof state.quarters === 'object' && !Array.isArray(state.quarters) ? state.quarters : (state.quarters = {});
-  if (!Array.isArray(q.ends) || q.ends.length !== 4 || !q.ends.every(d => typeof d === 'string' && ISO_RE.test(d))) q.ends = Q_ENDS.slice();
+  if (!Array.isArray(q.ends) || q.ends.length !== 4 || !q.ends.every((d, i) => typeof d === 'string' && ISO_RE.test(d) && /^20\d\d-/.test(d) && (i === 0 || d > q.ends[i - 1]))) q.ends = Q_ENDS.slice();   /* 15 Nov 2026 audit (TIM-02): quarterOf needs the four ends in order */
   const closed = {}; if (q.closed && typeof q.closed === 'object') for (const k of ['1', '2', '3', '4']) if (q.closed[k] && typeof q.closed[k] === 'object') closed[k] = { at: typeof q.closed[k].at === 'string' ? q.closed[k].at : '' };
   q.closed = closed;
   const units = {}; ['acc', 'on'].forEach(p => { const u = q.units && q.units[p]; const c = {}; if (u && typeof u === 'object') for (const k of Object.keys(u)) if (SAFE_KEY(k) && [1, 2, 3, 4].includes(u[k])) c[k] = u[k]; units[p] = c; });
@@ -96,6 +100,8 @@ function unitClosed(sec, u) {
   const live = liveQuarter(sec); if (live <= 1) return false;
   const qs = unitColumnQuarters(sec);
   const q = mq || qs[u.name] || null; if (q) return q < live && !qClosed(q);
+  /* 15 Nov 2026 audit (TIM-04): neither course is taught in number order, so a unit whose test is in this quarter or later is not past */
+  const td = u.num > 0 && testDatesOf(sec.prep).find(r => r.from && testUnitNums(r.unit).includes(u.num)); if (td && quarterOf(td.to || td.from) >= live) return false;
   return u.num > 0 && unitsOf(sec).some(v => { const qv = unitQuarter(sec, v) || qs[v.name]; return v.num > u.num && qv && qv < live; });
 }
 // The quarter a gradebook describes: the latest quarter any of its assignments falls in (a fresh Q2 export is all Q2).
@@ -130,6 +136,11 @@ function classQuarters(sec) { const out = []; for (let n = 1; n <= 4; n++) { con
 // Keep quarter n's columns of `src` (a gradebook) in this class's archive. A copy that holds every column kept so far
 // replaces it; otherwise the new columns are merged in by name, students lined up by name. The final grades are
 // recomputed with the archive's own weights (taken when it was first kept; refreshed when the quarter is closed).
+/* 15 Nov 2026 audit (same-name fix): a student's row in another gradebook, by Focus ID first, then the exact name, then
+   norm() only when one student there has that name (norm() drops the "(ID ...1234)" that tells two of one name apart) */
+function gbIdKey(x) { return String(x == null ? '' : x).replace(/\s+/g, ''); }   // one way to read a Focus ID everywhere a row is matched (students.js gbIndex too)
+function gbRowMatcher(g) { const ids = new Map(), exact = new Map(), loose = new Map(); (g.students || []).forEach((x, i) => { const id = gbIdKey((g.ids || [])[i]); if (id && !ids.has(id)) ids.set(id, i); if (!exact.has(x)) exact.set(x, i); const k = norm(x); loose.set(k, loose.has(k) ? -1 : i); });
+  return (name, id) => { id = gbIdKey(id); if (id && ids.has(id)) return ids.get(id); if (exact.has(name)) return exact.get(name); const k = loose.get(norm(name)); return k == null || k < 0 ? null : k; }; }
 function mergeArchive(sec, n, src, refreshCats) {
   sec.qArchive = sec.qArchive || {}; const old = sec.qArchive[n];
   const cols = src ? src.assignments.filter(a => aQuarter(a, src) === n) : [];
@@ -139,8 +150,8 @@ function mergeArchive(sec, n, src, refreshCats) {
     const fresh = JSON.parse(JSON.stringify({ ...src, assignments: cols })); if (cols.length !== src.assignments.length) fresh.overall = null;
     if (!old || old.gb.assignments.every(a => cols.some(c => c.name === a.name))) gb = fresh;
     else {
-      gb = JSON.parse(JSON.stringify(old.gb)); gb.overall = null; const at = new Map(fresh.students.map((x, i) => [norm(x), i]));
-      fresh.assignments.forEach(c => { const j = gb.students.map(x => at.get(norm(x)));
+      gb = JSON.parse(JSON.stringify(old.gb)); gb.overall = null; const rowOf = gbRowMatcher(fresh); const j = gb.students.map((x, i) => rowOf(x, (gb.ids || [])[i]));
+      fresh.assignments.forEach(c => {
         const values = j.map(k => k == null ? null : c.values[k]); const status = j.map(k => k == null ? 'unread' : (c.status ? c.status[k] : (c.values[k] == null ? 'blank' : 'score')));
         const nc = { ...c, values, status, missing: status.filter(t => t === 'missing').length, excused: status.filter(t => t === 'excused').length };
         const k = gb.assignments.findIndex(a => a.name === c.name); if (k >= 0) gb.assignments[k] = nc; else gb.assignments.push(nc); });
@@ -239,15 +250,16 @@ function openQuarters(keep) {
   const courseUnits = p => { const s = secs.find(x => x.prep === p && !x.placeholder && x.skills && x.skills.length); return s ? unitsOf(s).filter(u => u.total || u.idx.length) : []; };
   const due = { acc: unitsDueIn('acc', n), on: unitsDueIn('on', n) };
   const liveN = s => s.grades ? s.grades.assignments.filter(a => aQuarter(a, s.grades) === n).length : 0;
-  const isStale = s => liveN(s) > 0 && localDayOf(s.grades.importedAt) < q.ends[n - 1];
+  const gbDay = g => localDayOf(g.exportedAt || g.importedAt);   /* 15 Nov 2026 audit (TIM-03): Focus is dated by the file, as the weekly report does */
+  const isStale = s => liveN(s) > 0 && gbDay(s.grades) < q.ends[n - 1];
   const withWork = secs.filter(s => liveN(s) > 0).length, staleN = secs.filter(isStale).length, allStale = staleN > 0 && staleN === withWork; const ended = !!quarterDue();
   // One row per class: what will be kept. The caution above the table carries the "why"; a row only says which.
   const rows = secs.map(s => { const gb = s.grades; const live = liveN(s); const kept = s.qArchive && s.qArchive[n] ? s.qArchive[n].gb.assignments.length : 0; const cnt = live || kept;
-    return `<tr><td><span class="qdot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</td><td>${cnt ? plural(cnt, 'assignment') : '<small>nothing to keep</small>'}</td><td>${live ? 'exported ' + esc(fmtDate(localDayOf(gb.importedAt))) : kept ? 'kept from an earlier export' : gb ? '' : '<small>no gradebook</small>'}${ended && live && isStale(s) && !allStale ? ' <small class="stale">older</small>' : ''}</td></tr>`; }).join('');
+    return `<tr><td><span class="qdot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</td><td>${cnt ? plural(cnt, 'assignment') : '<small>nothing to keep</small>'}</td><td>${live ? 'exported ' + esc(fmtDate(gbDay(gb))) : kept ? 'kept from an earlier export' : gb ? '' : '<small>no gradebook</small>'}${ended && live && isStale(s) && !allStale ? ' <small class="stale">older</small>' : ''}</td></tr>`; }).join('');
   // a tick made by hand survives a redraw (changing a date redraws the dialog)
   const unitPick = p => { const us = courseUnits(p); if (!us.length) return ''; return `<div class="field"><label>${p === 'acc' ? 'Accelerated' : 'On-level'}</label><div class="qunits">${us.map(u => { const cur = q.units[p][u.name]; const key = p + '|' + u.name; const on = keep.picks && key in keep.picks ? keep.picks[key] : (cur === n || (!cur && due[p].has(u.name))); const other = cur && cur !== n && qClosed(cur); return `<label class="${other ? 'dim' : ''}"><input type="checkbox" data-qu="${esc(key)}" data-short="${esc(u.short)}" ${on || other ? 'checked' : ''} ${other ? 'disabled' : ''}> ${esc(u.short)}${other ? ` <small>Q${cur}</small>` : due[p].has(u.name) ? ' <small>due in Q' + n + '</small>' : ''}</label>`; }).join('')}</div></div>`; };
-  const dates = `<div class="qdates">${q.ends.map((d, i) => `<label class="${qClosed(i + 1) ? 'closed' : i + 1 === n ? 'now' : ''}"><span>${Q_NAMES[i]} ends</span><input type="date" data-qend="${i}" value="${esc(d)}" ${qClosed(i + 1) ? 'disabled' : ''}><small>${qClosed(i + 1) ? 'closed ' + esc(fmtDate((q.closed[i + 1].at || '').slice(0, 10))) : i + 1 === n ? 'now' : ''}</small></label>`).join('')}</div>
-      <p class="ghint">Lake County Schools 2026–27 dates.</p>`;
+  const dates = `<div class="qdates">${q.ends.map((d, i) => `<label class="${qClosed(i + 1) ? 'closed' : i + 1 === n ? 'now' : ''}"><span>${Q_NAMES[i]} ends</span><input type="date" data-qend="${i}" value="${esc(d)}" ${qClosed(i + 1) ? 'disabled' : ''}><small>${qClosed(i + 1) ? 'closed ' + esc(fmtDate(localDayOf(q.closed[i + 1].at))) : i + 1 === n ? 'now' : ''}</small></label>`).join('')}</div>
+      <p class="warnline hidden" id="qDateWarn" role="alert"></p><p class="ghint">Lake County Schools 2026–27 dates.</p>`;
   const early = !ended && !!keep.early;   // closing before the end date is only offered from Settings, behind a tick
   const form = `<p class="qlead">Tally keeps every ${esc(QN)} score and final grade, then stops bringing it up: no missing work, sliding, Focus checks or still-owed lines. It stays one tap away (Grades → <b>Q${n}</b>, and each student's page), and you can reopen it.</p>
       ${!ended ? `<p class="warnline">${esc(QN)} doesn't end until ${esc(fmtDate(q.ends[n - 1]))}. Closed early, its work stops showing as missing, on student pages and on conference forms, until you reopen it.</p>` : staleN ? `<p class="warnline">${allStale ? (staleN === 1 ? 'The gradebook here was' : 'Every gradebook here was') : `${plural(staleN, 'gradebook')} here ${staleN === 1 ? 'was' : 'were'}`} exported before ${esc(QN)} ended (${esc(fmtDate(q.ends[n - 1]))}). If grades changed in Focus since, export ${esc(QN)} from Focus and import it first.</p>` : ''}
@@ -257,9 +269,12 @@ function openQuarters(keep) {
       <div class="rp-actions"><button class="pill" id="qClose" ${early ? 'disabled' : ''}>${early ? `Close ${esc(QN)} early` : `Close ${esc(QN)}`}</button><button class="pill pale" id="mCancel">Cancel</button></div>`;
   // One line per closed quarter. The latest reopens in one click (no question: reopening loses nothing); an earlier one
   // waits for the ones after it.
-  const closedList = [1, 2, 3, 4].filter(qClosed).map(i => { const at = (q.closed[i].at || '').slice(0, 10); const soon = at && at < q.ends[i - 1];
+  const closedList = [1, 2, 3, 4].filter(qClosed).map(i => { const at = localDayOf(q.closed[i].at); /* TIM-01: the local day; early by closedEarly()'s rule (on or before the end) */ const soon = at && at <= q.ends[i - 1];
     return `<li><b>${esc(Q_NAMES[i - 1])}</b> <span>closed ${esc(fmtDate(at))}${soon ? ` <em class="qearlyTag">early, it ends ${esc(fmtDate(q.ends[i - 1]))}</em>` : ''}</span>${i === lastClosed ? `<button class="pill pale small" id="qReopen">Reopen</button>` : `<small>reopen ${esc(Q_NAMES[lastClosed - 1])} first</small>`}</li>`; }).join('');
-  const closedBox = closedList ? `<h3 class="mt">Closed</h3><ul class="qclosed">${closedList}</ul><p class="ghint">Reopening brings back its missing work, Focus checks and still-owed lines. The kept copy stays.</p>` : '';
+  /* 15 Nov 2026 audit (TIM-10): once a class's gradebook has moved past a quarter, reopening it brings nothing back for that class: say so */
+  const movedOn = k => { const ss = secs.filter(s => s.grades && !s.board && s.grades.assignments.length); const past = ss.filter(s => gbQuarter(s.grades) > k).length; return !ss.length ? 'none' : past === ss.length ? 'all' : past ? 'some' : 'none'; };
+  const reopenSays = k => ({ all: `Its kept record stays as it is: the gradebooks in Tally are already past ${Q_NAMES[k - 1]}, so its missing work and Focus checks don't come back.`, some: `Its missing work and Focus checks come back for the classes whose gradebook in Tally still holds it; the others keep its record as it is.`, none: 'Its missing work and Focus checks are back.' })[movedOn(k)];
+  const closedBox = closedList ? `<h3 class="mt">Closed</h3><ul class="qclosed">${closedList}</ul><p class="ghint">${movedOn(lastClosed) === 'none' ? 'Reopening brings back its missing work, Focus checks and still-owed lines. The kept copy stays.' : movedOn(lastClosed) === 'all' ? `Reopening keeps its record as it is: the gradebooks in Tally are already past ${esc(Q_NAMES[lastClosed - 1])}.` : `Reopening brings back its missing work only for the classes whose gradebook in Tally still holds it. The kept copy stays.`}</p>` : '';
   const m = $('#modal'); m.classList.remove('hidden');
   // When the quarter has ended this dialog is about closing it. Before that it is the quarter dates and nothing that
   // closes: closing early lives in Settings, behind a tick, so a stray tap can't end a quarter in the middle of it.
@@ -274,7 +289,15 @@ function openQuarters(keep) {
   const isOpen = id => { const d = $('#' + id); return !!(d && d.open); };
   const picksNow = () => { const o = {}; m.querySelectorAll('[data-qu]:not(:disabled)').forEach(cb => { o[cb.dataset.qu] = cb.checked; }); return o; };
   const again = extra => openQuarters({ dates: isOpen('qDates'), units: isOpen('qUnits'), early, picks: picksNow(), ...(extra || {}) });
-  m.querySelectorAll('[data-qend]').forEach(inp => inp.onchange = () => { if (!ISO_RE.test(inp.value)) return; q.ends[Number(inp.dataset.qend)] = inp.value; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); again(); });
+  /* 15 Nov 2026 audit (TIM-02): Chrome's date box fires change on every keystroke, so a date is kept when the box is left
+     (or changed while it is not being typed in), and only when it is a real day after the quarter before and before the next */
+  const commit = (inp, redraw, toIdx) => { const i = Number(inp.dataset.qend), v = inp.value, w = $('#qDateWarn'); if (v === q.ends[i]) return; const prev = q.ends[i - 1], next = q.ends[i + 1];
+    const bad = !isDay(v) || !/^20\d\d-/.test(v) ? `That isn't a whole date. Type the month, day and four-digit year, or pick the day on the calendar.` : prev && v <= prev ? `${Q_NAMES[i]} has to end after ${Q_NAMES[i - 1]} does (${fmtDate(prev)}). Pick a later day.` : next && v >= next ? `${Q_NAMES[i]} has to end before ${Q_NAMES[i + 1]} does (${fmtDate(next)}). Pick an earlier day.` : '';
+    if (bad) { inp.value = q.ends[i]; if (w) { w.textContent = bad + ` ${Q_NAMES[i]} still ends ${fmtDate(q.ends[i])}.`; w.classList.remove('hidden'); } return; }
+    q.ends[i] = v; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save();
+    if (redraw) { again(); const t = toIdx != null && m.querySelector(`[data-qend="${toIdx}"]`); if (t) t.focus(); } };
+  m.querySelectorAll('[data-qend]').forEach(inp => { inp.onfocus = () => { inp._in = true; }; inp.onchange = () => { if (!inp._in) commit(inp, true); };   /* _in, not activeElement: Chrome reports the page as focused while it moves between the box's month, day and year */
+    inp.onblur = e => { inp._in = false; const to = e.relatedTarget; commit(inp, !(to && to.closest && to.closest('button')), to && to.dataset ? to.dataset.qend : null); }; });   // leaving for a button: that button's own action runs
   const sum = $('#qUnitSum'); const unitSum = () => { if (!sum) return; const by = { acc: [], on: [] }; m.querySelectorAll('[data-qu]:checked:not(:disabled)').forEach(cb => by[cb.dataset.qu.split('|')[0]].push(cb.dataset.short));
     const part = (p, label) => courseUnits(p).length ? `${label} ${by[p].length ? by[p].join(', ') : 'none'}` : ''; sum.textContent = [part('acc', 'Accelerated'), part('on', 'On-level')].filter(Boolean).join(' · '); };
   m.querySelectorAll('[data-qu]').forEach(cb => cb.onchange = unitSum); unitSum();
@@ -287,7 +310,7 @@ function openQuarters(keep) {
     toast(`<b>${esc(QN)} closed.</b> ${per.length ? `${plural(per.length, 'class')} kept` : 'No gradebook had work from it'}. Its missing work stops coming up. <button class="tundo" id="qUndo">Undo</button>`, false, 6000);
     const un = $('#qUndo'); if (un) un.onclick = () => { const b = JSON.parse(before); q.units = b.units; q.closed = b.closed; state.order.map(k => state.sections[k]).forEach(s => { if (s.grades) gradeSnapshot(s); }); save(); render(); toast(`${esc(QN)} is open again.`, false, 2500); };
   };
-  const ro = $('#qReopen'); if (ro) ro.onclick = () => { const N = Q_NAMES[lastClosed - 1]; reopenQuarter(lastClosed); save(); openQuarters({}); toast(`<b>${esc(N)} is open again.</b> Its missing work and Focus checks are back. Close it again whenever you're ready.`, false, 6000); };
+  const ro = $('#qReopen'); if (ro) ro.onclick = () => { const N = Q_NAMES[lastClosed - 1]; const says = reopenSays(lastClosed); reopenQuarter(lastClosed); save(); openQuarters({}); toast(`<b>${esc(N)} is open again.</b> ${esc(says)} Close it again whenever you're ready.`, false, 6000); };
 }
 /* Settings → Course → Test dates: the course's tests, a row each, kept as they are changed (like the quarter dates).
    The list sorts by day when it opens; past tests are grey and the one the weekly report prints is marked. */
@@ -322,8 +345,13 @@ function openTestDates(prep, back) {
   const close = () => { tidy(); m.classList.add('hidden'); m.innerHTML = ''; if (back) back(); else render(); };
   m._cancel = close; $('#mClose').onclick = close; $('#tdDone').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   m.querySelectorAll('[data-tdc]').forEach(b => b.onclick = () => { if (b.dataset.tdc === prep) return; tidy(); openTestDates(b.dataset.tdc, back); });
-  m.querySelectorAll('#tdRows input').forEach(inp => inp.onchange = () => { const i = Number(inp.dataset.i), f = inp.dataset.f; if (!list[i]) return;
-    list[i] = testRow({ ...list[i], [f]: inp.value }); if (f === 'from' || f === 'to') inp.closest('.tdrow').querySelector('[data-f="to"]').value = list[i].to; save(); mark(); });   // a last day not after the day is cleared
+  /* 15 Nov 2026 audit (TIM-09): a date box being typed in keeps what is typed (Chrome fires change on each keystroke); the row
+     is tidied when the box is left: a last day not after the day is cleared, and the boxes show what was kept */
+  const settle = inp => { const i = Number(inp.dataset.i), f = inp.dataset.f; if (!list[i]) return; list[i] = testRow({ ...list[i], [f]: inp.value }); const r = inp.closest('.tdrow');
+    if (r && (f === 'from' || f === 'to')) { r.querySelector('[data-f="from"]').value = list[i].from; r.querySelector('[data-f="to"]').value = list[i].to; } save(); mark(); };
+  m.querySelectorAll('#tdRows input').forEach(inp => { inp.onchange = () => { const i = Number(inp.dataset.i), f = inp.dataset.f; if (!list[i]) return;
+    if (inp.type === 'date' && inp._in) { list[i] = { ...list[i], [f]: inp.value }; save(); mark(); } else settle(inp); };
+    if (inp.type === 'date') { inp.onfocus = () => { inp._in = true; }; inp.onblur = () => { inp._in = false; settle(inp); }; } });
   m.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { pull(); const i = Number(b.dataset.del); const x = list[i]; if (!x) return; list.splice(i, 1); save(); openTestDates(prep, back);
     if (x.unit || x.from) { toast(`${esc(x.unit || 'The test')} is off the list. <button class="tundo" id="tdUndo">Undo</button>`, false, 5000); const un = $('#tdUndo'); if (un) un.onclick = () => { testDatesOf(prep).push(x); save(); if ($('#tdRows')) openTestDates(prep, back); toast('Back on the list.', false, 2000); }; } });
   $('#tdAdd').onclick = () => { pull(); list.push({ unit: '', title: '', from: '', to: '' }); openTestDates(prep, back); const f = m.querySelector(`.tdrow[data-row="${list.length - 1}"] [data-f="unit"]`); if (f) f.focus(); };

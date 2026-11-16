@@ -1399,41 +1399,56 @@ Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 ch
   consistent IXL column per unnamed student: the board's own charts need a look before shuffling), 10 (school-year
   rollover, before August 2027), then the smaller ones in 11.
 
-## Deep audit, 15 Nov 2026 (STOPPED at Croix's word: findings logged, NOTHING FIXED yet)
+## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 
-Croix: *"Is there anything I missed? I want you to run a deep dive on the cores and engines that make up tally. Look
-at all edge cases. I need all of the math and the information absolutely correct at all times. Graphs, what ifs,
-charts, everything. Deep audit the whole project. Look for things we missed, look for edge cases, look for
-opportunities to clean and harden code. Don't make any decisions before running it against a counter agent. Only use
-fable for this task."*
+Croix: *"I want you to run a deep dive on the cores and engines that make up tally. Look at all edge cases. I need
+all of the math and the information absolutely correct at all times. Graphs, what ifs, charts, everything ... Don't
+make any decisions before running it against a counter agent."* (A first start on Fable agents was stopped: *"using
+fable only was ridiculous and burning usage. Use the most efficient model with the highest quality output."* All
+agents then ran on Opus 5.5.) After the findings were logged: *"Look carefully over the results and make the changes
+you think are best."*
 
-Twenty minutes later, after six Fable auditors had started: *"I'm sorry, using fable only was ridiculous and burning
-usage. Use the most efficient model with the highest quality output. If you can salvage anything from that run please
-do."* They were stopped six minutes in, still reading (no findings); the setup was kept and the audit restarted with
-**every agent on Opus 5.5**, the six core math engines first.
+**How it ran:** 12 auditors (one per engine, each with its own recount and a reproduction per finding) → 12 counter
+agents (tried to refute every finding) → 10 fixers (one file or region each, a failing-first check per fix) → 4
+counter-reviewers on the merged fixes (24 more problems, two of them regressions) → a second round. Briefs, reports,
+reproductions, fix plans and the reviewers' probes are all in `review/audit-nov15/`.
 
-How it is run:
-1. **Twelve auditors, one per engine**, each on its own copy of the repo at `8f973ed` with an audit-only hook
-   (`window.__all`: every top-level function by name, test build only, never in the repo). The briefs are in
-   `review/audit-nov15/` (`BRIEF_COMMON.md`, `briefs/*.md`). Each builds its own implementation of the math and
-   compares it with Tally on random data, and every finding needs a probe that exits 1 while the defect exists.
-   IXL and what goes to Focus · the grade engine · what-ifs, plans and retakes · charts, Data Lab, Race and Board ·
-   quarters and dates · one number on every screen · printed reports and Home · conference form, FAST and PDFs ·
-   imports and placement · saves, two tabs, privacy · seating · code health.
-2. **A counter agent per report** tries to refute each finding on a clean copy and checks its "expected" against this
-   file. Nothing is decided before that.
-3. Confirmed, unambiguous defects are fixed with a failing-first check; anything that changes what Croix sees or
-   decides is listed for him instead. A second counter agent reviews the fixes. Then the full suite and a push.
+**Full suite after the fixes: 70 suites · 2,228 passed · 0 failed** (59 suites · 1,933 before; the ten `audit-nov15-*`
+suites are new).
 
-**Where it stopped** (Croix, 6:18 pm: *"Finish, push, and stop"*): all twelve auditors finished; eight reports were
-countered (IXL, grades, what-ifs, charts, time, consistency, seating, conference); printed reports, imports, saves and
-code health were NOT. **No Tally code was changed**: `Tally.html` is still the build of `8f973ed`.
+**The core arithmetic held**: the Focus grade, IXL points, copy order, what-if math, the Lab's statistics and date
+math matched independent recounts with zero disagreements. What was wrong sat at the edges: which student's row,
+which units, which import, which label. About 90 defects were fixed; `RESULTS.md` lists them, the ten calls made for
+Croix, what was left for him, and what is logged.
 
-**Everything is in `review/audit-nov15/RESULTS.md`**: A, confirmed defects to fix (one Critical: two students of one
-name see the first one's numbers on Show student and the conference form; seven High); B, confirmed but his call; C,
-refuted or intended; D, not yet countered; E, what was verified correct. Each finding's reproduction is in
-`review/audit-nov15/probes/` (run them on a copy made by `tools/make_audit_copy.sh`). To resume: counter D, fix A with
-each probe as the failing-first check, ask him B.
+**What a later session must keep to** (each has a check in `tests/audit-nov15-*.js`, ten suites):
+- **A student's gradebook row** is found with `gbIndex` / `gbIdKey` / `gbRowMatcher`: Focus ID, then the exact name,
+  then a plain name only one row has. Never `findIndex(norm === norm)`: `norm()` strips the "(ID …)" mark.
+- **Per-student records** (notes, family, report log, conference forms) are keyed with `stuKey(sec, name)`.
+- **Pool classes** keep the course export's keys (`sec.poolKeys`); a student who changes classes takes his bests only
+  on the same Focus Student ID (`sec.bestIds`, `carryBest`); `rekeyClass` moves best, skips, ignored and history.
+  IXL accounts are still matched by name and position: two students of one IXL name in a course is the known weak
+  spot (see RESULTS "Left for Croix"). The real fix is an ID key.
+- **IXL history entries** may carry `own` (a student's own counted total where it differs from `ua`) and `best` (the
+  best-score basis): the load, file-load and Board-save whitelists keep both. **Grade snapshots** carry their rules;
+  `prevGradeSnap` is null when two imports cannot be compared (`snapsComparable`): say "grading settings changed",
+  never "first gradebook". Only columns with a counted cell carry a category into that comparison.
+- **Retakes:** `retakeStatus` gives `need` (skills that fill the Focus column) per unit; a 0-point column is never
+  missing work; an excused IXL column does not block; a column is IXL only when `gbUnitFor` maps it; `owedWork`
+  agrees (a column is done at `min(a.max, the student's own list)`; an empty own list is neither owed nor earned).
+- **A closed quarter** shows the kept Focus `final`; Tally's recount beside it, labelled, only when it differs.
+- **`unitClosed`:** a unit whose test date is in the live quarter or later is not past (units are not taught in
+  number order).
+- **Dates:** `localDayOf` to show a timestamp's day; a gradebook is dated `exportedAt || importedAt`; quarter and
+  test dates are kept when the box is left; `quarters()` falls back to `Q_ENDS` when stored ends are out of order.
+- **No school:** `NO_SCHOOL` and `LAST_SCHOOL_DAY` sit beside `Q_ENDS` (2026-27 only: add them to the rollover).
+  Spring break (22-26 Mar 2027) came from calendar sites, not the district's PDF: Croix to confirm.
+- **Charts:** `histBins(max, bin)` (one bar per value in bins of 1, the same for every row); `tenth` / `fmt1` round
+  half up with the engine's slack and `roundPct` rounds every percent; `asOfLine` prints both ends of "as of".
+- **Seating:** links are read from either student (`seatLinks`); room Undo never restores a chart wholesale.
+- **Saves:** `save()` holds another tab's changes while Settings has unsaved edits; only the removal of Tally's own
+  key makes another tab start over; a veiled page prints only the veil.
+- **The test build** exposes every top-level name as `window.__all` (build.py, test build only).
 
 ## The quarter's IXL on the board: one pie a class (15 Nov 2026)
 

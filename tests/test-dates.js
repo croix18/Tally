@@ -108,7 +108,7 @@ const K = '1205050-7T1A';
   const ch=await p.evaluate(()=>({ st:window.__tally.state.testDates.acc.map(x=>x.unit+' '+x.from).join(', '), ls:localStorage.getItem('tally.v1')||'' }));
   check(ch.st.startsWith('Unit 4 '+who.d10) && ch.ls.includes(who.d10),'a changed day is kept as soon as it changes: '+ch.st);
   // a last day before the day is cleared
-  await p.fill('.tdrow[data-row="0"] [data-f=to]', who.d1); await p.dispatchEvent('.tdrow[data-row="0"] [data-f=to]','change'); await p.waitForTimeout(100);
+  await p.fill('.tdrow[data-row="0"] [data-f=to]', who.d1); await p.dispatchEvent('.tdrow[data-row="0"] [data-f=to]','change'); await p.$eval('.tdrow[data-row="0"] [data-f=to]',e=>e.blur()); await p.waitForTimeout(100);   // 15 Nov 2026 audit (TIM-09): tidied when the box is left, not while it is typed in
   check(await p.evaluate(()=>window.__tally.state.testDates.acc[0].to==='' && document.querySelector('.tdrow[data-row="0"] [data-f=to]').value===''),'a last day before the day is not kept');
   // add a test, half filled; another left empty: on Done the empty one goes, Settings comes back on Course
   await p.click('#tdAdd'); await p.waitForTimeout(200);

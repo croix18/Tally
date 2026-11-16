@@ -33,7 +33,7 @@ const { chromium, fs, path, exe, check, done, tmp, APP, pick, more } = require('
   check(al2==='DAKOTA87 QUILL88#1','picking the second one stores the second pool key, not #0: '+al2);
   await p.click('button.flag[data-fix="QUILL, DAKOTA"], button[data-fix="QUILL, DAKOTA"]').catch(()=>{}); await p.waitForTimeout(300);
   if (await p.locator('.picks .chip').count()) { await p.locator('.picks .chip').filter({hasText:/DAKOTA\d* QUILL/}).nth(0).click(); await p.waitForTimeout(500); }
-  else await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['period-1']; s.aliases['QUILL, DAKOTA']='DAKOTA QUILL#0'; T.save(); T.render(); });
+  else await p.evaluate(()=>{ const T=window.__tally; const s=T.state.sections['period-1']; s.aliases['QUILL, DAKOTA']='DAKOTA QUILL#0'; window.__all.materialize(s); T.save(); T.render(); });   // 15 Nov 2026 audit (IMP-01): the #1 pick now resolves, so the fixer button is gone and this branch runs: re-carve as the fixer would
   const al1=await p.evaluate(()=>window.__tally.state.sections['period-1'].aliases['QUILL, DAKOTA']);
   check(al1==='DAKOTA QUILL#0','…and the first one stores #0: '+al1);
   const s1b=await p.evaluate(()=>{const T=window.__tally; const s=T.state.sections['period-1']; return {students:s.students.length, ok:T.buildRows(s).filter(r=>r.status==='ok').length};});
