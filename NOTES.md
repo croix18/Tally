@@ -1260,7 +1260,7 @@ you make the website have the latest html pushed at all times so when you click 
 
 - Tally runs only from a downloaded `Tally.html`. Its data stays in that browser's storage for local files (in Chrome and
   Edge every local file shares it, so a newer download, `Tally (1).html` or in another folder, opens the same classes) and
-  in the Full saves the teacher keeps in the school Drive. The page may connect to nothing: `connect-src 'none'`.
+  in the Full saves the teacher keeps in the school Drive. The page could connect to nothing (`connect-src 'none'`) until Tests (16 Nov 2026): now `connect-src https://mrshaffer.org` only, for Tests' two GETs (see "Tests").
 - mrshaffer.org → Teacher → **Tally** downloads the newest `Tally.html`: the site's Worker reads this repository's `main`
   (its commit from GitHub's git endpoint, then the file at that commit) and hands it out as a download, never as a page, so
   it never runs on the site. A push to `main` is what Croix gets within a minute: **`main` must always be a tested build.**
@@ -1404,18 +1404,73 @@ Croix: *"Yep keep going"* down the backlog below. `tests/review-nov14.js` (16 ch
 Croix, 15 Nov 2026: *"You build me a descrytor inside tally or something like that."* *"I want literally all the data
 that is possible to get, how long on each question, did they change answers, did they utilize the calculators o[r]
 scratch pad, I want this to be as data forward and collecting as possible."* *"How do I know it'll open on my tally?"*
-The design is Windmill's `practice/exam/DESIGN.md` (branch `exam`), sections 3 and 4. Work log (newest last):
+The design is Windmill's `practice/exam/DESIGN.md` (branch `exam`), sections 3 and 4. **Not merged to `main`**: `main`
+is what the website hands Croix; this waits for review.
 
-- Branched from `origin/main` at `61d4374` (the brief said `main` at `cfe3c5c`; origin had moved on by the deep audit's
-  two commits, which `main` must keep).
-- **Baseline before any change** (the whole suite, `node tests/run.js`, on `61d4374`): see "Suite runs" below.
-- `vendor/seal.js`: Windmill's `practice/kit/exam/seal.js` copied unchanged (commit `134d46c`, SHA-256 `cb608ebd…dd2a`,
-  recorded in `vendor/seal.json`; `build.py` and `tests/exam-core.js` refuse a copy that differs). `fixtures/seal_vector.json`
-  is Windmill's vector, unchanged.
-- `examcore.js` (window.ExamCore, and a Node module): the response sheet, names, the record read for the screens, the flags.
-- `tests/exam/fixtures.js` writes `fixtures/exams/` (28 + 6 invented students, 42 records of every shape, the sheet as
-  TSV and CSV, the cockpit's results file, keys made for the fixtures); `tests/exam/site.js` is a stand-in for the site's
-  two public routes; `tests/exam-core.js` (no browser) and `tests/exam-e2e.js` (Chromium, the shipped file) are the suites.
+**Files.** `vendor/seal.js` (Windmill `practice/kit/exam/seal.js`, copied unchanged from commit `134d46c`; SHA-256 in
+`vendor/seal.json`; `build.py` refuses to build and `tests/exam-core.js` fails if the copy differs; on the page as
+`window.ExamSeal`) · `examcore.js` (pure: the response sheet, names, the record read for the screens, `placeAll`, `flags`;
+`window.ExamCore` and a Node module) · `exams.js` (spliced into app.js at `/*__EXAMS__*/`: keeping, fetching, the screens) ·
+CSS in app.html under "Tests" · `fixtures/seal_vector.json` (Windmill's vector) · `fixtures/exams/` (made by
+`tests/exam/fixtures.js`) · `tests/exam/site.js` (a stand-in for the two public routes) · `tests/exam/shots.js` (review
+screenshots, not a suite) · suites `tests/exam-core.js` (Node, no browser) and `tests/exam-e2e.js` (Chromium, the SHIPPED
+Tally.html from file://; its https://mrshaffer.org requests are answered by the stand-in through Playwright routing).
+
+**Where it lives.** A sixth class tab, **Tests**, between Seating and Reports (`view.mode = 'tests'`; `view.code` = one test
+whole, with a "‹ Tests" crumb; Escape goes back). `tests/header.js` and `tests/shell.js` now expect the sixth tab: the only
+change to an existing suite. The tab's count is the warn flags of the class's newest test.
+
+**What Tally keeps** (`state.exam`, `sec.exams`; layout in the comment at the top of exams.js). Tally's key pairs are kept as
+JSON text (`state.exam.pairs`, every key ever made, newest last) so the cross-tab merge can never splice two keys together;
+the private half is in Tally's storage and the Full save, and in nothing else (Board save builds its own state; tested).
+**Opening a Full save never takes a key away**: `loadTallyFile` carries this Tally's keys and site keys into the opened
+state (`examKeysNow` / `examKeepKeys`). Every site key Tally has been given is kept (`state.exam.sites`); a record whose
+signature fails makes Tally ask the site for its key once per batch (a key made again) and try again. Records are kept
+opened (JSON) under the student's class, only after `open` succeeded with the signature checked. Records that belong to
+nobody yet are in `state.exam.loose`. Codes that did not open: `state.exam.fails` with the reason.
+
+**Network.** The shipped CSP is `connect-src https://mrshaffer.org` (was `'none'`); the test build adds `http://127.0.0.1:*`.
+Requests: `GET <site>/api/test/key`, `GET <site>/api/test/result/<code>`; `credentials: 'omit'`, `referrerPolicy:
+'no-referrer'`, `cache: 'no-store'`, 15 s timeout, three at a time. The address is a setting (Connection › Address, keys);
+it says which addresses this copy may reach (read from its own CSP).
+
+**Matching.** A typed name is matched against every class's students (`classStudents`): exact (every word typed is in the
+name and first + last are there; order, case, accents, a left-out middle name, punctuation forgiven) is taken; a forgiving
+match (one slip in a long name, a nickname that starts the same, a last initial) is taken only when it is the one close
+student and is marked `how: 'loose'`; anything else is asked ("Who turned this in?"), with the likely students first, and the
+answer is remembered for that typed name (`state.exam.alias`). A response is filed into the class of the student it matched.
+
+**Flags** (examcore `flags`, each with `text` + `todo` and, on screen, the button that acts): shared code (say whose) · code
+not on the site (with the nearest unclaimed code when one is a character or two away: "Give it to …") · not a record ·
+locked to another Tally's key · not signed by the site (content never shown, never kept) · another code's record · not
+fetched (network: Try again) · two tests by one student (choose the one that counts; `state.exam.picks`) · ended by leaving
+· finished outside the period (only when the period's times are set in Tests: Tally has no bell schedule) · tests of another
+unit/course (open that test) · a test nobody turned in (give it to a student) · a name Tally isn't sure of · a code that
+isn't one. More than four: the first three show, the rest behind "N more".
+
+**Scores to Focus:** Copy scores = the Focus gradebook's rows in order (else the roster), the points or blank, through the
+same clipboard path as a unit's IXL (`legacyCopy`, else `showCopyBox`). It does not write a receipt and does not take part in
+the Focus check. Blank for a student with two tests until one is chosen.
+
+**Decisions made here, not in the design:** see the report in the session; the main ones: the tab's place; periods' times
+set by hand per class; flags shown per class (a code nobody was matched to shows in every class of its course); the
+results file's own `site.key` is never trusted (records open only against keys from the site itself); Tally has no dark
+mode, so Tests has none either (the dark screenshots look the same as light); mc answers show the choice's letter (the
+record carries no choice text).
+
+**Not done / known:** storage: an opened record is 2–15 KB of JSON (median 5 KB in the fixtures); ~140 students × a dozen
+tests is ~8 MB, past the ~5 MB a browser gives localStorage. Before the second semester the records want IndexedDB or
+compression (decision for Croix and the reviewer). The tablet (`content://`) was not tried: Tests says plainly when Web
+Crypto or the platform's deflate is missing (simulated in Chromium) and shows what it already opened.
+
+### Suite runs
+- Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
+- After, first run (`ffb456d` + the layout fixes): **72 suites · 2,349 passed · 3 failed**. Two were checks of what this
+  change changes on purpose: `audit-oct22.js` asserted `connect-src 'none'` (now asserts the shipped page reaches
+  https://mrshaffer.org only, and never 127.0.0.1) and `header.js` "Seating too" listed five tabs. The third,
+  `audit-nov15-grad.js` GRD-01 round 2, is a timing check (6,534 ms against a 4,000 ms ceiling) on a machine at load
+  ~9 on 2 cores; it passed alone (5 suites rerun: 236 passed, 0 failed). Changed suites: `header.js`, `shell.js`,
+  `audit-oct22.js` (expectations only).
 
 ## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 

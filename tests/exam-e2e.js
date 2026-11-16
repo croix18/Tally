@@ -73,6 +73,8 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
   check(gets.length >= 37 && gets.every(x => x.method === 'GET' && !x.body && !/cookie|authorization/i.test(Object.keys(x.headers || {}).join(' ')) && !(x.headers || {}).referer), 'each test is one GET with nothing but its code: no cookie, no referrer, no body (' + gets.length + ')');
   const names = [...F.P4, ...F.P5].flatMap(n => n.toLowerCase().split(/[ ,]+/)).filter(w => w.length > 3);
   check(sent.every(x => !names.some(w => decodeURIComponent(x.url).toLowerCase().includes(w))) && sent.every(x => /^https:\/\/mrshaffer\.org\/api\/test\/(key|result\/[0-9A-Z]{12})$/.test(x.url)), 'every request went to the two routes, and no name was in any of them (' + sent.length + ' requests)');
+  check(await p.locator('.xtFlags:not(.info) li').count() === 3 && /\d+ more/.test(await text(p, '#xtMoreFlags')), 'with many flags, the first three show and the rest are one tap away');
+  await p.click('#xtMoreFlags'); await p.waitForTimeout(200);
   const listTxt = await text(p, '#gridwrap'); if (process.env.XDEBUG) { console.log('TABS', await text(p, '#ctabs')); console.log(listTxt); await shot(p, 'dbg-class', true); }
   check(/Two students turned in the same code: Moreau, Camille and Fischer, Hannah/i.test(listTxt) && /No test on the site has the code/.test(listTxt) && /locked to another Tally/.test(listTxt) && /was not signed by the site/.test(listTxt) && /isn.t sure who “Ava” is/.test(listTxt) && /turned in 2 tests/.test(listTxt) && /outside the class period/.test(listTxt) === false && /for On-level Unit 9/.test(listTxt) && /for Accelerated Unit 4/.test(listTxt) && /is not a code/.test(listTxt) && /ended itself/.test(listTxt), 'the class shows every flag of the pasted mess, each with what to do');
   check(/Nobody turned in/.test(listTxt) === false, 'a test nobody turned in is not known until the cockpit\'s file says so');
@@ -100,7 +102,7 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
   const d = await text(p, '#gridwrap');
   const nVis = await p.locator('svg.xtTimeline rect.vis').count(), nQl = await p.locator('svg.xtTimeline text.ql').count();
   check(/The sitting/i.test(d) && nVis > 15 && nQl === 18, `the detail opens on the timeline: every question a row (${nQl}), every visit drawn (${nVis})`);
-  check(/On the paper at Finish/i.test(d) && await p.locator('.xtPaper svg.xtGrid').count() >= 1 && await p.locator('.xtPaper pre').count() >= 1, 'scratch paper at Finish: the notes as text, the grid drawn');
+  check(/Scratch paper at Finish/i.test(d) && await p.locator('.xtPaper svg.xtGrid').count() >= 1 && await p.locator('.xtPaper pre').count() >= 1, 'scratch paper at Finish: the notes as text, the grid drawn');
   check(/evidence, not proof/.test(d) && /the site's own/.test(d), 'one honest line: what is the site\'s and what is the device\'s account');
   const nTr = await p.locator('.xtQs tbody tr').count(); check(nTr === 20 && /Every value it held/i.test(d), `every part of every question (${nTr} rows), with what was typed, the result, the key, the time on it`);
   check(await p.locator('#bar #xtBack').count() === 1 && /‹ Tests/.test(await text(p, '#bar')), 'a crumb back to the class');
@@ -153,7 +155,7 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
       if (process.env.XDEBUG) { await shot(q, 'dbg-fresh', true); console.log('FRESH', (await text(q, '#gridwrap')).slice(0, 600)); }
       check(/Connected to mrshaffer\.org/.test(await text(q, '.xtConn')) && await q.locator('tr[data-xcode]').count() >= 22, 'a fresh Tally that opens the Full save has the key and every test');
       await o.ctx.setOffline(true); site.state.down = true; const before = sent.length;
-      await q.setInputFiles('#file', [path.join(tmp, 'results.json')]); await q.waitForTimeout(1500);
+      await q.setInputFiles('#file', [path.join(tmp, 'results.json')]); await q.waitForTimeout(1500); if (await q.$('#xtMoreFlags')) { await q.click('#xtMoreFlags'); await q.waitForTimeout(200); }
       const t2 = await text(q, '#gridwrap');
       check(/Nobody turned in/.test(t2) && before >= 0, 'the cockpit\'s results file opens with the network off; the tests nobody turned in appear');
       check(/opened/.test(await text(q, '#toast')), 'and says what it opened: ' + (await text(q, '#toast')).slice(0, 140));

@@ -187,6 +187,7 @@ async function examTrial(text) {
   for (const s of examS().sites) { for (const p of examPairs()) { try { await S.open(r.j.record, p.priv, [s.key]); sk = s.key; tp = p.pub; break; } catch (e) {} } if (sk) break; }
   const w = await S.words(rec.nonce, sk, tp);
   examS().trial = { code, words: w, at: new Date().toISOString(), key: sk }; save(); render();
+  const ws = $('.xtWords'); if (ws) ws.scrollIntoView({ block: 'center' });
 }
 
 /* ---------------------------------------------------------------- the screens */
@@ -220,7 +221,7 @@ function xtStatusHtml() {
   const X = examS(); const P = examPairs(); const host = (() => { try { return new URL(X.site).host; } catch (e) { return X.site; } })();
   if (!examCan()) return `<div class="notice info xtCan"><span>${ico('info')}</span><span><b>This browser can't open test records here.</b> It has no Web Crypto in this window (a file opened from a tablet's file manager is one such place). The tests Tally has already opened are below; to connect or to fetch new ones, open Tally on your laptop in Chrome or Edge.</span></div>`;
   const state1 = !P.length ? 'off' : !X.sites.length ? 'half' : 'on';
-  return `<div class="xtConn ${state1}"><i aria-hidden="true"></i><span>${state1 === 'on' ? `<b>Connected</b> to ${esc(host)}${X.trial ? ` · pairing checked ${esc(fmtDate(localDay(X.trial.at)))}` : ' · <em>pairing not checked yet</em>'}` : state1 === 'half' ? `<b>Not connected yet:</b> Tally has its key but not ${esc(host)}'s` : `<b>Not connected</b> to ${esc(host)}`}</span><button class="linkbtn" id="xtConnBtn">${state1 === 'on' ? 'Connection' : 'Connect'}</button></div>`;
+  return `<div class="xtConn ${state1}" role="status"><i aria-hidden="true"></i><span>${state1 === 'on' ? `<b>Connected</b> to ${esc(host)}${X.trial ? ` · pairing checked ${esc(fmtDate(localDay(X.trial.at)))}` : ' · <em>pairing not checked yet</em>'}` : state1 === 'half' ? `<b>Not connected yet:</b> Tally has its key but not ${esc(host)}'s` : `<b>Not connected</b> to ${esc(host)}`}</span><button class="linkbtn" id="xtConnBtn">${state1 === 'on' ? 'Connection' : 'Connect'}</button></div>`;
 }
 function renderTests(s) {
   const X = examS();
@@ -235,11 +236,12 @@ function renderTests(s) {
   const sort = view.xsort || 'focus'; const rows = M.rows.slice();
   const k = { name: r => r.n.toLowerCase(), score: r => r.use ? -(xtPct(r.v.points, r.v.of) ?? -1) : 1e9, time: r => r.use ? (r.v.seconds ?? 1e9) : 1e9 + 1, away: r => r.use ? -(r.v.awaySec + r.v.away.length * 1e-3) : 1e9, done: r => r.use ? (r.v.finished ?? 9e15) : 9e15 + 1 }[sort];
   if (k) rows.sort((a, b) => (k(a) < k(b) ? -1 : k(a) > k(b) ? 1 : a.i - b.i)); else rows.sort((a, b) => (!!b.use - !!a.use) || a.i - b.i);
+  const per = X.period[s.key];
   const fact = (lbl, val, sub, cls) => `<div class="gcard ${cls || ''}"><small>${lbl}</small><b>${val}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
   const th = (id, lbl, cls) => `<th class="${cls || ''}" aria-sort="${sort === id ? 'ascending' : 'none'}"><button class="xtSort ${sort === id ? 'on' : ''}" data-xsort="${id}">${lbl}</button></th>`;
   const flagChip = f => `<span class="xtChip ${f.level}">${esc({ shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code' }[f.kind] || f.kind)}</span>`;
   const row = r => { const v = r.v;
-    if (!r.use) { const f = r.flags; return `<tr class="none"><td class="xtNo">${r.i + 1}</td><td class="stu"><button class="nm nmbtn" data-prof="${esc(r.n)}">${esc(shown(r.n))}</button></td><td colspan="4" class="xtMissing">${r.mine.length > 1 ? `${r.mine.length} tests: choose the one that counts` : f.length ? 'See below' : 'No test turned in'}</td><td>${f.map(flagChip).join('')}</td></tr>`; }
+    if (!r.use) { const f = r.flags; return `<tr class="none"><td class="xtNo">${r.i + 1}</td><td class="stu"><button class="nm nmbtn" data-prof="${esc(r.n)}">${esc(shown(r.n))}</button></td><td colspan="4" class="xtMissing">${r.mine.length > 1 ? `${r.mine.length} tests: choose the one that counts` : f.length ? 'See what to look at, above' : 'No test turned in'}</td><td>${f.map(flagChip).join('')}</td></tr>`; }
     const pc = xtPct(v.points, v.of);
     return `<tr data-xcode="${r.use.code}" tabindex="0" title="Open ${esc(shown(r.n))}'s test"><td class="xtNo">${r.i + 1}</td><td class="stu"><span class="nm">${esc(shown(r.n))}</span></td>
       <td class="xtScore"><b>${v.points ?? '?'}</b><small>/ ${v.of ?? '?'}</small><span class="xtBar" aria-hidden="true"><i style="width:${pc ?? 0}%"></i></span><em>${pc == null ? '' : pc + '%'}</em></td>
@@ -254,23 +256,26 @@ function renderTests(s) {
     if (f.kind === 'twice') return `<button class="pill small" data-xtwice="${esc(f.names[0])}">Choose the one that counts</button>`;
     if (f.kind === 'left' || f.kind === 'period') return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
     if (f.kind === 'other') return `<button class="pill small pale" data-xtest="${esc(C.testKey(f.course, f.unit))}">Open ${esc(C.testName(f.course, f.unit))}</button>`;
+    if (!examCan()) return '';
     if (f.kind === 'net') return `<button class="pill small" data-xretry="1">Try again</button>`;
-    if (f.kind === 'code' || f.kind === 'format' || f.kind === 'none') return `<button class="pill small pale" data-xagain="${f.code}">Fetch again</button>`;
+    if (f.kind === 'code' || f.kind === 'format') return `<button class="pill small pale" data-xagain="${f.code}">Fetch again</button>`;
     return ''; };
   const flagRow = f => `<li class="${f.level}"><span class="xtFi">${ico(f.level === 'warn' ? 'warn' : 'info')}</span><div><b>${esc(f.text)}</b><p>${esc(f.todo)}</p></div>${fbtn(f)}</li>`;
   const net = M.flags.filter(f => f.kind === 'net');
   const empty = !list.length && !X.rows.length;
+  const more = view.xflags ? warns.length : Math.min(warns.length, warns.length > 4 ? 3 : 4);
+  const title = list.length > 1 ? `<label class="xtTitle xtTitleSel"><span class="vh">Test</span><select id="xtPick">${list.map(x => `<option value="${esc(x.key)}" ${x.key === t.key ? 'selected' : ''}>${esc(C.testName(x.course, x.unit))}</option>`).join('')}</select></label>` : `<h2 class="xtTitle">${list.length ? esc(C.testName(t.course, t.unit)) : 'Tests'}</h2>`;
   wrap.innerHTML = `<div class="grades xt">
-    ${xtStatusHtml()}
+    <div class="xtTop">${title}<div class="xtTopR">${xtStatusHtml()}${list.length ? `<button class="linkbtn xtPerBtn" id="xtPeriod" title="When this class meets: a test finished outside it is flagged">${per ? `Period ${esc(per.from)}–${esc(per.to)}` : 'Set the period\'s times'}</button>` : ''}</div></div>
     <div id="xtProg" class="xtProg ${examJob && examJob.running ? '' : 'hidden'}"></div>
     ${empty ? `<div class="gempty xtEmpty"><h3>No tests here yet</h3><p>When students finish a test on mrshaffer.org they turn in a code through your Google Form. Copy the rows of the form's response sheet and paste them here, or open the cockpit's results file. Tally fetches each test, opens it and puts it with the student.</p><div class="rp-actions"><button class="pill" id="xtPaste2">Paste responses</button><button class="pill pale" id="xtOpen2">Open a file</button></div></div>` : `
-    ${warns.length ? `<section class="xtFlags" aria-label="What doesn't add up"><h3>${plural(warns.length, 'thing')} to look at</h3><ul>${warns.map(flagRow).join('')}</ul></section>` : ''}
     <div class="gcards">
-      ${fact('Turned in', `${got.length}<small> of ${M.rows.length}</small>`, M.rows.length - got.length ? `${M.rows.length - got.length} without a test` : 'everyone')}
+      ${fact('Turned in', `${got.length}<i class="xtOf"> of ${M.rows.length}</i>`, M.rows.length - got.length ? `${M.rows.length - got.length} without a test` : 'everyone')}
       ${fact('Class average', mean == null ? '—' : mean + '%', med == null ? '' : `median ${med}%`)}
       ${fact('Time', times.length ? esc(C.clock(times[Math.floor(times.length / 2)])) : '—', times.length ? `median · ${esc(C.clock(times[0]))} to ${esc(C.clock(times[times.length - 1]))}` : '')}
       ${fact('Left the test', String(left), left ? `${plural(left, 'student')}, ${got.reduce((a, r) => a + r.v.away.length, 0)} times in all` : 'nobody', left ? 'warnish' : '')}
     </div>
+    ${warns.length ? `<section class="xtFlags" aria-label="What doesn't add up"><h3>${plural(warns.length, 'thing')} to look at</h3><ul>${warns.slice(0, more).map(flagRow).join('')}</ul>${warns.length > more ? `<button class="linkbtn xtMoreFlags" id="xtMoreFlags">${warns.length - more} more</button>` : view.xflags && warns.length > 4 ? '<button class="linkbtn xtMoreFlags" id="xtMoreFlags">Show fewer</button>' : ''}</section>` : ''}
     <section class="gsec xtTable"><table class="checkTable xtList"><thead><tr><th class="xtNo">#</th>${th('name', 'Student')}${th('score', 'Score')}${th('time', 'Time', 'num')}${th('away', 'Away', 'num')}${th('done', 'Finished')}<th>Flags</th></tr></thead><tbody>${rows.map(row).join('')}</tbody></table>
       <p class="ghint xtHonest">Score, time and finish are the site's own. Away, and everything else a test shows about the sitting, is what the student's device reported: evidence, not proof.</p></section>
     ${infos.length ? `<section class="xtFlags info"><ul>${infos.filter(f => f.kind !== 'net' || f === net[0]).map(f => f.kind === 'net' && net.length > 1 ? { ...f, text: `${plural(net.length, 'code')} not fetched yet.` } : f).map(flagRow).join('')}</ul></section>` : ''}`}
@@ -279,12 +284,9 @@ function renderTests(s) {
   if (examJob && examJob.running) xtProgress();
 }
 function testsBarHtml(s) {
-  if (view.code) { const { t } = xtCurrent(s); return `<div class="crumb"><button id="xtBack">‹ Tests</button><h2>${esc(EX().testName(t.course, t.unit))}</h2></div>`; }
+  if (view.code) { const e = (s.exams && s.exams[view.code]) || examS().loose[view.code]; const r = e ? e.r : {}; return `<div class="crumb"><button id="xtBack">‹ Tests</button><h2>${e ? esc(EX().testName(r.course, xtNum(r.unit))) : 'Tests'}</h2></div>`; }
   if (!examPairs().length || view.connect) return `<span class="meta">Tests taken on the website, opened with Tally's own key</span>`;
-  const { t, list } = xtCurrent(s);
-  const sel = list.length > 1 ? `<label class="curUnit">Test <select id="xtPick">${list.map(x => `<option value="${esc(x.key)}" ${x.key === t.key ? 'selected' : ''}>${esc(EX().testName(x.course, x.unit))}</option>`).join('')}</select></label>` : list.length ? `<span class="meta xtName">${esc(EX().testName(t.course, t.unit))}</span>` : '';
-  const per = examS().period[s.key];
-  return `${sel}<button class="pill toggle soft" id="xtPeriod" title="When this class meets: a test finished outside it is flagged">${per ? `Period ${esc(per.from)}–${esc(per.to)}` : 'Set period times'}</button><div class="spacer"></div><button class="pill toggle" id="xtCopy" title="Every student's points, in Focus order, to paste into the Focus column">Copy scores</button><button class="pill toggle" id="xtOpen" title="The response sheet saved as CSV, or the cockpit's results file">Open a file</button><button class="pill" id="xtPaste">Paste responses</button>`;
+  return `<div class="spacer"></div><button class="pill toggle" id="xtCopy" title="Every student's points, in Focus order, to paste into the Focus column">Copy scores</button><button class="pill toggle" id="xtOpen" title="The response sheet saved as CSV, or the cockpit's results file">Open a file</button><button class="pill" id="xtPaste">Paste responses</button>`;
 }
 function xtWire(s, t, M) {
   const wrap = $('#gridwrap'); const on = (sel, fn) => wrap.querySelectorAll(sel).forEach(b => b.onclick = e => { e.stopPropagation(); fn(b, e); });
@@ -301,14 +303,14 @@ function xtWire(s, t, M) {
   on('[data-xwho]', b => xtWho(s, examS().rows[+b.dataset.xwho]));
   on('[data-xtwice]', b => xtTwice(s, t, b.dataset.xtwice));
   on('[data-xnear]', b => { const f = M.flags.find(x => x.code === b.dataset.xnear); const who = f && f.rows[0] && f.rows[0].who; const h = examHeld(b.dataset.to); if (!who || !h) return; h.e.pin = { sec: who.sec, n: who.n }; examRefile(); save(); render(); toast(`${esc(SEALX().showCode(b.dataset.to))} is ${esc(shown(who.n))}'s now.`, false); });
-  on('#xtPaste2', () => xtPasteBox()); on('#xtOpen2', () => xtFilePick());
+  on('#xtPaste2', () => xtPasteBox()); on('#xtOpen2', () => xtFilePick()); on('#xtPeriod', () => xtPeriodBox(s)); on('#xtMoreFlags', () => { view.xflags = !view.xflags; render(); });
+  const pk = wrap.querySelector('#xtPick'); if (pk) pk.onchange = () => { view.test = pk.value; examS().view[s.key] = pk.value; save(); render(); };
   const tr = wrap.querySelectorAll('tr[data-xcode]'); tr.forEach(r => r.onclick = () => { view.code = r.dataset.xcode; render(); window.scrollTo(0, 0); });
 }
 function xtBarWire(s) {
   const b = $('#bar'); if (!b) return; const on = (id, fn) => { const x = b.querySelector(id); if (x) x.onclick = fn; };
   on('#xtBack', () => { view.code = null; render(); });
-  on('#xtPaste', () => xtPasteBox()); on('#xtOpen', () => xtFilePick()); on('#xtCopy', () => xtCopy(s)); on('#xtPeriod', () => xtPeriodBox(s));
-  const p = b.querySelector('#xtPick'); if (p) p.onchange = () => { view.test = p.value; examS().view[s.key] = p.value; save(); render(); };
+  on('#xtPaste', () => xtPasteBox()); on('#xtOpen', () => xtFilePick()); on('#xtCopy', () => xtCopy(s));
 }
 // the class period's times, so a test finished outside them is flagged (Tally has no bell schedule of its own)
 function xtPeriodBox(s) {
@@ -400,7 +402,7 @@ async function xtCopy(s) {
 function xtConnectPage(s) {
   const X = examS(); const P = examPairs(); const pub = P.length ? P[P.length - 1].pub : null; const host = (() => { try { return new URL(X.site).host; } catch (e) { return X.site; } })();
   const can = examCan(); const step = !pub ? 1 : !X.trial ? 3 : 4; const allowed = examAllowed(X.site);
-  const li = (n, title, body) => `<li class="${step > n ? 'done' : step === n || (n === 2 && step === 3) ? 'now' : ''}"><span class="xtN" aria-hidden="true">${step > n ? ico('check') : n}</span><div><h4>${title}</h4>${body}</div></li>`;
+  const li = (n, title, body) => `<li class="${step > n && !(n === 2 && step === 3) ? 'done' : step === n || (n === 2 && step === 3) ? 'now' : ''}"><span class="xtN" aria-hidden="true">${step > n && !(n === 2 && step === 3) ? ico('check') : n}</span><div><h4>${title}</h4>${body}</div></li>`;
   $('#gridwrap').innerHTML = `<div class="grades xt"><div class="xtConnect">
     <div class="xtConnHead"><h3>${examConnected() && X.trial ? 'Connection' : `Connect Tally to the tests on ${esc(host)}`}</h3>${examPairs().length && (X.trial || examAll().length || X.rows.length) ? `<button class="pill ${X.trial && !examAll().length ? '' : 'pale '}small" id="xtDone">${examAll().length || X.rows.length ? 'Back to the tests' : 'Done'}</button>` : ''}</div>
     <p class="xtLead">Every test a student finishes is locked on the site so that only this Tally can open it, and signed by the site so nobody else can make one. This connects the two, once.</p>
@@ -448,7 +450,7 @@ function renderTestDetail(s, code) {
       <td class="xtAns">${p.typed == null || C.answerText(p.type, p.typed) === '' ? '<span class="xtNone">nothing</span>' : `<span class="xtTyped">${esc(C.answerText(p.type, p.typed))}</span>`}</td>
       <td>${xtVerdict(p.v, p.almost)}</td>
       <td class="xtKeyT">${esc(C.keyText(p.key))}</td>
-      ${i ? '<td></td><td></td><td></td>' : `<td class="num">${q.sec == null ? '' : esc(C.dur(q.sec))}</td><td class="num">${q.visits ?? ''}</td><td class="num">${q.first == null ? (q.sec == null ? '' : '<span class="xtNone">never</span>') : esc(C.dur(q.first))}</td>`}
+      ${i ? '<td></td><td></td><td></td>' : `<td class="num">${q.sec == null ? '' : esc(C.clock(q.sec))}</td><td class="num">${q.visits ?? ''}</td><td class="num">${q.first == null ? (q.sec == null ? '' : '<span class="xtNone">never</span>') : esc(C.clock(q.first))}</td>`}
       <td class="xtChg">${changes ? `<details><summary>${p.n != null && p.n > changes ? `${p.n} values` : plural(changes, 'value')}</summary><ol>${p.vals.map(x => `<li><time>${esc(C.clock(x[0]))}</time> <span class="xtTyped">${esc(C.answerText(p.type, x[1]) || '(empty)')}</span> <small>${esc(x[2] === 'keypad' ? 'keypad' : x[2] === 'tap' ? 'tapped' : x[2] === 'typed' ? 'typed' : '')}</small></li>`).join('')}${p.n != null && p.n > changes ? `<li class="xtDrop">${p.n - changes} more in between, not kept (the first 4 and last 8 are)</li>` : ''}</ol></details>` : '<span class="xtNone">—</span>'}${p.pastes ? ` <span class="xtChip warn">${plural(p.pastes, 'paste')}</span>` : ''}</td>
       <td>${i ? '' : q.flagEnd ? '<span class="xtChip info">Flagged</span>' : q.flag ? '<span class="xtChip soft">Flagged, then not</span>' : ''}</td></tr>`; }).join('');
     return parts; }).join('');
@@ -470,16 +472,17 @@ function renderTestDetail(s, code) {
     </section>
     ${fl.length ? `<section class="xtFlags"><ul>${fl.map(f => `<li class="${f.level}"><span class="xtFi">${ico(f.level === 'warn' ? 'warn' : 'info')}</span><div><b>${esc(f.text)}</b><p>${esc(f.todo)}</p></div></li>`).join('')}</ul></section>` : ''}
     <p class="xtHonest">The answers, the score, and the start and finish times are the site's own. Everything else on this page is what the student's device reported about itself: evidence, not proof.</p>
-    <section class="gsec xtTL"><h3>The sitting</h3>${L ? xtTimeline(v) : `<p class="xtNone">The device sent no log with this test${v.log === null ? '' : ''}: only the site's own times and saves are known.</p>${xtTimeline(v)}`}</section>
-    <section class="gsec"><h3>Questions</h3><div class="xtScroll"><table class="checkTable xtQs"><thead><tr><th>Q</th><th>Answer</th><th>Result</th><th>Key</th><th class="num" title="Seconds the question was on screen">On it</th><th class="num">Visits</th><th class="num" title="Time on the question before its first answer">First answer</th><th>Every value it held</th><th></th></tr></thead><tbody>${qRows}</tbody></table></div></section>
+    <section class="gsec xtTL"><h3>The sitting</h3>${L ? '' : '<p class="xtNone">The device sent no log with this test: only the site\'s own times and saves are known.</p>'}<div class="xtTLsvg"></div></section>
+    <section class="gsec"><h3>Questions</h3><div class="xtScroll"><table class="checkTable xtQs"><thead><tr><th>Q</th><th>Answer</th><th>Result</th><th>Key</th><th class="num" title="How long the question was on screen, in minutes and seconds">On it</th><th class="num">Visits</th><th class="num" title="Time on the question before its first answer">First answer</th><th>Every value it held</th><th></th></tr></thead><tbody>${qRows}</tbody></table></div></section>
     <div class="gtwo">
       <section class="gsec"><h3>Calculator</h3>${!L ? '<p class="xtNone">No log.</p>' : list(v.calc, 'Never opened.', c => `<li><time>${esc(C.clock(c.at))}</time><span>${esc(c.which === 'fast' ? 'FAST (Desmos)' : c.which === 'ti' ? 'TI-30Xa' : c.which || 'calculator')} on question ${esc(c.q)}</span><small>${esc(C.dur(c.sec))}</small></li>`)}${dropped('calc')}<p class="ghint">What is typed inside a calculator can't be seen: it is another site's page.</p>
         <h3 class="mt">Scratch paper</h3>${!L ? '<p class="xtNone">No log.</p>' : list(v.scratch, 'Never opened.', c => `<li><time>${esc(C.clock(c.at))}</time><span>${c.tab === 'grid' ? 'Grid' : 'Notes'} on question ${esc(c.q)}</span><small>${esc(C.dur(c.sec))}</small></li>`)}${dropped('scratch')}
-        ${v.paper.length ? `<h4 class="xtSub">On the paper at Finish${v.cut ? ' <small>(long notes were shortened to fit)</small>' : ''}</h4><div class="xtPapers">${v.paper.map(p => `<figure class="xtPaper"><figcaption>Question ${esc(p.q)}</figcaption>${p.notes.trim() ? `<pre>${esc(p.notes)}</pre>` : ''}${p.grid ? xtGrid(p.grid) : ''}</figure>`).join('')}</div>` : ''}</section>
+</section>
       <section class="gsec"><h3>Away</h3>${!L ? '<p class="xtNone">No log.</p>' : list(v.away, 'Never left the test.', a => `<li class="bad"><time>${esc(C.clock(a.at))}</time><span>${esc(AWAY[a.kind] || a.kind || 'away')}${a.q ? ` · on question ${esc(a.q)}` : ''}</span><small>${esc(C.dur(a.sec))}</small></li>`)}${dropped('away')}
         <h3 class="mt">Blocked</h3>${!L ? '<p class="xtNone">No log.</p>' : list(v.blocked, 'Nothing was tried.', b => `<li><time>${esc(C.clock(b.at))}</time><span>${esc(BLOCK[b.what] || b.what)}${b.q ? ` · on question ${esc(b.q)}` : ''}</span></li>`)}${dropped('blocked')}
         <h3 class="mt">Idle</h3>${!L ? '<p class="xtNone">No log.</p>' : list(v.idle, 'No pause longer than a minute.', b => `<li><time>${esc(C.clock(b.at))}</time><span>Nothing typed or tapped${b.q ? ` · on question ${esc(b.q)}` : ''}</span><small>${esc(C.dur(b.sec))}</small></li>`)}${dropped('idle')}</section>
     </div>
+    ${v.paper.length ? `<section class="gsec"><h3>Scratch paper at Finish</h3>${v.cut ? '<p class="ghint">Long notes were shortened to fit the log.</p>' : ''}<div class="xtPapers">${v.paper.map(p => `<figure class="xtPaper"><figcaption>Question ${esc(p.q)}</figcaption>${p.notes.trim() ? `<pre>${esc(p.notes)}</pre>` : ''}${p.grid ? xtGrid(p.grid) : ''}</figure>`).join('')}</div></section>` : ''}
     <div class="gtwo">
       <section class="gsec"><h3>The clocks</h3><dl class="xtDl">
         <dt>Site: started</dt><dd>${esc(xtWhen(v.started)) || '—'}</dd><dt>Site: finished</dt><dd>${esc(xtWhen(v.finished)) || '—'}</dd>
@@ -494,15 +497,21 @@ function renderTestDetail(s, code) {
     </div>
     <section class="gsec xtRec"><h3>The record</h3><dl class="xtDl wide"><dt>Code</dt><dd>${esc(SEALX().showCode(code))}</dd><dt>Test</dt><dd>${esc(v.course)} · unit ${esc(v.unit)} · content ${esc(v.cv)} · kit ${esc(v.kit)}</dd><dt>Drawn test</dt><dd><code>${esc(v.seed)}</code></dd><dt>Sitting</dt><dd><code>${esc(v.id)}</code></dd><dt>Opened</dt><dd>${esc(whenText(e.got))}, ${e.src === 'file' ? 'from the cockpit\'s results file' : 'from the site'}; the site's signature held.</dd></dl></section>
   </div>`;
+  xtDrawTL(v);
   wrap.querySelectorAll('[data-xq]').forEach(b => b.onclick = () => { const el = document.getElementById('xq-' + b.dataset.xq); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('xtLit'); setTimeout(() => el.classList.remove('xtLit'), 1600); } });
 }
 /* The sitting, drawn: one row per question across the test's length (when it was on screen, when its answer changed, when it
    was flagged), and under it a row each for away, the calculator, scratch paper, idle and blocked, then the site's saves
    on the site's own clock. The device's rows are in seconds from when the test appeared on the device. */
-function xtTimeline(v) {
+// drawn at the pixels it has, so its words are the page's size on any screen; again when the window changes size
+let xtTLv = null, xtTLt = null;
+function xtDrawTL(v) { xtTLv = v; const box = $('#gridwrap .xtTLsvg'); if (!box) return; box.innerHTML = xtTimeline(v, box.clientWidth); xtWireTL(); }
+function xtWireTL() { $('#gridwrap').querySelectorAll('.xtTimeline [data-xq]').forEach(b => b.onclick = () => { const el = document.getElementById('xq-' + b.dataset.xq); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('xtLit'); setTimeout(() => el.classList.remove('xtLit'), 1600); } }); }
+window.addEventListener('resize', () => { clearTimeout(xtTLt); xtTLt = setTimeout(() => { if (view.mode === 'tests' && view.code && xtTLv && $('#gridwrap .xtTLsvg')) xtDrawTL(xtTLv); }, 150); });
+function xtTimeline(v, width) {
   const C = EX(); const L = v.log; const qs = v.questions;
   const end = Math.max(1, L && L.deviceSeconds != null ? L.deviceSeconds : 0, v.seconds || 0, ...v.visits.map(x => x.at + x.sec), ...v.away.map(x => x.at + x.sec), ...v.calc.map(x => x.at + x.sec), ...v.scratch.map(x => x.at + x.sec), ...v.idle.map(x => x.at + x.sec), ...v.timeline.map(x => x.at));
-  const W = 1000, G = 74, R = 14, rowH = qs.length > 24 ? 11 : 15, X = s => G + Math.max(0, Math.min(1, s / end)) * (W - G - R);
+  const W = Math.max(560, Math.round(width || 1000)), G = 84, R = 16, rowH = qs.length > 24 ? 11 : 15, X = s => G + Math.max(0, Math.min(1, s / end)) * (W - G - R);
   let y = 22; const out = []; const lane = (label, h, cls) => { const y0 = y; out.push(`<text class="ll ${cls || ''}" x="${G - 10}" y="${y0 + h / 2 + 4}" text-anchor="end">${label}</text><line class="lg" x1="${G}" x2="${W - R}" y1="${y0 + h}" y2="${y0 + h}"/>`); y += h + 4; return y0; };
   const step = [60, 120, 300, 600, 900, 1200, 1800, 3600].find(s => end / s <= 10) || 3600;
   const ticks = []; for (let s = 0; s <= end; s += step) ticks.push(s);
@@ -529,7 +538,7 @@ function xtTimeline(v) {
   const grid = ticks.map(s => `<line class="tk" x1="${X(s).toFixed(1)}" x2="${X(s).toFixed(1)}" y1="14" y2="${H - 18}"/><text class="tl" x="${X(s).toFixed(1)}" y="${H - 4}" text-anchor="middle">${s ? Math.round(s / 60) + ' min' : '0'}</text>`).join('');
   const fin = v.seconds != null ? `<line class="fin" x1="${X(v.seconds).toFixed(1)}" x2="${X(v.seconds).toFixed(1)}" y1="10" y2="${H - 18}"/><text class="finl" x="${X(v.seconds).toFixed(1)}" y="9" text-anchor="${v.seconds / end > 0.9 ? 'end' : 'middle'}">Finish ${esc(C.clock(v.seconds))}</text>` : '';
   const legend = `<div class="xtLegend"><span><i class="vis"></i>On screen</span><span><i class="chg"></i>Answer changed</span><span><i class="away"></i>Away</span><span><i class="calc"></i>Calculator</span><span><i class="scr"></i>Scratch paper</span><span><i class="idle"></i>Idle over a minute</span><span><i class="dotk right"></i>Right</span><span><i class="dotk wrong"></i>Not right</span><span><i class="dotk blank"></i>Blank</span></div>`;
-  return `${legend}<svg class="xtTimeline" viewBox="0 0 ${W} ${H}" role="img" aria-label="The sitting over ${esc(C.clock(end))}: when each question was on screen, and the times away, the calculator, scratch paper and idle stretches">${grid}${out.join('')}${fin}</svg>${v.drop.visits ? `<p class="xtDrop">${plural(v.drop.visits, 'visit')} after the first 300 are not drawn (not kept).</p>` : ''}`;
+  return `${legend}<svg class="xtTimeline" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="The sitting over ${esc(C.clock(end))}: when each question was on screen, and the times away, the calculator, scratch paper and idle stretches">${grid}${out.join('')}${fin}</svg>${v.drop.visits ? `<p class="xtDrop">${plural(v.drop.visits, 'visit')} after the first 300 are not drawn (not kept).</p>` : ''}`;
 }
 // scratch paper's grid, as the student left it: 20 × 20 squares, four quadrants or the first, in squares from the lower left
 function xtGrid(g) {
