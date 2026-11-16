@@ -1594,6 +1594,9 @@ Croix's decisions, as built:
   new list's CSS; now `var(--r-pill)` (`ccd32f0`), style-contract 14 and exam-core 110 passed on the rerun. The Tests
   suites in that run: exam-core 110, exam-e2e 82, exam-invariant 9 (2,000 sequences, 11,649 actions, 0 violations),
   exam-storage 9.
+- Third review (`72d3002`, the shipped pages rebuilt last): **75 suites · 2,446 passed · 0 failed · 0 skipped**. Tests:
+  exam-core 110, exam-e2e 87, exam-invariant 10 (2,000 random sequences, now with pastes during a fetch: 0 violations),
+  exam-storage 9, shipped-build 2 (`build.py --check`: Tally.html, index.html and Scrub.html are the build of the sources).
 
 ## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 
