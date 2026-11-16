@@ -211,9 +211,12 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
   /* R2-H1: rivals by nickname, a swap of letters, a short or spaced last name: each asks, none is placed */
   { const cases = [['Elisa Garcia', ['Garcia, Elias', 'Garcia, Elisa']], ['Adian Ross', ['Ross, Aidan', 'Ross, Adian']], ['Bobby Doe', ['Doe, Robert', 'Doe, Bobby']],
       ['Bill Ng', ['Ng, William', 'Ng, Bill']], ['Liz Park', ['Park, Elizabeth', 'Park, Liz']], ['Mia Lee', ['Lea, Mia', 'Lee, Mia']], ['Sara Khan', ['Kahn, Sara', 'Khan, Sara']],
-      ['Tom Vandyke', ['Van Dyke, Tom', 'Vandyke, Tom']], ['Pepe Ruiz', ['Ruiz, Jose', 'Ruiz, Pepe']], ['Jon Smith', ['Smith, John', 'Smith, Jon']]];
+      ['Tom Vandyke', ['Van Dyke, Tom', 'Vandyke, Tom']], ['Pepe Ruiz', ['Ruiz, Jose', 'Ruiz, Pepe']], ['Jon Smith', ['Smith, John', 'Smith, Jon']],
+      // R3-M1: the same initial, and the third review's table
+      ['Shawn Lee', ['Lee, Sean', 'Lee, Shawn']], ['Hank Hill', ['Hill, Henry', 'Hill, Hank']], ['Ty Ng', ['Ng, Tyler', 'Ng, Ty']], ['Peggy Ruiz', ['Ruiz, Margaret', 'Ruiz, Peggy']], ['Ted Cole', ['Cole, Edward', 'Cole, Ted']],
+      ['Kat Hu', ['Hu, Cathy', 'Hu, Kat']], ['Tori Lane', ['Lane, Victoria', 'Lane, Tori']], ['Esteban Diaz', ['Diaz, Steve', 'Diaz, Esteban']], ['Xander Hill', ['Hill, Alexander', 'Hill, Xander']], ['Sasha Hill', ['Hill, Alexandra', 'Hill, Sasha']]];
     const bad = cases.filter(([t, ros]) => { const R = ros.map((d, i) => ({ sec: String(4 + i), display: d })); const r = C.matchName(t, R); return r.pick != null || !r.cands.includes(0); });
-    check(!bad.length, 'R2-H1: Bobby/Robert, Bill/William, Liz/Elizabeth, Elisa/Elias, Adian/Aidan, Lee/Lea, Khan/Kahn, Vandyke/Van Dyke, Pepe/Jose, Jon/John all ask, the other child offered: ' + JSON.stringify(bad.map(x => x[0])));
+    check(!bad.length, 'R2-H1, R3-M1: Bobby/Robert, Bill/William, Liz/Elizabeth, Elisa/Elias, Adian/Aidan, Lee/Lea, Khan/Kahn, Vandyke/Van Dyke, Pepe/Jose, Jon/John, Sean/Shawn, Henry/Hank, Tyler/Ty, Margaret/Peggy, Edward/Ted, Cathy/Kat, Victoria/Tori, Steve/Esteban, Alexander/Xander, Alexandra/Sasha all ask, the other child offered: ' + JSON.stringify(bad.map(x => x[0])));
     const R = [{ sec: '4', display: 'Smith, Ava' }, { sec: '5', display: 'Brown, Mia' }, { sec: '5', display: 'Brown, Ava' }, { sec: '4', display: 'Lee, Ana' }, { sec: '6', display: 'Okafor, Chidinma' }];
     check(C.matchName('Ava Brown', R).pick === 2 && C.matchName('Chidinma Okafor', R).pick === 4, 'R2-H1: Ava and Mia (two different short names) are not rivals; a name nobody else is near is still placed');
     check(C.NICKNAMES.some(l => l.split(' ').includes('chuy') && l.includes('jesus')) && C.osa('kahn', 'khan') === 1 && C.osa('elias', 'elisa') === 1, 'the nickname list is one plain list in examcore.js; a swap of two letters is one edit'); }

@@ -21,16 +21,20 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
   await p.setInputFiles('#file', fs.readdirSync(FX('')).filter(f => /^IXL-Score-Grid/.test(f)).map(FX)); await p.waitForTimeout(900);
   for (const f of ['focus_gradebook_p4.csv', 'focus_gradebook_p5.csv']) { await p.setInputFiles('#file', [FX(f)]); await p.waitForTimeout(700); await pick(p); await p.waitForTimeout(300); const a = await p.$('#askApply'); if (a) { await a.click(); await p.waitForTimeout(200); } }
   // connected; every fixture record this Tally can open put in; the response sheet read (no network: nothing is fetched)
-  const setup = await A(async (A, a) => { const X = A.examS(); X.pairs = [JSON.stringify({ priv: a.K.tally.priv, pub: a.K.tally.pub, made: new Date().toISOString() })]; X.sites = [{ key: a.K.site.pub, made: 1, got: new Date().toISOString(), paired: new Date().toISOString() }]; X.trial = { code: 'X', words: 'a b c d', at: new Date().toISOString(), key: a.K.site.pub }; X.warned = true; A.xtLocalAdd('mine', a.K.tally.pub);
-    let n = 0; for (const code of Object.keys(a.L)) { try { const { rec, checked } = await A.examOpen(a.L[code], code); if (rec.trial) continue; await A.examPut(code, a.L[code], rec, checked, 'site'); n++; } catch (e) {} }
+  const setup = await A(async (A, a) => { const X = A.examS(); X.pairs = [JSON.stringify({ priv: a.K.tally.priv, pub: a.K.tally.pub, made: new Date().toISOString() })]; X.sites = [{ key: a.K.site.pub, made: 1, got: new Date().toISOString(), paired: new Date().toISOString() }]; X.trial = { code: 'X', words: 'a b c d', at: new Date().toISOString(), key: a.K.site.pub }; X.warned = true; A.xtLocalAdd('mine', a.K.tally.pub); A.xtLocalAdd('checked', a.K.site.pub);
+    let n = 0; window.__later = []; for (const [i, code] of Object.keys(a.L).entries()) { if (i % 4 === 3) { window.__later.push(code); continue; } try { const { rec, checked } = await A.examOpen(a.L[code], code); if (rec.trial) continue; await A.examPut(code, a.L[code], rec, checked, 'site'); n++; } catch (e) {} }
     A.examTakeSheet(a.sheet, 'paste');
     // rosters as roster text only (a gradebook's students would come back as extras when a line is dropped)
     for (const k of A.state.order) { const s = A.state.sections[k]; s.roster = A.rosterFromGradebook(s, s.grades); s.grades = null; }
     A.save(); A.view.mode = 'tests'; A.render();
     return { n, held: Object.keys(X.recs).length, classes: A.state.order.length };
   }, { K, L: LOCKED, sheet: fs.readFileSync(FX('responses.tsv'), 'utf8') });
-  check(setup.n >= 30 && setup.classes === 2, `the fixture: ${setup.n} tests held in ${setup.classes} classes, the response sheet read`);
+  check(setup.n >= 20 && setup.classes === 2, `the fixture: ${setup.n} tests held in ${setup.classes} classes, the response sheet read`);
 
+  // the site, as a stand-in inside the page: a held-back fixture record by its code (a few ms later), else "none"; the key
+  await p.evaluate(a => { window.__site = a; window.fetch = async url => { await new Promise(r => setTimeout(r, 2 + Math.random() * 25)); const u = String(url);
+    if (/\/api\/test\/key$/.test(u)) return new Response(JSON.stringify({ key: a.key, made: 1 }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const c = (/result\/([0-9A-Z]{12})$/.exec(u) || [])[1]; return c && a.L[c] ? new Response(JSON.stringify({ code: c, record: a.L[c] }), { status: 200 }) : new Response(JSON.stringify({ error: 'none' }), { status: 404 }); }; }, { L: LOCKED, key: K.site.pub });
   // the runner, in the page: one call runs a batch of sequences and returns the first violation (with its sequence)
   await p.evaluate(() => {
     const A = window.__all;
@@ -40,8 +44,9 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
     const lines = s => String(s.roster || '').split('\n').filter(l => l.trim());
     const modal = () => document.querySelector('#modal:not(.hidden)');
     const shut = () => { const m = modal(); if (m && m._cancel) m._cancel(); };
+    window.__inv.idle = async () => { for (let i = 0; i < 400 && ((A.examJob && A.examJob.running) || A.xtQueue.size); i++) await new Promise(r => setTimeout(r, 10)); await new Promise(r => setTimeout(r, 5)); for (let i = 0; i < 400 && A.examJob && A.examJob.running; i++) await new Promise(r => setTimeout(r, 10)); };
     window.__inv.save0 = () => { window.__inv.start = JSON.stringify(A.stateForSave()); const r = {}; A.state.order.forEach(k => { r[k] = A.state.sections[k].roster; }); window.__inv.rosters = r; window.__inv.order = A.state.order.slice(); window.__inv.exam = JSON.stringify(A.state.exam); window.__inv.whole = true; };
-    window.__inv.reset = async ids => { shut();
+    window.__inv.reset = async ids => { shut(); A.xtAutoTried.clear();
       // quick: only Tests and the rosters changed in the last sequence (no class deleted, no Full save opened)
       if (!window.__inv.whole) { A.state.exam = A.cleanExam(JSON.parse(window.__inv.exam)); A.state.order = window.__inv.order.slice(); for (const k of A.state.order) A.state.sections[k].roster = ids ? window.__inv.rosters[k] : String(window.__inv.rosters[k] || '').replace(/^\d{4,}\t/gm, '');
         A.view.mode = 'tests'; A.view.code = null; A.state.active = A.state.order[0]; A.render(); return; }
@@ -49,15 +54,16 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
       A.adopt(A.hydrate(s) || s); if (A.xtVer.size < Object.keys(A.examS().recs).length) await A.examVerifyAll(); /* the same tests, checked once already this session */ A.view.mode = 'tests'; A.view.code = null; A.state.active = A.state.order[0]; A.render(); };
     // where everything is, checked three ways: the ledger, the page, and every class's rows
     window.__inv.check = () => {
-      const X = A.examS(), L = A.xtLedger(), held = Object.keys(X.recs), bad = [];
+      const X = A.examS(), L = A.xtLedger(), held = Object.keys(X.recs), all = Object.keys(L.at), bad = [];
       const seen = {}; ['row', 'waiting', 'nobody'].forEach(w => L[w].forEach(c => { seen[c] = (seen[c] || []).concat(w); }));
       held.forEach(c => { if (!seen[c] || seen[c].length !== 1) bad.push(`${c} is in ${(seen[c] || ['nowhere']).join(' and ')}`); });
-      Object.keys(seen).forEach(c => { if (!X.recs[c]) bad.push(`${c} listed but not held`); });
+      Object.keys(seen).forEach(c => { if (!X.recs[c] && !(L.at[c].why === 'unfetched' && X.rows.some(r => r.codes.includes(c)))) bad.push(`${c} listed but neither held nor named by a response`); });
+      X.rows.forEach(r => r.codes.forEach(c => { if (!L.at[c] && !(X.fails[c] && X.fails[c].why !== 'net')) bad.push(`${c} is named by a response but is in no list (not held, not fetched, not failed)`); }));
       // the page (a class's Tests, as he sees it)
       const cnt = (document.querySelector('#xtCount') || {}).textContent || '';
-      const m = /All classes: (\d+) tests? held = (\d+) with a student \+ (\d+) waiting for you \+ (\d+) nobody turned in/.exec(cnt);
-      if (held.length && !m) bad.push('no count line: ' + cnt.slice(0, 80));
-      if (m && (+m[1] !== held.length || +m[2] !== L.row.length || +m[3] !== L.waiting.length || +m[4] !== L.nobody.length || +m[1] !== +m[2] + +m[3] + +m[4])) bad.push('count line does not add up or does not match: ' + cnt);
+      const m = /All classes: (\d+) tests? = (\d+) with a student \+ (\d+) waiting for you \+ (\d+) nobody turned in/.exec(cnt);
+      if (all.length && !m) bad.push('no count line: ' + cnt.slice(0, 80));
+      if (m && (+m[1] !== all.length || +m[2] !== L.row.length || +m[3] !== L.waiting.length || +m[4] !== L.nobody.length || +m[1] !== +m[2] + +m[3] + +m[4])) bad.push('count line does not add up or does not match: ' + cnt);
       const dom = sel => [...document.querySelectorAll(sel)].map(li => li.dataset.xled).sort().join(',');
       if (dom('#xtWaiting li[data-xled]') !== L.waiting.slice().sort().join(',')) bad.push('the Waiting list on the page is not the waiting tests');
       if (dom('#xtNobody li[data-xled]') !== L.nobody.slice().sort().join(',')) bad.push('the Nobody list on the page is not the nobody tests');
@@ -93,6 +99,10 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
         for (let i = 0; i < 1 + Math.floor(R() * 4); i++) { const n = pickOf(R, names) || 'Nobody Here'; const m = /^([^,]+),\s*(\S+)/.exec(n); let typed = m ? m[2] + ' ' + m[1] : n; if (R() < 0.3) typed = typed.slice(0, -1); if (R() < 0.15) typed = typed.split(' ')[0];
           rows.push(`11/${17 + Math.floor(R() * 3)}/2026 ${10 + Math.floor(R() * 3)}:${String(Math.floor(R() * 60)).padStart(2, '0')}:00\t${typed}\t${R() < 0.1 ? 'NOTACODE' : pickOf(R, codes)}`); }
         A.examTakeSheet(rows.join('\n'), 'paste'); A.render(); return 'paste ' + (rows.length - 1) + ' rows'; },
+      pasteFetch: R => { const codes = window.__later.concat(['ZZZZZZZZZZZ' + 'ABCDEFGH'[Math.floor(R() * 8)]]); const names = roster().map(x => x.n); const rows = ['Timestamp\tFull name\tYour test code'];
+        for (let i = 0; i < 1 + Math.floor(R() * 3); i++) { const n = pickOf(R, names) || 'Nobody Here'; const m = /^([^,]+),\s*(\S+)/.exec(n); rows.push(`11/18/2026 1${Math.floor(R() * 3)}:${String(Math.floor(R() * 60)).padStart(2, '0')}:0${i}\t${m ? m[2] + ' ' + m[1] : n}\t${pickOf(R, codes)}`); }
+        const r = A.examTakeSheet(rows.join('\n'), 'paste'); A.render(); if (r.ok) { if (A.examJob && A.examJob.running) window.__inv.overlap = (window.__inv.overlap || 0) + 1; A.examFetch(r.codes); } return 'paste and fetch ' + (rows.length - 1) + ' rows' + (A.examJob && A.examJob.running ? ' (a fetch running)' : ''); },
+      waitFetch: async R => { if (!(A.examJob && A.examJob.running)) return null; await window.__inv.idle(); return 'the fetching ends'; },
       roster: R => { const k = pickOf(R, A.state.order); if (!k) return null; const s = A.state.sections[k], l = lines(s); const what = pickOf(R, ['drop', 'rename', 'move', 'namesake']); const i = Math.floor(R() * l.length); if (!l.length) return null;
         if (what === 'drop') { l.splice(i, 1); s.roster = l.join('\n'); }
         else if (what === 'rename') { l[i] = l[i].replace(/^(\d+\t)?([^,]+),/, (x, id, last) => (id || '') + last + '-ORTIZ,'); s.roster = l.join('\n'); }
@@ -106,11 +116,11 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
         if (x < 0.6) { const b = m.querySelector('[data-xextra="nobody"]'); if (b) { b.click(); return 'Nobody yet'; } }
         const bs = [...m.querySelectorAll('.xtWho')]; const b = pickOf(R, bs); if (!b) { m.querySelector('#mCancel').click(); return 'Cancel (empty)'; } const t = b.textContent; b.click(); return 'picked ' + t.slice(0, 30); }
     };
-    const NAMES = ['answer', 'yes', 'someone', 'not', 'give', 'takeBack', 'nobody', 'undo', 'undo', 'dismiss', 'bring', 'paste', 'roster', 'roster', 'delClass', 'full'];
+    const NAMES = ['answer', 'yes', 'someone', 'not', 'give', 'takeBack', 'nobody', 'undo', 'undo', 'dismiss', 'bring', 'paste', 'pasteFetch', 'pasteFetch', 'waitFetch', 'roster', 'roster', 'delClass', 'full'];
     window.__inv.run = async (from, n, steps, seed) => {
       const t0 = performance.now(); let acts = 0;
       for (let q = from; q < from + n; q++) {
-        const R = rng(seed + q * 7919); const ids = q % 2 === 0; await window.__inv.reset(ids); const seq = [ids ? '(with Student IDs)' : '(no Student IDs)'];
+        const R = rng(seed + q * 7919); const ids = q % 2 === 0; await window.__inv.idle(); await window.__inv.reset(ids); const seq = [ids ? '(with Student IDs)' : '(no Student IDs)'];
         for (let st = 0; st < steps; st++) {
           const name = NAMES[Math.floor(R() * NAMES.length)]; window.__inv.cancelBroke = false; window.__inv.undid = undefined;
           const pre = tests(), u0 = A.xtLastUndo;
@@ -125,16 +135,20 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
           if (A.xtLastUndo && A.xtLastUndo !== u0) window.__inv.before = pre;   // what Undo must give back: the state just before the action it undoes
           if (bad.length) return { q, seq, bad };
         }
+        // when the fetching is over, every code a response names was fetched (or the site answered for it): none left behind (R3-H1)
+        await window.__inv.idle(); A.view.mode = 'tests'; A.render(); const left = A.examUnfetched().filter(c => !A.examS().fails[c]); const bad = window.__inv.check();
+        if (left.length) bad.push('after the fetching ended, codes a response names were never fetched: ' + left.join(', '));
+        if (bad.length) return { q, seq: seq.concat(['(the fetching ends)']), bad };
       }
       return { ok: true, acts, ms: Math.round(performance.now() - t0) };
     };
   });
-  await p.evaluate(() => window.__inv.save0());
+  await p.evaluate(async () => { window.__all.render(); await new Promise(r => setTimeout(r, 50)); await window.__inv.idle(); window.__all.render(); window.__inv.save0(); });   // the fixture's responses fetched first
 
   /* R2-C1: a placement belongs to one child, not to a name. Each case from the fixture as set up. */
   const c1 = await p.evaluate(async () => { const A = window.__all, out = {};
     const one = async (ids, fn) => { await window.__inv.reset(ids); const L = A.xtLedger(); const k4 = A.state.order[0], k5 = A.state.order[1];
-      const code = L.row.find(c => L.at[c].to.sec === k4 && A.examS().recs[c].who.how === 'exact'); const n = A.examS().recs[code].who.n; const S = A.state.sections;
+      const code = L.row.find(c => L.at[c].to.sec === k4 && A.examS().recs[c].who.how === 'exact') || L.row.find(c => L.at[c].to.sec === k4); const n = A.examS().recs[code].who.n; const S = A.state.sections;
       const line = String(S[k4].roster).split('\n').find(l => l.endsWith('\t' + n) || l === n);
       fn({ S, k4, k5, n, line }); A.render(); const e = A.examS().recs[code]; const L2 = A.xtLedger();
       return { where: L2.at[code].where, who: e.who && (e.who.sec === k5 ? '5th|' : '4th|') + e.who.n, gone: e.gone ? e.gone.n + ' (' + e.gone.cl + ')' : null, text: (document.querySelector('#xtNobody') || {}).textContent || '' }; };
@@ -154,6 +168,11 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
   // R2-L1: the give dialog never shows the summary of a test not checked this session
   const l1 = await p.evaluate(async () => { const A = window.__all; await window.__inv.reset(true); const code = A.xtLedger().row[0]; A.xtVer.set(code, 'missing'); A.xtChoose(A.state.sections[A.state.active], code, 'give'); const t = document.querySelector('#modal .body p').textContent; document.querySelector('#modal #mCancel').click(); A.xtVer.set(code, 'ok'); return t; });
   check(!/\d+ \/ \d+/.test(l1), 'R2-L1: "Give it to a student" for a test not checked this session shows no score or times: ' + l1.slice(0, 60));
+  // R3-L2: a question open when a Full save is opened is closed, not answered into the new data
+  const l2 = await p.evaluate(async () => { const A = window.__all; await window.__inv.reset(true); const r = A.examS().rows.find(x => x.codes.length && !x.who); A.xtWho(A.state.sections[A.state.active], r);
+    const open1 = !document.querySelector('#modal').classList.contains('hidden'); const st0 = A.stateForSave(); st0.exam = A.examForSave(st0.exam); const j = JSON.parse(JSON.stringify(st0)); A.adopt(A.hydrate(j) || j); A.examReset(new Date().toISOString());
+    const open2 = !document.querySelector('#modal').classList.contains('hidden'); const a0 = JSON.stringify(A.examS().alias); const b = document.querySelector('#modal .xtWho'); if (b) b.click(); await A.examLoadLocked(); await A.examVerifyAll(); window.__inv.whole = true; return { open1, open2, same: JSON.stringify(A.examS().alias) === a0 }; });
+  check(l2.open1 && !l2.open2 && l2.same, 'R3-L2: a "Who turned this in?" question open when a Full save is opened is closed, and nothing is answered into the new data');
   check(c1.namesake.where === 'nobody' && !c1.namesake.who && /no longer on that roster/.test(c1.namesake.text) && c1.namesake.gone, 'R2-C1: a student leaves while another child of the same name is in another class: the test goes to Nobody turned in ("' + (c1.namesake.text.match(/It had been[^.]*\./) || [''])[0] + '"), never to the namesake');
   check(c1.namesakeIds.where === 'nobody' && !c1.namesakeIds.who, 'R2-C1: the same with Student IDs (the namesake\'s ID differs): nobody\'s, not the namesake\'s');
   check(c1.moved.where === 'row' && /^5th\|/.test(c1.moved.who || ''), 'R2-C1: plainly the same child moved (gone from one class and new in another in one import, no namesake before): the test follows them');
@@ -162,7 +181,8 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
   let total = 0, acts = 0, fail = null; const t0 = Date.now(); const B = 50;
   for (let q = 0; q < N && !fail; q += B) { const r = await p.evaluate(([q, n, s, seed]) => window.__inv.run(q, n, s, seed), [q, Math.min(B, N - q), STEPS, SEED]); if (!r.ok) fail = r; else { total += Math.min(B, N - q); acts += r.acts; } }
   if (fail) console.log('VIOLATION in sequence', fail.q, '(seed ' + SEED + '):\n  ' + fail.seq.join('\n  ') + '\n  -> ' + fail.bad.join('\n  -> '));
-  console.log(`RAN ${total} random sequences, ${acts} actions, ${((Date.now() - t0) / 1000).toFixed(1)} s (seed ${SEED})`);
+  const overlap = await p.evaluate(() => window.__inv.overlap || 0);
+  console.log(`RAN ${total} random sequences, ${acts} actions (${overlap} pastes made while a fetch was running), ${((Date.now() - t0) / 1000).toFixed(1)} s (seed ${SEED})`);
   check(!fail, `after every action of ${total} random sequences (${acts} actions: place, Yes, Someone else, Not theirs, Cancel, Undo, give, take back, Nobody yet, dismiss, bring back, paste, rosters moved, dropped, renamed and given namesakes, a class deleted, a Full save opened), every test held is in exactly one place and the count line adds up; Cancel changes nothing; Undo gives back exactly what was there` + (fail ? ' — FAILED at sequence ' + fail.q : ''));
   check(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await browser.close(); done();

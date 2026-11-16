@@ -145,7 +145,10 @@ var NICKNAMES = [
   'zach zack zachary', 'josh joshua', 'jake jacob', 'charlie chuck charles carlos', 'eddie ed edward eduardo',
   'ricky rick richard ricardo', 'teddy ted theodore', 'leo leonardo leonard', 'max maxwell maximilian maximo',
   'ellie ella eleanor elena', 'addie addison adeline', 'lexi alexa alexis', 'cami camila camille', 'sofi sophie sofia sophia',
-  'mia maria', 'ana anna annie anne'
+  'mia maria', 'ana anna annie anne',
+  'sean shawn shaun', 'henry hank harry', 'ty tyler', 'dick rick ricky richard', 'peggy maggie meg margaret margarita',
+  'ted ed eddie edward', 'pat patty patricia patrick', 'steve steven stephen esteban', 'greg gregory', 'jeff jeffrey geoff',
+  'cathy kathy cat kat', 'jen jenny jennifer', 'jess jessie jessica', 'becca becky rebecca', 'tori victoria', 'trey tre', 'xander alexander', 'sasha alexandra alexander'
 ];
 var NICK = {}; NICKNAMES.forEach(function (line, g) { line.split(/\s+/).forEach(function (n) { (NICK[n] = NICK[n] || []).push(g); }); });
 function nick(a, b) { var A = NICK[a], B = NICK[b]; return !!(A && B && A.some(function (g) { return B.indexOf(g) >= 0; })); }
@@ -160,10 +163,13 @@ function osa(a, b) {
   return d[a.length][b.length];
 }
 // a first name a student could have typed for another's: one starts the other (3+ letters), two edits or fewer, or nicknames
-function relFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; var n = Math.min(t.length, f.length); return n >= 2 && osa(t, f) <= (n >= 5 ? 2 : 1) || nick(t, f); }
+// (third review, R3-M1: also any two first names that begin with the same letter: Sean/Shawn, Henry/Hank, Tyler/Ty)
+function relFirst(t, f) { if (!t || !f) return false; if (t === f || t[0] === f[0]) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; var n = Math.min(t.length, f.length); return n >= 2 && osa(t, f) <= (n >= 5 ? 2 : 1) || nick(t, f); }
 // a last name that is the same or near: equal with spaces, hyphens, apostrophes, case and accents gone, or one edit apart
 function relLast(a, b) { if (!a || !b) return false; if (a === b) return true; return Math.min(a.length, b.length) >= 3 && osa(a, b) <= 1; }
-function nearFirst(t, f) { return relFirst(t, f); }
+// near (for the likely students offered when nothing is exact): every typed word is tried against the first name here, so it
+// stays strict; rival() splits the typed words into first and last before it compares (R3-M1)
+function nearFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; return Math.min(t.length, f.length) >= 3 && osa(t, f) <= 1 || nick(t, f); }
 function nearLast(t, L) { return L.some(function (l) { return relLast(t, l); }); }
 /* A RIVAL of the student X a typed name exactly matches (Croix, 16 Nov 2026, R2-H1): another student, in any class, whose last
    name is the same or near X's (as a whole, run together: Van Dyke/Vandyke; or word by word: Lea/Lee, Kahn/Khan) and whose

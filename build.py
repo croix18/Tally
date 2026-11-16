@@ -7,6 +7,8 @@ Playwright suites use; the default build strips it."""
 import pathlib, re, sys, base64
 root = pathlib.Path(__file__).parent
 test = '--test' in sys.argv
+check = '--check' in sys.argv   # build in memory and compare with the shipped files on disk; write nothing (tests/shipped-build.js)
+mismatch = []
 parser = re.sub(r"^if \(typeof module.*$", '', (root / 'parser.js').read_text(), flags=re.M)
 app = (root / 'app.js').read_text()
 grades = (root / 'grades.js').read_text()
@@ -59,6 +61,11 @@ def build(src, out, **parts):
         tag = '/*__%s__*/' % k
         assert tag in html, f'{src}: missing {tag}'
         html = html.replace(tag, v)
+    if check:
+        same = (root / out).exists() and (root / out).read_text() == html
+        if not same: mismatch.append(out)
+        print(out, 'is' if same else 'is NOT', 'the build of these sources')
+        return
     (root / out).write_text(html)
     print(out, len(html), 'bytes', '(test build)' if test else '')
 
@@ -70,5 +77,9 @@ if test:   # the test build is its own file, so a test run can never leave windo
     build('scrub.src.html', 'Scrub.test.html', PARSER=parser, FONT=font)
 else:
     build('app.html', 'Tally.html', PARSER=parser, APP=app, FONT=font, PDFJS=pdfjs, PDFJS_WORKER=pdfworker, SEAL=sealjs, EXAMCORE=examcore)
-    (root / 'index.html').write_bytes((root / 'Tally.html').read_bytes())   # GitHub Pages serves the app at the repo root
+    if check:
+        if (root / 'index.html').read_bytes() != (root / 'Tally.html').read_bytes(): mismatch.append('index.html'); print('index.html is NOT Tally.html')
+        else: print('index.html is Tally.html')
+    else: (root / 'index.html').write_bytes((root / 'Tally.html').read_bytes())   # GitHub Pages serves the app at the repo root
     build('scrub.src.html', 'Scrub.html', PARSER=parser, FONT=font)
+    if check and mismatch: sys.exit('not the build of these sources: ' + ', '.join(mismatch) + ' (run python3 build.py)')

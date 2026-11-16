@@ -1425,9 +1425,10 @@ pairs are kept as JSON text (`state.exam.pairs`, every key ever made, newest las
 two keys together; the private half is in Tally's storage and the Full save, and in nothing else (Board save builds its
 own state; tested). **The key to paste is always this browser's own newest key** (`tally.exam.local.mine`); a key that
 came in a Full save opens tests but is never offered for pasting, and Connect says so. **Opening a Full save never takes a
-key away** (`examKeysNow` / `examKeepKeys`). Site keys are kept in `state.exam.sites`. A site key is trusted when a trial proved it in this
-browser (`tally.exam.local.checked`) or on the Tally that made the Full save opened here (`paired`, carried in the save,
-R2-H3); a new key the site hands out is kept unchecked until the next trial (L6). **Records:** `state.exam.recs[code]` = a small summary plus the entry {who {sec, n, how, at}, no[], nobody,
+key away** (`examKeysNow` / `examKeepKeys`). Site keys are kept in `state.exam.sites`. A site key is trusted only in this browser
+(`tally.exam.local.checked`): when a trial proved it here, or when a Full save brought it marked `paired` AND the site serves
+that same key now (R3-C1; one GET of the key on opening the save, at Connect, and whenever the site answers). A key in a
+file is never trusted on the file's say-so; a new key the site hands out is kept unchecked until the next trial (L6). **Records:** `state.exam.recs[code]` = a small summary plus the entry {who {sec, n, how, at}, no[], nobody,
 was}; the locked text (as the site sent it) is in IndexedDB `tally-tests`/`locked`, falling back to `state.exam.locked`
 when IndexedDB is missing; the Full save carries every locked text (`examForSave`), never an opened record. Every session
 re-opens and re-checks each record (`examVerifyAll`); a record not checked this session is never shown and never scored,
@@ -1551,6 +1552,27 @@ Croix's decisions, as built:
   test in the give/whose dialogs; **R2-L2** a v1 test that was nobody's is in Waiting for you with Fetch again.
   Remembered names are no longer in the page's markup under Hide names (the Forget button carries an index).
 - Probe numbers after: 2,250 tests check in 3.6 s, Tests opens in 0.94 s, a draw 62 ms, Full save 6.29 MB (`r2_p11`).
+
+### Third review (16 Nov 2026; `REVIEW3.md`, probes `r3_*` rerun from `/home/claude/tally-rerun/r3`)
+- **R3-C1:** `paired` in a save only makes a key *confirmable*. On opening a save (`examReset(saved)` → `examConfirmSaved`),
+  at Connect and on Tests (again every 15 s, and at once on the browser's `online` event, while the site can't be reached),
+  Tally asks `GET /api/test/key` once; a saved key the site serves is remembered as checked for this browser. Until then its
+  tests wait under Waiting for you ("Signed by a key this Tally has not checked: connect to the site once, or run a trial").
+  Connect says "Connected to mrshaffer.org (from your Full save of Nov 16, checked with the site today)", or "… not checked
+  yet: the site could not be reached", or that the site's key now is another one (tests signed with a key the site replaced
+  can't be checked in this browser; their scores are in the cockpit). The forged-save probe: the made-up test stays
+  `unchecked`, never scored.
+- **R3-H1:** one queue: a paste, file or Try again while a fetch runs adds to it; when a pass ends another starts for whatever
+  is queued or named by a response and never fetched; opening Tests fetches codes left over from an earlier session once.
+  A code a response names that Tally neither holds nor was answered for is in the ledger as "Not fetched yet" (Waiting for
+  you, the count line: "All classes: N tests = …", no longer "held"). Copy waits while anything is left to fetch.
+- **R3-M1:** first names with the same first letter are rivals (with the same or near last name); the nickname table has the
+  third review's lines and Xander/Sasha. The cost, measured by `r3_p1d`: the fixture still asks 3; the probe's synthetic
+  school of 150 with only 30 last names asks 42 a test (it asked 8). Croix may find that too many; a real roster has far
+  more distinct last names. Left silent: "Ana Schmidt" typed by Smith, Ana (last names too far apart).
+- **R3-L2:** a question open when a Full save is opened is closed (examReset). **R3-L3:** `python3 build.py --check` builds in
+  memory and compares; `tests/shipped-build.js` fails if the shipped pages are not the build of the sources or are changed
+  and uncommitted.
 
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
