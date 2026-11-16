@@ -201,6 +201,7 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
     for (let i = 0; i < 80 && /Checking/.test(await text(q, '#xtProg')); i++) await q.waitForTimeout(250); await q.waitForTimeout(200);
     if (tag === '1366' && !dark) check(/Connected to mrshaffer\.org \(from your Full save of /.test(await text(q, '.xtConn')) && await q.locator('tr[data-xcode]').count() >= 22, 'a fresh Tally that opens the Full save scores every test at once: no trial, no new key, nothing to paste (R2-H3): ' + await text(q, '.xtConn'));
     if (tag === '1366' && !dark) { await q.click('#xtConnBtn'); await q.waitForTimeout(200);
+      await shot(q, '15-connect-from-save-1366');
       check(/Connected \(from your Full save of [^)]*\)\. The save brought this Tally's key/.test(await text(q, '.xtSteps')) && await q.locator('#xtKey').count() === 0, 'Connect says it is connected from the Full save, and offers no key "to paste" (R2-H3)');
       await q.click('#xtDone'); await q.waitForTimeout(300); }
     if (tag === '1366' && !dark) {

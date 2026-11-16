@@ -1425,9 +1425,9 @@ pairs are kept as JSON text (`state.exam.pairs`, every key ever made, newest las
 two keys together; the private half is in Tally's storage and the Full save, and in nothing else (Board save builds its
 own state; tested). **The key to paste is always this browser's own newest key** (`tally.exam.local.mine`); a key that
 came in a Full save opens tests but is never offered for pasting, and Connect says so. **Opening a Full save never takes a
-key away** (`examKeysNow` / `examKeepKeys`). Site keys are kept in `state.exam.sites`, but a site key is trusted by this
-browser only after a trial proved it (`tally.exam.local.checked`); a new key from the site is kept unchecked until the
-next trial. **Records:** `state.exam.recs[code]` = a small summary plus the entry {who {sec, n, how, at}, no[], nobody,
+key away** (`examKeysNow` / `examKeepKeys`). Site keys are kept in `state.exam.sites`. A site key is trusted when a trial proved it in this
+browser (`tally.exam.local.checked`) or on the Tally that made the Full save opened here (`paired`, carried in the save,
+R2-H3); a new key the site hands out is kept unchecked until the next trial (L6). **Records:** `state.exam.recs[code]` = a small summary plus the entry {who {sec, n, how, at}, no[], nobody,
 was}; the locked text (as the site sent it) is in IndexedDB `tally-tests`/`locked`, falling back to `state.exam.locked`
 when IndexedDB is missing; the Full save carries every locked text (`examForSave`), never an opened record. Every session
 re-opens and re-checks each record (`examVerifyAll`); a record not checked this session is never shown and never scored,
@@ -1517,6 +1517,40 @@ in another time zone were not tried.
   trial before anything scores, and records signed by a site key that was rotated before that trial cannot be scored
   there; names taken from an e-mail address are only suggested; "John Smith" asks when a "Jon Smith" exists; response rows
   are kept up to 6,000 (only placed or nobody rows are pruned).
+
+### Second review (16 Nov 2026; `/home/claude/reviews/tally-tests/REVIEW2.md`, probes `r2_*` rerun from `/home/claude/tally-rerun/r2`)
+Croix's decisions, as built:
+- **R2-C1, a placement belongs to one child.** `e.who` carries the Focus Student ID when the roster has one (`examRoster`
+  reads it from the roster lines / gradebook). When the student is no longer on their class's roster the test follows them
+  only on the same ID (and a name sharing a word with the old one: an ID on a different child is not trusted), or, with no
+  IDs, to a student of the same full name who is NEW in another class in that import while nobody of that name was on any
+  roster before it (`state.exam.seen`, the roster at the last refile). Otherwise `e.gone` = whose it had been (with the
+  class) and the test is in Nobody turned in: "It had been given to SMITH, JOHN (4th Period), who is no longer on that
+  roster" ("with" when he hadn't given it). A response row typed with the name never puts it on a namesake.
+- **R2-C2, nothing in limbo.** `xtLedger()` puts every held test in exactly one of: a student's row, **Waiting for you**
+  (a new list on every Tests page: shared codes, names Tally isn't sure of, tests that can't be scored as they are: locked
+  copy missing, earlier build, unchecked key, failed check), **Nobody turned in** (a list too). Rows, both lists and the
+  count line are drawn from it; neither list can be dismissed. Not theirs changes nothing until answered (Cancel leaves it
+  where it was). Every Tests change goes through `xtDo`, whose Undo puts back exactly what Tests held before, and refuses
+  plainly when tests were fetched or a roster changed since. `tests/exam-invariant.js` runs random sequences (2,000 by
+  default, about 0.2 s each; the runner gives it 20 minutes) of every action and fails on the first violation, printing
+  the sequence. With the old Not theirs planted back in, it fails on its first sequence.
+- **R2-H1, rivals.** `examcore.js`: `NICKNAMES` (one plain list, one group a line; Croix can add to it), `osa` (a swap of
+  two letters is one edit), `rival()`: the same or near last name (run together, or word by word, one edit at 3+ letters)
+  and a related first name (prefix of 3+, nicknames, or edits: 1 for names under 5 letters, 2 from 5 letters). **Decision
+  of mine:** two edits on 3-4 letter names made Ava/Mia and Ana/Mia rivals, so short names get one edit. The class hint
+  only speaks when every candidate class has placed tests of that test (R2-L3); the picker puts that class's student first.
+- **R2-H2:** Fetch again fetches a held test whose locked copy is missing; if the site no longer has it, the waiting item
+  says so. "Fetch all N again" when there are several.
+- **R2-H3:** a Full save carries the site keys with `paired`; opened in a fresh browser it scores at once, and Connect and
+  the status say "Connected (from your Full save of Nov 16)". In a browser with its own key, the key to paste stays its own.
+- **R2-M1:** no IndexedDB: a notice on Tests (kept only in Tally's own storage; the Full save is the only other copy); the
+  storage warning starts at 40% there. **R2-M2:** flag ids are kind|code|names|test|what makes it unique (rows by time, line
+  and code; "two tests" by its codes; network and "another test" notes by their codes, so they come back when the cause
+  changes). **R2-M3:** Copy waits for the session's check ("Checking N of M tests…"). **R2-L1** no summary of an unchecked
+  test in the give/whose dialogs; **R2-L2** a v1 test that was nobody's is in Waiting for you with Fetch again.
+  Remembered names are no longer in the page's markup under Hide names (the Forget button carries an index).
+- Probe numbers after: 2,250 tests check in 3.6 s, Tests opens in 0.94 s, a draw 62 ms, Full save 6.29 MB (`r2_p11`).
 
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).

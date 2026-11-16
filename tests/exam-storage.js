@@ -48,6 +48,7 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
   // a browser with no IndexedDB (R2-M1): the Tests page says where tests are kept, and that the Full save is the only other copy
   { const { ctx, p } = await open(() => { try { delete window.indexedDB; Object.defineProperty(window, 'indexedDB', { value: undefined }); } catch (e) {} }); await importClasses(p); await connect(p);
     await put(p, await make(3, 1)); await p.click('#rail .rc:has-text("4th")'); await p.click('#openTests'); await p.waitForTimeout(600);
+    await p.screenshot({ path: path.join(SHOTS, '16-no-indexeddb-1366.png') });
     const w = await p.evaluate(() => (document.querySelector('.xtStore') || {}).innerText || '');
     check(/no IndexedDB here/.test(w) && /kept only in Tally's own storage/.test(w) && /Full save is the only other copy/.test(w) && await p.evaluate(() => !window.indexedDB), 'with no IndexedDB, Tests says the tests are kept only in Tally\'s own storage here and the Full save is the only other copy (R2-M1): ' + w.slice(0, 80));
     await ctx.close(); }
