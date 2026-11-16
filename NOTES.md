@@ -1568,6 +1568,10 @@ Croix's decisions, as built:
   review fix had replaced the storage-full toast's wording from the deep audit; the audit's sentence is back, with the
   measured breakdown (`whatFills`) after it. Rerun: audit-nov15-data 12, exam-core 106, exam-e2e 78, exam-storage 8
   passed, 0 failed.
+- Second review (`414a2ab`): **74 suites · 2,437 passed · 1 failed**: `style-contract.js`, a bare `999px` radius in the
+  new list's CSS; now `var(--r-pill)` (`ccd32f0`), style-contract 14 and exam-core 110 passed on the rerun. The Tests
+  suites in that run: exam-core 110, exam-e2e 82, exam-invariant 9 (2,000 sequences, 11,649 actions, 0 violations),
+  exam-storage 9.
 
 ## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 
