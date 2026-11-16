@@ -122,17 +122,16 @@ function build(seed) {
     2: { away: 3, kinds: ['tab'], rule: { leave: 'end', after: 3 }, ended: 'left', blankFrom: 11 },      // the test ended itself
     3: { idle: [612, 75] }, 4: { scratch: 'heavy', cut: true, calc: 0.5 }, 5: { cap: true, away: 3, calc: 0.3 },
     6: { log: false }, 7: { nulls: true, unlocks: 1, rule: { leave: 'lock', after: 2 }, away: 2 },
-    13: { pastes: 2, blocked: true }, 20: { skew: -184, flagEnd: true }, 22: { slowQ: '6' } };
+    13: { pastes: 2, blocked: true }, 20: { skew: -184, flagEnd: true }, 21: { start: at(10, 52) }, 22: { slowQ: '6' } };
   const codes = {};
-  P4.forEach((d, i) => { codes[i] = add({ sec: 4, n: d }, { skill: sk[i], start: day(i), calc: 0.15, scratch: 'some', away: i % 4 === 1 ? 1 : 0, ...(kinds[i] || {}) }); });
+  P4.forEach((d, i) => { codes[i] = add({ sec: 4, n: d }, { skill: sk[i], start: day(i), calc: 0.15, scratch: 'some', away: i % 4 === 1 ? 1 : 0, ...(kinds[i] || {}) }, i === 23 ? { by: 'old' } : null); });   // Tereza's is signed with the site's key from before it was made again; Daniel finishes after the period
   // the mess
   const twice = add({ sec: 4, n: P4[8] }, { skill: 0.9, start: at(10, 35), calc: 0.2 });                   // Rohan Patel sat it twice
   const other = add({ sec: 4, n: P4[12] }, { skill: 0.8, start: day(12) }, { to: 'other' });                // locked to another Tally
   const forged = add({ sec: 4, n: P4[16] }, { skill: 1, start: day(16) }, { by: 'forger' });               // a perfect score signed by someone else
   const unit9 = add({ sec: 4, n: P4[18] }, { skill: 0.7, start: at(9, 43), unit: 9 });                       // another unit
   const a7 = add({ sec: 4, n: P4[19] }, { skill: 0.6, start: at(9, 44), course: 'a7', unit: 4 });            // the other course
-  const late = add({ sec: 4, n: P4[21] }, { skill: 0.74, start: at(10, 52) });                               // finishes after the period (with Kim's own)
-  const oldKey = add({ sec: 4, n: P4[23] }, { skill: 0.86, start: day(23) }, { by: 'old' });                 // signed with the site's key before it was made again
+  const late = codes[21], oldKey = codes[23];
   const nobody = add(null, { skill: 0.66, start: day(25) });                                                  // nobody turned it in (the cockpit's file has it)
   const p5 = P5.map((d, i) => add({ sec: 5, n: d }, { skill: 0.6 + i * 0.05, start: at(10, 41 + i), calc: 0.1 }));
   // the responses, as the form collected them
@@ -155,8 +154,6 @@ function build(seed) {
   row(firstLast(P4[16]), forged, fmt(at(10, 32)));
   row(firstLast(P4[18]), unit9, fmt(at(10, 33)));
   row(firstLast(P4[19]), a7, fmt(at(10, 34)));
-  row(firstLast(P4[21]), late, fmt(at(11, 45)));
-  row(firstLast(P4[23]), oldKey, fmt(at(10, 36)));
   P5.forEach((d, i) => row(firstLast(d), p5[i], fmt(at(11, 25 + i))));
   return { students: { 4: P4, 5: P5 }, recs, rows, fmt, codes: { twice, other, forged, unit9, a7, late, oldKey, nobody, p5, byIndex: codes }, OF };
 }

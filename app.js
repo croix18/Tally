@@ -39,6 +39,7 @@ let state = null;
 /*__QUARTERS__*/ // quarters.js too
 /*__STUDENTS__*/ // students.js too
 /*__CONFERENCE__*/ // conference.js too
+/*__EXAMS__*/      // exams.js too: Tests (unit tests taken on the website, opened here)
 // IXL skill ID → Florida B.E.S.T. benchmark codes, and a label per code, from Windmill's spine (vendor/benchmarks.json,
 // spliced in by build.py): the report names the standards of the unit being worked in. Refresh the file from
 // croix18/Windmill spine/spine.json when the course map changes.
@@ -88,6 +89,7 @@ function migrate() {
     autosave: [0, 5, 10, 15, 30].includes(st.autosave) ? st.autosave : 10,   // minutes, where the page keeps nothing (Google Sites)
     teacherName: typeof st.teacherName === 'string' ? st.teacherName.slice(0, 80) : '', gradeLevel: typeof st.gradeLevel === 'string' ? st.gradeLevel.slice(0, 4) : '', courseNames: { acc: st.courseNames && typeof st.courseNames.acc === 'string' ? st.courseNames.acc.slice(0, 80) : '', on: st.courseNames && typeof st.courseNames.on === 'string' ? st.courseNames.on.slice(0, 80) : '' } };   // the conference form's header   // the unit each course is working in: everything up to it is assigned, later units are gathered under Ahead   // on-level starts with two review units that aren't assigned; accelerated assigns Unit 1 (a subset of its skills: use the Focus check's skip offer)
   state.pendingCfg = state.pendingCfg || {};
+  state.exam = cleanExam(state.exam);   // Tests: Tally's keys, the site's keys, the form's responses (exams.js)
   state.tests = cleanTests(state.tests);   // FAST results, by student ID and by name
   state.testInfo = cleanTestInfo(state.testInfo);   // every other column of the FAST report
   state.testDates = cleanTestDates(state.testDates);
@@ -112,6 +114,7 @@ function migrate() {
     if (typeof s.label !== 'string') s.label = s.autoLabel || k;
     // A gradebook is only usable whole: assignments with values/status arrays of the students' length.
     if (s.grades) { const gb = s.grades; const n = Array.isArray(gb.students) ? gb.students.length : -1; if (n < 0 || !Array.isArray(gb.assignments) || !gb.assignments.every(a => a && typeof a.name === 'string' && Array.isArray(a.values) && a.values.length === n && (!a.status || (Array.isArray(a.status) && a.status.length === n)))) { loadLost.push({ label: s.label, what: 'gradebook' }); delete s.grades; } else { if (gb.students.every(x => typeof x === 'string')) uniqueNames(gb.students, Array.isArray(gb.ids) ? gb.ids : []); gb.assignments.forEach(a => { a.missing = a.status ? a.status.filter(t => t === 'missing').length : Number(a.missing) || 0; a.excused = Number(a.excused) || 0; if (a.max != null && isNaN(Number(a.max))) a.max = null; }); } }
+    s.exams = cleanExamMap(s.exams);   // Tests: the opened records of this class's students (exams.js)
     s.stuNotes = cleanNotes(s.stuNotes); s.family = cleanFamily(s.family); s.practice = cleanPractice(s.practice); s.confForms = cleanConfForms(s.confForms); s.reportLog = cleanReportLog(s.reportLog);
     s.best = s.best && typeof s.best === 'object' ? s.best : null; s.receipts = s.receipts || {}; s.overrides = cleanOverrides(s.overrides); s._keys = null; s.studentSkips = s.studentSkips && typeof s.studentSkips === 'object' ? s.studentSkips : {};
     // one-time: a unit a class had manually hidden/shown becomes the course's assignment mark
@@ -141,7 +144,7 @@ function migrate() {
 var foldedTwins = [];
 function foldPeriodTwins() {
   const secs = () => state.order.map(k => state.sections[k]).filter(Boolean);
-  const empty = x => /^\d{5,8}-/.test(x.key) && !x.grades && !String(x.roster || '').trim() && !Object.keys(x.stuNotes || {}).length && !Object.keys(x.family || {}).length && !x.seating && !Object.keys(x.confForms || {}).length && !Object.keys(x.qArchive || {}).length;
+  const empty = x => /^\d{5,8}-/.test(x.key) && !x.grades && !String(x.roster || '').trim() && !Object.keys(x.stuNotes || {}).length && !Object.keys(x.family || {}).length && !x.seating && !Object.keys(x.confForms || {}).length && !Object.keys(x.qArchive || {}).length && !Object.keys(x.exams || {}).length;
   for (const x of secs()) {
     if (!x.period || !empty(x)) continue;
     const y = secs().find(o => o !== x && Number(o.period) === Number(x.period) && (o.prep === x.prep || !o.prep) && !empty(o)); if (!y) continue;
@@ -494,6 +497,7 @@ async function importFiles(files) {
       if (/\.json$/i.test(f.name)) {   // the standalone Seating Chart's backup (photos, FAST, flags, room, charts): a Tally backup goes through Settings
         let obj = null; try { obj = JSON.parse(await f.text()); } catch (e) {}
         if (obj && obj.tally) { let done = false; try { done = await loadTallyFile(f, obj); } catch (e) { fails.push(f.name + ': not a Tally file'); } if (done && (obj.board || obj.full)) return; continue; }   // a full save or Board file replaces everything: nothing else in the drop applies
+        if (obj && Array.isArray(obj.results) && obj.site && typeof obj.site === 'object') { await examOpenFile(obj, f.name); continue; }   // the cockpit's results file (Tests, exams.js)
         if (!looksLikeSeatingBackup(obj)) { fails.push(f.name + (obj ? ': a .json file, but not a Tally save or a Seating Chart backup' : ': not readable as a Tally save (the file is cut off or damaged)')); continue; }
         const r = await importSeatingBackup(obj); save();
         toast(`Seating Chart backup: ${plural(r.matched, 'student')} matched in ${plural(r.classes, 'class')}${r.room ? ' · room layout' : ''}${r.charts ? ` · ${plural(r.charts, 'saved chart')}` : ''}${r.unmatched.length ? ` · <b>${r.unmatched.length} not matched</b> (${esc(r.unmatched.slice(0, 3).map(n => shown(n)).join('; '))}${r.unmatched.length > 3 ? '…' : ''})` : ''}`, false, 9000);
@@ -2006,7 +2010,7 @@ function renderInner() {
   renderKeep();
   if (seatSolving && !(view.mode === 'seating')) seatAbort();
   document.body.classList.toggle('details', !!state.settings.details);
-  document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && ['grades', 'students', 'student', 'reports', 'settings'].includes(view.mode)); document.body.classList.toggle('seating', has && view.mode === 'seating');
+  document.body.classList.toggle('home', has && view.mode === 'home'); document.body.classList.toggle('grades', has && ['grades', 'students', 'student', 'reports', 'settings', 'tests'].includes(view.mode)); document.body.classList.toggle('seating', has && view.mode === 'seating');
   if (!has) return;
   if (view.mode !== 'settings') pageGuard = null;   // only the Settings page asks before you leave it
   if (!state.sections[state.active]) state.active = state.order[0];
@@ -2017,6 +2021,7 @@ function renderInner() {
   else if (view.mode === 'student') { $('#notices').innerHTML = ''; renderProfile(); }
   else if (view.mode === 'reports') { $('#notices').innerHTML = ''; renderBar(); renderReportsPage(); }
   else if (view.mode === 'settings') { $('#notices').innerHTML = ''; renderBar(); renderSettingsPage(); }
+  else if (view.mode === 'tests') { $('#notices').innerHTML = ''; renderBar(); renderTests(state.sections[state.active]); }
   else { renderNotices(); renderBar(); renderGrid(); }
   if (focusId && document.activeElement === document.body) { const el = document.getElementById(focusId); if (el && !el.disabled) { try { el.focus({ preventScroll: true }); } catch (e) {} } }
 }
@@ -2071,7 +2076,7 @@ function renderRail() {
 // The class header above the bar: the class (or All classes), its facts, and the tabs.
 function renderChead() {
   const el = $('#chead'); const all = allScope();
-  const own = view.mode === 'unit' || view.mode === 'student' || view.mode === 'settings';   // a unit's, a student's or the Settings bar carries a crumb and a name: a row of its own under the tabs
+  const own = view.mode === 'unit' || view.mode === 'student' || view.mode === 'settings' || (view.mode === 'tests' && !!view.code);   // a unit's, a student's or the Settings bar carries a crumb and a name: a row of its own under the tabs
   const barEl = own ? '' : '<div id="bar"></div>', barRow = own ? '<div id="bar" class="own"></div>' : '';
   const tab = (id, label, on, count) => `<button id="${id}" role="tab" aria-selected="${on}" ${on ? 'aria-current="page"' : ''}>${label}${count ? `<small>${count}</small>` : ''}</button>`;
   /* One Actions menu per class (phase 2): everything you do to a class that isn't a tab. Copy the unit being worked in,
@@ -2091,11 +2096,12 @@ function renderChead() {
     const s = state.sections[state.active]; const warn = attentionItems(s).filter(x => x.level === 'warn').length;
     const grid = view.mode === 'units' || view.mode === 'unit';
     el.innerHTML = `<div class="ch"><h2><span class="dot" style="--cc:${classColor(s)}"></span>${esc(s.label)}</h2><span class="meta">${s.prep === 'acc' ? 'Accelerated' : s.prep === 'on' ? 'On-level' : ''} · ${plural(s.students.length, 'student')}${dataDate(s) ? ` · IXL of ${fmtDate(dataDate(s))}` : ''}${s.grades ? ` · Focus of ${fmtDate(localDayOf(s.grades.importedAt))}` : ''}</span><span class="spacer"></span>${actBtn}</div>
-      <div class="tabrow"><div id="ctabs" role="tablist">${tab('openGrid', 'Grid', grid, warn)}${tab('openGrades', 'Grades', view.mode === 'grades')}${tab('openStudents', 'Students', view.mode === 'students' || view.mode === 'student')}${tab('openSeating', 'Seating', view.mode === 'seating')}${tab('openReports', 'Reports', view.mode === 'reports')}</div>${barEl}</div>${barRow}`;
+      <div class="tabrow"><div id="ctabs" role="tablist">${tab('openGrid', 'Grid', grid, warn)}${tab('openGrades', 'Grades', view.mode === 'grades')}${tab('openStudents', 'Students', view.mode === 'students' || view.mode === 'student')}${tab('openSeating', 'Seating', view.mode === 'seating')}${tab('openTests', 'Tests', view.mode === 'tests', xtTabCount(s))}${tab('openReports', 'Reports', view.mode === 'reports')}</div>${barEl}</div>${barRow}`;
     $('#openGrid').onclick = () => nav(() => { view = { mode: 'units', unit: null }; render(); });
     $('#openGrades').onclick = () => nav(() => { view = { mode: 'grades', unit: null }; render(); });
     $('#openStudents').onclick = () => nav(() => { stuClass = state.active; view = { mode: 'students', unit: null }; render(); });
     $('#openSeating').onclick = () => nav(() => { view = { mode: 'seating', unit: null, sub: 'chart' }; seatSel = null; seatPending = null; render(); });
+    $('#openTests').onclick = () => nav(() => { view = { mode: 'tests', unit: null }; render(); });
   }
   const oo = $('#openOverview'); if (oo) oo.onclick = () => nav(() => { view = { mode: 'home', unit: null }; noticesOpen = false; render(); });
   const bs = $('#btnStudents'); if (bs) bs.onclick = () => nav(() => { stuClass = ''; view = { mode: 'students', unit: null }; render(); });
@@ -2148,6 +2154,8 @@ function renderBar() {
     html = `<span class="meta">${allScope() ? 'Weekly and FAST reports for every class, the IXL still owed, and whose signed reports are back' : 'Weekly and FAST reports, the IXL still owed, and whose signed reports are back'}</span>`;
   } else if (view.mode === 'settings') {
     html = settingsBarHtml();
+  } else if (view.mode === 'tests') {
+    html = testsBarHtml(s);
   } else {
     const u = units.find(u => u.name === view.unit);
     if (!u) { view = { mode: 'units', unit: null }; return renderBar(); }
@@ -2177,6 +2185,7 @@ function renderBar() {
   const gc = $('#gradesCats'); if (gc) gc.onclick = () => { const t = $('.gasg'); if (t) t.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
   const cv = $('#csvUnit'); if (cv) cv.onclick = () => downloadUnitCSV(s, units.find(u => u.name === view.unit));
   const rcb = $('#rcUnit'); if (rcb) rcb.onclick = () => openReceipt(s, view.unit);
+  if (view.mode === 'tests') xtBarWire(s);
 }
 function renderRosterPanel(s) {
   const wrap = $('#gridwrap');
@@ -2836,7 +2845,8 @@ async function loadTallyFile(file, cfg) {
     const s = JSON.parse(JSON.stringify(cfg.state || {})); if (!s.sections || typeof s.sections !== 'object') throw new Error('not tally');
     if (cfg.board) { s.board = cfg.board; s.settings = { ...(s.settings || {}), hideNames: true, leaderboard: true }; } else delete s.board;
     const wasHidden = !!(state.settings && state.settings.hideNames) || !state.order.length;   // a Full save opened on a hidden or empty Tally (the panel) keeps names hidden
-    adopt(hydrate(s) || s); if (cfg.full) { if (wasHidden) state.settings.hideNames = true; state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
+    const keysHere = cfg.full ? examKeysNow() : null;   // Tests: a Full save never takes away a key this Tally holds (exams.js)
+    adopt(hydrate(s) || s); if (keysHere) examKeepKeys(keysHere); if (cfg.full) { if (wasHidden) state.settings.hideNames = true; state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
     toast(cfg.board ? `Board save opened: ${plural(state.order.length, 'class')}, no names.` : `Full save from ${esc(whenText(meta.saved))} opened: ${plural(state.order.length, 'class')}.`, false, 5000);
     return true;
   }
@@ -3233,6 +3243,7 @@ document.addEventListener('keydown', e => {
   if (view.mode === 'seating' && (seatSel || seatPending)) { seatSel = null; seatPending = null; seatHover = null; render(); return; }
   if (view.mode === 'unit') { view = { mode: 'units', unit: null }; render(); }
   else if (view.mode === 'settings') { if (settingsCancel) settingsCancel(); }
+  else if (view.mode === 'tests' && (view.code || view.connect) && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) { view.code = null; view.connect = false; render(); }
   else if (view.mode === 'student' && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) profileLeave();
 });
 window.__tally = { openUnits, labSeries, labDatasets, pieParts, pinOn, pinSet, pinClear, pinOK, ownSave, stateForSave, veil, unveil, veilTick, idle(ms) { lastUse = Date.now() - ms; }, printsOf, removePrint, csvToRows, sniffDelim, merge3, uniqueNames, fitCache, ixlFor, unitClosed, unitQuarterOf, unitColumnQuarters, unitsDueIn, liveQuarter, attentionGroups, fixCount, gbUnitFor, pendingCopies, owedWork, reportGaps, openQuarters, printDoc, adopt, niceName, askCategories, catGuesses, catCheck, cleanDismissed, nextTest, testDays, testUnitNums, cleanTestDates, openTestDates, testDatesOf, TEST_DATES, closedEarly, quarterDue, openSettings, gradeSummary, fastTargets, fastBucket, fastGainFloor, fastReportSection, logReport, fastBandWidths, fastScaleHtml, fastLevelFloor, printFontCss, get REPORT_CSS() { return REPORT_CSS; }, get FAST_REPORT_CSS() { return FAST_REPORT_CSS; }, poolRows, get state() { return state; }, save, workPrint, saveFull, autoTick, ask, openPrint, get storageFragile() { return storageFragile; }, ageUnsaved(ms) { unsavedFor(); dirtySince = Date.now() - ms; lastAutoSave = 0; }, retakeStatus, conferenceData, conferenceDraft, conferenceWork, conferenceChecks, conferenceTests, conferenceHtml, reportCard, testHistory, cleanTests, importFast, importFastItems, parseFastItemsPdf, pdfTextPages, mergeTests, openConference, addNote, notesOf, parseFastReport, boardFile, retakeWhy, skillKey, ixlKeyAt, matchSection, points, startedShare, nextAssessment, defaultWorkingIn, sectionWarn, attentionItems, attentionGroups, quarters, closeQuarter, reopenQuarter, qSec, openSec, aQuarter, mdToISO, currentQuarter, studentSummary, quickestPath, openProfile, openShow, gradeWith, findStudent, classStudents, snapBasis, computeGrade, gradeAll, fitCategories, applyCategories, neededOn, withNext, gradeSnapshot, gradingFor, catOf, labCorrMarkup, corrPick, ixlVsTests, ixlTestPairs, asgUnitNums, isUnitAssessment, gradeDiff, gradeOff, gradeDiffKey, gbQuestions, applyCodes, parseGradebook, regradeCourse, classAverage, pearson, openGuide, openReceipt, ageDays, ageText, overdue, totalFor, activeFor, reconcile, gbRows, get bootError() { return bootError; }, importFiles, buildRows, unitsOf, unitColumn, render, parseRosterText, ixlList, leaderboardData, snapshot, stats, labSeries, parseGradebook, fileToRows, population, eff, mergeBest, movement, assignedIdx, studentReportSection, printStudentReports, openStudentReports, openPrintMenu, staleExports, familyOf, setFamily, cleanFamily, reportsOf, markReportBack, openReturns, parseIxlQuickviewPdf, importQuickview, practiceOf, skillPractice, cleanPractice, practiceIdle, retakeOkWhy, cleanReportLog, weekOf, safeSection, fastYearNow, printFastReports, fastLineChart, fmtDate, todayISO, localDayOf, norm, testKeys, printWeekly, printFast, printClasses, printStillOwed, get reportWho() { return reportWho; }, get view() { return view; }, seatStudents, geometry, deskNumbers, importSeatingBackup, explainSeats, get seatWork() { return seatWork; } };

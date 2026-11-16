@@ -110,13 +110,12 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
   has('other', f => f.course === 'a7' && /other course/.test(f.todo), 'a record for the other course');
   has('who', f => f.rows[0].name === 'Ava' && /Choose the student/.test(f.todo), 'a name Tally is not sure of');
   has('badcode', f => f.names.includes('Ivanova, Daria') && /is not a code/.test(f.text), 'a code too short to be one');
-  check(!fl.some(f => f.kind === 'signature' && (f.names || []).length === 0 && f.code !== recs.find(x => x.n === 'Abara, Kofi')), 'the forged record is never placed with a student: it is not among the records held');
   check(!recs.some(x => x.code === b.codes.forged || x.code === b.codes.other), 'a record that did not open is never among the records Tally keeps');
   check(fl.every(f => typeof f.text === 'string' && f.text.length > 10 && typeof f.todo === 'string' && f.todo.length > 20), 'every flag says what is wrong and what he can do');
   const p5 = C.flags({ sec: 'p5', prep: 'on', course: 'm7', unit: 10, period: null, rows: X.rows, recs, fails, picks: {}, known: [] });
   check(!p5.some(f => ['shared', 'key', 'signature', 'twice', 'left', 'badcode'].includes(f.kind)) && recs.filter(x => x.sec === 'p5').length === 6, '5th Period gets its own six tests and none of 4th Period\'s flags');
   const picked = C.flags({ sec: 'p4', prep: 'on', course: 'm7', unit: 10, period: null, rows: X.rows, recs, fails, picks: { ['p4|Patel, Rohan|m7/10']: b.codes.twice }, known: [] });
-  check(!picked.some(f => f.kind === 'twice' && f.names[0] === 'Patel, Rohan') && picked.some(f => f.kind === 'twice' && f.names[0] === 'Kim, Daniel'), 'once he chooses the test that counts, the second-test flag is gone');
+  check(!picked.some(f => f.kind === 'twice'), 'once he chooses the test that counts, the second-test flag is gone');
   const net = C.flags({ sec: 'p4', prep: 'on', course: 'm7', unit: 10, period: null, rows: X.rows, recs, fails: { ...fails, [b.codes.byIndex[11]]: { why: 'net' } }, picks: {}, known: [] });
   check(net.some(f => f.kind === 'net' && f.level === 'info' && /Try again|network/.test(f.todo)), 'a code the network failed on is a note with a way to try again, not an error');
   const near = C.flags({ sec: 'p4', prep: 'on', course: 'm7', unit: 10, period: null, rows: X.rows, recs, fails, picks: {}, known: [b.codes.byIndex[17]] });

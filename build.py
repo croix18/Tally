@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Assemble the shipped single-file pages (no external scripts):
-  Tally.html  = app.html + parser.js + app.js + grades.js + charts.js + home.js + seating.js + quarters.js + students.js + conference.js
+  Tally.html  = app.html + parser.js + vendor/seal.js + examcore.js + app.js + grades.js + charts.js + home.js + seating.js + quarters.js + students.js + conference.js + exams.js
   Scrub.html  = scrub.src.html + parser.js
 `python3 build.py --test` also keeps the window.__tally debug handle that the
 Playwright suites use; the default build strips it."""
@@ -12,7 +12,14 @@ app = (root / 'app.js').read_text()
 grades = (root / 'grades.js').read_text()
 assert '/*__GRADES__*/' in app and '/*__CHARTS__*/' in app
 assert '/*__HOME__*/' in app and '/*__SEATING__*/' in app
-assert '/*__QUARTERS__*/' in app and '/*__STUDENTS__*/' in app and '/*__CONFERENCE__*/' in app
+assert '/*__QUARTERS__*/' in app and '/*__STUDENTS__*/' in app and '/*__CONFERENCE__*/' in app and '/*__EXAMS__*/' in app
+# Tests (16 Nov 2026): Windmill's exam/seal.js, copied unchanged (vendor/seal.json records where from and its SHA-256), and
+# examcore.js; both are scripts of their own on the page (window.ExamSeal, window.ExamCore); exams.js is spliced into app.js.
+import hashlib, json
+sealjs = (root / 'vendor' / 'seal.js').read_text(); sealmeta = json.loads((root / 'vendor' / 'seal.json').read_text())
+assert hashlib.sha256((root / 'vendor' / 'seal.js').read_bytes()).hexdigest() == sealmeta['sha256'], 'vendor/seal.js is not the copy vendor/seal.json records: copy it again from Windmill unchanged'
+examcore = (root / 'examcore.js').read_text()
+for v in (sealjs, examcore): assert '</script' not in v.lower() and '<!--' not in v, 'a Tests script would end its <script> tag early'
 # conference.js carries the school form's banner and footer artwork (forms/) as data URIs, so printing needs no network
 conf = (root / 'conference.js').read_text()
 for tag, f, mime in (('CONF_TOP', 'whms-top.jpg', 'image/jpeg'), ('CONF_FOOT', 'whms-foot.png', 'image/png')):
@@ -21,7 +28,7 @@ for tag, f, mime in (('CONF_TOP', 'whms-top.jpg', 'image/jpeg'), ('CONF_FOOT', '
 # Sync is retired (9 Nov 2026): Tally runs only from a file on the teacher's computer and connects to nothing.
 assert '/*__SYNC__*/' not in app
 bench = (root / 'vendor' / 'benchmarks.json').read_text().strip(); assert '</script' not in bench.lower() and bench.startswith('{')
-app = app.replace('/*__BENCHMARKS__*/{ skills: {}, labels: {} }', bench).replace('/*__GRADES__*/', grades).replace('/*__CHARTS__*/', (root / 'charts.js').read_text()).replace('/*__HOME__*/', (root / 'home.js').read_text()).replace('/*__SEATING__*/', (root / 'seating.js').read_text()).replace('/*__QUARTERS__*/', (root / 'quarters.js').read_text()).replace('/*__STUDENTS__*/', (root / 'students.js').read_text()).replace('/*__CONFERENCE__*/', conf)
+app = app.replace('/*__BENCHMARKS__*/{ skills: {}, labels: {} }', bench).replace('/*__GRADES__*/', grades).replace('/*__CHARTS__*/', (root / 'charts.js').read_text()).replace('/*__HOME__*/', (root / 'home.js').read_text()).replace('/*__SEATING__*/', (root / 'seating.js').read_text()).replace('/*__QUARTERS__*/', (root / 'quarters.js').read_text()).replace('/*__STUDENTS__*/', (root / 'students.js').read_text()).replace('/*__CONFERENCE__*/', conf).replace('/*__EXAMS__*/', (root / 'exams.js').read_text())
 # DM Sans (SIL OFL, fonts/LICENSE-DM-Sans.txt) is embedded so the page makes no network request at all.
 woff = base64.b64encode((root / 'fonts' / 'dm-sans-latin.woff2').read_bytes()).decode()
 font = ("@font-face{font-family:'DM Sans';font-style:normal;font-weight:100 1000;font-display:block;"
@@ -56,9 +63,12 @@ def build(src, out, **parts):
     print(out, len(html), 'bytes', '(test build)' if test else '')
 
 if test:   # the test build is its own file, so a test run can never leave window.__tally in the shipped pages
-    build('app.html', 'Tally.test.html', PARSER=parser, APP=app, FONT=font, PDFJS=pdfjs, PDFJS_WORKER=pdfworker)
+    # and it may also reach a stand-in for the site on this machine (tests/exam-site.js); the shipped page reaches mrshaffer.org only
+    build('app.html', 'Tally.test.html', PARSER=parser, APP=app, FONT=font, PDFJS=pdfjs, PDFJS_WORKER=pdfworker, SEAL=sealjs, EXAMCORE=examcore)
+    t = (root / 'Tally.test.html').read_text(); assert t.count('connect-src https://mrshaffer.org;') == 1
+    (root / 'Tally.test.html').write_text(t.replace('connect-src https://mrshaffer.org;', 'connect-src https://mrshaffer.org http://127.0.0.1:*;'))
     build('scrub.src.html', 'Scrub.test.html', PARSER=parser, FONT=font)
 else:
-    build('app.html', 'Tally.html', PARSER=parser, APP=app, FONT=font, PDFJS=pdfjs, PDFJS_WORKER=pdfworker)
+    build('app.html', 'Tally.html', PARSER=parser, APP=app, FONT=font, PDFJS=pdfjs, PDFJS_WORKER=pdfworker, SEAL=sealjs, EXAMCORE=examcore)
     (root / 'index.html').write_bytes((root / 'Tally.html').read_bytes())   # GitHub Pages serves the app at the repo root
     build('scrub.src.html', 'Scrub.html', PARSER=parser, FONT=font)

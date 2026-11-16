@@ -459,7 +459,7 @@ function openProfile(key, name, from) {
 }
 function profileLeave() {
   const b = profileBack; profileBack = null;
-  if (b && b.mode && b.mode !== 'student') { if (b.active && state.sections[b.active]) state.active = b.active; view = { mode: b.mode, unit: b.unit || null, sub: b.sub, q: b.q }; }
+  if (b && b.mode && b.mode !== 'student') { if (b.active && state.sections[b.active]) state.active = b.active; view = { mode: b.mode, unit: b.unit || null, sub: b.sub, q: b.q, ...(b.mode === 'tests' ? { code: b.code, test: b.test } : {}) }; }
   else view = { mode: 'students', unit: null };
   render();
 }
