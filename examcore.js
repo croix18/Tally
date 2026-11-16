@@ -131,7 +131,7 @@ function like(t, w) {   // how alike one typed word is to one word of the name: 
    near match for the same words: the same last name with a first name that starts the same, a nickname or one slip. "Jon
    Smith" with Smith, Jon and Smith, Jonathan on the rosters asks. Anything forgiving is a SUGGESTION (suggest), never a pick.
    cands: every student it could be, the likeliest first. o.noPick: the typed name is not one to take (an email's local part). */
-function nearFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; return Math.min(t.length, f.length) >= 4 && edit(t, f) <= 1; }
+function nearFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; return Math.min(t.length, f.length) >= 3 && edit(t, f) <= 1; }
 function nearLast(t, L) { return L.some(function (l) { return t === l || (Math.min(t.length, l.length) >= 4 && edit(t, l) <= 1); }); }
 function matchName(typed, roster, o) {
   var T = tokens(typed), out = { pick: null, how: null, suggest: null, cands: [], rivals: [] };
@@ -144,7 +144,7 @@ function matchName(typed, roster, o) {
     T.forEach(function (t) { var a = like(t, P.first), b = Math.max.apply(null, P.last.map(function (x) { return like(t, x); }).concat([0])), m = Math.max.apply(null, P.middle.map(function (x) { return like(t, x); }).concat([0]));
       if (a >= b && a > 0) f = Math.max(f, a); else if (b > 0) l = Math.max(l, b); else if (!m) extra++; });
     // near: some typed word is (nearly) the last name and another (nearly) the first: a child the same words could mean
-    var near = T.some(function (t) { return nearLast(t, P.last); }) && T.some(function (t) { return nearFirst(t, P.first); });
+    var near = (T.some(function (t) { return nearLast(t, P.last); }) && T.some(function (t) { return nearFirst(t, P.first); })) || (T.length >= 2 && T.every(function (t) { return set.indexOf(t) >= 0; }));   // or every word typed is in their name (a first and middle name)
     return { i: i, exact: exact, near: near, s: f + l - extra * 0.5 + (exact ? 1 : 0), f: f, l: l };
   });
   var ex = scored.filter(function (x) { return x.exact; });
@@ -420,7 +420,7 @@ function flags(c) {
   // responses waiting for him: a name Tally isn't sure of (with its suggestion), a test two rows claim
   rows.filter(function (r) { return !r.who && (r.codes || []).length && !P.shared[(r.codes || [])[0]]; }).forEach(function (r) {
     var x = held[r.codes[0]]; if (x && !here(x) && x.course) return;
-    if (x && x.sec && x.n && P.state[r.codes[0]] === 'placed') return;              // its test is placed (the same child twice, or he answered)
+    if (P.state[r.codes[0]] === 'placed') return;              // its test is placed (the same child twice, or he answered)
     if (r.cands && r.cands.length && !r.cands.some(function (w) { return w && w.sec === c.sec; }) && !(r.suggest && r.suggest.sec === c.sec)) return;
     var s = r.suggest, rem = r.remember;
     push({ kind: 'who', level: 'warn', rows: [r], code: r.codes[0], suggest: s || rem || null,

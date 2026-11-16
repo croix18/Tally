@@ -728,7 +728,7 @@ function xtTimeline(v, width) {
   const end = Math.max(1, L && L.deviceSeconds != null ? L.deviceSeconds : 0, v.seconds || 0, ...v.visits.map(x => x.at + x.sec), ...v.away.map(x => x.at + x.sec), ...v.calc.map(x => x.at + x.sec), ...v.scratch.map(x => x.at + x.sec), ...v.idle.map(x => x.at + x.sec), ...v.timeline.map(x => x.at));
   const W = Math.max(560, Math.round(width || 1000)), G = 84, R = 16, rowH = qs.length > 24 ? 11 : 15, X = s => G + Math.max(0, Math.min(1, s / end)) * (W - G - R);
   let y = 22; const out = []; const lane = (label, h, cls) => { const y0 = y; out.push(`<text class="ll ${cls || ''}" x="${G - 10}" y="${y0 + h / 2 + 4}" text-anchor="end">${label}</text><line class="lg" x1="${G}" x2="${W - R}" y1="${y0 + h}" y2="${y0 + h}"/>`); y += h + 4; return y0; };
-  const step = [60, 120, 300, 600, 900, 1200, 1800, 3600].find(s => end / s <= 10) || 3600;
+  const step = [60, 120, 300, 600, 900, 1200, 1800, 3600].find(s => end / s <= 10) || Math.ceil(end / 10 / 3600) * 3600;   // never more than a dozen ticks, whatever a record claims
   const ticks = []; for (let s = 0; s <= end; s += step) ticks.push(s);
   // questions
   const qY = {}; const top = y; qs.forEach(q => { qY[q.q] = y; y += rowH; });
@@ -750,7 +750,7 @@ function xtTimeline(v, width) {
   }
   out.push(v.timeline.map(x => `<path class="save" d="M${X(x.at).toFixed(1)} ${y + 3}v10"><title>The site saw ${esc(x.part)} change at ${esc(C.clock(x.at))} (site's clock)</title></path>`).join('')); lane('Site saves', 16);
   const H = y + 22;
-  const grid = ticks.map(s => `<line class="tk" x1="${X(s).toFixed(1)}" x2="${X(s).toFixed(1)}" y1="14" y2="${H - 18}"/><text class="tl" x="${X(s).toFixed(1)}" y="${H - 4}" text-anchor="middle">${s ? Math.round(s / 60) + ' min' : '0'}</text>`).join('');
+  const grid = ticks.map(s => `<line class="tk" x1="${X(s).toFixed(1)}" x2="${X(s).toFixed(1)}" y1="14" y2="${H - 18}"/><text class="tl" x="${X(s).toFixed(1)}" y="${H - 4}" text-anchor="middle">${!s ? '0' : s >= 7200 ? Math.round(s / 3600) + ' h' : Math.round(s / 60) + ' min'}</text>`).join('');
   const fin = v.seconds != null ? `<line class="fin" x1="${X(v.seconds).toFixed(1)}" x2="${X(v.seconds).toFixed(1)}" y1="10" y2="${H - 18}"/><text class="finl" x="${X(v.seconds).toFixed(1)}" y="9" text-anchor="${v.seconds / end > 0.9 ? 'end' : 'middle'}">Finish ${esc(C.clock(v.seconds))}</text>` : '';
   const legend = `<div class="xtLegend"><span><i class="vis"></i>On screen</span><span><i class="chg"></i>Answer changed</span><span><i class="away"></i>Away</span><span><i class="calc"></i>Calculator</span><span><i class="scr"></i>Scratch paper</span><span><i class="idle"></i>Idle over a minute</span><span><i class="dotk right"></i>Right</span><span><i class="dotk wrong"></i>Not right</span><span><i class="dotk blank"></i>Blank</span></div>`;
   return `${legend}<svg class="xtTimeline" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="The sitting over ${esc(C.clock(end))}: when each question was on screen, and the times away, the calculator, scratch paper and idle stretches">${grid}${out.join('')}${fin}</svg>${v.drop.visits ? `<p class="xtDrop">${plural(v.drop.visits, 'visit')} after the first 300 are not drawn (not kept).</p>` : ''}`;

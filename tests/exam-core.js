@@ -68,7 +68,9 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
   check(m2('Jon Smith').pick === null && m2('Jon Smith').cands.includes('Smith, Jonathan') && m2('Jon Smith').cands.includes('Smith, Jon'), '"Jon Smith" with Smith, Jon and Smith, Jonathan on the rosters: asks, both offered (C1)');
   check(m2('Bob Doe').pick === null && m2('Bob Doe').sug === 'Doe, Bobby', '"Bob Doe": Doe, Bobby is only suggested (H1)');
   check(m2('Jonny Smith').pick === null && m2('Alex Parker').pick === null, '"Jonny Smith" and "Alex Parker": never placed without him (H1)');
-  check(m2('Robert Doe').pick === 'Doe, Robert' && m2('John Smith').pick === 'Smith, John', 'a name that is one student\'s and nobody else\'s near match is still placed: Robert Doe, John Smith');
+  check(m2('Robert Doe').pick === 'Doe, Robert' && m2('John Smith').pick === null, 'a name that is one student\'s and nobody else\'s near match is placed (Robert Doe); "John Smith" asks, Smith, Jon being one slip away');
+  const R3 = [['4', 'Garcia, Ana'], ['4', 'Garcia, Anna'], ['5', 'Marie, Ava'], ['4', 'Patel, Ava Marie']].map(([sec, display]) => ({ sec, display }));
+  check(C.matchName('Ana Garcia', R3).pick == null && C.matchName('Marie Ava', R3).pick == null && C.matchName('Ava Patel', R3).pick != null, 'Ana / Anna Garcia ask; "Marie Ava" asks (Patel, Ava Marie\'s first and middle names); "Ava Patel" is placed');
   check(m2('Lee Thomas').pick === null, 'Lee Thomas / Thomas Lee: asks');
   check(C.matchName('ava brooks', roster, { noPick: true }).pick === null, 'a name read from an email address is never placed (L3)');
   { const a = m('Ava'); check(a.how === null && a.who === null && a.cands.length === 2 && a.cands.includes('Brooks, Ava'), 'not sure ("Ava": two Avas): no student taken; both offered'); }

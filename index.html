@@ -1576,7 +1576,7 @@ function like(t, w) {   // how alike one typed word is to one word of the name: 
    near match for the same words: the same last name with a first name that starts the same, a nickname or one slip. "Jon
    Smith" with Smith, Jon and Smith, Jonathan on the rosters asks. Anything forgiving is a SUGGESTION (suggest), never a pick.
    cands: every student it could be, the likeliest first. o.noPick: the typed name is not one to take (an email's local part). */
-function nearFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; return Math.min(t.length, f.length) >= 4 && edit(t, f) <= 1; }
+function nearFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; return Math.min(t.length, f.length) >= 3 && edit(t, f) <= 1; }
 function nearLast(t, L) { return L.some(function (l) { return t === l || (Math.min(t.length, l.length) >= 4 && edit(t, l) <= 1); }); }
 function matchName(typed, roster, o) {
   var T = tokens(typed), out = { pick: null, how: null, suggest: null, cands: [], rivals: [] };
@@ -1589,7 +1589,7 @@ function matchName(typed, roster, o) {
     T.forEach(function (t) { var a = like(t, P.first), b = Math.max.apply(null, P.last.map(function (x) { return like(t, x); }).concat([0])), m = Math.max.apply(null, P.middle.map(function (x) { return like(t, x); }).concat([0]));
       if (a >= b && a > 0) f = Math.max(f, a); else if (b > 0) l = Math.max(l, b); else if (!m) extra++; });
     // near: some typed word is (nearly) the last name and another (nearly) the first: a child the same words could mean
-    var near = T.some(function (t) { return nearLast(t, P.last); }) && T.some(function (t) { return nearFirst(t, P.first); });
+    var near = (T.some(function (t) { return nearLast(t, P.last); }) && T.some(function (t) { return nearFirst(t, P.first); })) || (T.length >= 2 && T.every(function (t) { return set.indexOf(t) >= 0; }));   // or every word typed is in their name (a first and middle name)
     return { i: i, exact: exact, near: near, s: f + l - extra * 0.5 + (exact ? 1 : 0), f: f, l: l };
   });
   var ex = scored.filter(function (x) { return x.exact; });
@@ -1865,7 +1865,7 @@ function flags(c) {
   // responses waiting for him: a name Tally isn't sure of (with its suggestion), a test two rows claim
   rows.filter(function (r) { return !r.who && (r.codes || []).length && !P.shared[(r.codes || [])[0]]; }).forEach(function (r) {
     var x = held[r.codes[0]]; if (x && !here(x) && x.course) return;
-    if (x && x.sec && x.n && P.state[r.codes[0]] === 'placed') return;              // its test is placed (the same child twice, or he answered)
+    if (P.state[r.codes[0]] === 'placed') return;              // its test is placed (the same child twice, or he answered)
     if (r.cands && r.cands.length && !r.cands.some(function (w) { return w && w.sec === c.sec; }) && !(r.suggest && r.suggest.sec === c.sec)) return;
     var s = r.suggest, rem = r.remember;
     push({ kind: 'who', level: 'warn', rows: [r], code: r.codes[0], suggest: s || rem || null,
@@ -6806,7 +6806,7 @@ function xtTimeline(v, width) {
   const end = Math.max(1, L && L.deviceSeconds != null ? L.deviceSeconds : 0, v.seconds || 0, ...v.visits.map(x => x.at + x.sec), ...v.away.map(x => x.at + x.sec), ...v.calc.map(x => x.at + x.sec), ...v.scratch.map(x => x.at + x.sec), ...v.idle.map(x => x.at + x.sec), ...v.timeline.map(x => x.at));
   const W = Math.max(560, Math.round(width || 1000)), G = 84, R = 16, rowH = qs.length > 24 ? 11 : 15, X = s => G + Math.max(0, Math.min(1, s / end)) * (W - G - R);
   let y = 22; const out = []; const lane = (label, h, cls) => { const y0 = y; out.push(`<text class="ll ${cls || ''}" x="${G - 10}" y="${y0 + h / 2 + 4}" text-anchor="end">${label}</text><line class="lg" x1="${G}" x2="${W - R}" y1="${y0 + h}" y2="${y0 + h}"/>`); y += h + 4; return y0; };
-  const step = [60, 120, 300, 600, 900, 1200, 1800, 3600].find(s => end / s <= 10) || 3600;
+  const step = [60, 120, 300, 600, 900, 1200, 1800, 3600].find(s => end / s <= 10) || Math.ceil(end / 10 / 3600) * 3600;   // never more than a dozen ticks, whatever a record claims
   const ticks = []; for (let s = 0; s <= end; s += step) ticks.push(s);
   // questions
   const qY = {}; const top = y; qs.forEach(q => { qY[q.q] = y; y += rowH; });
@@ -6828,7 +6828,7 @@ function xtTimeline(v, width) {
   }
   out.push(v.timeline.map(x => `<path class="save" d="M${X(x.at).toFixed(1)} ${y + 3}v10"><title>The site saw ${esc(x.part)} change at ${esc(C.clock(x.at))} (site's clock)</title></path>`).join('')); lane('Site saves', 16);
   const H = y + 22;
-  const grid = ticks.map(s => `<line class="tk" x1="${X(s).toFixed(1)}" x2="${X(s).toFixed(1)}" y1="14" y2="${H - 18}"/><text class="tl" x="${X(s).toFixed(1)}" y="${H - 4}" text-anchor="middle">${s ? Math.round(s / 60) + ' min' : '0'}</text>`).join('');
+  const grid = ticks.map(s => `<line class="tk" x1="${X(s).toFixed(1)}" x2="${X(s).toFixed(1)}" y1="14" y2="${H - 18}"/><text class="tl" x="${X(s).toFixed(1)}" y="${H - 4}" text-anchor="middle">${!s ? '0' : s >= 7200 ? Math.round(s / 3600) + ' h' : Math.round(s / 60) + ' min'}</text>`).join('');
   const fin = v.seconds != null ? `<line class="fin" x1="${X(v.seconds).toFixed(1)}" x2="${X(v.seconds).toFixed(1)}" y1="10" y2="${H - 18}"/><text class="finl" x="${X(v.seconds).toFixed(1)}" y="9" text-anchor="${v.seconds / end > 0.9 ? 'end' : 'middle'}">Finish ${esc(C.clock(v.seconds))}</text>` : '';
   const legend = `<div class="xtLegend"><span><i class="vis"></i>On screen</span><span><i class="chg"></i>Answer changed</span><span><i class="away"></i>Away</span><span><i class="calc"></i>Calculator</span><span><i class="scr"></i>Scratch paper</span><span><i class="idle"></i>Idle over a minute</span><span><i class="dotk right"></i>Right</span><span><i class="dotk wrong"></i>Not right</span><span><i class="dotk blank"></i>Blank</span></div>`;
   return `${legend}<svg class="xtTimeline" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="The sitting over ${esc(C.clock(end))}: when each question was on screen, and the times away, the calculator, scratch paper and idle stretches">${grid}${out.join('')}${fin}</svg>${v.drop.visits ? `<p class="xtDrop">${plural(v.drop.visits, 'visit')} after the first 300 are not drawn (not kept).</p>` : ''}`;
