@@ -2847,7 +2847,7 @@ async function loadTallyFile(file, cfg) {
     if (cfg.board) { s.board = cfg.board; s.settings = { ...(s.settings || {}), hideNames: true, leaderboard: true }; } else delete s.board;
     const wasHidden = !!(state.settings && state.settings.hideNames) || !state.order.length;   // a Full save opened on a hidden or empty Tally (the panel) keeps names hidden
     const keysHere = cfg.full ? examKeysNow() : null;   // Tests: a Full save never takes away a key this Tally holds (exams.js)
-    adopt(hydrate(s) || s); if (keysHere) examKeepKeys(keysHere); examReset(); if (cfg.full) { if (wasHidden) state.settings.hideNames = true; state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
+    adopt(hydrate(s) || s); if (keysHere) examKeepKeys(keysHere); examReset(cfg.full ? cfg.full.saved || new Date().toISOString() : null); if (cfg.full) { if (wasHidden) state.settings.hideNames = true; state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
     toast(cfg.board ? `Board save opened: ${plural(state.order.length, 'class')}, no names.` : `Full save from ${esc(whenText(meta.saved))} opened: ${plural(state.order.length, 'class')}.`, false, 5000);
     return true;
   }

@@ -1,0 +1,169 @@
+// Tests: nothing is ever in limbo (Croix after the second review, R2-C2). After EVERY action he can take, every test Tally
+// holds is in exactly one place — a student's row, "Waiting for you", or "Nobody turned in" — and the count line under the
+// list adds up. Random sequences of actions run on the fixture classes and records (synthetic): place, Yes, Someone else,
+// Not theirs (a student, Nobody yet, Cancel), Undo, give by hand, take back, Nobody yet, dismiss, bring back, paste and paste
+// again, a roster that moves, drops, renames or adds a namesake, a class deleted, a Full save opened. The first violation
+// fails the suite and prints the sequence that made it. Undo must give back exactly what was there before; Cancel must
+// change nothing. Half the sequences run with the rosters' Student IDs, half without.
+//   INV_N=<sequences> (default 2000), INV_SEED=<seed>. About 0.2 s a sequence on this machine.
+// run.js timeout: 1200 s
+const { chromium, fs, path, exe, check, done, pick, APP } = require('./lib');
+const SEAL = require('../vendor/seal.js');
+const FX = n => path.resolve('fixtures', 'exams', n);
+const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, STEPS = 7;
+(async () => {
+  const K = JSON.parse(fs.readFileSync(FX('keys.json'), 'utf8')); const LOCKED = JSON.parse(fs.readFileSync(FX('locked.json'), 'utf8'));
+  const browser = await chromium.launch({ executablePath: exe }); const errs = [];
+  const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } }); const p = await ctx.newPage();
+  p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
+  await p.goto('file://' + path.resolve(APP)); await p.waitForTimeout(400);
+  const A = (fn, arg) => p.evaluate(([s, a]) => (new Function('A', 'arg', 'return (' + s + ')(A, arg)'))(window.__all, a), [fn.toString(), arg === undefined ? null : arg]);
+  await p.setInputFiles('#file', fs.readdirSync(FX('')).filter(f => /^IXL-Score-Grid/.test(f)).map(FX)); await p.waitForTimeout(900);
+  for (const f of ['focus_gradebook_p4.csv', 'focus_gradebook_p5.csv']) { await p.setInputFiles('#file', [FX(f)]); await p.waitForTimeout(700); await pick(p); await p.waitForTimeout(300); const a = await p.$('#askApply'); if (a) { await a.click(); await p.waitForTimeout(200); } }
+  // connected; every fixture record this Tally can open put in; the response sheet read (no network: nothing is fetched)
+  const setup = await A(async (A, a) => { const X = A.examS(); X.pairs = [JSON.stringify({ priv: a.K.tally.priv, pub: a.K.tally.pub, made: new Date().toISOString() })]; X.sites = [{ key: a.K.site.pub, made: 1, got: new Date().toISOString(), paired: new Date().toISOString() }]; X.trial = { code: 'X', words: 'a b c d', at: new Date().toISOString(), key: a.K.site.pub }; X.warned = true; A.xtLocalAdd('mine', a.K.tally.pub);
+    let n = 0; for (const code of Object.keys(a.L)) { try { const { rec, checked } = await A.examOpen(a.L[code], code); if (rec.trial) continue; await A.examPut(code, a.L[code], rec, checked, 'site'); n++; } catch (e) {} }
+    A.examTakeSheet(a.sheet, 'paste');
+    // rosters as roster text only (a gradebook's students would come back as extras when a line is dropped)
+    for (const k of A.state.order) { const s = A.state.sections[k]; s.roster = A.rosterFromGradebook(s, s.grades); s.grades = null; }
+    A.save(); A.view.mode = 'tests'; A.render();
+    return { n, held: Object.keys(X.recs).length, classes: A.state.order.length };
+  }, { K, L: LOCKED, sheet: fs.readFileSync(FX('responses.tsv'), 'utf8') });
+  check(setup.n >= 30 && setup.classes === 2, `the fixture: ${setup.n} tests held in ${setup.classes} classes, the response sheet read`);
+
+  // the runner, in the page: one call runs a batch of sequences and returns the first violation (with its sequence)
+  await p.evaluate(() => {
+    const A = window.__all;
+    window.__inv = { start: null };
+    const rng = seed => () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const tests = () => { const X = A.examS(); return JSON.stringify({ recs: X.recs, rows: X.rows, alias: X.alias, picks: X.picks, dismissed: X.dismissed, seen: X.seen }); };
+    const lines = s => String(s.roster || '').split('\n').filter(l => l.trim());
+    const modal = () => document.querySelector('#modal:not(.hidden)');
+    const shut = () => { const m = modal(); if (m && m._cancel) m._cancel(); };
+    window.__inv.save0 = () => { window.__inv.start = JSON.stringify(A.stateForSave()); const r = {}; A.state.order.forEach(k => { r[k] = A.state.sections[k].roster; }); window.__inv.rosters = r; window.__inv.order = A.state.order.slice(); window.__inv.exam = JSON.stringify(A.state.exam); window.__inv.whole = true; };
+    window.__inv.reset = async ids => { shut();
+      // quick: only Tests and the rosters changed in the last sequence (no class deleted, no Full save opened)
+      if (!window.__inv.whole) { A.state.exam = A.cleanExam(JSON.parse(window.__inv.exam)); A.state.order = window.__inv.order.slice(); for (const k of A.state.order) A.state.sections[k].roster = ids ? window.__inv.rosters[k] : String(window.__inv.rosters[k] || '').replace(/^\d{4,}\t/gm, '');
+        A.view.mode = 'tests'; A.view.code = null; A.state.active = A.state.order[0]; A.render(); return; }
+      window.__inv.whole = false; const s = JSON.parse(window.__inv.start); if (!ids) for (const k of Object.keys(s.sections)) s.sections[k].roster = String(s.sections[k].roster || '').replace(/^\d{4,}\t/gm, '');
+      A.adopt(A.hydrate(s) || s); if (A.xtVer.size < Object.keys(A.examS().recs).length) await A.examVerifyAll(); /* the same tests, checked once already this session */ A.view.mode = 'tests'; A.view.code = null; A.state.active = A.state.order[0]; A.render(); };
+    // where everything is, checked three ways: the ledger, the page, and every class's rows
+    window.__inv.check = () => {
+      const X = A.examS(), L = A.xtLedger(), held = Object.keys(X.recs), bad = [];
+      const seen = {}; ['row', 'waiting', 'nobody'].forEach(w => L[w].forEach(c => { seen[c] = (seen[c] || []).concat(w); }));
+      held.forEach(c => { if (!seen[c] || seen[c].length !== 1) bad.push(`${c} is in ${(seen[c] || ['nowhere']).join(' and ')}`); });
+      Object.keys(seen).forEach(c => { if (!X.recs[c]) bad.push(`${c} listed but not held`); });
+      // the page (a class's Tests, as he sees it)
+      const cnt = (document.querySelector('#xtCount') || {}).textContent || '';
+      const m = /All classes: (\d+) tests? held = (\d+) with a student \+ (\d+) waiting for you \+ (\d+) nobody turned in/.exec(cnt);
+      if (held.length && !m) bad.push('no count line: ' + cnt.slice(0, 80));
+      if (m && (+m[1] !== held.length || +m[2] !== L.row.length || +m[3] !== L.waiting.length || +m[4] !== L.nobody.length || +m[1] !== +m[2] + +m[3] + +m[4])) bad.push('count line does not add up or does not match: ' + cnt);
+      const dom = sel => [...document.querySelectorAll(sel)].map(li => li.dataset.xled).sort().join(',');
+      if (dom('#xtWaiting li[data-xled]') !== L.waiting.slice().sort().join(',')) bad.push('the Waiting list on the page is not the waiting tests');
+      if (dom('#xtNobody li[data-xled]') !== L.nobody.slice().sort().join(',')) bad.push('the Nobody list on the page is not the nobody tests');
+      // every test on a row is on that student's row of its own test, and no row shows a test that is not 'row'
+      const C = A.EX();
+      for (const c of L.row) { const to = L.at[c].to, s = A.state.sections[to && to.sec], u = X.recs[c].sum;
+        if (!s || !A.classStudents(s).includes(to.n)) { bad.push(`${c} is on a row of ${to && to.n} (${to && to.sec}), who is not on a roster`); continue; }
+        const Mo = A.xtModel(s, { course: u.course, unit: u.unit, key: C.testKey(u.course, u.unit) }, L); const r = Mo.rows.find(x => x.n === to.n);
+        if (!r || !r.mine.some(x => x.code === c)) bad.push(`${c} should be on ${to.n}'s row and is not`); }
+      for (const k of A.state.order) { const s = A.state.sections[k]; for (const t of A.xtTests(s)) for (const r of A.xtModel(s, t, L).rows) for (const x of r.mine) if (L.at[x.code].where !== 'row') bad.push(`${x.code} shows on ${r.n}'s row but is ${L.at[x.code].where}`); }
+      // the rendered class: each test on its rows is shown there (its score, a "choose", or being checked)
+      if (A.view.mode === 'tests' && !A.view.code && document.querySelector('.xtList')) { const s = A.state.sections[A.state.active]; const { t } = A.xtCurrent(s);
+        for (const r of A.xtModel(s, t, L).rows) if (r.mine.length) { const tr = [...document.querySelectorAll('.xtList tbody tr')].find(x => (x.querySelector('.nm') || {}).textContent === A.shown(r.n)); const txt = tr ? tr.textContent : '';
+          if (!tr || !(tr.dataset.xcode || /choose the one that counts|Checking/.test(txt))) bad.push(`${r.n}'s test is not shown on their row`); } }
+      return bad;
+    };
+    const pickOf = (R, l) => l.length ? l[Math.floor(R() * l.length)] : null;
+    const roster = () => A.examRoster();
+    const placed = () => Object.keys(A.examS().recs).filter(c => A.examS().recs[c].who);
+    // the actions: each returns a word for the sequence, and what it promises (undo: the state it must give back)
+    const ACT = {
+      answer: R => { const r = pickOf(R, A.examS().rows.filter(x => x.codes.length)), c = pickOf(R, roster()); if (!r || !c) return null; A.xtAnswer(r, { sec: c.sec, n: c.n }); return `answer row ${r.line} = ${c.n}`; },
+      yes: R => { const r = pickOf(R, A.examS().rows.filter(x => x.suggest && !x.who)); if (!r) return null; A.xtAnswer(r, r.suggest); return `Yes row ${r.line}`; },
+      someone: R => { const r = pickOf(R, A.examS().rows.filter(x => x.codes.length && !x.who)); if (!r) return null; A.xtWho(A.state.sections[A.state.active], r); return 'Someone else row ' + r.line + ': ' + ACT.modal(R); },
+      not: R => { const c = pickOf(R, placed()); if (!c) return null; A.xtNotTheirs(A.state.sections[A.state.active], c); return 'Not theirs ' + c + ': ' + ACT.modal(R); },
+      give: R => { const c = pickOf(R, Object.keys(A.examS().recs)), s = pickOf(R, roster()); if (!c || !s) return null; A.xtGive(c, { sec: s.sec, n: s.n }); return `give ${c} to ${s.n}`; },
+      takeBack: R => { const c = pickOf(R, placed().filter(x => A.examS().recs[x].who.how === 'you')); if (!c) return null; A.xtNotTheirs(A.state.sections[A.state.active], c); const b = document.querySelector('#modal [data-xextra="nobody"]'); if (!b) return 'take back: no dialog'; b.click(); return 'take back ' + c; },
+      nobody: R => { const c = pickOf(R, Object.keys(A.examS().recs)); if (!c) return null; A.xtNobody(c); return 'Nobody yet ' + c; },
+      undo: R => { const u = A.xtLastUndo; if (!u) return null; const want = window.__inv.before; const ok = A.xtUndo(u); window.__inv.undid = ok ? want : null; return 'Undo'; },
+      dismiss: R => { A.render(); const b = pickOf(R, [...document.querySelectorAll('[data-xdis]')]); if (!b) return null; b.click(); return 'dismiss ' + b.dataset.xdis.split('|')[0]; },
+      bring: R => { A.render(); const b = pickOf(R, [...document.querySelectorAll('[data-xundis]')]); if (!b) return null; b.click(); return 'bring back'; },
+      paste: R => { const X = A.examS(); const codes = Object.keys(X.recs); const names = roster().map(x => x.n); const rows = ['Timestamp\tFull name\tYour test code'];
+        for (let i = 0; i < 1 + Math.floor(R() * 4); i++) { const n = pickOf(R, names) || 'Nobody Here'; const m = /^([^,]+),\s*(\S+)/.exec(n); let typed = m ? m[2] + ' ' + m[1] : n; if (R() < 0.3) typed = typed.slice(0, -1); if (R() < 0.15) typed = typed.split(' ')[0];
+          rows.push(`11/${17 + Math.floor(R() * 3)}/2026 ${10 + Math.floor(R() * 3)}:${String(Math.floor(R() * 60)).padStart(2, '0')}:00\t${typed}\t${R() < 0.1 ? 'NOTACODE' : pickOf(R, codes)}`); }
+        A.examTakeSheet(rows.join('\n'), 'paste'); A.render(); return 'paste ' + (rows.length - 1) + ' rows'; },
+      roster: R => { const k = pickOf(R, A.state.order); if (!k) return null; const s = A.state.sections[k], l = lines(s); const what = pickOf(R, ['drop', 'rename', 'move', 'namesake']); const i = Math.floor(R() * l.length); if (!l.length) return null;
+        if (what === 'drop') { l.splice(i, 1); s.roster = l.join('\n'); }
+        else if (what === 'rename') { l[i] = l[i].replace(/^(\d+\t)?([^,]+),/, (x, id, last) => (id || '') + last + '-ORTIZ,'); s.roster = l.join('\n'); }
+        else { const o = pickOf(R, A.state.order.filter(x => x !== k)); if (!o) return null; const line = l[i]; if (what === 'move') { l.splice(i, 1); s.roster = l.join('\n'); }
+          const so = A.state.sections[o]; so.roster = lines(so).concat([what === 'namesake' ? line.replace(/^\d+/, id => String(+id + 7)) : line]).join('\n'); }
+        A.save(); A.render(); return `roster ${what} in ${k}`; },
+      delClass: R => { if (A.state.order.length < 2 || R() < 0.6) return null; window.__inv.whole = true; const k = pickOf(R, A.state.order); delete A.state.sections[k]; A.state.order = A.state.order.filter(x => x !== k); A.state.active = A.state.order[0]; A.save(); A.render(); return 'delete class ' + k; },
+      full: async R => { window.__inv.whole = true; const st0 = A.stateForSave(); st0.exam = A.examForSave(st0.exam); const j = JSON.parse(JSON.stringify(st0)); const keys = A.examKeysNow(); A.adopt(A.hydrate(j) || j); A.examKeepKeys(keys); A.examReset(new Date().toISOString()); await A.examLoadLocked(); await A.examVerifyAll(); A.view.mode = 'tests'; A.render(); return 'open a Full save'; },
+      // a dialog that is open: a student, Nobody yet, or Cancel (Cancel must change nothing)
+      modal: R => { const m = modal(); if (!m) return 'no dialog'; const x = R(); if (x < 0.34) { const before = tests(); m.querySelector('#mCancel').click(); A.render(); if (tests() !== before) window.__inv.cancelBroke = true; return 'Cancel'; }
+        if (x < 0.6) { const b = m.querySelector('[data-xextra="nobody"]'); if (b) { b.click(); return 'Nobody yet'; } }
+        const bs = [...m.querySelectorAll('.xtWho')]; const b = pickOf(R, bs); if (!b) { m.querySelector('#mCancel').click(); return 'Cancel (empty)'; } const t = b.textContent; b.click(); return 'picked ' + t.slice(0, 30); }
+    };
+    const NAMES = ['answer', 'yes', 'someone', 'not', 'give', 'takeBack', 'nobody', 'undo', 'undo', 'dismiss', 'bring', 'paste', 'roster', 'roster', 'delClass', 'full'];
+    window.__inv.run = async (from, n, steps, seed) => {
+      const t0 = performance.now(); let acts = 0;
+      for (let q = from; q < from + n; q++) {
+        const R = rng(seed + q * 7919); const ids = q % 2 === 0; await window.__inv.reset(ids); const seq = [ids ? '(with Student IDs)' : '(no Student IDs)'];
+        for (let st = 0; st < steps; st++) {
+          const name = NAMES[Math.floor(R() * NAMES.length)]; window.__inv.cancelBroke = false; window.__inv.undid = undefined;
+          const pre = tests(), u0 = A.xtLastUndo;
+          const k = pickOf(R, A.state.order); if (k) { A.state.active = k; A.view.code = null; }
+          let w; try { w = await ACT[name](R); } catch (e) { return { q, seq: seq.concat([name + ' THREW ' + e.message]), bad: [String(e.stack || e).slice(0, 300)] }; }
+          shut();
+          if (w == null) continue; seq.push(w); acts++;
+          A.view.mode = 'tests'; A.view.code = null; A.render();
+          const bad = window.__inv.check();
+          if (window.__inv.cancelBroke) bad.push('Cancel changed what Tests held');
+          if (name === 'undo' && window.__inv.undid && tests() !== window.__inv.undid) bad.push('Undo did not give back exactly what was there before the last action');
+          if (A.xtLastUndo && A.xtLastUndo !== u0) window.__inv.before = pre;   // what Undo must give back: the state just before the action it undoes
+          if (bad.length) return { q, seq, bad };
+        }
+      }
+      return { ok: true, acts, ms: Math.round(performance.now() - t0) };
+    };
+  });
+  await p.evaluate(() => window.__inv.save0());
+
+  /* R2-C1: a placement belongs to one child, not to a name. Each case from the fixture as set up. */
+  const c1 = await p.evaluate(async () => { const A = window.__all, out = {};
+    const one = async (ids, fn) => { await window.__inv.reset(ids); const L = A.xtLedger(); const k4 = A.state.order[0], k5 = A.state.order[1];
+      const code = L.row.find(c => L.at[c].to.sec === k4 && A.examS().recs[c].who.how === 'exact'); const n = A.examS().recs[code].who.n; const S = A.state.sections;
+      const line = String(S[k4].roster).split('\n').find(l => l.endsWith('\t' + n) || l === n);
+      fn({ S, k4, k5, n, line }); A.render(); const e = A.examS().recs[code]; const L2 = A.xtLedger();
+      return { where: L2.at[code].where, who: e.who && (e.who.sec === k5 ? '5th|' : '4th|') + e.who.n, gone: e.gone ? e.gone.n + ' (' + e.gone.cl + ')' : null, text: (document.querySelector('#xtNobody') || {}).textContent || '' }; };
+    const drop = (S, k, l) => { S[k].roster = String(S[k].roster).split('\n').filter(x => x !== l).join('\n'); };
+    const add = (S, k, l) => { S[k].roster = String(S[k].roster) + '\n' + l; };
+    // a namesake already in another class, then the student leaves: the test does not move to the namesake
+    out.namesake = await one(false, ({ S, k4, k5, line }) => { add(S, k5, line); A.render(); drop(S, k4, line); });
+    // the same, with Student IDs (the namesake has another ID)
+    out.namesakeIds = await one(true, ({ S, k4, k5, line }) => { add(S, k5, line.replace(/^\d+/, id => String(+id + 1))); A.render(); drop(S, k4, line); });
+    // plainly the same child moved: gone from 4th and new in 5th in one import, no one of that name anywhere before
+    out.moved = await one(false, ({ S, k4, k5, line }) => { drop(S, k4, line); add(S, k5, line); });
+    // renamed in Focus, the same Student ID: the test stays with them
+    out.renamed = await one(true, ({ S, k4, line }) => { S[k4].roster = String(S[k4].roster).replace(line, line.replace(/\t([^,]+),/, '\t$1-ORTIZ,')); });
+    // an ID now on another child (a name that shares no word): not trusted
+    out.idOnOther = await one(true, ({ S, k4, line }) => { S[k4].roster = String(S[k4].roster).replace(line, line.replace(/\t.*$/, '\tZZYZX, QUENTIN')); });
+    return out; });
+  // R2-L1: the give dialog never shows the summary of a test not checked this session
+  const l1 = await p.evaluate(async () => { const A = window.__all; await window.__inv.reset(true); const code = A.xtLedger().row[0]; A.xtVer.set(code, 'missing'); A.xtChoose(A.state.sections[A.state.active], code, 'give'); const t = document.querySelector('#modal .body p').textContent; document.querySelector('#modal #mCancel').click(); A.xtVer.set(code, 'ok'); return t; });
+  check(!/\d+ \/ \d+/.test(l1), 'R2-L1: "Give it to a student" for a test not checked this session shows no score or times: ' + l1.slice(0, 60));
+  check(c1.namesake.where === 'nobody' && !c1.namesake.who && /no longer on that roster/.test(c1.namesake.text) && c1.namesake.gone, 'R2-C1: a student leaves while another child of the same name is in another class: the test goes to Nobody turned in ("' + (c1.namesake.text.match(/It had been[^.]*\./) || [''])[0] + '"), never to the namesake');
+  check(c1.namesakeIds.where === 'nobody' && !c1.namesakeIds.who, 'R2-C1: the same with Student IDs (the namesake\'s ID differs): nobody\'s, not the namesake\'s');
+  check(c1.moved.where === 'row' && /^5th\|/.test(c1.moved.who || ''), 'R2-C1: plainly the same child moved (gone from one class and new in another in one import, no namesake before): the test follows them');
+  check(c1.renamed.where === 'row' && /-ORTIZ/.test(c1.renamed.who || ''), 'R2-C1: renamed in Focus with the same Student ID: the test stays with them');
+  check(c1.idOnOther.where === 'nobody', 'R2-C1: a Student ID that is now on a name sharing no word with the one it had is not trusted: nobody\'s');
+  let total = 0, acts = 0, fail = null; const t0 = Date.now(); const B = 50;
+  for (let q = 0; q < N && !fail; q += B) { const r = await p.evaluate(([q, n, s, seed]) => window.__inv.run(q, n, s, seed), [q, Math.min(B, N - q), STEPS, SEED]); if (!r.ok) fail = r; else { total += Math.min(B, N - q); acts += r.acts; } }
+  if (fail) console.log('VIOLATION in sequence', fail.q, '(seed ' + SEED + '):\n  ' + fail.seq.join('\n  ') + '\n  -> ' + fail.bad.join('\n  -> '));
+  console.log(`RAN ${total} random sequences, ${acts} actions, ${((Date.now() - t0) / 1000).toFixed(1)} s (seed ${SEED})`);
+  check(!fail, `after every action of ${total} random sequences (${acts} actions: place, Yes, Someone else, Not theirs, Cancel, Undo, give, take back, Nobody yet, dismiss, bring back, paste, rosters moved, dropped, renamed and given namesakes, a class deleted, a Full save opened), every test held is in exactly one place and the count line adds up; Cancel changes nothing; Undo gives back exactly what was there` + (fail ? ' — FAILED at sequence ' + fail.q : ''));
+  check(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
+  await browser.close(); done();
+})().catch(e => { console.error(e); check(false, 'crashed: ' + e.message); done(); process.exit(1); });

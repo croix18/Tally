@@ -63,12 +63,12 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
   check(m('Mikayla Jonson').who === null && sg('Mikayla Jonson') === 'Johnson, Mikayla', 'forgiving (one letter off) is a suggestion, never a placement');
   check(m('Alex Garcia-Lopez').who === null && sg('Alex Garcia-Lopez') === 'Garcia-Lopez, Alexander', 'forgiving (a nickname) is a suggestion, never a placement');
   /* review C1, H1: exact AND unrivaled, across every class */
-  const R2 = [['4', 'Smith, Jonathan'], ['4', 'Doe, Robert'], ['5', 'Smith, Jon'], ['5', 'Doe, Bobby'], ['4', 'Smith, John'], ['6', 'Parker, Alexander James'], ['4', 'Lee, Thomas'], ['4', 'Thomas, Lee']].map(([sec, display]) => ({ sec, display }));
+  const R2 = [['4', 'Smith, Jonathan'], ['4', 'Doe, Robert'], ['5', 'Smith, Jon'], ['5', 'Doe, Bobby'], ['4', 'Smith, John'], ['6', 'Parker, Alexander James'], ['4', 'Lee, Thomas'], ['4', 'Thomas, Lee'], ['5', 'Okafor, Chidinma']].map(([sec, display]) => ({ sec, display }));
   const m2 = t => { const r = C.matchName(t, R2); return { pick: r.pick == null ? null : R2[r.pick].display, sug: r.suggest == null ? null : R2[r.suggest].display, cands: r.cands.map(i => R2[i].display) }; };
   check(m2('Jon Smith').pick === null && m2('Jon Smith').cands.includes('Smith, Jonathan') && m2('Jon Smith').cands.includes('Smith, Jon'), '"Jon Smith" with Smith, Jon and Smith, Jonathan on the rosters: asks, both offered (C1)');
   check(m2('Bob Doe').pick === null && m2('Bob Doe').sug === 'Doe, Bobby', '"Bob Doe": Doe, Bobby is only suggested (H1)');
   check(m2('Jonny Smith').pick === null && m2('Alex Parker').pick === null, '"Jonny Smith" and "Alex Parker": never placed without him (H1)');
-  check(m2('Robert Doe').pick === 'Doe, Robert' && m2('John Smith').pick === null, 'a name that is one student\'s and nobody else\'s near match is placed (Robert Doe); "John Smith" asks, Smith, Jon being one slip away');
+  check(m2('Chidinma Okafor').pick === 'Okafor, Chidinma' && m2('Robert Doe').pick === null && m2('John Smith').pick === null, 'a name nobody else could have typed is placed (Chidinma Okafor); "Robert Doe" asks (Bobby is his nickname, R2-H1); "John Smith" asks, Smith, Jon being one slip away');
   const R3 = [['4', 'Garcia, Ana'], ['4', 'Garcia, Anna'], ['5', 'Marie, Ava'], ['4', 'Patel, Ava Marie']].map(([sec, display]) => ({ sec, display }));
   check(C.matchName('Ana Garcia', R3).pick == null && C.matchName('Marie Ava', R3).pick == null && C.matchName('Ava Patel', R3).pick != null, 'Ana / Anna Garcia ask; "Marie Ava" asks (Patel, Ava Marie\'s first and middle names); "Ava Patel" is placed');
   check(m2('Lee Thomas').pick === null, 'Lee Thomas / Thomas Lee: asks');
@@ -151,6 +151,13 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
   check(!picked.some(f => f.kind === 'twice'), 'once he chooses the test that counts, the second-test flag is gone');
   const net = C.flags({ sec: 'p4', prep: 'on', course: 'm7', unit: 10, period: null, rows: X.rows, recs, fails: { ...fails, [b.codes.byIndex[11]]: { why: 'net' } }, picks: {}, known: [] });
   check(net.some(f => f.kind === 'net' && f.level === 'info' && /Try again|network/.test(f.todo)), 'a code the network failed on is a note with a way to try again, not an error');
+  { // R2-M2: a flag's id carries its test and what makes it this one, so dismissing one never silences another
+    const tw10 = fl.find(f => f.kind === 'twice'), u11 = recs.map(x => x.sec === 'p4' && x.n === 'Patel, Rohan' ? { ...x, unit: 11 } : x);
+    const tw11 = C.flags({ sec: 'p4', prep: 'on', course: 'm7', unit: 11, period: null, rows: X.rows, recs: u11, fails, picks: {}, known: [] }).find(f => f.kind === 'twice');
+    const net2 = C.flags({ sec: 'p4', prep: 'on', course: 'm7', unit: 10, period: null, rows: X.rows, recs, fails: { ...fails, [b.codes.byIndex[12]]: { why: 'net' } }, picks: {}, known: [] }).find(f => f.kind === 'net');
+    const bc = fl.find(f => f.kind === 'badcode'), bc2 = C.flags({ sec: 'p4', prep: 'on', course: 'm7', unit: 10, period: null, rows: X.rows.map(r => r === bc.rows[0] ? { ...r, at: '11/20/2026 9:00:00' } : r), recs, fails, picks: {}, known: [] }).find(f => f.kind === 'badcode');
+    check(tw10 && tw11 && tw10.id !== tw11.id && net.find(f => f.kind === 'net').id !== net2.id && bc.id !== bc2.id && fl.every(f => f.id.split('|')[3] === 'm7/10'),
+      'R2-M2: "two tests" in Unit 10 and in Unit 11 are two flags; a network note with other codes failing is a new one; a bad code sent at another time is another; every id names its test: ' + tw10.id); }
   const near = C.flags({ sec: 'p4', prep: 'on', course: 'm7', unit: 10, period: null, rows: X.rows, recs, fails, picks: {}, known: [b.codes.byIndex[17]] });
   check(near.some(f => f.kind === 'none' && f.near[0] === b.codes.byIndex[17] && /one character/.test(f.todo)), 'a typo\'d code one character from a test nobody turned in names that test');
 
@@ -201,5 +208,14 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
   /* CHANGES-16NOV §11 */
   { const tapped = R.some(x => Object.values(x.record.log ? x.record.log.parts : {}).some(p => p.vals.some(v => v[2] === 'tap'))); const find = R.find(x => x.record.log && x.record.log.blocked.some(b => b[1] === 'find'));
     const rf = find && C.readRecord(find.record); check(tapped && rf && rf.blocked.some(b => b.what === 'find') && rf.blocked.some(b => b.what === 'zoomhack'), 'the fixtures hold a picked value ("tap"), a blocked find and a blocked kind Tally doesn\'t know; all read'); }
+  /* R2-H1: rivals by nickname, a swap of letters, a short or spaced last name: each asks, none is placed */
+  { const cases = [['Elisa Garcia', ['Garcia, Elias', 'Garcia, Elisa']], ['Adian Ross', ['Ross, Aidan', 'Ross, Adian']], ['Bobby Doe', ['Doe, Robert', 'Doe, Bobby']],
+      ['Bill Ng', ['Ng, William', 'Ng, Bill']], ['Liz Park', ['Park, Elizabeth', 'Park, Liz']], ['Mia Lee', ['Lea, Mia', 'Lee, Mia']], ['Sara Khan', ['Kahn, Sara', 'Khan, Sara']],
+      ['Tom Vandyke', ['Van Dyke, Tom', 'Vandyke, Tom']], ['Pepe Ruiz', ['Ruiz, Jose', 'Ruiz, Pepe']], ['Jon Smith', ['Smith, John', 'Smith, Jon']]];
+    const bad = cases.filter(([t, ros]) => { const R = ros.map((d, i) => ({ sec: String(4 + i), display: d })); const r = C.matchName(t, R); return r.pick != null || !r.cands.includes(0); });
+    check(!bad.length, 'R2-H1: Bobby/Robert, Bill/William, Liz/Elizabeth, Elisa/Elias, Adian/Aidan, Lee/Lea, Khan/Kahn, Vandyke/Van Dyke, Pepe/Jose, Jon/John all ask, the other child offered: ' + JSON.stringify(bad.map(x => x[0])));
+    const R = [{ sec: '4', display: 'Smith, Ava' }, { sec: '5', display: 'Brown, Mia' }, { sec: '5', display: 'Brown, Ava' }, { sec: '4', display: 'Lee, Ana' }, { sec: '6', display: 'Okafor, Chidinma' }];
+    check(C.matchName('Ava Brown', R).pick === 2 && C.matchName('Chidinma Okafor', R).pick === 4, 'R2-H1: Ava and Mia (two different short names) are not rivals; a name nobody else is near is still placed');
+    check(C.NICKNAMES.some(l => l.split(' ').includes('chuy') && l.includes('jesus')) && C.osa('kahn', 'khan') === 1 && C.osa('elias', 'elisa') === 1, 'the nickname list is one plain list in examcore.js; a swap of two letters is one edit'); }
   done();
 })().catch(e => { console.error(e); check(false, 'crashed: ' + e.message); done(); });

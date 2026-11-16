@@ -45,6 +45,13 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
     check(/room for test records is 82% full/.test(w) && /Full save/.test(w), 'Tests warns at 70% of what the browser gives, and offers the Full save: ' + w.slice(0, 90));
     await p.screenshot({ path: path.join(SHOTS, '14-storage-warning-1366.png') }); await ctx.close(); }
 
+  // a browser with no IndexedDB (R2-M1): the Tests page says where tests are kept, and that the Full save is the only other copy
+  { const { ctx, p } = await open(() => { try { delete window.indexedDB; Object.defineProperty(window, 'indexedDB', { value: undefined }); } catch (e) {} }); await importClasses(p); await connect(p);
+    await put(p, await make(3, 1)); await p.click('#rail .rc:has-text("4th")'); await p.click('#openTests'); await p.waitForTimeout(600);
+    const w = await p.evaluate(() => (document.querySelector('.xtStore') || {}).innerText || '');
+    check(/no IndexedDB here/.test(w) && /kept only in Tally's own storage/.test(w) && /Full save is the only other copy/.test(w) && await p.evaluate(() => !window.indexedDB), 'with no IndexedDB, Tests says the tests are kept only in Tally\'s own storage here and the Full save is the only other copy (R2-M1): ' + w.slice(0, 80));
+    await ctx.close(); }
+
   // what this branch kept before the review: opened records under each class (v1). Carried over, nothing lost, never scored
   { const { ctx, p } = await open(); await importClasses(p); await connect(p);
     const v1 = await A(p, (A, recs) => { const sec = A.state.order[0], studs = A.classStudents(A.state.sections[sec]); const st = JSON.parse(localStorage.getItem('tally.v1'));
@@ -56,7 +63,7 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
     check(m.length === 6 && m.every(x => x.legacy && x.kept && x.sum) && m.filter(x => x.who).length === 5 && m.find(x => x.who && x.who.how === 'you'), 'the move from the old way: all 6 records kept (5 with their students, the hand-given one still marked as given by hand, 1 nobody\'s), each with what was opened, none lost');
     await p.click('#rail .rc:has-text("4th")'); await p.click('#openTests'); await p.waitForTimeout(800);
     const t = await p.evaluate(() => document.querySelector('#gridwrap').innerText);
-    check(/5 tests here can't be shown: kept by an earlier build of Tally, which kept no locked copy: fetch it again/.test(t) && await p.locator('[data-xrefetch]').count() === 1 && await p.locator('tr[data-xcode]').count() === 0, 'and until fetched again they are listed, with Fetch again, and never scored');
+    check((t.match(/Kept by an earlier build of Tally without its locked copy: fetch it again/g) || []).length === 6 && await p.locator('#xtWaiting li [data-xrefetch]').count() === 6 && await p.locator('#xtWaiting h3 + p [data-xrefetch]').count() === 1 && await p.locator('tr[data-xcode]').count() === 0 && /6 tests held = 0 with a student \+ 6 waiting for you \+ 0 nobody/.test(t), 'and until fetched again all 6 are waiting for him, each with Fetch again (the one that was nobody\'s too, R2-L2), and none is scored');
     await ctx.close(); }
   check(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await browser.close(); done();

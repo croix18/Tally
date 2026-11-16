@@ -1576,8 +1576,49 @@ function like(t, w) {   // how alike one typed word is to one word of the name: 
    near match for the same words: the same last name with a first name that starts the same, a nickname or one slip. "Jon
    Smith" with Smith, Jon and Smith, Jonathan on the rosters asks. Anything forgiving is a SUGGESTION (suggest), never a pick.
    cands: every student it could be, the likeliest first. o.noPick: the typed name is not one to take (an email's local part). */
-function nearFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; return Math.min(t.length, f.length) >= 3 && edit(t, f) <= 1; }
-function nearLast(t, L) { return L.some(function (l) { return t === l || (Math.min(t.length, l.length) >= 4 && edit(t, l) <= 1); }); }
+/* NICKNAMES: names one child may go by. Each line is one group: two first names on the same line are "related", so a
+   student typing one of them could be a student whose roster name is another. Croix: add a line, or a name to a line, and
+   matching asks about those names from then on (lower case, no accents; a name may be on more than one line). */
+var NICKNAMES = [
+  'bob bobby rob robbie robert', 'bill billy will willy liam william', 'liz lizzie beth betty eliza elizabeth',
+  'kate katie kathy katherine catherine', 'mike mikey michael miguel', 'alex alejandro alejandra alexander alexandra alexis',
+  'chris christopher christian cristian christina', 'nick nicky nicholas nicolas', 'joe joey jose joseph', 'tony anthony antonio',
+  'pepe jose', 'paco pancho francisco frank frankie', 'lupe guadalupe', 'chuy jesus', 'nacho ignacio', 'manny manuel emmanuel',
+  'sam sammy samuel samantha', 'ben benny benjamin', 'dan danny daniel', 'matt matthew mateo', 'tom tommy thomas tomas',
+  'jim jimmy jamie james', 'jack jackson john johnny', 'andy drew andrew andres', 'abby abigail', 'maddie madison madeline',
+  'izzy bella isabel isabella', 'gabby gabi gabriela gabriella gabriel', 'vicky victoria', 'nate nathan nathaniel',
+  'zach zack zachary', 'josh joshua', 'jake jacob', 'charlie chuck charles carlos', 'eddie ed edward eduardo',
+  'ricky rick richard ricardo', 'teddy ted theodore', 'leo leonardo leonard', 'max maxwell maximilian maximo',
+  'ellie ella eleanor elena', 'addie addison adeline', 'lexi alexa alexis', 'cami camila camille', 'sofi sophie sofia sophia',
+  'mia maria', 'ana anna annie anne'
+];
+var NICK = {}; NICKNAMES.forEach(function (line, g) { line.split(/\s+/).forEach(function (n) { (NICK[n] = NICK[n] || []).push(g); }); });
+function nick(a, b) { var A = NICK[a], B = NICK[b]; return !!(A && B && A.some(function (g) { return B.indexOf(g) >= 0; })); }
+// edits between two words, a swap of two neighboring letters counting as one (Kahn/Khan, Elias/Elisa)
+function osa(a, b) {
+  if (a === b) return 0; if (Math.abs(a.length - b.length) > 2) return 3;
+  var d = [], i, j; for (i = 0; i <= a.length; i++) { d[i] = [i]; } for (j = 0; j <= b.length; j++) d[0][j] = j;
+  for (i = 1; i <= a.length; i++) for (j = 1; j <= b.length; j++) {
+    var c = a[i - 1] === b[j - 1] ? 0 : 1; d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[a.length][b.length];
+}
+// a first name a student could have typed for another's: one starts the other (3+ letters), two edits or fewer, or nicknames
+function relFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; var n = Math.min(t.length, f.length); return n >= 2 && osa(t, f) <= (n >= 5 ? 2 : 1) || nick(t, f); }
+// a last name that is the same or near: equal with spaces, hyphens, apostrophes, case and accents gone, or one edit apart
+function relLast(a, b) { if (!a || !b) return false; if (a === b) return true; return Math.min(a.length, b.length) >= 3 && osa(a, b) <= 1; }
+function nearFirst(t, f) { return relFirst(t, f); }
+function nearLast(t, L) { return L.some(function (l) { return relLast(t, l); }); }
+/* A RIVAL of the student X a typed name exactly matches (Croix, 16 Nov 2026, R2-H1): another student, in any class, whose last
+   name is the same or near X's (as a whole, run together: Van Dyke/Vandyke; or word by word: Lea/Lee, Kahn/Khan) and whose
+   first name is related to the first name typed (above). With a rival Tally asks. */
+function rival(T, X, Y) {
+  var lastT = T.filter(function (t) { return X.last.indexOf(t) >= 0; }), firstT = T.filter(function (t) { return X.last.indexOf(t) < 0; });
+  var lastNear = relLast(X.last.join(''), Y.last.join('')) || lastT.some(function (t) { return Y.last.some(function (l) { return relLast(t, l); }); });
+  if (!lastNear) return false;
+  return firstT.some(function (t) { return relFirst(t, Y.first) || Y.middle.some(function (m) { return m === t; }); });
+}
 function matchName(typed, roster, o) {
   var T = tokens(typed), out = { pick: null, how: null, suggest: null, cands: [], rivals: [] };
   if (!T.length) return out;
@@ -1596,7 +1637,9 @@ function matchName(typed, roster, o) {
   var c = scored.filter(function (x) { return x.exact || x.near || (x.s >= 0.75 && (x.f > 0 || x.l > 0)); }).sort(function (a, b) { return b.s - a.s; });
   out.cands = c.slice(0, 8).map(function (x) { return x.i; });
   if (ex.length === 1) {
-    out.rivals = scored.filter(function (x) { return x.i !== ex[0].i && (x.near || x.exact); }).map(function (x) { return x.i; });
+    var X = parts[ex[0].i];
+    out.rivals = scored.filter(function (x) { return x.i !== ex[0].i && (x.near || x.exact || rival(T, X, parts[x.i])); }).map(function (x) { return x.i; });
+    out.rivals.forEach(function (i) { if (out.cands.indexOf(i) < 0) out.cands.push(i); });
     if (!out.rivals.length && !(o && o.noPick)) { out.pick = ex[0].i; out.how = 'exact'; }
     else out.suggest = ex[0].i;
     return out;
@@ -1732,6 +1775,7 @@ function placeAll(rows, recs) {
   rows.forEach(function (r) { (r.codes || (r.code ? [r.code] : [])).forEach(function (c) { if (c) (by[c] = by[c] || []).push(r); }); });
   recs.forEach(function (x) {
     if (x.nobody && !(x.who && x.who.how === 'you')) { place[x.code] = null; state[x.code] = 'nobody'; return; }   // he said: nobody yet
+    if (x.gone && !x.who) { place[x.code] = null; state[x.code] = 'nobody'; return; }   // its student left the roster: nobody's, until he gives it (R2-C1)
     var mine = x.who || (x.pin ? { sec: x.pin.sec, n: x.pin.n, how: 'you' } : null), no = x.no || [];
     var not = function (w) { return no.some(function (q) { return q.sec === w.sec && q.n === w.n; }); };
     if (mine && mine.how === 'you') { place[x.code] = { sec: mine.sec, n: mine.n }; state[x.code] = 'placed'; return; }
@@ -1759,9 +1803,12 @@ function placeAll(rows, recs) {
 function flags(c) {
   var out = [], here = function (x) { return x.course === c.course && x.unit === c.unit; }, mine = function (w) { return !!w && w.sec === c.sec; };
   var rows = c.rows || [], recs = c.recs || [], fails = c.fails || {}, held = {}, shownName = c.show || function (n) { return n; };
-  var push = function (f) { f.id = f.id || [f.kind, f.code || '', (f.names || []).join(','), f.rows && f.rows[0] ? f.rows[0].line : ''].join('|'); out.push(f); };
+  /* a flag's id: kind | code | names | the test | what makes it this one and no other (R2-M2): dismissing one never silences
+     another, and a note whose cause changes (other codes failing, other tests turned in) comes back as a new one */
+  var tk = testKey(c.course, c.unit), rowId = function (r) { return r ? (r.at || r.when || '') + '#' + r.line + '#' + (r.codes || []).join(',') + '#' + (r.raw || '') : ''; };
+  var push = function (f) { f.id = f.id || [f.kind, f.code || '', (f.names || []).join(','), tk, f.uniq != null ? f.uniq : f.rows && f.rows[0] ? rowId(f.rows[0]) : ''].join('|'); out.push(f); };
   recs.forEach(function (x) { held[x.code] = x; });
-  var P = placeAll(rows, recs.map(function (x) { return { code: x.code, who: x.sec && x.n ? { sec: x.sec, n: x.n, how: x.how || (x.pin ? 'you' : 'exact') } : x.pin ? { sec: x.pin.sec, n: x.pin.n, how: 'you' } : null, no: x.no, nobody: x.nobody }; }));
+  var P = placeAll(rows, recs.map(function (x) { return { code: x.code, who: x.sec && x.n ? { sec: x.sec, n: x.n, how: x.how || (x.pin ? 'you' : 'exact') } : x.pin ? { sec: x.pin.sec, n: x.pin.n, how: 'you' } : null, no: x.no, nobody: x.nobody, gone: x.gone }; }));
   // what this class's students already hold of this test (a flag about a typo or a bad cell goes when the child has their test)
   var holds = {}; recs.forEach(function (x) { if (x.sec === c.sec && x.n && here(x) && x.ok !== false) holds[x.n] = true; });
   var hp = function (s) { var m = /^(\d{1,2}):(\d{2})$/.exec(s || ''); if (!m) return s; var h = +m[1]; return (h % 12 || 12) + ':' + m[2] + (h < 12 ? ' am' : ' pm'); };
@@ -1775,7 +1822,7 @@ function flags(c) {
   // codes that open to nothing, or not here
   var claimed = {}; rows.forEach(function (r) { (r.codes || []).forEach(function (code) { (claimed[code] = claimed[code] || []).push(r); }); });
   var unclaimed = recs.filter(function (x) { return P.state[x.code] === 'nobody'; }).map(function (x) { return x.code; });
-  var netN = 0;
+  var netN = 0, netC = [];
   Object.keys(fails).forEach(function (code) {
     var fx = fails[code] && typeof fails[code] === 'object' ? fails[code] : { why: fails[code] }, why = fx.why, rs = claimed[code] || [];
     var who = rs.map(function (r) { return r.who && r.who.sec === c.sec ? r.who.n : null; }).filter(Boolean);
@@ -1789,18 +1836,18 @@ function flags(c) {
     else if (why === 'key') { f.text = 'The test with the code ' + fmtCode(code) + ' (' + whom + ') is locked to another Tally\'s key.'; f.todo = 'It was locked to the key the cockpit held when the test was taken. Open this Tally from the Full save that holds that key (Tally keeps every key it has made), or check in the cockpit which key is pasted there.'; }
     else if (why === 'signature') { f.text = 'The record for ' + fmtCode(code) + ' (' + whom + ') was not signed by the site.'; f.todo = 'Tally will not show what is in it. Take the score from the cockpit\'s results for that day, and talk to the student.'; }
     else if (why === 'code') { f.text = 'The site answered ' + fmtCode(code) + ' (' + whom + ') with another code\'s record.'; f.todo = 'Tally did not keep it. Try again; if it happens again, open the cockpit\'s results file instead.'; }
-    else if (why === 'net') { netN++; return; }
+    else if (why === 'net') { netN++; netC.push(code); return; }
     else return;
     push(f);
   });
   // the network, or anything that wasn't the site's answer: one note for the batch, not one per child
-  if (netN) push({ kind: 'net', level: 'info', id: 'net|' + c.sec, n: netN, text: (netN === 1 ? '1 code' : netN + ' codes') + ' couldn\'t reach the site\'s test records.', todo: 'The network was down, or something between Tally and the site (a school filter, the site not answering) answered instead. Try again when the network is back, or open the cockpit\'s results file.' });
+  if (netN) push({ kind: 'net', level: 'info', id: 'net|||' + tk + '|' + c.sec + ':' + netC.sort().join(','), n: netN, text: (netN === 1 ? '1 code' : netN + ' codes') + ' couldn\'t reach the site\'s test records.', todo: 'The network was down, or something between Tally and the site (a school filter, the site not answering) answered instead. Try again when the network is back, or open the cockpit\'s results file.' });
   // records held for this class
   var mineRecs = recs.filter(function (x) { return x.sec === c.sec && x.n && x.ok !== false; });   // only records checked this session
   var byStu = {}; mineRecs.filter(here).forEach(function (x) { (byStu[x.n] = byStu[x.n] || []).push(x); });
   Object.keys(byStu).forEach(function (n) { var l = byStu[n]; if (l.length < 2) return; var pk = (c.picks || {})[c.sec + '|' + n + '|' + testKey(c.course, c.unit)];
     if (pk && l.some(function (x) { return x.code === pk; })) return;
-    push({ kind: 'twice', level: 'warn', names: [n], codes: l.map(function (x) { return x.code; }), text: shownName(n) + ' has ' + l.length + ' tests for ' + testName(c.course, c.unit) + ' (' + l.map(function (x) { return hm(x.started) + '–' + hm(x.finished) + (x.points != null ? ', ' + x.points + ' / ' + x.of : ''); }).join('; ') + ').',
+    push({ kind: 'twice', level: 'warn', names: [n], uniq: l.map(function (x) { return x.code; }).sort().join(','), codes: l.map(function (x) { return x.code; }), text: shownName(n) + ' has ' + l.length + ' tests for ' + testName(c.course, c.unit) + ' (' + l.map(function (x) { return hm(x.started) + '–' + hm(x.finished) + (x.points != null ? ', ' + x.points + ' / ' + x.of : ''); }).join('; ') + ').',
       todo: 'Each was a separate sitting on the site. Choose the one that counts; the other stays in Tally, marked. If one isn\'t theirs, open it and press Not theirs.' }); });
   mineRecs.filter(here).forEach(function (x) {
     if (x.ended === 'left') push({ kind: 'left', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test ended itself: they left it ' + (x.after || x.awayN || 'too many') + ' times.',
@@ -1837,7 +1884,7 @@ function flags(c) {
     var counted = l.length - alone.length;
     if (big.length < 0.6 * counted) {
       var real = groups.filter(function (g) { return g.length > 1 || !byOpen; });
-      if (real.length > 1) push({ kind: 'groups', level: 'info', id: 'groups|' + c.sec + '|' + k, text: 'This class sat in ' + (real.length === 2 ? 'two' : real.length) + ' groups: ' + real.map(function (g) { return hm(Math.min.apply(null, g.map(function (x) { return x.started; }))) + ' (' + g.length + ')'; }).join(' and ') + '.', todo: 'No group is most of the class, so Tally doesn\'t flag anyone as apart from it.' });
+      if (real.length > 1) push({ kind: 'groups', level: 'info', id: 'groups|||' + tk + '|' + c.sec + ':' + k, text: 'This class sat in ' + (real.length === 2 ? 'two' : real.length) + ' groups: ' + real.map(function (g) { return hm(Math.min.apply(null, g.map(function (x) { return x.started; }))) + ' (' + g.length + ')'; }).join(' and ') + '.', todo: 'No group is most of the class, so Tally doesn\'t flag anyone as apart from it.' });
     } else {
       var ms = med(big.map(function (x) { return x.started; })), mf = med(big.map(function (x) { return x.finished; }));
       var off = function (x) { return x.started < ms - 20 * 60000 || x.started > mf; }, rest = big.filter(function (x) { return !off(x); }); if (!rest.length) rest = big;
@@ -1855,12 +1902,12 @@ function flags(c) {
       todo: 'Open the test: its timeline shows where the time went.' }); });
   });
   // records of this class for another test, or another course
-  var other = {}; mineRecs.filter(function (x) { return !here(x); }).forEach(function (x) { var k = testKey(x.course, x.unit); (other[k] = other[k] || { course: x.course, unit: x.unit, n: 0 }).n++; });
-  Object.keys(other).forEach(function (k) { var o = other[k]; push({ kind: 'other', level: 'info', course: o.course, unit: o.unit, n: o.n, text: (o.n === 1 ? '1 test' : o.n + ' tests') + ' turned in here ' + (o.n === 1 ? 'is' : 'are') + ' for ' + testName(o.course, o.unit) + ', not ' + testName(c.course, c.unit) + '.',
+  var other = {}; mineRecs.filter(function (x) { return !here(x); }).forEach(function (x) { var k = testKey(x.course, x.unit); var o = other[k] = other[k] || { course: x.course, unit: x.unit, n: 0, codes: [] }; o.n++; o.codes.push(x.code); });
+  Object.keys(other).forEach(function (k) { var o = other[k]; push({ kind: 'other', level: 'info', course: o.course, unit: o.unit, n: o.n, uniq: k + ':' + o.codes.sort().join(','), text: (o.n === 1 ? '1 test' : o.n + ' tests') + ' turned in here ' + (o.n === 1 ? 'is' : 'are') + ' for ' + testName(o.course, o.unit) + ', not ' + testName(c.course, c.unit) + '.',
     todo: (COURSES[o.course] && COURSES[o.course].prep !== c.prep ? 'That is the other course\'s test: the student may have opened the wrong one. ' : '') + 'Open ' + testName(o.course, o.unit) + ' to see ' + (o.n === 1 ? 'it' : 'them') + '.' }); });
   // tests nobody turned in, of this test (with what the record shows of when and where it was taken)
   recs.filter(function (x) { return P.state[x.code] === 'nobody' && here(x) && x.ok !== false; }).forEach(function (x) {
-    push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : x.ended === 'time' ? ', ran out of time: closed by the site' : '') + ').' + (x.was ? ' It had been given to ' + shownName(x.was.n) + ', who is no longer on a roster here.' : ''),
+    push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : x.ended === 'time' ? ', ran out of time: closed by the site' : '') + ').' + (x.gone ? ' It had been ' + (x.gone.how === 'you' ? 'given to ' : 'with ') + shownName(x.gone.n) + (x.gone.cl ? ' (' + x.gone.cl + ')' : '') + ', who is no longer on that roster.' : ''),
       todo: 'A student finished this test and didn\'t turn the code in, or typed it wrong. Give it to the student it belongs to.' }); });
   // responses waiting for him: a name Tally isn't sure of (with its suggestion), a test two rows claim
   rows.filter(function (r) { return !r.who && (r.codes || []).length && !P.shared[(r.codes || [])[0]]; }).forEach(function (r) {
@@ -1879,7 +1926,7 @@ function flags(c) {
 var fmtCode = function (c) { return SEAL.showCode(c); };
 function hm(ms) { if (ms == null) return '?'; var d = new Date(ms); var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
-var api = { COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
+var api = { NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
   qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testKey: testKey, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ExamCore = api;
 })(typeof self !== 'undefined' ? self : this);
@@ -6105,13 +6152,13 @@ const xtNum = v => typeof v === 'number' && isFinite(v) ? v : null;
 const xtStr = (v, n) => typeof v === 'string' ? v.slice(0, n || 200) : null;
 const XCODE = /^[0-9A-HJKMNP-TV-Z]{12}$/;
 function examPairOk(t) { try { const p = JSON.parse(t); return !!(p && p.priv && p.priv.kty === 'EC' && p.priv.d && /^TALLY1\.[A-Za-z0-9_-]{87}$/.test(p.pub)); } catch (e) { return false; } }
-const xtWhoOf = (w, how) => w && typeof w === 'object' && typeof w.sec === 'string' && typeof w.n === 'string' ? { sec: w.sec, n: w.n.slice(0, 120), ...(how ? { how: ['exact', 'remembered', 'you'].includes(w.how) ? w.how : 'exact', at: xtStr(w.at, 30) } : {}) } : null;
+const xtWhoOf = (w, how) => w && typeof w === 'object' && typeof w.sec === 'string' && typeof w.n === 'string' ? { sec: w.sec, n: w.n.slice(0, 120), ...(typeof w.id === 'string' && /^\d{4,20}$/.test(w.id) ? { id: w.id } : {}), ...(how ? { how: ['exact', 'remembered', 'you'].includes(w.how) ? w.how : 'exact', at: xtStr(w.at, 30) } : {}), ...(typeof w.cl === 'string' ? { cl: w.cl.slice(0, 60) } : {}) } : null;
 // the verified summary the class list needs, made from an opened record
 function examSum(r) { const v = EX().readRecord(r); return { course: v.course, unit: v.unit, points: v.points, of: v.of, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, limit: v.limit, rule: v.rule, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, awaySec: v.awaySec, hasLog: !!v.log }; }
 function cleanSum(s) { if (!s || typeof s !== 'object') return null; const o = {}; ['unit', 'points', 'of', 'started', 'finished', 'seconds', 'opened', 'limit', 'unlocks', 'awayN', 'awaySec'].forEach(k => { o[k] = xtNum(s[k]); }); o.course = xtStr(s.course, 8) || ''; o.ended = ['left', 'teacher', 'time'].includes(s.ended) ? s.ended : null; o.rule = s.rule && typeof s.rule === 'object' ? { leave: xtStr(s.rule.leave, 8) || 'count', after: xtNum(s.rule.after) } : null; o.hasLog = !!s.hasLog; return o; }
 function cleanRec(e) {
   if (!e || typeof e !== 'object') return null;
-  return { got: xtStr(e.got, 30), src: e.src === 'file' ? 'file' : 'site', who: xtWhoOf(e.who, true), no: (Array.isArray(e.no) ? e.no : []).map(w => xtWhoOf(w)).filter(Boolean).slice(0, 20), nobody: !!e.nobody, was: xtWhoOf(e.was, true), sum: cleanSum(e.sum), ...(e.legacy ? { legacy: true } : {}) };
+  return { got: xtStr(e.got, 30), src: e.src === 'file' ? 'file' : 'site', who: xtWhoOf(e.who, true), no: (Array.isArray(e.no) ? e.no : []).map(w => xtWhoOf(w)).filter(Boolean).slice(0, 20), nobody: !!e.nobody, was: xtWhoOf(e.was, true), ...(xtWhoOf(e.gone, true) ? { gone: xtWhoOf(e.gone, true) } : {}), sum: cleanSum(e.sum), ...(e.legacy ? { legacy: true } : {}) };
 }
 // the shape this branch kept before the review (v1): sec.exams / state.exam.loose = {code: {r: the opened record, got, src, n, pin}}
 function cleanExamMap(o) { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) { const e = o[k]; if (XCODE.test(k) && e && typeof e === 'object' && e.r && typeof e.r === 'object' && !Array.isArray(e.r)) out[k] = e; } return out; }
@@ -6119,7 +6166,9 @@ function cleanExam(x) {
   x = x && typeof x === 'object' ? x : {};
   const site = typeof x.site === 'string' && /^https?:\/\/[^\s/?#]+$/.test(x.site) ? x.site : EXAM_SITE;
   const pairs = [...new Set((Array.isArray(x.pairs) ? x.pairs : []).filter(p => typeof p === 'string' && examPairOk(p)))];
-  const seen = new Set(); const sites = (Array.isArray(x.sites) ? x.sites : []).filter(s => s && typeof s.key === 'string' && /^[A-Za-z0-9_-]{87}$/.test(s.key) && !seen.has(s.key) && seen.add(s.key)).map(s => ({ key: s.key, made: xtNum(s.made), got: xtStr(s.got, 30) }));
+  const seen = new Set(); const sites = (Array.isArray(x.sites) ? x.sites : []).filter(s => s && typeof s.key === 'string' && /^[A-Za-z0-9_-]{87}$/.test(s.key) && !seen.has(s.key) && seen.add(s.key)).map(s => ({ key: s.key, made: xtNum(s.made), got: xtStr(s.got, 30), ...(xtStr(s.paired, 30) ? { paired: xtStr(s.paired, 30) } : {}) }));
+  // a save made before site keys carried "paired": the key its trial proved was paired (R2-H3)
+  if (x.trial && typeof x.trial.key === 'string') sites.forEach(s => { if (s.key === x.trial.key && !s.paired) s.paired = xtStr(x.trial.at, 30) || 'yes'; });
   const rows = (Array.isArray(x.rows) ? x.rows : []).filter(r => r && typeof r === 'object').map(r => ({ codes: (Array.isArray(r.codes) ? r.codes : []).filter(c => XCODE.test(c)).slice(0, 4), name: xtStr(r.name, 120) || '', line: xtNum(r.line) || 0, when: xtNum(r.when), at: xtStr(r.at, 40) || '', raw: xtStr(r.raw, 60) || '', email: !!r.email, got: xtStr(r.got, 30), who: xtWhoOf(r.who), how: ['exact', 'remembered', 'you'].includes(r.how) ? r.how : null, cands: (Array.isArray(r.cands) ? r.cands : []).map(w => xtWhoOf(w)).filter(Boolean).slice(0, 8), suggest: xtWhoOf(r.suggest), remember: xtWhoOf(r.remember) }));
   const fails = {}; if (x.fails && typeof x.fails === 'object') for (const k of Object.keys(x.fails)) { const f = x.fails[k]; if (XCODE.test(k) && f && ['none', 'format', 'key', 'signature', 'code', 'net'].includes(f.why)) fails[k] = { why: f.why, course: xtStr(f.course, 8), unit: xtNum(f.unit), at: xtStr(f.at, 30) }; }
   const strMap = (o, ok) => { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) if (SAFE_KEY(k) && ok(o[k])) out[k] = o[k]; return out; };
@@ -6127,7 +6176,8 @@ function cleanExam(x) {
   const locked = {}; if (x.locked && typeof x.locked === 'object') for (const k of Object.keys(x.locked)) if (XCODE.test(k) && typeof x.locked[k] === 'string' && /^[A-Za-z0-9_-]+$/.test(x.locked[k])) locked[k] = x.locked[k];
   const out = { v: 2, site, pairs, sites, trial: x.trial && typeof x.trial === 'object' && typeof x.trial.words === 'string' ? { code: xtStr(x.trial.code, 12), words: x.trial.words.slice(0, 60), at: xtStr(x.trial.at, 30), key: xtStr(x.trial.key, 90) } : null, warned: !!x.warned,
     recs, rows, fails, picks: strMap(x.picks, v => typeof v === 'string' && XCODE.test(v)), alias: strMap(x.alias, v => !!xtWhoOf(v)),
-    period: strMap(x.period, v => v && typeof v === 'object' && /^\d{1,2}:\d{2}$/.test(v.from) && /^\d{1,2}:\d{2}$/.test(v.to)), view: strMap(x.view, v => typeof v === 'string' && v.length < 20), dismissed: strMap(x.dismissed, v => typeof v === 'string') };
+    period: strMap(x.period, v => v && typeof v === 'object' && /^\d{1,2}:\d{2}$/.test(v.from) && /^\d{1,2}:\d{2}$/.test(v.to)), view: strMap(x.view, v => typeof v === 'string' && v.length < 20), dismissed: strMap(x.dismissed, v => typeof v === 'string'),
+    seen: Array.isArray(x.seen) ? x.seen.filter(v => typeof v === 'string' && v.length < 200).slice(0, 6000) : null, fromSave: xtStr(x.fromSave, 30) };
   if (Object.keys(locked).length) out.locked = locked;
   // v1 → v2: a record kept opened by the build before the review has no locked text to check again. It is kept (nothing is
   // lost), with its student, as "kept by an earlier Tally": never scored until it is fetched again and checks out.
@@ -6152,7 +6202,10 @@ function xtLocalAdd(k, v) { const o = xtLocal(); if (!o[k].includes(v)) o[k].pus
 // the key to paste: the newest key THIS Tally made; never one that only arrived in a file
 const examPub = () => { const mine = xtLocal().mine; const p = examPairs().filter(x => mine.includes(x.pub)); return p.length ? p[p.length - 1].pub : null; };
 const examForeign = () => { const mine = xtLocal().mine; return examPairs().filter(x => !mine.includes(x.pub)); };
-const examChecked = () => { const c = xtLocal().checked; return examS().sites.filter(s => c.includes(s.key)).map(s => s.key); };
+/* The site keys Tally trusts: one a trial proved in this browser, or one a trial proved on the Tally that made the Full save
+   opened here ("paired", carried in the save: his own data, the lost-laptop day; R2-H3). A key the site hands out that no
+   trial ever proved (a key made again, or a stranger's answer) is never trusted until a trial (review L6). */
+const examChecked = () => { const c = xtLocal().checked; return examS().sites.filter(s => s.paired || c.includes(s.key)).map(s => s.key); };
 // a Full save carries the keys, and opening one never takes a key away from this Tally: the keys here join the save's
 const examKeysNow = () => { const X = examS(); return { pairs: X.pairs.slice(), sites: X.sites.slice() }; };
 function examKeepKeys(k) { const X = examS(); k.pairs.forEach(p => { if (!X.pairs.includes(p)) X.pairs.unshift(p); }); k.sites.forEach(s => { if (!X.sites.some(x => x.key === s.key)) X.sites.unshift(s); }); }
@@ -6191,9 +6244,11 @@ async function examKeepLocked(code, text) {
   const X = examS(); X.locked = X.locked || {}; X.locked[code] = text; xtStoreMode = 'here';
 }
 // a Full save was opened: what this session opened and checked is forgotten, and the locked texts are loaded again
-function examReset() { xtVer.clear(); xtOpened.clear(); xtLocked.clear(); xtLockedReady = null; examLoadLocked(); }
+function examReset(saved) { if (saved) examS().fromSave = String(saved).slice(0, 30); xtGen++; xtLastUndo = null; xtVer.clear(); xtOpened.clear(); xtLocked.clear(); xtLockedReady = null; examLoadLocked(); }
 // what a Full save carries of Tests: everything, the locked texts included (so a Full save is still everything)
-function examForSave(ex) { const X = examS(); const locked = {}; for (const k of Object.keys(X.recs)) { const t = xtLocked.get(k) || (X.locked || {})[k]; if (t) locked[k] = t; } return { ...ex, locked }; }
+function examForSave(ex) { const X = examS(); const locked = {}; for (const k of Object.keys(X.recs)) { const t = xtLocked.get(k) || (X.locked || {})[k]; if (t) locked[k] = t; }
+  const c = xtLocal().checked, now = new Date().toISOString(); const sites = (ex.sites || []).map(k => !k.paired && c.includes(k.key) ? { ...k, paired: now } : k);   // the site keys a trial proved go with the save (R2-H3)
+  return { ...ex, sites, locked }; }
 
 /* ---------------------------------------------------------------- the network: two GETs, no name in either */
 async function examGet(path) {
@@ -6227,7 +6282,9 @@ async function examOpen(locked, code) {
 }
 
 /* ---------------------------------------------------------------- checking, every session */
-const xtOpened = new Map(), xtVer = new Map(); let xtVerJob = null;
+const xtOpened = new Map();
+const xtVer = new Map();
+let xtVerJob = null;
 // one record: open it again from its locked text and check the signature; its summary is made again from what opened
 async function examCheckOne(code) {
   const X = examS(), e = X.recs[code]; if (!e) return;
@@ -6251,10 +6308,14 @@ async function examPut(code, text, rec, checked, src) {
   const X = examS(); await examKeepLocked(code, text);
   const was = X.recs[code]; X.recs[code] = was ? { ...was, got: new Date().toISOString(), src, legacy: undefined } : { got: new Date().toISOString(), src, who: null, no: [], nobody: false, was: null, sum: null };
   if (X.recs[code].legacy === undefined) delete X.recs[code].legacy; if (X.legacy) delete X.legacy[code];
-  X.recs[code].sum = cleanSum(examSum(rec)); xtOpened.set(code, rec); xtVer.set(code, checked ? 'ok' : 'unchecked'); delete X.fails[code];
+  xtGen++; X.recs[code].sum = cleanSum(examSum(rec)); xtOpened.set(code, rec); xtVer.set(code, checked ? 'ok' : 'unchecked'); delete X.fails[code];
 }
 // the students of every class, for matching a typed name
-function examRoster() { const out = []; for (const k of state.order) { const s = state.sections[k]; if (!s || s.placeholder) continue; classStudents(s).forEach(n => out.push({ sec: k, n, display: n })); } return out; }
+// with each student's Focus Student ID where the roster or gradebook has one: a test is bound to that number (R2-C1)
+function examRoster() { const out = []; for (const k of state.order) { const s = state.sections[k]; if (!s || s.placeholder) continue; const ids = {};
+    try { cachedRows(s, 'all').forEach(r => { if (r.id && /^\d{4,20}$/.test(String(r.id))) ids[r.display] = String(r.id); }); const g = s.grades; if (g && Array.isArray(g.students) && Array.isArray(g.ids)) g.students.forEach((n, i) => { if (!ids[n] && g.ids[i] && /^\d{4,20}$/.test(String(g.ids[i]).trim())) ids[n] = String(g.ids[i]).trim(); }); } catch (e) {}
+    classStudents(s).forEach(n => out.push({ sec: k, n, display: n, id: ids[n] || '' })); } return out; }
+const xtKeyOf = w => w.sec + '\u0001' + w.n;
 /* A response row to a student: only when it is certainly theirs (examcore matchName: exact and unrivaled), or by what he
    answered before when that is still the only sensible reading (fresh rows only; older rows are offered it, never given it). */
 function examMatch(r, roster, fresh) {
@@ -6273,18 +6334,48 @@ function examMatch(r, roster, fresh) {
   }
 }
 /* Every record to the student it belongs to. The record's entry holds its student; rows only add a placement, never take one
-   away by being dropped. A student who left their class is found again by name in any class; if they are gone, the record
-   comes back as nobody's, with a line saying whose it had been (review C3, H2). */
+   away by being dropped (review C3, H2). A placement belongs to ONE CHILD, not to a name (Croix, R2-C1): it is bound to the
+   student's Focus Student ID where the roster has one. When the student is no longer on their class's roster, the test
+   follows them only when it is plainly the same child: the same ID in another class, or (no ID) a student of the same full
+   name who is NEW in another class in the same import, while no student of that name was anywhere before it. Otherwise it
+   goes back to "Nobody turned in" (gone: whose it had been, in which class) and stays there until he gives it to someone:
+   a response row typed with that name is never enough to put it on a namesake. */
 function examRefile() {
-  const X = examS(); const roster = examRoster(); const there = w => !!w && roster.some(x => x.sec === w.sec && x.n === w.n);
+  const X = examS(); const roster = examRoster(); const byKey = new Map(roster.map(x => [xtKeyOf(x), x]));
+  const there = w => { if (!w) return false; const x = byKey.get(xtKeyOf(w)); return !!x && !(w.id && x.id && w.id !== x.id); };
+  const before = X.seen ? new Set(X.seen) : null;
   X.rows.forEach(r => { if (r.who && !there(r.who)) { r.who = null; r.how = null; } if (!r.who) examMatch(r, roster, false); });
-  for (const code of Object.keys(X.recs)) { const e = X.recs[code]; if (!e.who || there(e.who)) continue;
-    const k = norm(e.who.n), hit = roster.filter(x => norm(x.n) === k); if (hit.length === 1) e.who = { ...e.who, sec: hit[0].sec, n: hit[0].n }; else { e.was = e.who; e.who = null; } }
-  const P = EX().placeAll(X.rows, Object.keys(X.recs).map(code => ({ code, who: X.recs[code].who, no: X.recs[code].no, nobody: X.recs[code].nobody })));
+  for (const code of Object.keys(X.recs)) { const e = X.recs[code]; if (!e.who) continue;
+    if (there(e.who)) { const x = byKey.get(xtKeyOf(e.who)); if (x.id && !e.who.id) e.who = { ...e.who, id: x.id }; continue; }
+    let to = null;
+    // by the same Student ID, and a name that shares a word with the one it had (an ID on a different name is not trusted)
+    if (e.who.id && roster.some(x => x.id)) { const h = roster.filter(x => x.id === e.who.id); const w0 = new Set(norm(e.who.n).split(' ')); if (h.length === 1 && norm(h[0].n).split(' ').some(w => w.length > 1 && w0.has(w))) to = h[0]; }
+    else if (before) { const k = norm(e.who.n); const h = roster.filter(x => norm(x.n) === k); const had = [...before].filter(b => norm(b.slice(b.indexOf('\u0001') + 1)) === k && b !== xtKeyOf(e.who));
+      if (h.length === 1 && !before.has(xtKeyOf(h[0])) && !had.length) to = h[0]; }
+    if (to) e.who = { ...e.who, sec: to.sec, n: to.n, ...(to.id ? { id: to.id } : {}) };
+    else { const sec = state.sections[e.who.sec]; e.gone = { ...e.who, cl: sec ? labShort(sec.label) : (e.who.cl || '') }; e.was = e.who; e.who = null; } }
+  const P = EX().placeAll(X.rows, xtEntries());
   for (const code of Object.keys(X.recs)) { const e = X.recs[code], to = P.place[code];
-    if (to && (!e.who || e.who.sec !== to.sec || e.who.n !== to.n)) { const row = X.rows.find(r => r.codes.includes(code) && r.who && r.who.sec === to.sec && r.who.n === to.n); e.who = { sec: to.sec, n: to.n, how: row && row.how ? row.how : 'exact', at: new Date().toISOString() }; e.was = null; }
+    if (to && (!e.who || e.who.sec !== to.sec || e.who.n !== to.n)) { const row = X.rows.find(r => r.codes.includes(code) && r.who && r.who.sec === to.sec && r.who.n === to.n); const x = byKey.get(xtKeyOf(to)); e.who = { sec: to.sec, n: to.n, ...(x && x.id ? { id: x.id } : {}), how: row && row.how ? row.how : 'exact', at: new Date().toISOString() }; e.was = null; }
     else if (!to && e.who && e.who.how !== 'you') { e.was = e.who; e.who = null; } }
+  X.seen = roster.map(xtKeyOf);
   return P;
+}
+const xtEntries = () => { const X = examS(); return Object.keys(X.recs).map(code => { const e = X.recs[code]; return { code, who: e.who, no: e.no, nobody: e.nobody, gone: e.gone }; }); };
+/* WHERE EACH TEST IS (R2-C2: nothing is ever in limbo). Every test Tally holds is in exactly one place:
+     'row'     on its student's row (placed; checked this session, or being checked)
+     'waiting' in "Waiting for you": two students claim it, a name Tally isn't sure of, a test taken off a student and not
+               given to anyone, or one that can't be scored as it is (its locked copy missing, not checked, failed its check)
+     'nobody'  in "Nobody turned in"
+   The count line, the class rows and both lists are all drawn from this. → {at: {code: {where, why, st}}, row, waiting, nobody} */
+const XBAD = ['missing', 'legacy', 'unchecked', 'signature', 'key', 'format', 'code', 'nocrypto'];
+function xtLedger() {
+  const X = examS(); const P = EX().placeAll(X.rows, xtEntries()); const out = { at: {}, row: [], waiting: [], nobody: [], P };
+  for (const code of Object.keys(X.recs)) { const e = X.recs[code], st = P.state[code], v = xtVer.get(code);
+    const where = XBAD.includes(v) ? 'waiting' : !e.sum ? 'waiting' : st === 'placed' ? 'row' : st === 'nobody' ? 'nobody' : 'waiting';
+    const why = XBAD.includes(v) ? v : !e.sum ? 'wait' : where === 'waiting' ? (st === 'shared' ? 'shared' : 'who') : st;
+    out.at[code] = { where, why, st, to: P.place[code] || null }; out[where].push(code); }
+  return out;
 }
 /* A pasted or opened response sheet → rows kept (a row seen before is not added twice), matched, fetched. Rows are history:
    when there are very many, only rows whose test is placed or nobody's and that are over 2,000 rows old are let go. */
@@ -6295,7 +6386,7 @@ function examTakeSheet(text, from, o) {
   const have = new Set(X.rows.map(key)); const roster = examRoster(); let added = 0;
   for (const r of got.rows) { if (have.has(key(r))) continue; have.add(key(r)); const row = { codes: r.codes, name: r.name, line: r.line, when: r.when, at: r.at, raw: r.raw, email: !!r.email, got: now, who: null, how: null, cands: [], suggest: null, remember: null }; examMatch(row, roster, true); X.rows.push(row); added++; }
   if (X.rows.length > 6000) { const keep = new Set(); X.rows.slice(-2000).forEach(r => keep.add(r)); X.rows.forEach(r => { if (!r.who && r.codes.some(c => !X.recs[c] || !X.recs[c].who)) keep.add(r); }); X.rows = X.rows.filter(r => keep.has(r)); }
-  examRefile(); save();
+  if (added) xtGen++; examRefile(); save();
   const codes = [...new Set(got.rows.flatMap(r => r.codes))];
   return { ok: true, rows: got.rows.length, added, codes, cols: got.cols, alts: got.alts, header: got.header, from };
 }
@@ -6307,7 +6398,7 @@ async function examFetch(codes, again) {
   if (!examCan()) { toast('This browser can\'t open test records here. Open Tally on your laptop in Chrome or Edge.', true, 7000); return; }
   if (!examPairs().length) { toast('Connect Tally first: it needs its key to open a test.', true); return; }
   if (examJob && examJob.running) return;
-  const X = examS(); const todo = codes.filter(c => (!X.recs[c] || X.recs[c].legacy) && (again || !X.fails[c] || X.fails[c].why === 'net'));
+  const X = examS(); const todo = codes.filter(c => (!X.recs[c] || X.recs[c].legacy || xtVer.get(c) === 'missing') && (again || !X.fails[c] || X.fails[c].why === 'net'));
   if (!todo.length) { render(); return; }
   if (!X.sites.length) { const k = await examSiteKey(); if (!k.ok) { toast(`Tally couldn't reach ${esc(X.site)} for the site's key. Check the network and try again.`, true, 7000); return; } }
   examJob = { total: todo.length, done: 0, net: 0, running: true }; examKeyAsk = null; xtProgress();
@@ -6366,7 +6457,7 @@ async function examTrial(text) {
   if (!sk) { let why = null; try { await examOpen(r.j.record, code); } catch (e) { why = e.why; } say(why === 'key' ? 'This trial is locked to another key: the key in the cockpit is not this Tally\'s. Copy the key above and paste it into the cockpit again.' : 'The trial opened, but the site did not sign it with its key. Do not use this pairing: check the site\'s address under Connection.', true); return; }
   if (!rec || rec.trial !== true || typeof rec.nonce !== 'string') { say('That code is a student\'s test, not the cockpit\'s trial. Enter the trial code the cockpit shows next to Tally\'s key.', true); return; }
   const w = await S.words(rec.nonce, sk, tp);
-  xtLocalAdd('checked', sk); xtVer.forEach((v, c) => { if (v !== 'ok') xtVer.delete(c); });   // records waiting on this key are checked again
+  xtLocalAdd('checked', sk); { const se = examS().sites.find(x => x.key === sk); if (se) se.paired = new Date().toISOString(); } xtVer.forEach((v, c) => { if (v !== 'ok') xtVer.delete(c); });   // records waiting on this key are checked again
   examS().trial = { code, words: w, at: new Date().toISOString(), key: sk }; save(); render(); examVerifyAll();
   const ws = $('.xtWords'); if (ws) ws.scrollIntoView({ block: 'center' });
 }
@@ -6397,7 +6488,7 @@ function xtHint(r, all) {
   const u = me.sum; let best = null;
   for (const sec of new Set(r.cands.map(c => c.sec))) {
     const theirs = all.filter(x => x.sec === sec && x.code !== code && x.e.sum && xtOk(x.code) && x.e.sum.course === u.course && x.e.sum.unit === u.unit && x.e.sum.started != null);
-    if (!theirs.length) continue;
+    if (!theirs.length) return null;   // a class with nothing placed yet can't be ruled out (R2-L3)
     const same = u.opened != null && theirs.filter(x => x.e.sum.opened === u.opened).length >= Math.max(1, theirs.length / 2);
     const lo = Math.min(...theirs.map(x => x.e.sum.started)), hi = Math.max(...theirs.map(x => x.e.sum.started));
     if ((same && u.started != null && u.started >= lo - 30 * 60000 && u.started <= hi + 30 * 60000) || (u.opened == null && u.started >= lo - 15 * 60000 && u.started <= hi + 15 * 60000)) { if (best) return null; best = sec; }
@@ -6405,21 +6496,20 @@ function xtHint(r, all) {
   return best ? { sec: best, text: 'started ' + EX().hm(u.started) + ' with ' + labShort(state.sections[best].label) + '\'s tests' } : null;
 }
 // what one class shows for one test: a row per student (Focus order), the records, the flags
-function xtModel(s, t) {
-  const X = examS(); const C = EX(); const all = examAll();
-  const recs = all.filter(x => x.e.sum).map(x => { const u = x.e.sum; return { code: x.code, course: u.course, unit: u.unit, started: u.started, finished: u.finished, seconds: u.seconds, opened: u.opened, ended: u.ended, limit: u.limit, rule: u.rule, after: u.rule && u.rule.after, unlocks: u.unlocks, awayN: u.awayN, points: u.points, of: u.of, sec: x.sec, n: x.n, how: x.e.who && x.e.who.how, no: x.e.no, nobody: x.e.nobody, was: x.e.was, ok: xtOk(x.code) }; });
+function xtModel(s, t, L) {
+  const X = examS(); const C = EX(); const all = examAll(); L = L || xtLedger(); const atRow = c => L.at[c] && L.at[c].where === 'row';
+  const recs = all.filter(x => x.e.sum).map(x => { const u = x.e.sum; return { code: x.code, course: u.course, unit: u.unit, started: u.started, finished: u.finished, seconds: u.seconds, opened: u.opened, ended: u.ended, limit: u.limit, rule: u.rule, after: u.rule && u.rule.after, unlocks: u.unlocks, awayN: u.awayN, points: u.points, of: u.of, sec: x.sec, n: x.n, how: x.e.who && x.e.who.how, no: x.e.no, nobody: x.e.nobody, was: x.e.was, gone: x.e.gone, ok: xtOk(x.code) }; });
   // rows as the flags see them: with what Tally knows of where an unplaced test was sat, and the remembered answer offered
   const rows = X.rows.map(r => { if (r.who || !r.codes.length) return r; const h = xtHint(r, all); if (!h) return r; const cands = r.cands.slice().sort((p, q) => (q.sec === h.sec) - (p.sec === h.sec)); return { ...r, hint: h.text, cands, suggest: r.suggest && r.suggest.sec === h.sec ? r.suggest : r.suggest }; });
   const fl = C.flags({ sec: s.key, prep: s.prep, course: t.course, unit: t.unit, period: X.period[s.key] || null, rows, recs, fails: X.fails, picks: X.picks, known: all.filter(x => !x.sec).map(x => x.code), show: shown, hideText: !!state.settings.hideNames }).filter(f => !X.dismissed[f.id]);
   const studs = classStudents(s); const here = x => x.e.sum && x.e.sum.course === t.course && x.e.sum.unit === t.unit;
-  const rowsOut = studs.map((n, i) => { const mine = all.filter(x => x.sec === s.key && x.n === n && here(x)).map(x => ({ code: x.code, e: x.e, ok: xtOk(x.code) }));
+  const rowsOut = studs.map((n, i) => { const mine = all.filter(x => x.sec === s.key && x.n === n && here(x) && atRow(x.code)).map(x => ({ code: x.code, e: x.e, ok: xtOk(x.code) })); const held = all.filter(x => x.sec === s.key && x.n === n && here(x) && !atRow(x.code)).map(x => x.code);
     const okd = mine.filter(x => x.ok); const pk = X.picks[s.key + '|' + n + '|' + t.key]; const use = okd.length === 1 && mine.length === 1 ? okd[0] : okd.find(x => x.code === pk) || null;
-    return { i, n, mine, use, v: use ? xtV(use.e.sum) : null, flags: fl.filter(f => (f.names || []).includes(n)) }; });
-  return { rows: rowsOut, flags: fl, recs, rowsSeen: rows };
+    return { i, n, mine, held, use, v: use ? xtV(use.e.sum) : null, flags: fl.filter(f => (f.names || []).includes(n)) }; });
+  return { rows: rowsOut, flags: fl, recs, rowsSeen: rows, L };
 }
 // the count that must always add up (Croix: "placed + waiting for you + nobody turned in = records held")
-function xtCounts() { const X = examS(); const P = EX().placeAll(X.rows, Object.keys(X.recs).map(code => ({ code, who: X.recs[code].who, no: X.recs[code].no, nobody: X.recs[code].nobody })));
-  const n = { held: Object.keys(X.recs).length, placed: 0, waiting: 0, nobody: 0, unchecked: 0 }; Object.keys(X.recs).forEach(c => { const st = P.state[c]; if (st === 'placed') n.placed++; else if (st === 'nobody') n.nobody++; else n.waiting++; if (!xtOk(c)) n.unchecked++; }); return n; }
+function xtCounts(L) { L = L || xtLedger(); const n = { held: Object.keys(examS().recs).length, placed: L.row.length, waiting: L.waiting.length, nobody: L.nobody.length }; return n; }
 const xtVerdict = (v, almost) => almost ? '<span class="xtV almost">Almost</span>' : v === 'right' ? '<span class="xtV right">Right</span>' : v === 'wrong' ? '<span class="xtV wrong">Not right</span>' : v === 'blank' ? '<span class="xtV blank">Blank</span>' : v === 'some' ? '<span class="xtV some">Part right</span>' : '<span class="xtV unread">Can\'t read</span>';
 const xtWhen = ms => { if (ms == null) return ''; const d = new Date(ms); return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + EX().hm(ms); };
 const xtPct = (p, of) => p != null && of ? Math.round(p / of * 100) : null;
@@ -6427,7 +6517,7 @@ function xtStatusHtml() {
   const X = examS(); const P = examPairs(); const host = (() => { try { return new URL(X.site).host; } catch (e) { return X.site; } })();
   if (!examCan()) return `<div class="notice info xtCan"><span>${ico('info')}</span><span><b>This browser can't open test records here.</b> It has no Web Crypto in this window (a file opened from a tablet's file manager is one such place). The tests Tally has already opened are below; to connect or to fetch new ones, open Tally on your laptop in Chrome or Edge.</span></div>`;
   const state1 = !P.length ? 'off' : !X.sites.length ? 'half' : 'on';
-  return `<div class="xtConn ${state1}" role="status"><i aria-hidden="true"></i><span>${state1 === 'on' ? `<b>Connected</b> to ${esc(host)}${!examChecked().length ? ' · <em>this Tally hasn\'t checked the site\'s key yet: enter a trial code</em>' : examKeyUnchecked() ? ' · <em>the site\'s key changed: check it with a new trial code</em>' : X.trial ? ` · pairing checked ${esc(fmtDate(localDay(X.trial.at)))}` : ' · <em>pairing not checked yet</em>'}` : state1 === 'half' ? `<b>Not connected yet:</b> Tally has its key but not ${esc(host)}'s` : `<b>Not connected</b> to ${esc(host)}`}</span><button class="linkbtn" id="xtConnBtn">${state1 === 'on' ? 'Connection' : 'Connect'}</button></div>`;
+  return `<div class="xtConn ${state1}" role="status"><i aria-hidden="true"></i><span>${state1 === 'on' ? `<b>Connected</b> to ${esc(host)}${!examPub() && examForeign().length && examChecked().length && !examKeyUnchecked() ? ` (from your Full save${X.fromSave ? ' of ' + esc(fmtDate(localDay(X.fromSave))) : ''})` : !examChecked().length ? ' · <em>this Tally hasn\'t checked the site\'s key yet: enter a trial code</em>' : examKeyUnchecked() ? ' · <em>the site\'s key changed: check it with a new trial code</em>' : X.trial ? ` · pairing checked ${esc(fmtDate(localDay(X.trial.at)))}` : ' · <em>pairing not checked yet</em>'}` : state1 === 'half' ? `<b>Not connected yet:</b> Tally has its key but not ${esc(host)}'s` : `<b>Not connected</b> to ${esc(host)}`}</span><button class="linkbtn" id="xtConnBtn">${state1 === 'on' ? 'Connection' : 'Connect'}</button></div>`;
 }
 function renderTests(s) {
   const X = examS();
@@ -6435,7 +6525,7 @@ function renderTests(s) {
   const wrap = $('#gridwrap'); examRefile();
   if (Object.keys(X.recs).some(c => !xtVer.has(c))) examVerifyAll();
   if (view.code) return renderTestDetail(s, view.code);
-  const { t, list } = xtCurrent(s); const M = xtModel(s, t); const C = EX(); const H = !!state.settings.hideNames;
+  const { t, list } = xtCurrent(s); const L = xtLedger(); const M = xtModel(s, t, L); const C = EX(); const H = !!state.settings.hideNames;
   const got = M.rows.filter(r => r.use), pts = got.map(r => xtPct(r.v.points, r.v.of)).filter(v => v != null).sort((a, b) => a - b);
   const mean = pts.length ? Math.round(pts.reduce((a, b) => a + b, 0) / pts.length) : null, med = pts.length ? (pts.length % 2 ? pts[(pts.length - 1) / 2] : Math.round((pts[pts.length / 2 - 1] + pts[pts.length / 2]) / 2)) : null;
   const left = got.filter(r => r.v.away.length).length, times = got.map(r => r.v.seconds).filter(v => v != null).sort((a, b) => a - b);
@@ -6450,7 +6540,7 @@ function renderTests(s) {
   const flagChip = f => `<span class="xtChip ${f.level}">${esc(CHIP[f.kind] || f.kind)}</span>`;
   const HOW = { exact: '', remembered: 'remembered', you: 'given by you' };
   const row = r => { const v = r.v;
-    if (!r.use) { const f = r.flags; const wait = r.mine.filter(x => !x.ok); return `<tr class="none"><td class="xtNo">${r.i + 1}</td><td class="stu"><button class="nm nmbtn" data-prof="${esc(r.n)}">${esc(shown(r.n))}</button></td><td colspan="4" class="xtMissing">${r.mine.filter(x => x.ok).length > 1 ? `${r.mine.length} tests: choose the one that counts` : wait.length ? (xtVerJob ? 'Checking its test…' : 'A test that can\'t be shown: see above') : f.length ? 'See what to look at, above' : 'No test turned in'}</td><td>${f.map(flagChip).join('')}</td></tr>`; }
+    if (!r.use) { const f = r.flags; const wait = r.mine.filter(x => !x.ok); return `<tr class="none"><td class="xtNo">${r.i + 1}</td><td class="stu"><button class="nm nmbtn" data-prof="${esc(r.n)}">${esc(shown(r.n))}</button></td><td colspan="4" class="xtMissing">${r.mine.filter(x => x.ok).length > 1 ? `${r.mine.length} tests: choose the one that counts` : wait.length ? 'Checking its test…' : r.held.length ? 'Its test is waiting for you: see <a href="#xtWaiting">Waiting for you</a>, below' : f.length ? 'See what to look at, above' : 'No test turned in'}</td><td>${f.map(flagChip).join('')}</td></tr>`; }
     const pc = xtPct(v.points, v.of); const how = r.use.e.who && HOW[r.use.e.who.how];
     return `<tr data-xcode="${r.use.code}" tabindex="0" title="Open ${esc(shown(r.n))}'s test"><td class="xtNo">${r.i + 1}</td><td class="stu"><span class="nm">${esc(shown(r.n))}</span>${how ? `<small class="xtHow">${esc(how)}</small>` : ''}</td>
       <td class="xtScore"><b>${v.points ?? '?'}</b><small>/ ${v.of ?? '?'}</small><span class="xtBar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, pc ?? 0))}%"></i></span><em>${pc == null ? '' : pc + '%'}</em></td>
@@ -6473,14 +6563,10 @@ function renderTests(s) {
   const empty = !list.length && !X.rows.length;
   const more = view.xflags ? warns.length : Math.min(warns.length, warns.length > 4 ? 3 : 4);
   const title = list.length > 1 ? `<label class="xtTitle xtTitleSel"><span class="vh">Test</span><select id="xtPick">${list.map(x => `<option value="${esc(x.key)}" ${x.key === t.key ? 'selected' : ''}>${esc(C.testName(x.course, x.unit))}</option>`).join('')}</select></label>` : `<h2 class="xtTitle">${list.length ? esc(C.testName(t.course, t.unit)) : 'Tests'}</h2>`;
-  // records of this class that can't be shown: not checked this session, or failed their check
-  const odd = examAll().filter(x => x.sec === s.key && xtVer.has(x.code) && !xtOk(x.code)).map(x => ({ x, why: xtVer.get(x.code) }));
-  const ODD = { nocrypto: 'this browser can\'t check test records here (no Web Crypto); open Tally on your laptop in Chrome or Edge', unchecked: 'signed by a site key this Tally hasn\'t checked (a key the site has since replaced, or one a trial hasn\'t proved here): a trial code under Connection proves the site\'s current key', legacy: 'kept by an earlier build of Tally, which kept no locked copy: fetch it again', missing: 'its locked copy is missing: fetch it again', signature: 'failed its check: the site did not sign what is stored (a changed Full save?); never scored', key: 'locked to a key this Tally doesn\'t have', format: 'what is stored is not a test record', code: 'what is stored answers to another code', wait: 'not checked yet' };
-  const oddHtml = odd.length ? `<section class="xtFlags info xtOdd"><ul>${Object.entries(odd.reduce((g, o) => { (g[o.why] = g[o.why] || []).push(o.x); return g; }, {})).map(([why, l]) => `<li class="info"><span class="xtFi">${ico('info')}</span><div><b>${plural(l.length, 'test')} here can't be shown: ${esc(ODD[why] || why)}.</b><p>${l.map(x => esc(shown(x.n || '')) + ' (' + esc(SEALX().showCode(x.code)) + ')').join(', ')}</p></div><div class="xtAct">${['legacy', 'missing'].includes(why) && examCan() ? `<button class="pill small pale" data-xrefetch="${l.map(x => x.code).join(',')}">Fetch again</button>` : why === 'unchecked' ? '<button class="pill small pale" data-xconn="1">Connection</button>' : ''}</div></li>`).join('')}</ul></section>` : '';
-  const cnt = xtCounts();
+  const cnt = xtCounts(L);
   const alias = Object.entries(X.alias), dism = Object.entries(X.dismissed);
   const quiet = alias.length || dism.length ? `<details class="xtQuiet" ${view.xquiet ? 'open' : ''}><summary>What Tally remembers (${alias.length}) · dismissed (${dism.length})</summary><div class="xtQuietBody">
-      ${alias.length ? `<h4>Names you answered</h4><ul>${alias.map(([k, w]) => `<li><span>“${esc(H ? mask(k) : k)}” is ${esc(shown(w.n))}${state.sections[w.sec] ? ` <small>${esc(labShort(state.sections[w.sec].label))}</small>` : ''}${w.at ? ` <small>since ${esc(fmtDate(localDay(w.at)))}</small>` : ''}</span><button class="linkbtn" data-xforget="${esc(k)}">Forget</button></li>`).join('')}</ul><p class="ghint">Tally uses an answer only when the same words could mean nobody else; otherwise it asks, with this student first.</p>` : ''}
+      ${alias.length ? `<h4>Names you answered</h4><ul>${alias.map(([k, w], ai) => `<li><span>“${esc(H ? mask(k) : k)}” is ${esc(shown(w.n))}${state.sections[w.sec] ? ` <small>${esc(labShort(state.sections[w.sec].label))}</small>` : ''}${w.at ? ` <small>since ${esc(fmtDate(localDay(w.at)))}</small>` : ''}</span><button class="linkbtn" data-xforget="${ai}">Forget</button></li>`).join('')}</ul><p class="ghint">Tally uses an answer only when the same words could mean nobody else; otherwise it asks, with this student first.</p>` : ''}
       ${dism.length ? `<h4>Dismissed</h4><ul>${dism.map(([id, at]) => `<li><span>${esc(xtDismissText(id))} <small>${esc(fmtDate(localDay(at)))}</small></span><button class="linkbtn" data-xundis="${esc(id)}">Bring back</button></li>`).join('')}</ul>` : ''}</div></details>` : '';
   wrap.innerHTML = `<div class="grades xt">
     <div class="xtTop">${title}<div class="xtTopR">${xtStatusHtml()}${list.length ? `<button class="linkbtn xtPerBtn" id="xtPeriod" title="When this class meets: a test started or finished outside it is flagged">${per ? `Period ${esc(xtHp(per.from))}–${esc(xtHp(per.to))}` : 'Set the period\'s times'}</button>` : ''}</div></div>
@@ -6493,15 +6579,39 @@ function renderTests(s) {
       ${fact('Left the test', String(left), left ? `${plural(left, 'student')}, ${got.reduce((a, r) => a + r.v.away.length, 0)} times in all` : 'nobody', left ? 'warnish' : '')}
     </div>
     ${warns.length ? `<section class="xtFlags" aria-label="What doesn't add up"><h3>${plural(warns.length, 'thing')} to look at</h3><ul>${warns.slice(0, more).map(flagRow).join('')}</ul>${warns.length > more ? `<button class="linkbtn xtMoreFlags" id="xtMoreFlags">${warns.length - more} more</button>` : view.xflags && warns.length > 4 ? '<button class="linkbtn xtMoreFlags" id="xtMoreFlags">Show fewer</button>' : ''}</section>` : ''}
-    ${oddHtml}
     <section class="gsec xtTable"><table class="checkTable xtList"><thead><tr><th class="xtNo">#</th>${th('name', 'Student')}${th('score', 'Score')}${th('time', 'Time', 'num')}${th('away', 'Away', 'num')}${th('done', 'Finished')}<th>Flags</th></tr></thead><tbody>${rows.map(row).join('')}</tbody></table>
       <p class="ghint xtHonest">Score, time and finish are the site's own, checked with its signature when Tally opened them today. Away, and everything else a test shows about the sitting, is what the student's device reported: evidence, not proof.</p></section>
     ${infos.length ? `<section class="xtFlags info"><ul>${infos.map(flagRow).join('')}</ul></section>` : ''}`}
-    <p class="xtCount" id="xtCount">All classes: ${plural(cnt.held, 'test')} held = ${cnt.placed} with a student + ${cnt.waiting} waiting for you + ${cnt.nobody} nobody turned in${cnt.unchecked ? ` · ${cnt.unchecked} of them not shown (see above)` : ''}.</p>
+    ${xtLedgerHtml(L)}
+    <p class="xtCount" id="xtCount">All classes: ${plural(cnt.held, 'test')} held = ${cnt.placed} with a student + ${cnt.waiting} waiting for you + ${cnt.nobody} nobody turned in.</p>
     ${quiet}
   </div>`;
   xtWire(s, t, M);
   if (examJob && examJob.running) xtProgress(); else if (xtVerJob) xtProgressCheck(0, Object.keys(X.recs).filter(c => !xtVer.has(c)).length);
+}
+/* "Waiting for you" and "Nobody turned in": every test held that is not on a student's row, from every class and every test,
+   each with what can be done about it. Neither list can be dismissed: a test leaves it only by being placed. */
+const XWHY = { shared: 'Two students turned in this code', who: 'Tally isn\'t sure whose this is', missing: 'Its locked copy is missing from this browser: fetch it again', legacy: 'Kept by an earlier build of Tally without its locked copy: fetch it again',
+  unchecked: 'Signed by a site key this Tally hasn\'t checked: a trial code under Connection proves it', signature: 'What is stored was not signed by the site (a changed Full save?): never scored', key: 'Locked to a key this Tally doesn\'t have',
+  format: 'What is stored is not a test record', code: 'What is stored answers to another code', nocrypto: 'This browser can\'t check test records here: open Tally on your laptop in Chrome or Edge', wait: 'Being checked' };
+function xtLedgerHtml(L) {
+  const X = examS(); const C = EX(); if (!L.waiting.length && !L.nobody.length) return '';
+  const sumOf = code => { const e = X.recs[code], u = e && e.sum; return u && xtOk(code) ? `${u.points} / ${u.of}, taken ${C.hm(u.started)}–${C.hm(u.finished)}` : ''; };
+  const testOf = code => { const u = X.recs[code] && X.recs[code].sum; return u && u.course ? C.testName(u.course, u.unit) : 'A test'; };
+  const rowsOf = code => X.rows.filter(r => r.codes.includes(code));
+  const item = (code, body, btns) => `<li data-xled="${code}"><div><b>${esc(testOf(code))}</b> · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${sumOf(code) ? ` · ${esc(sumOf(code))}` : ''}<p>${body}</p></div><div class="xtAct">${btns}</div></li>`;
+  const W = L.waiting.map(code => { const a = L.at[code], e = X.recs[code], rs = rowsOf(code); const who = e.who ? ` It is ${esc(shown(e.who.n))}'s.` : '';
+    const typed = rs.length ? ` Turned in as ${rs.map(r => `<b>${esc(shown(r.who ? r.who.n : r.name || 'no name'))}</b> (row ${r.line})`).join(' and ')}.` : '';
+    const not = (e.no || []).length ? ` Not ${e.no.map(w => esc(shown(w.n))).join(' or ')}'s (you said so).` : '';
+    const gone = X.fails[code] && X.fails[code].why === 'none' && ['missing', 'legacy'].includes(a.why) ? ` <b>The site no longer has it</b> (asked ${esc(fmtDate(localDay(X.fails[code].at)))}): the score is still in the cockpit's results for that day.` : '';
+    const btn = ['missing', 'legacy'].includes(a.why) && examCan() ? `<button class="pill small" data-xrefetch="${code}">Fetch again</button>` : a.why === 'unchecked' ? '<button class="pill small pale" data-xconn="1">Connection</button>'
+      : a.why === 'shared' ? `<button class="pill small" data-xshare="${code}">Say whose it is</button>` : a.why === 'who' ? `<button class="pill small" data-xgive="${code}">Give it to a student</button><button class="pill small pale" data-xnobody="${code}">Nobody yet</button>` : '';
+    return item(code, `${esc(XWHY[a.why] || a.why)}.${a.why === 'who' || a.why === 'shared' ? typed + not : who}${gone}`, btn); });
+  const N = L.nobody.map(code => { const e = X.recs[code]; const g = e.gone;
+    return item(code, g ? `It had been ${g.how === 'you' ? 'given to' : 'with'} ${esc(shown(g.n))}${g.cl ? ` (${esc(g.cl)})` : ''}, who is no longer on that roster.` : e.nobody ? 'You said nobody yet.' : 'Nobody turned this code in.', `${xtOk(code) ? `<button class="pill small pale" data-xcode="${code}">Open</button>` : ''}<button class="pill small" data-xgive="${code}">Give it to a student</button>`); });
+  const again = L.waiting.filter(c => ['missing', 'legacy'].includes(L.at[c].why));
+  return `${W.length ? `<section class="xtLedger" id="xtWaiting" aria-label="Waiting for you"><h3>Waiting for you <span>${W.length}</span></h3><p class="ghint">Tests that are on nobody's row yet, from every class. Each counts for nobody until you say.${again.length > 1 && examCan() ? ` <button class="pill small" data-xrefetch="${again.join(',')}">Fetch all ${again.length} again</button>` : ''}</p><ul>${W.join('')}</ul></section>` : ''}
+    ${N.length ? `<details class="xtLedger" id="xtNobody" ${view.xnobody === false ? '' : 'open'}><summary><h3>Nobody turned in <span>${N.length}</span></h3></summary><ul>${N.join('')}</ul></details>` : ''}`;
 }
 const xtHp = x => { const m = /^(\d{1,2}):(\d{2})$/.exec(x || ''); if (!m) return x; const h = +m[1]; return (h % 12 || 12) + ':' + m[2] + (h < 12 ? ' am' : ' pm'); };
 // a dismissed flag, in words, from its id (kind|code|names|row)
@@ -6512,10 +6622,12 @@ let xtQuota = null;
 function xtStoreLine() {
   if (navigator.storage && navigator.storage.estimate && !xtQuota) { xtQuota = { pending: true }; navigator.storage.estimate().then(q => { xtQuota = q || {}; if (view.mode === 'tests' && q && q.quota && q.usage / q.quota >= 0.7) render(); }).catch(() => { xtQuota = {}; }); }
   const u = storageUse(); const q = xtQuota && xtQuota.quota ? xtQuota : null;
-  const lsPct = u.pct, idbPct = q ? Math.round(q.usage / q.quota * 100) : 0;
-  if (lsPct < 70 && idbPct < 70) return '';
+  const lsPct = u.pct, idbPct = q ? Math.round(q.usage / q.quota * 100) : 0; const here = xtStoreMode === 'here' && Object.keys(examS().recs).length > 0;
+  const only = here ? `<div class="notice info xtStore" role="status"><span>${ico('info')}</span><span><b>This browser gives Tally no separate place for test records</b> (no IndexedDB here), so your tests are kept only in Tally's own storage in this browser, which also holds everything else. <b>Your Full save is the only other copy:</b> make one after every batch of tests.</span><button class="pill small pale" id="xtStoreSave">Full save</button></div>` : '';
+  if (lsPct < (here ? 40 : 70) && idbPct < 70) return only;
   const tests = (() => { try { return JSON.stringify(examS()).length; } catch (e) { return 0; } })();
-  return `<div class="notice xtStore" role="status"><span>${ico('warn')}</span><span><b>${lsPct >= 70 ? `This browser's room for Tally is ${lsPct}% full` : `This browser's room for test records is ${idbPct}% full`}</b> (${lsPct >= 70 ? `${u.mb(u.total)} of about ${u.mb(u.quota)} MB; Tests is ${u.mb(tests)} MB of it` : `${(q.usage / 1048576).toFixed(1)} of ${(q.quota / 1048576).toFixed(0)} MB`}). Make a Full save now and keep it in your school Drive: it holds everything. When the room is full, Tally can't save new work in this browser.</span><button class="pill small" id="xtStoreSave">Full save</button></div>`;
+  const lsW = lsPct >= (here ? 40 : 70);
+  return `<div class="notice xtStore" role="status"><span>${ico('warn')}</span><span><b>${lsW ? `This browser's room for Tally is ${lsPct}% full` : `This browser's room for test records is ${idbPct}% full`}</b> (${lsW ? `${u.mb(u.total)} of about ${u.mb(u.quota)} MB; Tests is ${u.mb(tests)} MB of it` : `${(q.usage / 1048576).toFixed(1)} of ${(q.quota / 1048576).toFixed(0)} MB`}). Make a Full save now and keep it in your school Drive: it holds everything. When the room is full, Tally can't save new work in this browser.${here ? ' Tests are kept only here and in your Full saves.' : ''}</span><button class="pill small" id="xtStoreSave">Full save</button></div>`;
 }
 function testsBarHtml(s) {
   if (view.code) { const h = examHeld(view.code); const u = h && h.e.sum; return `<div class="crumb"><button id="xtBack">‹ Tests</button><h2>${u ? esc(EX().testName(u.course, u.unit)) : 'Tests'}</h2></div>`; }
@@ -6541,12 +6653,14 @@ function xtWire(s, t, M) {
   on('[data-xnot]', b => xtNotTheirs(s, b.dataset.xnot));
   on('[data-xtwice]', b => xtTwice(s, t, b.dataset.xtwice));
   on('[data-xnear]', b => { const f = M.flags.find(x => x.code === b.dataset.xnear); const who = f && f.rows[0] && f.rows[0].who; if (!who) return; xtGive(b.dataset.to, who); });
-  on('[data-xdis]', b => { examS().dismissed[b.dataset.xdis] = new Date().toISOString(); save(); render(); toast('Dismissed. It is in the dismissed list at the foot of Tests. <button class="tundo" id="xtUndis">Undo</button>', false, 6000); const u = $('#xtUndis'); if (u) u.onclick = () => { delete examS().dismissed[b.dataset.xdis]; save(); render(); }; });
-  on('[data-xundis]', b => { delete examS().dismissed[b.dataset.xundis]; view.xquiet = true; save(); render(); });
-  on('[data-xforget]', b => { delete examS().alias[b.dataset.xforget]; view.xquiet = true; save(); render(); toast('Forgotten. Tally asks about that name again.', false); });
+  on('[data-xdis]', b => xtDo(() => { examS().dismissed[b.dataset.xdis] = new Date().toISOString(); }, 'Dismissed. It is in the dismissed list at the foot of Tests.'));
+  on('[data-xundis]', b => { view.xquiet = true; xtDo(() => { delete examS().dismissed[b.dataset.xundis]; }, 'Brought back.'); });
+  on('[data-xforget]', b => { view.xquiet = true; xtDo(() => { const k = Object.keys(examS().alias)[+b.dataset.xforget]; if (k != null) delete examS().alias[k]; }, 'Forgotten. Tally asks about that name again.'); });
+  on('[data-xnobody]', b => xtNobody(b.dataset.xnobody));
   on('#xtStoreSave', () => saveFull());
   on('#xtPaste2', () => xtPasteBox()); on('#xtOpen2', () => xtFilePick()); on('#xtPeriod', () => xtPeriodBox(s)); on('#xtMoreFlags', () => { view.xflags = !view.xflags; render(); });
   const q = wrap.querySelector('.xtQuiet'); if (q) q.ontoggle = () => { view.xquiet = q.open; };
+  const nb = wrap.querySelector('#xtNobody'); if (nb) nb.ontoggle = () => { view.xnobody = nb.open; };
   const pk = wrap.querySelector('#xtPick'); if (pk) pk.onchange = () => { view.test = pk.value; examS().view[s.key] = pk.value; save(); render(); };
   const tr = wrap.querySelectorAll('tr[data-xcode]'); tr.forEach(r => r.onclick = () => { view.code = r.dataset.xcode; render(); window.scrollTo(0, 0); });
 }
@@ -6592,6 +6706,23 @@ function xtFilePick() {
     const r = examTakeSheet(text, 'file'); if (!r.ok) { toast(esc(r.why), true, 8000); return; } render(); examFetch(r.codes); };
   inp.click();
 }
+/* UNDO (R2-C2): every change he makes in Tests goes through xtDo, which keeps what Tests held just before it. Undo puts back
+   exactly that. It is refused, plainly, when something else changed since (tests fetched, a roster imported). */
+let xtGen = 0;
+let xtLastUndo = null;
+const xtRosterSig = () => examRoster().map(x => xtKeyOf(x) + '\u0002' + x.id).join('\n');
+const xtSnap = () => { const X = examS(); return { gen: xtGen, roster: xtRosterSig(), data: JSON.stringify({ recs: X.recs, rows: X.rows, alias: X.alias, picks: X.picks, dismissed: X.dismissed, seen: X.seen }) }; };
+function xtDo(fn, say, quiet) {
+  const snap = xtSnap(); fn(); examRefile(); save(); render(); const id = 'xtUndo' + (++xtGen);
+  xtLastUndo = { snap: { ...snap, gen: xtGen }, id }; const mine = xtLastUndo;
+  if (!quiet || say) toast(`${say || 'Done.'} <button class="tundo" id="${id}">Undo</button>`, false, 7000);
+  const u = document.getElementById(id); if (u) u.onclick = () => xtUndo(mine);
+}
+function xtUndo(u) {
+  u = u || xtLastUndo; if (!u) return false;
+  if (u !== xtLastUndo || u.snap.gen !== xtGen || u.snap.roster !== xtRosterSig()) { toast('That can\'t be undone any more: something changed in Tests since. Change it by hand.', true, 6000); return false; }
+  Object.assign(examS(), JSON.parse(u.snap.data)); xtLastUndo = null; xtGen++; examRefile(); save(); render(); toast('Undone.', false, 3000); return true;
+}
 // a dialog listing students: whose is this code / which student is this. extra: more buttons (e.g. Nobody yet)
 function xtPickStudent(title, lead, cands, onPick, extra, onExtra, not) {
   const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private'); const roster = examRoster().filter(r => !(not && r.sec === not.sec && r.n === not.n));
@@ -6612,41 +6743,38 @@ function xtPickStudent(title, lead, cands, onPick, extra, onExtra, not) {
 /* He answered a row: it is that student's. Remembered for that name (used later only where it is still the only reading);
    other rows with the same words are offered it, not given it. Undoable. */
 function xtAnswer(r, c) {
-  const X = examS(); const was = { who: r.who, how: r.how, alias: r.name ? X.alias[EX().nameKey(r.name)] : undefined };
-  r.who = { sec: c.sec, n: c.n }; r.how = 'you'; if (r.name && !r.email) X.alias[EX().nameKey(r.name)] = { sec: c.sec, n: c.n, at: new Date().toISOString() };
-  r.codes.forEach(code => { const e = X.recs[code]; if (e) { e.nobody = false; e.no = (e.no || []).filter(w => !(w.sec === c.sec && w.n === c.n)); } });
-  examRefile(); save(); render();
-  toast(`Row ${r.line} is ${esc(shown(c.n))}'s.${r.name && !r.email ? ` Tally remembers “${esc(shown(r.name))}” as them, and uses it only where nobody else could be meant.` : ''} <button class="tundo" id="xtAnsUndo">Undo</button>`, false, 7000);
-  const u = $('#xtAnsUndo'); if (u) u.onclick = () => { r.who = was.who; r.how = was.how; if (r.name) { if (was.alias) X.alias[EX().nameKey(r.name)] = was.alias; else delete X.alias[EX().nameKey(r.name)]; } examRefile(); save(); render(); };
+  const X = examS();
+  xtDo(() => { r.who = { sec: c.sec, n: c.n }; r.how = 'you'; if (r.name && !r.email) X.alias[EX().nameKey(r.name)] = { sec: c.sec, n: c.n, at: new Date().toISOString() };
+    r.codes.forEach(code => { const e = X.recs[code]; if (e) { e.nobody = false; delete e.gone; e.no = (e.no || []).filter(w => !(w.sec === c.sec && w.n === c.n)); } }); },
+    `Row ${r.line} is ${esc(shown(c.n))}'s.${r.name && !r.email ? ` Tally remembers “${esc(shown(r.name))}” as them, and uses it only where nobody else could be meant.` : ''}`);
 }
+// nobody yet: the test goes to the tests nobody turned in (the rows that named someone keep their words; he answered for the test)
+function xtNobody(code) { const e = examS().recs[code]; if (!e) return; xtDo(() => { e.nobody = true; if (e.who && e.who.how !== 'you') { e.was = e.who; e.who = null; } }, `${esc(SEALX().showCode(code))} is among the tests nobody turned in.`); }
 function xtWho(s, r) {
-  if (!r) return; const C = r.remember ? [r.remember].concat(r.cands.filter(c => !(c.sec === r.remember.sec && c.n === r.remember.n))) : r.cands;
+  if (!r) return; const h = xtHint(r, examAll()); const cs = h ? r.cands.slice().sort((p, q) => (q.sec === h.sec) - (p.sec === h.sec)) : r.cands;
+  const C = r.remember ? [r.remember].concat(cs.filter(c => !(c.sec === r.remember.sec && c.n === r.remember.n))) : cs;
   xtPickStudent('Who turned this in?', `Row ${r.line} of the responses: <b>${esc(r.name ? shown(r.name) : 'no name')}</b>${r.email ? ' (from the email address)' : ''}${r.at ? ` at ${esc(r.at)}` : ''}, code ${esc(r.codes.map(c => SEALX().showCode(c)).join(', '))}.${r.remember ? ` You said “${esc(shown(r.name))}” was ${esc(shown(r.remember.n))} before; another student could be meant now.` : C.length ? ' The likely students first.' : ''}`, C, c => xtAnswer(r, c),
-    '<button class="pill pale" data-xextra="nobody">Nobody yet</button>', () => { r.codes.forEach(code => { const e = examS().recs[code]; if (e) { e.nobody = true; if (e.who && e.who.how !== 'you') { e.was = e.who; e.who = null; } } }); examRefile(); save(); render(); toast('Left with nobody: it is among the tests nobody turned in.', false); });
+    '<button class="pill pale" data-xextra="nobody">Nobody yet</button>', () => xtDo(() => { r.codes.forEach(code => { const e = examS().recs[code]; if (e) { e.nobody = true; if (e.who && e.who.how !== 'you') { e.was = e.who; e.who = null; } } }); }, 'Left with nobody: it is among the tests nobody turned in.'));
 }
 // give a test to a student by hand (it stays with them until he moves it)
-function xtGive(code, c) {
-  const X = examS(), e = X.recs[code]; if (!e) return; const before = { who: e.who, no: (e.no || []).slice(), nobody: e.nobody, was: e.was };
-  e.who = { sec: c.sec, n: c.n, how: 'you', at: new Date().toISOString() }; e.nobody = false; e.was = null; e.no = (e.no || []).filter(w => !(w.sec === c.sec && w.n === c.n));
-  examRefile(); save(); render();
-  toast(`${esc(SEALX().showCode(code))} is ${esc(shown(c.n))}'s now. <button class="tundo" id="xtGiveUndo">Undo</button>`, false, 6000);
-  const u = $('#xtGiveUndo'); if (u) u.onclick = () => { Object.assign(e, before); examRefile(); save(); render(); };
-}
-/* Not theirs (Croix after the review, rule 1): on every placed test, its row and its page. Takes it off that student and asks
-   whose it is, "Nobody yet" returning it to the tests nobody turned in. Undoable. */
+function xtGiveNow(e, c, off) { const x = examRoster().find(r => r.sec === c.sec && r.n === c.n); if (off) e.no = (e.no || []).filter(w => !(w.sec === off.sec && w.n === off.n)).concat([{ sec: off.sec, n: off.n }]);
+  e.who = { sec: c.sec, n: c.n, ...(x && x.id ? { id: x.id } : {}), how: 'you', at: new Date().toISOString() }; e.nobody = false; e.was = null; delete e.gone; e.no = (e.no || []).filter(w => !(w.sec === c.sec && w.n === c.n)); }
+function xtGive(code, c) { const e = examS().recs[code]; if (!e) return; xtDo(() => xtGiveNow(e, c), `${esc(SEALX().showCode(code))} is ${esc(shown(c.n))}'s now.`); }
+/* Not theirs (Croix after the review, rule 1): on every placed test, its row and its page. Asks whose it is; nothing changes
+   until he answers. A student → it is theirs; Nobody yet → the tests nobody turned in; Cancel → it stays exactly where it was
+   (R2-C2). Either answer can be undone. */
 function xtNotTheirs(s, code) {
-  const X = examS(), e = X.recs[code]; if (!e || !e.who) return; const before = { who: e.who, no: (e.no || []).slice(), nobody: e.nobody, was: e.was }; const off = e.who;
-  e.no = (e.no || []).concat([{ sec: off.sec, n: off.n }]); e.was = off; e.who = null; e.nobody = false; view.code = null;
-  examRefile(); save(); render();
-  const undo = () => { Object.assign(e, before); examRefile(); save(); render(); };
+  const X = examS(), e = X.recs[code]; if (!e || !e.who) return; const off = { sec: e.who.sec, n: e.who.n };
   const rs = X.rows.filter(r => r.codes.includes(code)); const cands = []; rs.forEach(r => (r.cands || []).concat(r.suggest ? [r.suggest] : []).forEach(c => { if (!(c.sec === off.sec && c.n === off.n) && !cands.some(x => x.sec === c.sec && x.n === c.n)) cands.push(c); }));
-  const u = e.sum;
-  xtPickStudent('Who turned this in?', `${esc(SEALX().showCode(code))} is no longer ${esc(shown(off.n))}'s.${u ? ` The test: ${u.points} / ${u.of}, taken ${esc(EX().hm(u.started))}–${esc(EX().hm(u.finished))}.` : ''}${rs.length ? ` It was turned in as ${rs.map(r => `<b>${esc(shown(r.name || 'no name'))}</b>`).join(' and ')}.` : ''}`, cands, c => xtGive(code, c),
-    '<button class="pill pale" data-xextra="nobody">Nobody yet</button><button class="pill pale" data-xextra="undo">Undo</button>', w => { if (w === 'undo') return undo(); e.nobody = true; examRefile(); save(); render(); toast(`${esc(SEALX().showCode(code))} is among the tests nobody turned in. <button class="tundo" id="xtNotUndo">Undo</button>`, false, 6000); const b = $('#xtNotUndo'); if (b) b.onclick = undo; }, off);
+  const u = xtOk(code) && e.sum;
+  xtPickStudent('Who turned this in?', `If ${esc(SEALX().showCode(code))} isn't ${esc(shown(off.n))}'s, whose is it?${u ? ` The test: ${u.points} / ${u.of}, taken ${esc(EX().hm(u.started))}–${esc(EX().hm(u.finished))}.` : ''}${rs.length ? ` It was turned in as ${rs.map(r => `<b>${esc(shown(r.name || 'no name'))}</b>`).join(' and ')}.` : ''} Cancel leaves it with ${esc(shown(off.n))}.`, cands,
+    c => { view.code = null; xtDo(() => xtGiveNow(e, c, off), `${esc(SEALX().showCode(code))} is ${esc(shown(c.n))}'s now, not ${esc(shown(off.n))}'s.`); },
+    '<button class="pill pale" data-xextra="nobody">Nobody yet</button>', () => { view.code = null; xtDo(() => { e.no = (e.no || []).filter(w => !(w.sec === off.sec && w.n === off.n)).concat([off]); e.was = e.who; e.who = null; e.nobody = true; delete e.gone; }, `${esc(SEALX().showCode(code))} is among the tests nobody turned in.`); }, off);
 }
 function xtChoose(s, code, how) {
   const X = examS(); const rs = X.rows.filter(r => r.codes.includes(code)); const cands = []; rs.forEach(r => { if (r.who && !cands.some(c => c.sec === r.who.sec && c.n === r.who.n)) cands.push(r.who); else (r.cands || []).forEach(c => { if (!cands.some(x => x.sec === c.sec && x.n === c.n)) cands.push(c); }); });
-  const h = examHeld(code); const u = h && h.e.sum;
+  { const h = rs.length ? xtHint(rs[0], examAll()) : null; if (h) cands.sort((p, q) => (q.sec === h.sec) - (p.sec === h.sec)); }
+  const h = examHeld(code); const u = h && xtOk(code) && h.e.sum;
   const lead = how === 'shared' ? `${esc(SEALX().showCode(code))} was turned in by ${rs.map(r => `<b>${esc(shown(r.who ? r.who.n : r.name))}</b> (row ${r.line}${r.at ? ', ' + esc(r.at) : ''})`).join(' and ')}. ${u ? `The test: ${u.points} / ${u.of}, taken ${esc(EX().hm(u.started))}–${esc(EX().hm(u.finished))}${u.opened != null ? ` in the opening of ${esc(EX().hm(u.opened))}` : ''}.` : ''} Whose is it?`
     : `${esc(SEALX().showCode(code))}${u ? `: ${u.points} / ${u.of}, taken ${esc(EX().hm(u.started))}–${esc(EX().hm(u.finished))}${u.opened != null ? ` in the opening of ${esc(EX().hm(u.opened))}` : ''}` : ''}. Nobody turned this code in.`;
   xtPickStudent(how === 'shared' ? 'Whose test is this?' : 'Give this test to a student', lead, cands, c => xtGive(code, c));
@@ -6659,10 +6787,15 @@ function xtTwice(s, t, n) {
     <div class="rp-actions"><button class="pill pale" id="mCancel">Cancel</button></div></div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-  m.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { examS().picks[s.key + '|' + n + '|' + t.key] = b.dataset.c; save(); close(); render(); });
+  m.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { close(); xtDo(() => { examS().picks[s.key + '|' + n + '|' + t.key] = b.dataset.c; }, `The test that counts for ${esc(shown(n))} is chosen.`); });
 }
 /* Copy scores: the way a unit's IXL goes to Focus (copyUnit): one line per Focus row, in Focus order, the points or blank */
 async function xtCopy(s) {
+  // never a partial column: while this session's check is running, Copy waits for it (R2-M3)
+  if (examCan() && Object.keys(examS().recs).some(c => !xtVer.has(c))) examVerifyAll();
+  if (xtVerJob) { const n = Object.keys(examS().recs).length; const say = () => `Checking ${n - Object.keys(examS().recs).filter(c => !xtVer.has(c)).length} of ${n} tests with the site's signature… Copy follows.`;
+    toast(say(), false, 60000); const iv = setInterval(() => { const tt = $('#toast'); if (tt && /Checking/.test(tt.textContent)) tt.firstChild && (tt.innerHTML = say()); }, 400);
+    try { await xtVerJob; } finally { clearInterval(iv); } }
   const { t } = xtCurrent(s); const M = xtModel(s, t); const gb = s.grades && Array.isArray(s.grades.students) && s.grades.students.length ? s.grades.students : null;
   const order = gb || classStudents(s); const by = new Map(M.rows.map(r => [r.n, r])); const byN = new Map(); M.rows.forEach(r => { const k = norm(r.n); byN.set(k, byN.has(k) ? null : r); });   // a gradebook row by its exact name, else by a plain name only one student has
   const lines = order.map(n => { const r = by.get(n) || byN.get(norm(n)); return r && r.use && r.v.points != null ? String(r.v.points) : ''; });
@@ -6679,19 +6812,19 @@ async function xtCopy(s) {
 function xtConnectPage(s) {
   const X = examS(); const P = examPairs(); const pub = examPub(); const mineP = P.filter(x => x.pub === pub); const foreign = examForeign(); const host = (() => { try { return new URL(X.site).host; } catch (e) { return X.site; } })();
   const proven = examChecked().length > 0 && !examKeyUnchecked();
-  const can = examCan(); const step = !pub && !foreign.length ? 1 : !(X.trial && proven) ? 3 : 4; const allowed = examAllowed(X.site);
+  const can = examCan(); const viaSave = !pub && foreign.length > 0 && proven; const step = !pub && !foreign.length ? 1 : viaSave ? 4 : !(X.trial && proven) ? 3 : 4; const saveDay = X.fromSave ? ' of ' + fmtDate(localDay(X.fromSave)) : ''; const allowed = examAllowed(X.site);
   const li = (n, title, body) => `<li class="${step > n && !(n === 2 && step === 3) ? 'done' : step === n || (n === 2 && step === 3) ? 'now' : ''}"><span class="xtN" aria-hidden="true">${step > n && !(n === 2 && step === 3) ? ico('check') : n}</span><div><h4>${title}</h4>${body}</div></li>`;
   $('#gridwrap').innerHTML = `<div class="grades xt"><div class="xtConnect">
     <div class="xtConnHead"><h3>${examConnected() && X.trial ? 'Connection' : `Connect Tally to the tests on ${esc(host)}`}</h3>${examPairs().length && (X.trial || examAll().length || X.rows.length) ? `<button class="pill ${X.trial && !examAll().length ? '' : 'pale '}small" id="xtDone">${examAll().length || X.rows.length ? 'Back to the tests' : 'Done'}</button>` : ''}</div>
     <p class="xtLead">Every test a student finishes is locked on the site so that only this Tally can open it, and signed by the site so nobody else can make one. This connects the two, once.</p>
     ${!can ? xtStatusHtml() : ''}
     <ol class="xtSteps">
-      ${li(1, 'Make Tally\'s key', !pub && foreign.length ? `<p><b>Your Full save brought ${foreign.length === 1 ? 'a key' : foreign.length + ' keys'} this Tally did not make</b> (made ${esc(whenText(foreign[foreign.length - 1].made))}, on the Tally that made ${foreign.length === 1 ? 'it' : 'them'}). This Tally opens your tests with ${foreign.length === 1 ? 'it' : 'them'}; nothing needs pasting. Make a key of this Tally's own only to move the cockpit to this Tally.</p><button class="pill small pale" id="xtMake" ${can ? '' : 'disabled'}>Make this Tally's own key</button>` : pub ? `<p>Made ${esc(whenText(mineP[mineP.length - 1].made))}.${foreign.length ? ` This Tally also holds ${foreign.length === 1 ? 'a key' : foreign.length + ' keys'} that came in a Full save; ${foreign.length === 1 ? 'it opens' : 'they open'} tests, but the key to paste is this one.` : ''} This is the half the website needs; the other half never leaves Tally and your Full saves.</p><div class="xtKeyRow"><code class="xtKey" id="xtKey">${esc(pub)}</code><button class="pill small" id="xtCopyKey">Copy</button></div>
+      ${li(1, 'Make Tally\'s key', !pub && foreign.length ? (viaSave ? `<p><b>Connected (from your Full save${esc(saveDay)}).</b> The save brought this Tally's key${foreign.length === 1 ? '' : 's'} and the site's key${examChecked().length === 1 ? '' : 's'} it was paired with, so your tests open and score here as they did there: nothing to paste, no trial to do. Make a key of this Tally's own only if you want the cockpit to lock new tests to this browser's own key instead.</p>` : `<p><b>Your Full save brought ${foreign.length === 1 ? 'a key' : foreign.length + ' keys'} this Tally did not make</b> (made ${esc(whenText(foreign[foreign.length - 1].made))}). The site's key ${examChecked().length ? 'has changed since that pairing' : 'it was paired with was not in the save'}: enter a trial code from the cockpit (step 3) to check the site's key here; nothing needs pasting.</p>`) + `<button class="pill small pale" id="xtMake" ${can ? '' : 'disabled'}>Make this Tally's own key</button>` : pub ? `<p>Made ${esc(whenText(mineP[mineP.length - 1].made))}.${foreign.length ? ` This Tally also holds ${foreign.length === 1 ? 'a key' : foreign.length + ' keys'} that came in a Full save; ${foreign.length === 1 ? 'it opens' : 'they open'} tests, but the key to paste is this one.` : ''} This is the half the website needs; the other half never leaves Tally and your Full saves.</p><div class="xtKeyRow"><code class="xtKey" id="xtKey">${esc(pub)}</code><button class="pill small" id="xtCopyKey">Copy</button></div>
         ${!X.warned ? `<div class="notice xtLose"><span>${ico('warn')}</span><span><b>If this key is lost, nobody can open these tests again: not you, not the site.</b> It lives only in this Tally and in your Full saves. The scores would still be in the cockpit; every answer, time and the rest of the record would not. Make a Full save now and keep it in your school Drive.</span><div class="xtLoseBtns"><button class="pill small" id="xtSaveNow">Full save now</button><button class="linkbtn" id="xtLater">Later</button></div></div>` : ''}`
         : `<p>Only this key opens your students' test records. Tally makes it here; it takes a second.</p><button class="pill" id="xtMake" ${can ? '' : 'disabled'}>Make the key</button>`)}
       ${li(2, 'Paste it into the cockpit', `<p>On ${esc(host)}, open the cockpit's <b>Test</b> card and paste the key into <b>Tally's key</b>. The cockpit makes a trial test and shows its code.</p>`)}
       ${li(3, 'Enter the trial code', `<div class="xtTrialRow"><input id="xtTrialIn" class="xtCodeIn" placeholder="K7QF-2M9D-X4TB" autocomplete="off" spellcheck="false" aria-label="The trial code" ${(pub || foreign.length) && can ? '' : 'disabled'}><button class="pill small" id="xtTrialGo" ${(pub || foreign.length) && can ? '' : 'disabled'}>Open</button></div><p class="xtTrialOut" id="xtTrialOut" aria-live="polite"></p>`)}
-      ${li(4, 'Type the four words into the cockpit', X.trial ? `<p>Tally opened the trial and checked the site's signature. Type these four words into the box under the trial code on the cockpit's <b>Test</b> card, then press <b>Confirm</b>. Only a Tally that opened the trial knows them, so the site knows the pairing works.</p><div class="xtWordsRow"><div class="xtWords" aria-label="The four words">${X.trial.words.split(' ').map(w => `<span>${esc(w)}</span>`).join('')}</div><button class="pill small" id="xtCopyWords">Copy</button></div><p class="ghint">From the trial ${esc(SEALX().showCode(X.trial.code))}, ${esc(whenText(X.trial.at))}. If the cockpit says the words are wrong, it holds another key: paste this Tally's key again and enter the new trial code.</p>` : '<p>Tally opens the trial with its key and shows four words. You type them into the cockpit; the site works them out on its side, and they match only if the cockpit has this Tally\'s key and Tally has the site\'s.</p>')}
+      ${li(4, 'Type the four words into the cockpit', viaSave ? `<p>Done when this pairing was made${X.trial ? ` (the trial ${esc(SEALX().showCode(X.trial.code))}, ${esc(whenText(X.trial.at))})` : ''}, on the Tally your Full save came from.</p>` : X.trial ? `<p>Tally opened the trial and checked the site's signature. Type these four words into the box under the trial code on the cockpit's <b>Test</b> card, then press <b>Confirm</b>. Only a Tally that opened the trial knows them, so the site knows the pairing works.</p><div class="xtWordsRow"><div class="xtWords" aria-label="The four words">${X.trial.words.split(' ').map(w => `<span>${esc(w)}</span>`).join('')}</div><button class="pill small" id="xtCopyWords">Copy</button></div><p class="ghint">From the trial ${esc(SEALX().showCode(X.trial.code))}, ${esc(whenText(X.trial.at))}. If the cockpit says the words are wrong, it holds another key: paste this Tally's key again and enter the new trial code.</p>` : '<p>Tally opens the trial with its key and shows four words. You type them into the cockpit; the site works them out on its side, and they match only if the cockpit has this Tally\'s key and Tally has the site\'s.</p>')}
     </ol>
     <details class="xtMore"><summary>Address, keys</summary>
       <div class="xtMoreBody">
@@ -6751,7 +6884,7 @@ function renderTestDetail(s, code) {
   wrap.innerHTML = `<div class="grades xt xtD">
     <section class="xtHead">
       <div class="xtWho1"><h2>${n ? esc(shown(n)) : '<span class="xtNone">Nobody yet</span>'}</h2><p>${esc(C.testName(v.course, v.unit))} · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${e.src === 'file' ? ' · from the cockpit\'s file' : ''}</p>
-        ${!n ? `<div class="xtOwn"><span>${e.was ? `Nobody's now. It had been ${esc(shown(e.was.n))}'s${xtSecGone(e.was.sec) ? ', who is no longer on a roster here' : ''}.` : 'Nobody turned this code in.'}</span><button class="pill small" id="xtGiveD">Give it to a student</button></div>` : `<div class="xtOwn"><span>${esc(xtHowWords(e.who))}</span><button class="pill small pale" id="xtNotD" title="This test isn't ${esc(shown(n))}'s: take it off them and say whose it is">Not theirs</button></div>`}</div>
+        ${!n ? `<div class="xtOwn"><span>${e.gone ? `Nobody's now. It had been ${e.gone.how === 'you' ? 'given to' : 'with'} ${esc(shown(e.gone.n))}${e.gone.cl ? ` (${esc(e.gone.cl)})` : ''}, who is no longer on that roster.` : e.was ? `Nobody's now. It had been ${esc(shown(e.was.n))}'s.` : 'Nobody turned this code in.'}</span><button class="pill small" id="xtGiveD">Give it to a student</button></div>` : `<div class="xtOwn"><span>${esc(xtHowWords(e.who))}</span><button class="pill small pale" id="xtNotD" title="This test isn't ${esc(shown(n))}'s: take it off them and say whose it is">Not theirs</button></div>`}</div>
       <div class="xtBig"><b>${v.points ?? '?'}</b><small>/ ${v.of ?? '?'}</small><span>${pc == null ? '' : pc + '%'}</span></div>
       <dl class="xtFacts">
         <div><dt>Time</dt><dd>${esc(C.clock(v.seconds)) || '—'}</dd></div>
@@ -9650,7 +9783,7 @@ async function loadTallyFile(file, cfg) {
     if (cfg.board) { s.board = cfg.board; s.settings = { ...(s.settings || {}), hideNames: true, leaderboard: true }; } else delete s.board;
     const wasHidden = !!(state.settings && state.settings.hideNames) || !state.order.length;   // a Full save opened on a hidden or empty Tally (the panel) keeps names hidden
     const keysHere = cfg.full ? examKeysNow() : null;   // Tests: a Full save never takes away a key this Tally holds (exams.js)
-    adopt(hydrate(s) || s); if (keysHere) examKeepKeys(keysHere); examReset(); if (cfg.full) { if (wasHidden) state.settings.hideNames = true; state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
+    adopt(hydrate(s) || s); if (keysHere) examKeepKeys(keysHere); examReset(cfg.full ? cfg.full.saved || new Date().toISOString() : null); if (cfg.full) { if (wasHidden) state.settings.hideNames = true; state.lastBackup = cfg.full.saved || state.lastBackup; state.savedPrint = workPrint(); state.lastSaveName = file && file.name ? String(file.name).slice(0, 80) : state.lastSaveName; } view = { mode: 'home', unit: null }; noticesOpen = false; save(); render();   // a loaded Full save is saved work: nothing new to save yet
     toast(cfg.board ? `Board save opened: ${plural(state.order.length, 'class')}, no names.` : `Full save from ${esc(whenText(meta.saved))} opened: ${plural(state.order.length, 'class')}.`, false, 5000);
     return true;
   }

@@ -17,7 +17,8 @@ if (process.env.CSP) { for (const f of ['Tally.test.html']) { const h = fs.readF
 const rows = []; let failed = 0;
 for (const f of suites) {
   const t0 = Date.now();
-  const r = spawnSync(process.execPath, [path.join(__dirname, f)], { encoding: 'utf8', timeout: 180000 });
+  const lim = /^\/\/ run\.js timeout: (\d+) s/m.exec(fs.readFileSync(path.join(__dirname, f), 'utf8'));   // a suite may ask for longer (exam-invariant.js)
+  const r = spawnSync(process.execPath, [path.join(__dirname, f)], { encoding: 'utf8', timeout: lim ? +lim[1] * 1000 : 180000 });
   const out = (r.stdout || '') + (r.stderr || '');
   const pass = (out.match(/^PASS /gm) || []).length, fail = (out.match(/^FAIL /gm) || []).length;
   const skipped = /^SKIP /m.test(out), crashed = r.status !== 0 && !fail;

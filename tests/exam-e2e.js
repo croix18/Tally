@@ -74,7 +74,7 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
   check(gets.length >= 37 && gets.every(x => x.method === 'GET' && !x.body && !/cookie|authorization/i.test(Object.keys(x.headers || {}).join(' ')) && !(x.headers || {}).referer), 'each test is one GET with nothing but its code: no cookie, no referrer, no body (' + gets.length + ')');
   const names = [...F.P4, ...F.P5].flatMap(n => n.toLowerCase().split(/[ ,]+/)).filter(w => w.length > 3);
   check(sent.every(x => !names.some(w => decodeURIComponent(x.url).toLowerCase().includes(w))) && sent.every(x => /^https:\/\/mrshaffer\.org\/api\/test\/(key|result\/[0-9A-Z]{12})$/.test(x.url)), 'every request went to the two routes, and no name was in any of them (' + sent.length + ' requests)');
-  check(/the site's key changed: check it with a new trial code/.test(await text(p, '.xtConn')) && /can't be shown: signed by a site key this Tally hasn't checked/.test(await text(p, '#gridwrap')) && !/NGUYEN, AVA MARIE\s*\d+\s*\/\s*36/.test(await text(p, '.xtList')), 'the site\'s key made again: Tally says so, and the tests it signed are not scored until a trial proves the key (L6)');
+  check(/the site's key changed: check it with a new trial code/.test(await text(p, '.xtConn')) && /Signed by a site key this Tally hasn't checked/.test(await text(p, '#gridwrap')) && !/NGUYEN, AVA MARIE\s*\d+\s*\/\s*36/.test(await text(p, '.xtList')), 'the site\'s key made again: Tally says so, and the tests it signed are not scored until a trial proves the key (L6)');
   const oldRow = await p.evaluate(() => [...document.querySelectorAll('.xtList tbody tr')].find(r => /Novak/i.test(r.textContent)).textContent);
   check(/\d+\s*\/\s*36/.test(oldRow), 'the one record signed with the site\'s earlier, proven key is scored (Tereza Novak)');
   await shot(p, '05a-key-changed-1366');
@@ -110,8 +110,11 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
   await shot(p, '05c-not-theirs-1366');
   await p.click('#modal [data-xextra="nobody"]'); await p.waitForTimeout(300); if (/more/.test(await text(p, '#xtMoreFlags'))) { await p.click('#xtMoreFlags'); await p.waitForTimeout(150); }
   check(/No test turned in/.test(await p.evaluate(() => [...document.querySelectorAll('.xtList tbody tr')].find(r => /GARCIA-LOPEZ/.test(r.textContent)).textContent)) && /Nobody turned in/.test(await text(p, '#gridwrap')), 'Nobody yet: he has no test, and it is among the tests nobody turned in');
-  await p.click('#toast #xtNotUndo'); await p.waitForTimeout(300);
+  await p.click('#toast .tundo'); await p.waitForTimeout(300);
   check(/GARCIA-LOPEZ, ALEXANDER[\s\S]{0,40}\d+\s*\/\s*36/.test(await text(p, '.xtList')), 'and Undo puts it back');
+  { const cnt0 = await text(p, '#xtCount'); await p.evaluate(() => { const r = [...document.querySelectorAll('.xtList tbody tr[data-xcode]')].find(x => /GARCIA-LOPEZ/.test(x.textContent)); r.querySelector('[data-xnot]').click(); }); await p.waitForTimeout(250);
+    await p.click('#modal #mCancel'); await p.waitForTimeout(250);
+    check(/GARCIA-LOPEZ, ALEXANDER[\s\S]{0,40}\d+\s*\/\s*36/.test(await text(p, '.xtList')) && await text(p, '#xtCount') === cnt0, 'Not theirs, then Cancel: the test stays exactly where it was (R2-C2): ' + cnt0); }
   await p.click('#xtPeriod'); await p.fill('#xtFrom', '09:40'); await p.fill('#xtTo', '10:40'); await p.click('#xtPerSave'); await p.waitForTimeout(300);
   check(/outside the class period \(9:40 am–10:40 am\)/.test(await text(p, '#gridwrap')), 'with the period\'s times set, a start or finish outside them is flagged, in one clock style');
   // what Tally remembers, and dismissed flags, in one quiet place
@@ -163,6 +166,21 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
   check(same, 'Copy scores: 28 lines in the Focus gradebook\'s order, each the score on screen, blank for no test');
   check(/copied: 28 rows in the Focus gradebook's order/.test(await text(p, '#toast')) && /out of 36/.test(await text(p, '#toast')), 'and says so: ' + (await text(p, '#toast')).slice(0, 120));
 
+  /* ---- 5b. a new session: Copy pressed while every test is being checked again waits for the check (R2-M3) ---- */
+  const reopen = async () => { await p.reload(); await p.waitForTimeout(300); await toTests(p, '4th'); };
+  await p.addInitScript(() => { window.__copied = null; const o = document.execCommand.bind(document); document.execCommand = c => { if (c === 'copy') { window.__copied = document.activeElement && document.activeElement.value; return true; } return o(c); }; });
+  await reopen(); await p.click('#xtCopy'); const midCheck = /Checking \d+ of \d+ tests/.test(await text(p, '#toast'));
+  for (let i = 0; i < 80 && (await p.evaluate(() => window.__copied)) == null; i++) await p.waitForTimeout(150);
+  check(await p.evaluate(() => window.__copied) === copied, 'Copy pressed at once in a new session waits for the check and copies the whole column, never a partial one (R2-M3)' + (midCheck ? ', saying "Checking N of M tests…" meanwhile' : ''));
+  /* ---- 5c. a locked copy lost from IndexedDB: waiting, "Fetch again" really fetches it, and it scores again (R2-H2) ---- */
+  { const lost = await p.evaluate(async () => { const code = [...document.querySelectorAll('.xtList tbody tr[data-xcode]')].find(r => /O'NEIL, BRENNAN/.test(r.textContent)).dataset.xcode;
+      await new Promise(res => { const q = indexedDB.open('tally-tests', 1); q.onsuccess = () => { const tx = q.result.transaction('locked', 'readwrite'); tx.objectStore('locked').delete(code); tx.oncomplete = () => { q.result.close(); res(); }; tx.onerror = res; }; }); return code; });
+    await reopen(); for (let i = 0; i < 80 && /Checking/.test(await text(p, '#xtProg')); i++) await p.waitForTimeout(200); await p.waitForTimeout(200);
+    const before = sent.length; const tw = await text(p, '#xtWaiting');
+    check(/Its locked copy is missing from this browser: fetch it again\. It is O'NEIL, BRENNAN's/.test(tw) && /O'NEIL, BRENNAN[\s\S]{0,20}Its test is waiting for you/.test(await text(p, '.xtList')), 'a test whose locked copy is gone from the browser is waiting for him ("fetch it again"), and its student\'s row says so (R2-H2)');
+    await p.click(`#xtWaiting [data-xrefetch="${lost}"]`); await fetched(p); await p.waitForTimeout(300);
+    check(sent.slice(before).some(x => x.url.endsWith('/api/test/result/' + lost)) && /O'NEIL, BRENNAN\s*\d+\s*\/\s*36/.test(await text(p, '.xtList')) && !/locked copy is missing/.test(await text(p, '#gridwrap')), 'Fetch again asks the site for that code, and it opens, checks and scores again (R2-H2)'); }
+
   /* ---- 6. a Full save carries the key and the records; a Board save carries neither ---- */
   const [dl1] = await Promise.all([p.waitForEvent('download'), p.click('#btnFullSave')]); const fpath = path.join(tmp, 'full-tests.json'); await dl1.saveAs(fpath);
   const fsave = JSON.parse(fs.readFileSync(fpath, 'utf8')); const held = Object.keys(fsave.state.exam.recs || {}).length, locked = Object.keys(fsave.state.exam.locked || {}).length;
@@ -180,14 +198,14 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
     if (await q.evaluate(() => document.querySelector('#btnHide').getAttribute('aria-pressed') === 'false')) { await q.click('#btnHide'); await q.waitForTimeout(200); }   // a Full save opened on an empty Tally keeps names hidden (as it always has)
     await toTests(q, '4th');
     if (process.env.XDEBUG && tag === '1366' && !dark) console.log('FRESH0', await text(q, '.xtConn'), await q.locator('tr[data-xcode]').count());
-    if (tag === '1366' && !dark) check(/this Tally hasn't checked the site's key yet/.test(await text(q, '.xtConn')) && await q.locator('tr[data-xcode]').count() === 0, 'a fresh Tally that opens the Full save scores nothing until a trial proves the site\'s key here (C4)');
-    { const tr3 = await ctl(site, '/__ctl/tally', { pub }); await q.click('#xtConnBtn'); await q.waitForTimeout(200);
-      if (tag === '1366' && !dark) check(/Your Full save brought a key this Tally did not make/.test(await text(q, '.xtSteps')) && await q.locator('#xtKey').count() === 0, 'Connect says plainly the save brought a key this Tally did not make, and offers no key "to paste" (C4)');
-      await q.fill('#xtTrialIn', tr3.code); await q.click('#xtTrialGo'); await q.waitForFunction(c => (document.querySelector('.xtSteps') || {}).innerText && document.querySelector('.xtSteps').innerText.includes(c), H2C(tr3.code)); await q.click('#xtDone'); await q.waitForTimeout(300);
-      for (let i = 0; i < 80 && /Checking/.test(await text(q, '#xtProg')); i++) await q.waitForTimeout(250); await q.waitForTimeout(200); }
+    for (let i = 0; i < 80 && /Checking/.test(await text(q, '#xtProg')); i++) await q.waitForTimeout(250); await q.waitForTimeout(200);
+    if (tag === '1366' && !dark) check(/Connected to mrshaffer\.org \(from your Full save of /.test(await text(q, '.xtConn')) && await q.locator('tr[data-xcode]').count() >= 22, 'a fresh Tally that opens the Full save scores every test at once: no trial, no new key, nothing to paste (R2-H3): ' + await text(q, '.xtConn'));
+    if (tag === '1366' && !dark) { await q.click('#xtConnBtn'); await q.waitForTimeout(200);
+      check(/Connected \(from your Full save of [^)]*\)\. The save brought this Tally's key/.test(await text(q, '.xtSteps')) && await q.locator('#xtKey').count() === 0, 'Connect says it is connected from the Full save, and offers no key "to paste" (R2-H3)');
+      await q.click('#xtDone'); await q.waitForTimeout(300); }
     if (tag === '1366' && !dark) {
       if (process.env.XDEBUG) { await shot(q, 'dbg-fresh', true); console.log('FRESH', (await text(q, '#gridwrap')).slice(0, 600)); }
-      check(/Connected to mrshaffer\.org · pairing checked/.test(await text(q, '.xtConn')) && await q.locator('tr[data-xcode]').count() >= 22, 'after the trial, the fresh Tally opens and checks every test from the save');
+      check(await q.locator('tr[data-xcode]').count() >= 22, 'the fresh Tally holds every test from the save, checked');
       await o.ctx.setOffline(true); site.state.down = true; const before = sent.length;
       await q.setInputFiles('#file', [path.join(tmp, 'results.json')]); await q.waitForTimeout(1500); if (await q.$('#xtMoreFlags')) { await q.click('#xtMoreFlags'); await q.waitForTimeout(200); }
       const t2 = await text(q, '#gridwrap');
@@ -236,7 +254,7 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
     const o2 = await open(APP, { init: () => { delete window.DecompressionStream; } }); const q2 = o2.p;
     await q2.setInputFiles('#file', [fpath]); await q2.waitForTimeout(900); await toTests(q2, '4th');
     const t3 = await text(q2, '#gridwrap');
-    check(/This browser can't open test records here/.test(t3) && await q2.locator('tr[data-xcode]').count() === 0 && /can't be shown: this browser can't check test records here/.test(t3), 'without the platform\'s deflate: Tests says so plainly, and scores nothing it can\'t check (each test is said to be waiting)');
+    check(/This browser can't open test records here/.test(t3) && await q2.locator('tr[data-xcode]').count() === 0 && /This browser can't check test records here: open Tally on your laptop/.test(t3) && /Waiting for you/.test(t3), 'without the platform\'s deflate: Tests says so plainly, and scores nothing it can\'t check (each test is said to be waiting)');
     await shot(q2, '12-no-webcrypto-1366');
     await q2.click('#xtPaste'); await q2.fill('#xtSheet', 'Ana Test\tK7QF-2M9D-X4TB'); await q2.click('#xtTake'); await q2.waitForTimeout(400);
     check(/can.t open test records here/.test(await text(q2, '#toast')), 'and asking it to fetch says why it can\'t, nothing breaks');

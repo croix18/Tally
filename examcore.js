@@ -131,8 +131,49 @@ function like(t, w) {   // how alike one typed word is to one word of the name: 
    near match for the same words: the same last name with a first name that starts the same, a nickname or one slip. "Jon
    Smith" with Smith, Jon and Smith, Jonathan on the rosters asks. Anything forgiving is a SUGGESTION (suggest), never a pick.
    cands: every student it could be, the likeliest first. o.noPick: the typed name is not one to take (an email's local part). */
-function nearFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; return Math.min(t.length, f.length) >= 3 && edit(t, f) <= 1; }
-function nearLast(t, L) { return L.some(function (l) { return t === l || (Math.min(t.length, l.length) >= 4 && edit(t, l) <= 1); }); }
+/* NICKNAMES: names one child may go by. Each line is one group: two first names on the same line are "related", so a
+   student typing one of them could be a student whose roster name is another. Croix: add a line, or a name to a line, and
+   matching asks about those names from then on (lower case, no accents; a name may be on more than one line). */
+var NICKNAMES = [
+  'bob bobby rob robbie robert', 'bill billy will willy liam william', 'liz lizzie beth betty eliza elizabeth',
+  'kate katie kathy katherine catherine', 'mike mikey michael miguel', 'alex alejandro alejandra alexander alexandra alexis',
+  'chris christopher christian cristian christina', 'nick nicky nicholas nicolas', 'joe joey jose joseph', 'tony anthony antonio',
+  'pepe jose', 'paco pancho francisco frank frankie', 'lupe guadalupe', 'chuy jesus', 'nacho ignacio', 'manny manuel emmanuel',
+  'sam sammy samuel samantha', 'ben benny benjamin', 'dan danny daniel', 'matt matthew mateo', 'tom tommy thomas tomas',
+  'jim jimmy jamie james', 'jack jackson john johnny', 'andy drew andrew andres', 'abby abigail', 'maddie madison madeline',
+  'izzy bella isabel isabella', 'gabby gabi gabriela gabriella gabriel', 'vicky victoria', 'nate nathan nathaniel',
+  'zach zack zachary', 'josh joshua', 'jake jacob', 'charlie chuck charles carlos', 'eddie ed edward eduardo',
+  'ricky rick richard ricardo', 'teddy ted theodore', 'leo leonardo leonard', 'max maxwell maximilian maximo',
+  'ellie ella eleanor elena', 'addie addison adeline', 'lexi alexa alexis', 'cami camila camille', 'sofi sophie sofia sophia',
+  'mia maria', 'ana anna annie anne'
+];
+var NICK = {}; NICKNAMES.forEach(function (line, g) { line.split(/\s+/).forEach(function (n) { (NICK[n] = NICK[n] || []).push(g); }); });
+function nick(a, b) { var A = NICK[a], B = NICK[b]; return !!(A && B && A.some(function (g) { return B.indexOf(g) >= 0; })); }
+// edits between two words, a swap of two neighboring letters counting as one (Kahn/Khan, Elias/Elisa)
+function osa(a, b) {
+  if (a === b) return 0; if (Math.abs(a.length - b.length) > 2) return 3;
+  var d = [], i, j; for (i = 0; i <= a.length; i++) { d[i] = [i]; } for (j = 0; j <= b.length; j++) d[0][j] = j;
+  for (i = 1; i <= a.length; i++) for (j = 1; j <= b.length; j++) {
+    var c = a[i - 1] === b[j - 1] ? 0 : 1; d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[a.length][b.length];
+}
+// a first name a student could have typed for another's: one starts the other (3+ letters), two edits or fewer, or nicknames
+function relFirst(t, f) { if (!t || !f) return false; if (t === f) return true; if (t.length >= 3 && f.length >= 3 && (f.indexOf(t) === 0 || t.indexOf(f) === 0)) return true; var n = Math.min(t.length, f.length); return n >= 2 && osa(t, f) <= (n >= 5 ? 2 : 1) || nick(t, f); }
+// a last name that is the same or near: equal with spaces, hyphens, apostrophes, case and accents gone, or one edit apart
+function relLast(a, b) { if (!a || !b) return false; if (a === b) return true; return Math.min(a.length, b.length) >= 3 && osa(a, b) <= 1; }
+function nearFirst(t, f) { return relFirst(t, f); }
+function nearLast(t, L) { return L.some(function (l) { return relLast(t, l); }); }
+/* A RIVAL of the student X a typed name exactly matches (Croix, 16 Nov 2026, R2-H1): another student, in any class, whose last
+   name is the same or near X's (as a whole, run together: Van Dyke/Vandyke; or word by word: Lea/Lee, Kahn/Khan) and whose
+   first name is related to the first name typed (above). With a rival Tally asks. */
+function rival(T, X, Y) {
+  var lastT = T.filter(function (t) { return X.last.indexOf(t) >= 0; }), firstT = T.filter(function (t) { return X.last.indexOf(t) < 0; });
+  var lastNear = relLast(X.last.join(''), Y.last.join('')) || lastT.some(function (t) { return Y.last.some(function (l) { return relLast(t, l); }); });
+  if (!lastNear) return false;
+  return firstT.some(function (t) { return relFirst(t, Y.first) || Y.middle.some(function (m) { return m === t; }); });
+}
 function matchName(typed, roster, o) {
   var T = tokens(typed), out = { pick: null, how: null, suggest: null, cands: [], rivals: [] };
   if (!T.length) return out;
@@ -151,7 +192,9 @@ function matchName(typed, roster, o) {
   var c = scored.filter(function (x) { return x.exact || x.near || (x.s >= 0.75 && (x.f > 0 || x.l > 0)); }).sort(function (a, b) { return b.s - a.s; });
   out.cands = c.slice(0, 8).map(function (x) { return x.i; });
   if (ex.length === 1) {
-    out.rivals = scored.filter(function (x) { return x.i !== ex[0].i && (x.near || x.exact); }).map(function (x) { return x.i; });
+    var X = parts[ex[0].i];
+    out.rivals = scored.filter(function (x) { return x.i !== ex[0].i && (x.near || x.exact || rival(T, X, parts[x.i])); }).map(function (x) { return x.i; });
+    out.rivals.forEach(function (i) { if (out.cands.indexOf(i) < 0) out.cands.push(i); });
     if (!out.rivals.length && !(o && o.noPick)) { out.pick = ex[0].i; out.how = 'exact'; }
     else out.suggest = ex[0].i;
     return out;
@@ -287,6 +330,7 @@ function placeAll(rows, recs) {
   rows.forEach(function (r) { (r.codes || (r.code ? [r.code] : [])).forEach(function (c) { if (c) (by[c] = by[c] || []).push(r); }); });
   recs.forEach(function (x) {
     if (x.nobody && !(x.who && x.who.how === 'you')) { place[x.code] = null; state[x.code] = 'nobody'; return; }   // he said: nobody yet
+    if (x.gone && !x.who) { place[x.code] = null; state[x.code] = 'nobody'; return; }   // its student left the roster: nobody's, until he gives it (R2-C1)
     var mine = x.who || (x.pin ? { sec: x.pin.sec, n: x.pin.n, how: 'you' } : null), no = x.no || [];
     var not = function (w) { return no.some(function (q) { return q.sec === w.sec && q.n === w.n; }); };
     if (mine && mine.how === 'you') { place[x.code] = { sec: mine.sec, n: mine.n }; state[x.code] = 'placed'; return; }
@@ -314,9 +358,12 @@ function placeAll(rows, recs) {
 function flags(c) {
   var out = [], here = function (x) { return x.course === c.course && x.unit === c.unit; }, mine = function (w) { return !!w && w.sec === c.sec; };
   var rows = c.rows || [], recs = c.recs || [], fails = c.fails || {}, held = {}, shownName = c.show || function (n) { return n; };
-  var push = function (f) { f.id = f.id || [f.kind, f.code || '', (f.names || []).join(','), f.rows && f.rows[0] ? f.rows[0].line : ''].join('|'); out.push(f); };
+  /* a flag's id: kind | code | names | the test | what makes it this one and no other (R2-M2): dismissing one never silences
+     another, and a note whose cause changes (other codes failing, other tests turned in) comes back as a new one */
+  var tk = testKey(c.course, c.unit), rowId = function (r) { return r ? (r.at || r.when || '') + '#' + r.line + '#' + (r.codes || []).join(',') + '#' + (r.raw || '') : ''; };
+  var push = function (f) { f.id = f.id || [f.kind, f.code || '', (f.names || []).join(','), tk, f.uniq != null ? f.uniq : f.rows && f.rows[0] ? rowId(f.rows[0]) : ''].join('|'); out.push(f); };
   recs.forEach(function (x) { held[x.code] = x; });
-  var P = placeAll(rows, recs.map(function (x) { return { code: x.code, who: x.sec && x.n ? { sec: x.sec, n: x.n, how: x.how || (x.pin ? 'you' : 'exact') } : x.pin ? { sec: x.pin.sec, n: x.pin.n, how: 'you' } : null, no: x.no, nobody: x.nobody }; }));
+  var P = placeAll(rows, recs.map(function (x) { return { code: x.code, who: x.sec && x.n ? { sec: x.sec, n: x.n, how: x.how || (x.pin ? 'you' : 'exact') } : x.pin ? { sec: x.pin.sec, n: x.pin.n, how: 'you' } : null, no: x.no, nobody: x.nobody, gone: x.gone }; }));
   // what this class's students already hold of this test (a flag about a typo or a bad cell goes when the child has their test)
   var holds = {}; recs.forEach(function (x) { if (x.sec === c.sec && x.n && here(x) && x.ok !== false) holds[x.n] = true; });
   var hp = function (s) { var m = /^(\d{1,2}):(\d{2})$/.exec(s || ''); if (!m) return s; var h = +m[1]; return (h % 12 || 12) + ':' + m[2] + (h < 12 ? ' am' : ' pm'); };
@@ -330,7 +377,7 @@ function flags(c) {
   // codes that open to nothing, or not here
   var claimed = {}; rows.forEach(function (r) { (r.codes || []).forEach(function (code) { (claimed[code] = claimed[code] || []).push(r); }); });
   var unclaimed = recs.filter(function (x) { return P.state[x.code] === 'nobody'; }).map(function (x) { return x.code; });
-  var netN = 0;
+  var netN = 0, netC = [];
   Object.keys(fails).forEach(function (code) {
     var fx = fails[code] && typeof fails[code] === 'object' ? fails[code] : { why: fails[code] }, why = fx.why, rs = claimed[code] || [];
     var who = rs.map(function (r) { return r.who && r.who.sec === c.sec ? r.who.n : null; }).filter(Boolean);
@@ -344,18 +391,18 @@ function flags(c) {
     else if (why === 'key') { f.text = 'The test with the code ' + fmtCode(code) + ' (' + whom + ') is locked to another Tally\'s key.'; f.todo = 'It was locked to the key the cockpit held when the test was taken. Open this Tally from the Full save that holds that key (Tally keeps every key it has made), or check in the cockpit which key is pasted there.'; }
     else if (why === 'signature') { f.text = 'The record for ' + fmtCode(code) + ' (' + whom + ') was not signed by the site.'; f.todo = 'Tally will not show what is in it. Take the score from the cockpit\'s results for that day, and talk to the student.'; }
     else if (why === 'code') { f.text = 'The site answered ' + fmtCode(code) + ' (' + whom + ') with another code\'s record.'; f.todo = 'Tally did not keep it. Try again; if it happens again, open the cockpit\'s results file instead.'; }
-    else if (why === 'net') { netN++; return; }
+    else if (why === 'net') { netN++; netC.push(code); return; }
     else return;
     push(f);
   });
   // the network, or anything that wasn't the site's answer: one note for the batch, not one per child
-  if (netN) push({ kind: 'net', level: 'info', id: 'net|' + c.sec, n: netN, text: (netN === 1 ? '1 code' : netN + ' codes') + ' couldn\'t reach the site\'s test records.', todo: 'The network was down, or something between Tally and the site (a school filter, the site not answering) answered instead. Try again when the network is back, or open the cockpit\'s results file.' });
+  if (netN) push({ kind: 'net', level: 'info', id: 'net|||' + tk + '|' + c.sec + ':' + netC.sort().join(','), n: netN, text: (netN === 1 ? '1 code' : netN + ' codes') + ' couldn\'t reach the site\'s test records.', todo: 'The network was down, or something between Tally and the site (a school filter, the site not answering) answered instead. Try again when the network is back, or open the cockpit\'s results file.' });
   // records held for this class
   var mineRecs = recs.filter(function (x) { return x.sec === c.sec && x.n && x.ok !== false; });   // only records checked this session
   var byStu = {}; mineRecs.filter(here).forEach(function (x) { (byStu[x.n] = byStu[x.n] || []).push(x); });
   Object.keys(byStu).forEach(function (n) { var l = byStu[n]; if (l.length < 2) return; var pk = (c.picks || {})[c.sec + '|' + n + '|' + testKey(c.course, c.unit)];
     if (pk && l.some(function (x) { return x.code === pk; })) return;
-    push({ kind: 'twice', level: 'warn', names: [n], codes: l.map(function (x) { return x.code; }), text: shownName(n) + ' has ' + l.length + ' tests for ' + testName(c.course, c.unit) + ' (' + l.map(function (x) { return hm(x.started) + '–' + hm(x.finished) + (x.points != null ? ', ' + x.points + ' / ' + x.of : ''); }).join('; ') + ').',
+    push({ kind: 'twice', level: 'warn', names: [n], uniq: l.map(function (x) { return x.code; }).sort().join(','), codes: l.map(function (x) { return x.code; }), text: shownName(n) + ' has ' + l.length + ' tests for ' + testName(c.course, c.unit) + ' (' + l.map(function (x) { return hm(x.started) + '–' + hm(x.finished) + (x.points != null ? ', ' + x.points + ' / ' + x.of : ''); }).join('; ') + ').',
       todo: 'Each was a separate sitting on the site. Choose the one that counts; the other stays in Tally, marked. If one isn\'t theirs, open it and press Not theirs.' }); });
   mineRecs.filter(here).forEach(function (x) {
     if (x.ended === 'left') push({ kind: 'left', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test ended itself: they left it ' + (x.after || x.awayN || 'too many') + ' times.',
@@ -392,7 +439,7 @@ function flags(c) {
     var counted = l.length - alone.length;
     if (big.length < 0.6 * counted) {
       var real = groups.filter(function (g) { return g.length > 1 || !byOpen; });
-      if (real.length > 1) push({ kind: 'groups', level: 'info', id: 'groups|' + c.sec + '|' + k, text: 'This class sat in ' + (real.length === 2 ? 'two' : real.length) + ' groups: ' + real.map(function (g) { return hm(Math.min.apply(null, g.map(function (x) { return x.started; }))) + ' (' + g.length + ')'; }).join(' and ') + '.', todo: 'No group is most of the class, so Tally doesn\'t flag anyone as apart from it.' });
+      if (real.length > 1) push({ kind: 'groups', level: 'info', id: 'groups|||' + tk + '|' + c.sec + ':' + k, text: 'This class sat in ' + (real.length === 2 ? 'two' : real.length) + ' groups: ' + real.map(function (g) { return hm(Math.min.apply(null, g.map(function (x) { return x.started; }))) + ' (' + g.length + ')'; }).join(' and ') + '.', todo: 'No group is most of the class, so Tally doesn\'t flag anyone as apart from it.' });
     } else {
       var ms = med(big.map(function (x) { return x.started; })), mf = med(big.map(function (x) { return x.finished; }));
       var off = function (x) { return x.started < ms - 20 * 60000 || x.started > mf; }, rest = big.filter(function (x) { return !off(x); }); if (!rest.length) rest = big;
@@ -410,12 +457,12 @@ function flags(c) {
       todo: 'Open the test: its timeline shows where the time went.' }); });
   });
   // records of this class for another test, or another course
-  var other = {}; mineRecs.filter(function (x) { return !here(x); }).forEach(function (x) { var k = testKey(x.course, x.unit); (other[k] = other[k] || { course: x.course, unit: x.unit, n: 0 }).n++; });
-  Object.keys(other).forEach(function (k) { var o = other[k]; push({ kind: 'other', level: 'info', course: o.course, unit: o.unit, n: o.n, text: (o.n === 1 ? '1 test' : o.n + ' tests') + ' turned in here ' + (o.n === 1 ? 'is' : 'are') + ' for ' + testName(o.course, o.unit) + ', not ' + testName(c.course, c.unit) + '.',
+  var other = {}; mineRecs.filter(function (x) { return !here(x); }).forEach(function (x) { var k = testKey(x.course, x.unit); var o = other[k] = other[k] || { course: x.course, unit: x.unit, n: 0, codes: [] }; o.n++; o.codes.push(x.code); });
+  Object.keys(other).forEach(function (k) { var o = other[k]; push({ kind: 'other', level: 'info', course: o.course, unit: o.unit, n: o.n, uniq: k + ':' + o.codes.sort().join(','), text: (o.n === 1 ? '1 test' : o.n + ' tests') + ' turned in here ' + (o.n === 1 ? 'is' : 'are') + ' for ' + testName(o.course, o.unit) + ', not ' + testName(c.course, c.unit) + '.',
     todo: (COURSES[o.course] && COURSES[o.course].prep !== c.prep ? 'That is the other course\'s test: the student may have opened the wrong one. ' : '') + 'Open ' + testName(o.course, o.unit) + ' to see ' + (o.n === 1 ? 'it' : 'them') + '.' }); });
   // tests nobody turned in, of this test (with what the record shows of when and where it was taken)
   recs.filter(function (x) { return P.state[x.code] === 'nobody' && here(x) && x.ok !== false; }).forEach(function (x) {
-    push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : x.ended === 'time' ? ', ran out of time: closed by the site' : '') + ').' + (x.was ? ' It had been given to ' + shownName(x.was.n) + ', who is no longer on a roster here.' : ''),
+    push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : x.ended === 'time' ? ', ran out of time: closed by the site' : '') + ').' + (x.gone ? ' It had been ' + (x.gone.how === 'you' ? 'given to ' : 'with ') + shownName(x.gone.n) + (x.gone.cl ? ' (' + x.gone.cl + ')' : '') + ', who is no longer on that roster.' : ''),
       todo: 'A student finished this test and didn\'t turn the code in, or typed it wrong. Give it to the student it belongs to.' }); });
   // responses waiting for him: a name Tally isn't sure of (with its suggestion), a test two rows claim
   rows.filter(function (r) { return !r.who && (r.codes || []).length && !P.shared[(r.codes || [])[0]]; }).forEach(function (r) {
@@ -434,7 +481,7 @@ function flags(c) {
 var fmtCode = function (c) { return SEAL.showCode(c); };
 function hm(ms) { if (ms == null) return '?'; var d = new Date(ms); var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
-var api = { COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
+var api = { NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
   qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testKey: testKey, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ExamCore = api;
 })(typeof self !== 'undefined' ? self : this);
