@@ -1454,7 +1454,9 @@ class's median start or after its median finish, said with the times: "took it a
 took it 9:41 am–10:16 am"), **opening** (`site.opened` not the class's most common; an older record without it is left
 alone), **long** (`seconds` over twice the class median); and for each record: **period** now for a start or a finish
 outside the period's times, **rule** (lock after N: more than N times away and never unlocked; end after N: N or more and
-it did not end), **teacher** (`ended: 'teacher'`: the site closed it with what was saved). Times away are counted the
+it did not end), **teacher** (`ended: 'teacher'`: the site closed it with what was saved), **time** (CHANGES §9, `ended:
+'time'`: "ran out of time (N minutes allowed): the site closed it with what was saved"). `site.limit` (minutes, or null) is
+shown under the rule on a test's page ("120 minutes allowed" / "no time limit"). Times away are counted the
 site's way: `[at, sec, kind, q]` with 0 ≤ sec ≤ 86400, the sum capped at the sitting's seconds.
 
 **A test nobody turned in** (abandoned tests the site now finishes and seals come in the cockpit's results file, whose rows
@@ -1494,6 +1496,10 @@ Crypto or the platform's deflate is missing (simulated in Chromium) and shows wh
   `audit-nov15-grad.js` GRD-01 round 2, is a timing check (6,534 ms against a 4,000 ms ceiling) on a machine at load
   ~9 on 2 cores; it passed alone (5 suites rerun: 236 passed, 0 failed). Changed suites: `header.js`, `shell.js`,
   `audit-oct22.js` (expectations only).
+- `5b92694` (parts 1–3): **72 suites · 2,352 passed · 0 failed**.
+- `b8b659f` (part 4, the review's T items): **72 suites · 2,370 passed · 0 failed**.
+- Part 5 (CHANGES §9, time allowed; touches only examcore.js, exams.js, the fixtures and the two Tests suites): exam-core
+  78, exam-e2e 66, header 55, shell 59, style-contract 14 passed, 0 failed (the whole suite was not run again for it).
 
 ## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 

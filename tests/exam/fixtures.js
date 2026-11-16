@@ -104,7 +104,7 @@ function sitting(r, o) {
   if (o.nulls) { log.device = { sw: null, sh: null, ww: 1280, wh: null, dpr: null, touch: null, os: null, osv: null, br: 'Chrome', brv: null, dark: null, large: null, zoom: null, tz: null }; log.fails = null; log.t0 = null; Object.values(log.q).forEach(e => { e.first = null; }); }
   if (o.log === false) log = null;
   return { v: 1, id: [...Array(16)].map(() => '0123456789abcdef'[Math.floor(r() * 16)]).join(''), code: null, course: o.course || 'm7', unit: o.unit == null ? 10 : o.unit, cv: 3, kit: '7f3a9c21b04e', seed: [...Array(32)].map(() => '0123456789abcdef'[Math.floor(r() * 16)]).join(''),
-    site: { started, finished, saves: 20 + Math.floor(r() * 30), timeline: timeline.sort((a, b) => a[0] - b[0]), ...(o.opened === null ? {} : { opened: o.opened || at(9, 38) }) },
+    site: { started, finished, saves: 20 + Math.floor(r() * 30), timeline: timeline.sort((a, b) => a[0] - b[0]), limit: o.limit === undefined ? 120 : o.limit, ...(o.opened === null ? {} : { opened: o.opened || at(9, 38) }) },
     rule: o.rule || { leave: 'count', after: 3 }, ended: o.ended || null, unlocks: o.unlocks || 0, parts, points: right, of: OF, log };
 }
 
@@ -135,11 +135,13 @@ function build(seed) {
     1: { away: 12, kinds: ['tab', 'window', 'fullscreen', 'tab', 'reload'], awayLong: 90, blocked: true },   // left a lot
     2: { away: 3, kinds: ['tab'], rule: { leave: 'end', after: 3 }, ended: 'left', blankFrom: 11 },      // the test ended itself
     3: { idle: [612, 75] }, 4: { scratch: 'heavy', cut: true, calc: 0.5 }, 5: { cap: true, away: 3, calc: 0.3 },
-    6: { log: false }, 7: { nulls: true, unlocks: 1, rule: { leave: 'lock', after: 2 }, away: 2 },
+    7: { nulls: true, unlocks: 1, rule: { leave: 'lock', after: 2 }, away: 2 },
     13: { pastes: 2, blocked: true }, 20: { skew: -184, flagEnd: true, extra: 2700 }, 21: { start: at(10, 52) }, 22: { slowQ: '6' },
     11: { rule: { leave: 'end', after: 3 }, away: 3 },                                                 // left 3 times under "end after 3" and it did not end
     14: { rule: { leave: 'lock', after: 2 }, away: 4 },                                                // left 4 times under "lock after 2", never unlocked
-    25: { ended: 'teacher' },                                                                          // the site closed it with what was saved
+    25: { ended: 'teacher' },
+    10: { ended: 'time', limit: 30, extra: 600 },                                                       // ran out of the 30 minutes allowed
+    6: { log: false, limit: null },                                                                    // no time limit                                                                          // the site closed it with what was saved
     27: { start: at(13, 5), opened: at(12, 55) },                                                      // taken in the afternoon, in another opening (at home?)
     26: { opened: null } };                                                                            // an older record with no site.opened
   const codes = {};

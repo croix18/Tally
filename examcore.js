@@ -213,7 +213,7 @@ function readRecord(r) {
     code: str(r.code) || '', id: str(r.id) || '', trial: r.trial === true, course: str(r.course) || '', unit: num(r.unit), cv: r.cv, kit: str(r.kit), seed: str(r.seed),
     started: started, finished: finished, seconds: started != null && finished != null && finished >= started ? Math.round((finished - started) / 1000) : null,
     saves: num(site.saves), timeline: arr(site.timeline).filter(function (e) { return Array.isArray(e) && num(e[0]) != null; }).map(function (e) { return { at: e[0], part: e[1] == null ? '' : String(e[1]) }; }),
-    rule: r.rule && typeof r.rule === 'object' ? { leave: str(r.rule.leave) || 'count', after: num(r.rule.after) } : null, ended: r.ended === 'left' || r.ended === 'teacher' ? r.ended : null, unlocks: num(r.unlocks),
+    rule: r.rule && typeof r.rule === 'object' ? { leave: str(r.rule.leave) || 'count', after: num(r.rule.after) } : null, ended: r.ended === 'left' || r.ended === 'teacher' || r.ended === 'time' ? r.ended : null, limit: num(site.limit), unlocks: num(r.unlocks),
     points: num(r.points), of: num(r.of), parts: parts, questions: qs,
     log: log ? { t0: t0, t1: t1, deviceSeconds: t0 != null && t1 != null && t1 >= t0 ? Math.round((t1 - t0) / 1000) : null, fails: num(log.fails), shaped: own(log, 'v') && Array.isArray(log.visits) } : null,
     opened: num(site.opened),
@@ -313,6 +313,8 @@ function flags(c) {
         todo: 'The site should have ' + (r.leave === 'lock' ? 'locked' : 'ended') + ' it and did not: the page may have been tampered with. Open the test, look at each time away, and talk to the student.' });
     if (x.ended === 'teacher') out.push({ kind: 'teacher', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test did not finish: the site closed it with what was saved when the test closed.',
       todo: 'The score counts only the answers saved before then. Decide whether it stands, or open the test again in the cockpit for them to finish.' });
+    if (x.ended === 'time') out.push({ kind: 'time', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test ran out of time' + (x.limit ? ' (' + x.limit + ' minutes allowed)' : '') + ': the site closed it with what was saved.',
+      todo: 'The score counts only the answers saved before the time ran out. Decide whether it stands, or let them finish another time (open the test again in the cockpit).' });
   });
   // against the rest of the class (one class, one test, one day): far from the others' times, another opening, far longer
   var days = {}; mineRecs.filter(here).filter(function (x) { return x.started != null; }).forEach(function (x) { var d = new Date(x.started), k = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); (days[k] = days[k] || []).push(x); });
@@ -336,7 +338,7 @@ function flags(c) {
     todo: (COURSES[o.course] && COURSES[o.course].prep !== c.prep ? 'That is the other course\'s test: the student may have opened the wrong one. ' : '') + 'Open ' + testName(o.course, o.unit) + ' to see ' + (o.n === 1 ? 'it' : 'them') + '.' }); });
   // tests nobody claimed, of this course
   recs.filter(function (x) { return !x.sec && !x.pin && !P.shared[x.code] && !claimed[x.code] && here(x); }).forEach(function (x) {
-    out.push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : '') + ').',
+    out.push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : x.ended === 'time' ? ', ran out of time: closed by the site' : '') + ').',
       todo: 'A student finished this test and didn\'t turn the code in, or typed it wrong. Give it to the student it belongs to.' }); });
   // responses Tally could not put a name to, or whose code doesn't read
   rows.filter(function (r) { return !r.who && (r.codes || []).length && !P.shared[(r.codes || [])[0]]; }).forEach(function (r) {

@@ -206,7 +206,7 @@ function xtCurrent(s) {
 // what one class shows for one test: a row per student (Focus order), the records, the flags
 function xtModel(s, t) {
   const X = examS(); const C = EX();
-  const recs = examAll().map(x => { const v = xtRead(x.e); return { code: x.code, course: v.course, unit: v.unit, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, rule: v.rule, after: v.rule && v.rule.after, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, sec: x.sec, n: x.e.n, pin: x.e.pin, points: v.points, of: v.of }; });
+  const recs = examAll().map(x => { const v = xtRead(x.e); return { code: x.code, course: v.course, unit: v.unit, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, limit: v.limit, rule: v.rule, after: v.rule && v.rule.after, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, sec: x.sec, n: x.e.n, pin: x.e.pin, points: v.points, of: v.of }; });
   const fl = C.flags({ sec: s.key, prep: s.prep, course: t.course, unit: t.unit, period: X.period[s.key] || null, rows: X.rows, recs, fails: X.fails, picks: X.picks, known: Object.keys(X.loose), show: shown });
   const studs = classStudents(s); const here = e => e.r.course === t.course && xtNum(e.r.unit) === t.unit;
   const rows = studs.map((n, i) => { const mine = Object.keys(s.exams || {}).filter(c => s.exams[c].n === n && here(s.exams[c])).map(c => ({ code: c, e: s.exams[c] }));
@@ -241,7 +241,7 @@ function renderTests(s) {
   const per = X.period[s.key];
   const fact = (lbl, val, sub, cls) => `<div class="gcard ${cls || ''}"><small>${lbl}</small><b>${val}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
   const th = (id, lbl, cls) => `<th class="${cls || ''}" aria-sort="${sort === id ? 'ascending' : 'none'}"><button class="xtSort ${sort === id ? 'on' : ''}" data-xsort="${id}">${lbl}</button></th>`;
-  const flagChip = f => `<span class="xtChip ${f.level}">${esc({ shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', apart: 'Apart from class', opening: 'Other opening', rule: 'Rule not kept', long: 'Very long', teacher: 'Not finished', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code' }[f.kind] || f.kind)}</span>`;
+  const flagChip = f => `<span class="xtChip ${f.level}">${esc({ shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', apart: 'Apart from class', opening: 'Other opening', rule: 'Rule not kept', long: 'Very long', teacher: 'Not finished', time: 'Out of time', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code' }[f.kind] || f.kind)}</span>`;
   const row = r => { const v = r.v;
     if (!r.use) { const f = r.flags; return `<tr class="none"><td class="xtNo">${r.i + 1}</td><td class="stu"><button class="nm nmbtn" data-prof="${esc(r.n)}">${esc(shown(r.n))}</button></td><td colspan="4" class="xtMissing">${r.mine.length > 1 ? `${r.mine.length} tests: choose the one that counts` : f.length ? 'See what to look at, above' : 'No test turned in'}</td><td>${f.map(flagChip).join('')}</td></tr>`; }
     const pc = xtPct(v.points, v.of);
@@ -256,7 +256,7 @@ function renderTests(s) {
     if (f.kind === 'unclaimed') return `<span class="xtBtns"><button class="pill small pale" data-xcode="${f.code}">Open</button><button class="pill small" data-xgive="${f.code}">Give it to a student</button></span>`;
     if (f.kind === 'none' && f.near && f.near.length && f.rows && f.rows[0] && f.rows[0].who) return `<button class="pill small" data-xnear="${f.code}" data-to="${f.near[0]}">Give ${esc(SEALX().showCode(f.near[0]))} to ${esc(shown(f.rows[0].who.n))}</button>`;
     if (f.kind === 'twice') return `<button class="pill small" data-xtwice="${esc(f.names[0])}">Choose the one that counts</button>`;
-    if (['left', 'period', 'apart', 'opening', 'rule', 'long', 'teacher'].includes(f.kind)) return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
+    if (['left', 'period', 'apart', 'opening', 'rule', 'long', 'teacher', 'time'].includes(f.kind)) return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
     if (f.kind === 'other') return `<button class="pill small pale" data-xtest="${esc(C.testKey(f.course, f.unit))}">Open ${esc(C.testName(f.course, f.unit))}</button>`;
     if (!examCan()) return '';
     if (f.kind === 'net') return `<button class="pill small" data-xretry="1">Try again</button>`;
@@ -472,7 +472,7 @@ function renderTestDetail(s, code) {
         <div><dt>Finished</dt><dd>${esc(xtWhen(v.finished)) || '—'}</dd></div>
         <div><dt>Left the test</dt><dd class="${v.away.length ? 'away' : ''}">${!L ? '<span class="xtNone">no log</span>' : v.away.length ? `${plural(v.away.length, 'time')} · ${esc(C.dur(v.awaySec))}` : 'never'}</dd></div>
         <div><dt>Taken</dt><dd>${v.started != null ? esc(EX().hm(v.started)) + '–' + esc(EX().hm(v.finished)) : '—'}${v.opened != null ? `<small class="xtOpenTag">opening of ${esc(EX().hm(v.opened))}</small>` : ''}</dd></div>
-        <div><dt>Rule</dt><dd>${v.rule ? esc(v.rule.leave === 'lock' ? `Lock after ${v.rule.after}` : v.rule.leave === 'end' ? `End after ${v.rule.after}` : 'Count only') : '—'}${v.unlocks ? ` · unlocked ${plural(v.unlocks, 'time')}` : ''}${v.ended === 'left' ? ' · <b class="bad">ended: left</b>' : v.ended === 'teacher' ? ' · ended by you' : ''}</dd></div>
+        <div><dt>Rule</dt><dd>${v.rule ? esc(v.rule.leave === 'lock' ? `Lock after ${v.rule.after}` : v.rule.leave === 'end' ? `End after ${v.rule.after}` : 'Count only') : '—'}${v.unlocks ? ` · unlocked ${plural(v.unlocks, 'time')}` : ''}${v.ended === 'left' ? ' · <b class="bad">ended: left</b>' : v.ended === 'teacher' ? ' · <b class="bad">closed by the site</b>' : v.ended === 'time' ? ' · <b class="bad">ran out of time</b>' : ''}<small class="xtOpenTag">${v.limit ? esc(v.limit) + ' minutes allowed' : 'no time limit'}</small></dd></div>
       </dl>
     </section>
     ${fl.length ? `<section class="xtFlags"><ul>${fl.map(f => `<li class="${f.level}"><span class="xtFi">${ico(f.level === 'warn' ? 'warn' : 'info')}</span><div><b>${esc(f.text)}</b><p>${esc(f.todo)}</p></div></li>`).join('')}</ul></section>` : ''}

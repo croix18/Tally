@@ -1640,7 +1640,7 @@ function readRecord(r) {
     code: str(r.code) || '', id: str(r.id) || '', trial: r.trial === true, course: str(r.course) || '', unit: num(r.unit), cv: r.cv, kit: str(r.kit), seed: str(r.seed),
     started: started, finished: finished, seconds: started != null && finished != null && finished >= started ? Math.round((finished - started) / 1000) : null,
     saves: num(site.saves), timeline: arr(site.timeline).filter(function (e) { return Array.isArray(e) && num(e[0]) != null; }).map(function (e) { return { at: e[0], part: e[1] == null ? '' : String(e[1]) }; }),
-    rule: r.rule && typeof r.rule === 'object' ? { leave: str(r.rule.leave) || 'count', after: num(r.rule.after) } : null, ended: r.ended === 'left' || r.ended === 'teacher' ? r.ended : null, unlocks: num(r.unlocks),
+    rule: r.rule && typeof r.rule === 'object' ? { leave: str(r.rule.leave) || 'count', after: num(r.rule.after) } : null, ended: r.ended === 'left' || r.ended === 'teacher' || r.ended === 'time' ? r.ended : null, limit: num(site.limit), unlocks: num(r.unlocks),
     points: num(r.points), of: num(r.of), parts: parts, questions: qs,
     log: log ? { t0: t0, t1: t1, deviceSeconds: t0 != null && t1 != null && t1 >= t0 ? Math.round((t1 - t0) / 1000) : null, fails: num(log.fails), shaped: own(log, 'v') && Array.isArray(log.visits) } : null,
     opened: num(site.opened),
@@ -1740,6 +1740,8 @@ function flags(c) {
         todo: 'The site should have ' + (r.leave === 'lock' ? 'locked' : 'ended') + ' it and did not: the page may have been tampered with. Open the test, look at each time away, and talk to the student.' });
     if (x.ended === 'teacher') out.push({ kind: 'teacher', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test did not finish: the site closed it with what was saved when the test closed.',
       todo: 'The score counts only the answers saved before then. Decide whether it stands, or open the test again in the cockpit for them to finish.' });
+    if (x.ended === 'time') out.push({ kind: 'time', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test ran out of time' + (x.limit ? ' (' + x.limit + ' minutes allowed)' : '') + ': the site closed it with what was saved.',
+      todo: 'The score counts only the answers saved before the time ran out. Decide whether it stands, or let them finish another time (open the test again in the cockpit).' });
   });
   // against the rest of the class (one class, one test, one day): far from the others' times, another opening, far longer
   var days = {}; mineRecs.filter(here).filter(function (x) { return x.started != null; }).forEach(function (x) { var d = new Date(x.started), k = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); (days[k] = days[k] || []).push(x); });
@@ -1763,7 +1765,7 @@ function flags(c) {
     todo: (COURSES[o.course] && COURSES[o.course].prep !== c.prep ? 'That is the other course\'s test: the student may have opened the wrong one. ' : '') + 'Open ' + testName(o.course, o.unit) + ' to see ' + (o.n === 1 ? 'it' : 'them') + '.' }); });
   // tests nobody claimed, of this course
   recs.filter(function (x) { return !x.sec && !x.pin && !P.shared[x.code] && !claimed[x.code] && here(x); }).forEach(function (x) {
-    out.push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : '') + ').',
+    out.push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : x.ended === 'time' ? ', ran out of time: closed by the site' : '') + ').',
       todo: 'A student finished this test and didn\'t turn the code in, or typed it wrong. Give it to the student it belongs to.' }); });
   // responses Tally could not put a name to, or whose code doesn't read
   rows.filter(function (r) { return !r.who && (r.codes || []).length && !P.shared[(r.codes || [])[0]]; }).forEach(function (r) {
@@ -6183,7 +6185,7 @@ function xtCurrent(s) {
 // what one class shows for one test: a row per student (Focus order), the records, the flags
 function xtModel(s, t) {
   const X = examS(); const C = EX();
-  const recs = examAll().map(x => { const v = xtRead(x.e); return { code: x.code, course: v.course, unit: v.unit, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, rule: v.rule, after: v.rule && v.rule.after, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, sec: x.sec, n: x.e.n, pin: x.e.pin, points: v.points, of: v.of }; });
+  const recs = examAll().map(x => { const v = xtRead(x.e); return { code: x.code, course: v.course, unit: v.unit, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, limit: v.limit, rule: v.rule, after: v.rule && v.rule.after, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, sec: x.sec, n: x.e.n, pin: x.e.pin, points: v.points, of: v.of }; });
   const fl = C.flags({ sec: s.key, prep: s.prep, course: t.course, unit: t.unit, period: X.period[s.key] || null, rows: X.rows, recs, fails: X.fails, picks: X.picks, known: Object.keys(X.loose), show: shown });
   const studs = classStudents(s); const here = e => e.r.course === t.course && xtNum(e.r.unit) === t.unit;
   const rows = studs.map((n, i) => { const mine = Object.keys(s.exams || {}).filter(c => s.exams[c].n === n && here(s.exams[c])).map(c => ({ code: c, e: s.exams[c] }));
@@ -6218,7 +6220,7 @@ function renderTests(s) {
   const per = X.period[s.key];
   const fact = (lbl, val, sub, cls) => `<div class="gcard ${cls || ''}"><small>${lbl}</small><b>${val}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
   const th = (id, lbl, cls) => `<th class="${cls || ''}" aria-sort="${sort === id ? 'ascending' : 'none'}"><button class="xtSort ${sort === id ? 'on' : ''}" data-xsort="${id}">${lbl}</button></th>`;
-  const flagChip = f => `<span class="xtChip ${f.level}">${esc({ shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', apart: 'Apart from class', opening: 'Other opening', rule: 'Rule not kept', long: 'Very long', teacher: 'Not finished', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code' }[f.kind] || f.kind)}</span>`;
+  const flagChip = f => `<span class="xtChip ${f.level}">${esc({ shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', apart: 'Apart from class', opening: 'Other opening', rule: 'Rule not kept', long: 'Very long', teacher: 'Not finished', time: 'Out of time', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code' }[f.kind] || f.kind)}</span>`;
   const row = r => { const v = r.v;
     if (!r.use) { const f = r.flags; return `<tr class="none"><td class="xtNo">${r.i + 1}</td><td class="stu"><button class="nm nmbtn" data-prof="${esc(r.n)}">${esc(shown(r.n))}</button></td><td colspan="4" class="xtMissing">${r.mine.length > 1 ? `${r.mine.length} tests: choose the one that counts` : f.length ? 'See what to look at, above' : 'No test turned in'}</td><td>${f.map(flagChip).join('')}</td></tr>`; }
     const pc = xtPct(v.points, v.of);
@@ -6233,7 +6235,7 @@ function renderTests(s) {
     if (f.kind === 'unclaimed') return `<span class="xtBtns"><button class="pill small pale" data-xcode="${f.code}">Open</button><button class="pill small" data-xgive="${f.code}">Give it to a student</button></span>`;
     if (f.kind === 'none' && f.near && f.near.length && f.rows && f.rows[0] && f.rows[0].who) return `<button class="pill small" data-xnear="${f.code}" data-to="${f.near[0]}">Give ${esc(SEALX().showCode(f.near[0]))} to ${esc(shown(f.rows[0].who.n))}</button>`;
     if (f.kind === 'twice') return `<button class="pill small" data-xtwice="${esc(f.names[0])}">Choose the one that counts</button>`;
-    if (['left', 'period', 'apart', 'opening', 'rule', 'long', 'teacher'].includes(f.kind)) return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
+    if (['left', 'period', 'apart', 'opening', 'rule', 'long', 'teacher', 'time'].includes(f.kind)) return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
     if (f.kind === 'other') return `<button class="pill small pale" data-xtest="${esc(C.testKey(f.course, f.unit))}">Open ${esc(C.testName(f.course, f.unit))}</button>`;
     if (!examCan()) return '';
     if (f.kind === 'net') return `<button class="pill small" data-xretry="1">Try again</button>`;
@@ -6449,7 +6451,7 @@ function renderTestDetail(s, code) {
         <div><dt>Finished</dt><dd>${esc(xtWhen(v.finished)) || '—'}</dd></div>
         <div><dt>Left the test</dt><dd class="${v.away.length ? 'away' : ''}">${!L ? '<span class="xtNone">no log</span>' : v.away.length ? `${plural(v.away.length, 'time')} · ${esc(C.dur(v.awaySec))}` : 'never'}</dd></div>
         <div><dt>Taken</dt><dd>${v.started != null ? esc(EX().hm(v.started)) + '–' + esc(EX().hm(v.finished)) : '—'}${v.opened != null ? `<small class="xtOpenTag">opening of ${esc(EX().hm(v.opened))}</small>` : ''}</dd></div>
-        <div><dt>Rule</dt><dd>${v.rule ? esc(v.rule.leave === 'lock' ? `Lock after ${v.rule.after}` : v.rule.leave === 'end' ? `End after ${v.rule.after}` : 'Count only') : '—'}${v.unlocks ? ` · unlocked ${plural(v.unlocks, 'time')}` : ''}${v.ended === 'left' ? ' · <b class="bad">ended: left</b>' : v.ended === 'teacher' ? ' · ended by you' : ''}</dd></div>
+        <div><dt>Rule</dt><dd>${v.rule ? esc(v.rule.leave === 'lock' ? `Lock after ${v.rule.after}` : v.rule.leave === 'end' ? `End after ${v.rule.after}` : 'Count only') : '—'}${v.unlocks ? ` · unlocked ${plural(v.unlocks, 'time')}` : ''}${v.ended === 'left' ? ' · <b class="bad">ended: left</b>' : v.ended === 'teacher' ? ' · <b class="bad">closed by the site</b>' : v.ended === 'time' ? ' · <b class="bad">ran out of time</b>' : ''}<small class="xtOpenTag">${v.limit ? esc(v.limit) + ' minutes allowed' : 'no time limit'}</small></dd></div>
       </dl>
     </section>
     ${fl.length ? `<section class="xtFlags"><ul>${fl.map(f => `<li class="${f.level}"><span class="xtFi">${ico(f.level === 'warn' ? 'warn' : 'info')}</span><div><b>${esc(f.text)}</b><p>${esc(f.todo)}</p></div></li>`).join('')}</ul></section>` : ''}
