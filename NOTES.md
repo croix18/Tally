@@ -1420,25 +1420,36 @@ Tally.html from file://; its https://mrshaffer.org requests are answered by the 
 whole, with a "‹ Tests" crumb; Escape goes back). `tests/header.js` and `tests/shell.js` now expect the sixth tab: the only
 change to an existing suite. The tab's count is the warn flags of the class's newest test.
 
-**What Tally keeps** (`state.exam`, `sec.exams`; layout in the comment at the top of exams.js). Tally's key pairs are kept as
-JSON text (`state.exam.pairs`, every key ever made, newest last) so the cross-tab merge can never splice two keys together;
-the private half is in Tally's storage and the Full save, and in nothing else (Board save builds its own state; tested).
-**Opening a Full save never takes a key away**: `loadTallyFile` carries this Tally's keys and site keys into the opened
-state (`examKeysNow` / `examKeepKeys`). Every site key Tally has been given is kept (`state.exam.sites`); a record whose
-signature fails makes Tally ask the site for its key once per batch (a key made again) and try again. Records are kept
-opened (JSON) under the student's class, only after `open` succeeded with the signature checked. Records that belong to
-nobody yet are in `state.exam.loose`. Codes that did not open: `state.exam.fails` with the reason.
+**What Tally keeps** (data model v2 since the review fixes; layout in the comment at the top of exams.js). Tally's key
+pairs are kept as JSON text (`state.exam.pairs`, every key ever made, newest last) so the cross-tab merge can never splice
+two keys together; the private half is in Tally's storage and the Full save, and in nothing else (Board save builds its
+own state; tested). **The key to paste is always this browser's own newest key** (`tally.exam.local.mine`); a key that
+came in a Full save opens tests but is never offered for pasting, and Connect says so. **Opening a Full save never takes a
+key away** (`examKeysNow` / `examKeepKeys`). Site keys are kept in `state.exam.sites`, but a site key is trusted by this
+browser only after a trial proved it (`tally.exam.local.checked`); a new key from the site is kept unchecked until the
+next trial. **Records:** `state.exam.recs[code]` = a small summary plus the entry {who {sec, n, how, at}, no[], nobody,
+was}; the locked text (as the site sent it) is in IndexedDB `tally-tests`/`locked`, falling back to `state.exam.locked`
+when IndexedDB is missing; the Full save carries every locked text (`examForSave`), never an opened record. Every session
+re-opens and re-checks each record (`examVerifyAll`); a record not checked this session is never shown and never scored,
+and "checked with the site's signature" is said only of records checked this session. Old v1 data (`sec.exams`, opened
+JSON) is migrated to `legacy` and kept until its locked text is fetched again; nothing is dropped.
 
 **Network.** The shipped CSP is `connect-src https://mrshaffer.org` (was `'none'`); the test build adds `http://127.0.0.1:*`.
 Requests: `GET <site>/api/test/key`, `GET <site>/api/test/result/<code>`; `credentials: 'omit'`, `referrerPolicy:
 'no-referrer'`, `cache: 'no-store'`, 15 s timeout, three at a time. The address is a setting (Connection › Address, keys);
 it says which addresses this copy may reach (read from its own CSP).
 
-**Matching.** A typed name is matched against every class's students (`classStudents`): exact (every word typed is in the
-name and first + last are there; order, case, accents, a left-out middle name, punctuation forgiven) is taken; a forgiving
-match (one slip in a long name, a nickname that starts the same, a last initial) is taken only when it is the one close
-student and is marked `how: 'loose'`; anything else is asked ("Who turned this in?"), with the likely students first, and the
-answer is remembered for that typed name (`state.exam.alias`). A response is filed into the class of the student it matched.
+**Matching** (review C1, C2, H1). A typed name is placed only when it is exact (every word in the student's name,
+first and last present; order, case, accents, a left-out middle name, punctuation forgiven) **and unrivaled**: no other
+student in any class is one slip, a prefix or a nickname away. Anything forgiving is a suggestion on the row ("Bob Doe —
+DOE, BOBBY?" with Yes / Someone else). A remembered answer (`state.exam.alias`) is used only when it is the only sensible
+reading, is offered rather than given to other rows, is marked on the row ("remembered"), and can be cleared in the quiet
+place under the list ("Remembered names and dismissed flags": Forget / Bring back). When the candidates are in two classes
+the question says "The test started 9:40 am with 4th Period's tests". Every placed record has **Not theirs** (→ another
+student, Nobody yet, Undo). The student is stored on the entry, so dropping response rows never unplaces a test; a test
+follows its student when they change class; if the student is gone, it goes back to "Nobody turned in" with a line saying
+whose it had been. Under the list: "All classes: N tests held = A with a student + B waiting for you + C nobody turned in"
+(adds up by construction; on the e2e fixture after answering: 33 = 33 + 0 + 0).
 
 **Flags** (examcore `flags`, each with `text` + `todo` and, on screen, the button that acts): shared code (say whose) · code
 not on the site (with the nearest unclaimed code when one is a character or two away: "Give it to …") · not a record ·
@@ -1483,10 +1494,29 @@ results file's own `site.key` is never trusted (records open only against keys f
 mode, so Tests has none either (the dark screenshots look the same as light); mc answers show the choice's letter (the
 record carries no choice text).
 
-**Not done / known:** storage: an opened record is 2–15 KB of JSON (median 5 KB in the fixtures); ~140 students × a dozen
-tests is ~8 MB, past the ~5 MB a browser gives localStorage. Before the second semester the records want IndexedDB or
-compression (decision for Croix and the reviewer). The tablet (`content://`) was not tried: Tests says plainly when Web
-Crypto or the platform's deflate is missing (simulated in Chromium) and shows what it already opened.
+**Not done / known:** the tablet (`content://`) was not tried: Tests says plainly when Web Crypto or the platform's
+deflate is missing (simulated in Chromium) and then scores nothing. The real site, real Google Forms exports and a laptop
+in another time zone were not tried.
+
+### Review fixes (16 Nov 2026; `/home/claude/reviews/tally-tests/REVIEW.md`, probes rerun from `/home/claude/tally-rerun`)
+- **Storage (H3), measured:** 28 students × 10 tests add 438 bytes a test to `tally.v1` (+0.12 MB; was +1.63 MB opened);
+  150 × 15 = 2,250 tests: 0.94 MB of localStorage, 5.22 MB of IndexedDB (2,433 bytes a locked text), Full save 6.22 MB;
+  700 records render Tests in 99 ms. Tests warns at 70% of the browser's quota (`xtStoreLine`) and a failed save names
+  what fills storage (`whatFills`). `tests/exam-storage.js` measures it and checks the v1 migration.
+- **Flags (M1, M2, N1, N2, L5):** groups by opening plus 30-minute start clusters; nobody is "apart" unless one group holds
+  60% of the class; else a note "This class sat in two groups: 10:41 am (3) and 1:05 pm (3)"; a lone test in its own
+  opening is a make-up note, not a warning; facts in the list, possibilities on the test page; flags are recomputed every
+  render (stale ones clear); the same child twice is "two tests", not a shared code; every flag can be dismissed and
+  brought back; the period's times have a 1-minute grace both sides; one clock style ("9:41 am").
+- **The rest:** M3 a 404 that isn't the site's `{error:'none'}` or a non-JSON answer is a network failure (Try again);
+  M4 a bad code's text is masked under Hide names; M5 records are capped on reading (a 1e9-second record renders in 0.6 s,
+  was 28 s); L2, L3, L4 (Open a file with no site key says to connect first), L6 (a rotated site key needs a new trial),
+  N5; L1 `seal.js` re-vendored from `d834a78`. CHANGES §11: `how:'tap'` reads "picked", `log: null` gets "this device sent
+  no log (or one too large to keep)", blocked kind `find` reads "Find (Ctrl+F)", unknown kinds show as their own word.
+- **Decisions that may be wrong (for Croix):** strict per-browser trust of the site key means a new computer must do a
+  trial before anything scores, and records signed by a site key that was rotated before that trial cannot be scored
+  there; names taken from an e-mail address are only suggested; "John Smith" asks when a "Jon Smith" exists; response rows
+  are kept up to 6,000 (only placed or nobody rows are pruned).
 
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
@@ -1500,6 +1530,10 @@ Crypto or the platform's deflate is missing (simulated in Chromium) and shows wh
 - `b8b659f` (part 4, the review's T items): **72 suites · 2,370 passed · 0 failed**.
 - Part 5 (CHANGES §9, time allowed; touches only examcore.js, exams.js, the fixtures and the two Tests suites): exam-core
   78, exam-e2e 66, header 55, shell 59, style-contract 14 passed, 0 failed (the whole suite was not run again for it).
+- Review fixes (`5889a39`): **73 suites · 2,419 passed · 1 failed**. The failure was `audit-nov15-data.js` DAT-06: the
+  review fix had replaced the storage-full toast's wording from the deep audit; the audit's sentence is back, with the
+  measured breakdown (`whatFills`) after it. Rerun: audit-nov15-data 12, exam-core 106, exam-e2e 78, exam-storage 8
+  passed, 0 failed.
 
 ## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 
