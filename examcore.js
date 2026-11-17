@@ -69,7 +69,7 @@ function readSheet(text, o) {
   var n = Math.max.apply(null, lines.map(function (x) { return x.r.length; })), score = [], j, k;
   for (j = 0; j < n; j++) score.push({ code: 0, when: 0, name: 0, head: '' });
   // a cell with an @ in it is never a code: "elindqvist35" reads as one, and so does "Elsa <elindqvist35@…>" (review M1)
-  lines.forEach(function (x) { for (j = 0; j < n; j++) { var c = x.r[j] || ''; if (!c || c.indexOf('@') >= 0) continue; if (SEAL.findCodes(c).length) score[j].code++; else if (readWhen(c) != null) score[j].when++; else if (looksName(c)) score[j].name++; } });
+  lines.forEach(function (x) { for (j = 0; j < n; j++) { var c = x.r[j] || ''; if (!c) continue; if (c.indexOf('@') >= 0) { c = c.split(/\s+/).filter(function (w) { return w.indexOf('@') < 0; }).join(' '); if (!c) continue; } if (SEAL.findCodes(c).length) score[j].code++; else if (readWhen(c) != null) score[j].when++; else if (looksName(c)) score[j].name++; } });
   var best = function (key, not) { var b = null; for (j = 0; j < n; j++) { if (not.indexOf(j) >= 0) continue; if (score[j][key] > 0 && (b == null || score[j][key] > score[b][key])) b = j; } return b; };
   var code = best('code', []); if (code == null) return res;
   // the header: the first line whose code cell holds no code and whose cells are words, not data
@@ -111,7 +111,7 @@ function readSheet(text, o) {
     if (i === 0 && isHead) return;
     var cell = x.r[code] || '', codes = SEAL.findCodes(cell), nm = name == null ? '' : (x.r[name] || ''), w = at == null ? '' : (x.r[at] || ''), ad = mail == null ? '' : addrOf(x.r[mail]);
     if (!codes.length && !cell && !nm && !ad) { res.skipped++; return; }
-    if (cell.indexOf('@') >= 0) codes = [];   // an address typed as the code is never a code (review N5)
+    if (cell.indexOf('@') >= 0) { var bare = cell.split(/\s+/).filter(function (w) { return w.indexOf('@') < 0; }).join(' '); codes = SEAL.findCodes(bare); }   // an address typed in the code cell is never a code; a real code beside it is (review N5)
     else if (!codes.length && SEAL.readCode(cell)) codes = [SEAL.readCode(cell)];
     res.rows.push({ line: x.line, at: w, when: readWhen(w), name: nm, codes: codes, raw: codes.length ? '' : clip(cell, 60), addr: ad });
   });

@@ -236,6 +236,8 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
     check(rk.length === 2 && rk[0].s === rk[1].s && C.acctReads('maria.g@s.org', two) == null && C.acctReads('akhan@s.org', [{ display: 'Khanna, Alice' }, { display: 'Khan, Ali' }]) === 1, 'L2: an address that reads as two students equally reads as neither ("more than one student"); one read best and alone is that student'); }
   /* the second accounts review: the reader (N5, N6) and a tie that includes the certain name (N7) */
   { const u = C.readSheet('Timestamp\tUsername\tFirst and last name\tTest code\n11/16/2026 10:10:00\telindqvist35\tElsa Lindqvist\tK7QF2M9DX4TB\n11/16/2026 10:11:00\thfischer1234\tHannah Fischer\tK7QF2M9DX4TC\n');
+    const ca = C.readSheet('Timestamp\tEmail Address\tName\tTest code\n11/16/2026 10:10:00\ta@s.org\tAva Brooks\tK7QF-2M9D-X4TB elindqvist35@students.example.org\n11/16/2026 10:11:00\tb@s.org\tElsa Lindqvist\telindqvist35@students.example.org\n');
+    check(ca.rows[0].codes.join() === 'K7QF2M9DX4TB' && ca.rows[1].codes.length === 0, 'N5: a code cell holding a code and an address gives the code; one holding only an address gives none');
     check(u.cols.code === 3 && u.rows[0].codes[0] === 'K7QF2M9DX4TB', 'N5: a Username column of bare logins never wins the code column (its header says it is the account)');
     const hs = ['School email address', 'Your school email', 'What is your school email?', 'Email (school)', 'School Email:'].map(h => C.readSheet(`Timestamp\t${h}\tName\tTest code\n11/16/2026 10:10:00\tebrooks@s.org\tAva Brooks\tK7QF2M9DX4TB\n`).cols.email);
     const two = C.readSheet('11/16/2026 10:10:00\tmom@gmail.com\tebrooks@s.org\tAva Brooks\tK7QF2M9DX4TB\n');

@@ -686,14 +686,15 @@ function xtPasteBox() {
   m.innerHTML = `<div class="panel narrow"><header><h2>Paste the form's responses</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one"><p>In the response sheet, select the rows (or click the corner to select everything), copy, and paste here. Tally finds the timestamp, the name and the code itself; other columns and the header row don't matter.</p>
       <textarea id="xtSheet" class="xtSheet" spellcheck="false" ${state.settings.hideNames ? 'placeholder="Names stay hidden on screen; they are still read."' : 'placeholder="11/16/2026 10:42:13&#9;Ava Nguyen&#9;K7QF-2M9D-X4TB"'}></textarea>
-      <p class="xtSheetSay" id="xtSheetSay" aria-live="polite"></p><p class="ghint xtSheetTrust" id="xtSheetTrust" hidden>Tally takes a school account as the student because your form collects it <b>Verified</b> (Settings › Responses › Collect email addresses). Tally can't tell a typed address from a verified one, so keep that setting on.</p><div id="xtNameAsk"></div>
+      <p class="xtSheetSay" id="xtSheetSay" aria-live="polite"></p><p class="ghint xtSheetTrust" id="xtSheetTwo" hidden>Two columns hold addresses and the paste has no header row, so Tally can't tell the student's school account from another address: it reads no account from this paste. Copy the header row too.</p><p class="ghint xtSheetTrust" id="xtSheetTrust" hidden>Tally takes a school account as the student because your form collects it <b>Verified</b> (Settings › Responses › Collect email addresses). Tally can't tell a typed address from a verified one, so keep that setting on.</p><div id="xtNameAsk"></div>
       <div class="rp-actions"><button class="pill" id="xtTake">Fetch the tests</button><button class="pill pale" id="mCancel">Cancel</button></div></div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   const ta = $('#xtSheet');
   const paint = () => { const g = EX().readSheet(ta.value, nameCol != null ? { name: nameCol } : undefined); const n = g.rows.reduce((a, r) => a + r.codes.length, 0); const hd = j => g.header ? g.header[j] : 'column ' + (j + 1);
     $('#xtSheetSay').textContent = !ta.value.trim() ? '' : g.cols.code == null ? 'No code found yet.' : `${plural(g.rows.length, 'response')}, ${plural(n, 'code')}: codes from “${hd(g.cols.code)}”${g.cols.name != null ? `, names from “${hd(g.cols.name)}”` : ', no name column'}${g.cols.email != null ? `, school accounts from “${hd(g.cols.email)}”` : ''}.`;
-    $('#xtSheetTrust').hidden = !(ta.value.trim() && g.google);   // only Google's own Email Address column (review H2)
+    $('#xtSheetTrust').hidden = !(ta.value.trim() && g.google);
+    { const tw = $('#xtSheetTwo'); if (tw) tw.hidden = !(ta.value.trim() && g.acctTwo); }   // only Google's own Email Address column (review H2)
     const ask = $('#xtNameAsk'); ask.innerHTML = g.alts && g.alts.length > 1 && nameCol == null ? `<p class="xtSheetQ"><b>Which column is the student's own name?</b></p><div class="seg">${g.alts.map(j => `<button data-ncol="${j}" class="${j === g.cols.name ? 'on' : ''}">${esc(hd(j))}</button>`).join('')}</div>` : '';
     ask.querySelectorAll('[data-ncol]').forEach(b => b.onclick = () => { nameCol = +b.dataset.ncol; paint(); }); };
   ta.oninput = () => { nameCol = null; paint(); };
