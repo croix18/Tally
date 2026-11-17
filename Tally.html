@@ -6457,7 +6457,7 @@ function xtLearn(addr, w, how) { const X = examS(); if (!addr) return; const x =
 function examMatch(r, roster, fresh) {
   const X = examS(); const there = w => !!w && roster.some(x => x.sec === w.sec && x.n === w.n);
   if ((r.how === 'you' || r.kept) && there(r.who)) return;
-  r.conflict = null; r.kept = false; const at = i => ({ sec: roster[i].sec, n: roster[i].n }); const idx = w => roster.findIndex(x => xtSame(x, w));
+  delete r.conflict; delete r.kept; const at = i => ({ sec: roster[i].sec, n: roster[i].n }); const idx = w => roster.findIndex(x => xtSame(x, w));
   const m = r.name ? EX().matchName(r.name, roster, { noPick: r.email }) : { pick: null, how: null, suggest: null, cands: [], rivals: [] };
   /* A learned account is held even while its student is off the roster (review H1): only his answer replaces it. The rows
      it places: only when no name was typed, or the name typed fits the account's student (review C1). A name that points
@@ -6518,7 +6518,7 @@ function examRefile() {
     return h.length === 1 && !before.has(xtKeyOf(h[0])) && !had.length ? h[0] : null; };
   for (const a of Object.keys(X.accounts || {})) { const A = X.accounts[a]; if (A.gone) { if (there(A)) { const B = { ...A }; delete B.gone; X.accounts[a] = B; } continue; } if (there(A)) continue; const to = follow(A); if (to) X.accounts[a] = { ...A, sec: to.sec, n: to.n, ...(to.id ? { id: to.id } : {}) }; else X.accounts[a] = { ...A, gone: true }; }
   const acctSig = JSON.stringify(X.accounts || {}) + '|' + (X.seen || []).length;
-  X.rows.forEach(r => { if (r.who && !there(r.who)) { r.who = null; r.how = null; r.kept = false; }
+  X.rows.forEach(r => { if (r.who && !there(r.who)) { r.who = null; r.how = null; delete r.kept; }
     if (r.how === 'account' && !r.kept && (acctSig !== xtAcctSig || !xtSame(xtAcct(r.addr, roster), r.who))) { r.who = null; r.how = null; }
     if (!r.who) examMatch(r, roster, false); });
   for (const code of Object.keys(X.recs)) { const e = X.recs[code]; if (!e.who) continue;
@@ -7003,7 +7003,7 @@ function xtAnswer(r, c, acct) {
   // never a name that is certainly someone else's (review H4)
   const m = r.name && !r.email ? EX().matchName(r.name, roster) : null; const teach = !!m && !r.conflict && !(m.pick != null && !xtSame(roster[m.pick], c));
   const learns = r.addr && acct !== 'keep' && (acct === 'move' || !X.accounts[r.addr]);
-  xtDo(() => { r.who = { sec: c.sec, n: c.n }; r.how = 'you'; r.conflict = null; delete r.recheck; if (teach) X.alias[EX().nameKey(r.name)] = { sec: c.sec, n: c.n, at: new Date().toISOString() };
+  xtDo(() => { r.who = { sec: c.sec, n: c.n }; r.how = 'you'; delete r.conflict; delete r.recheck; if (teach) X.alias[EX().nameKey(r.name)] = { sec: c.sec, n: c.n, at: new Date().toISOString() };
     if (learns) { const A = X.accounts[r.addr]; if (A && !xtSame(A, c)) xtUnplace(r.addr, A); xtLearn(r.addr, c, 'you'); }   // only his answer replaces an account (review H1)
     r.codes.forEach(code => { const e = X.recs[code]; if (e) { e.nobody = false; delete e.gone; e.no = (e.no || []).filter(w => !(w.sec === c.sec && w.n === c.n)); } }); },
     `Row ${r.line} is ${esc(shown(c.n))}'s.${learns ? ` Tally knows the school account ${esc(xtAddrShown(r.addr))} as theirs from now on.` : teach ? ` Tally remembers “${esc(shown(r.name))}” as them, and uses it only where nobody else could be meant.` : ''}`);
@@ -7012,7 +7012,7 @@ function xtAnswer(r, c, acct) {
    from now on"): every test it placed by itself on the old student has lost its basis. Those rows wait for him with the facts
    (kind 'moved'); the tests he placed himself stay. (review H3; Forget is different: it promises nothing placed moves) */
 function xtUnplace(addr, old) { const X = examS(); X.rows.forEach(r => { if (r.addr !== addr || r.how !== 'account' || !r.who || !xtSame(r.who, old)) return;
-    r.recheck = { sec: old.sec, n: old.n }; r.who = null; r.how = null; r.kept = false;
+    r.recheck = { sec: old.sec, n: old.n }; r.who = null; r.how = null; delete r.kept;
     r.codes.forEach(code => { const e = X.recs[code]; if (e && e.who && e.who.how !== 'you' && xtSame(e.who, old)) { e.was = e.who; e.who = null; } }); }); }
 // the rows an account placed stay where they are (Forget, or the account made another student's): nothing already placed moves
 function xtFreeze(addr) { examS().rows.forEach(r => { if (r.addr === addr && r.how === 'account' && r.who) r.kept = true; }); }
