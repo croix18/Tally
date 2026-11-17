@@ -15,7 +15,9 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
   const K = JSON.parse(fs.readFileSync(FX('keys.json'), 'utf8')); const LOCKED = JSON.parse(fs.readFileSync(FX('locked.json'), 'utf8'));
   const browser = await chromium.launch({ executablePath: exe }); const errs = [];
   const open = async () => { const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, acceptDownloads: true }); const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
-    const sent = []; p.on('request', q => { if (!/^(file|data|blob):/.test(q.url())) sent.push(q.url()); }); await p.goto('file://' + path.resolve(APP)); await p.waitForTimeout(400); return { ctx, p, sent }; };
+    const sent = []; p.on('request', q => { if (!/^(file|data|blob):/.test(q.url())) sent.push(q.url()); }); await p.goto('file://' + path.resolve(APP)); await p.waitForTimeout(400);
+    await p.evaluate(() => window.__tally.accountPlaces(true));   // this suite exercises the placing rule (OFF in the shipped build: tests/exam-accounts-shipped.js)
+    return { ctx, p, sent }; };
   const A = (p, fn, arg) => p.evaluate(([s, a]) => (new Function('A', 'arg', 'return (' + s + ')(A, arg)'))(window.__all, a), [fn.toString(), arg === undefined ? null : arg]);
   const text = (p, sel) => p.evaluate(s => (document.querySelector(s) || {}).innerText || '', sel);
   const both = async (p, name, sel) => { const at = async () => p.evaluate(sel => { const t = document.querySelector('#toast'); if (t) t.style.visibility = 'hidden'; const e = sel && document.querySelector(sel); if (e) e.scrollIntoView({ block: 'start' }); }, sel || null); await at(); await p.screenshot({ path: path.join(SHOTS, name + '-1366.png') });
