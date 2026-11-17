@@ -1722,6 +1722,42 @@ ties in exam-core), and the probes re-run against this build (`/home/claude/tall
   gave back a row with `conflict: null, kept: false` where it had had neither field (a row reopened from a Full save, then
   read again). Matching now leaves absent fields absent. `INV_FROM=<n>` replays from a given sequence.
 
+### School accounts: the second review (17 Nov 2026; `/home/claude/reviews/tally-accounts2/REVIEW2.md`, "ship after fixes")
+C2, H1–H4, L1, L2 closed; C1 and M1 only partly, and the C1 fix had brought in a regression (N1). The coordinator set the
+rule as a table, built here as written:
+1. **A row from a learned account (gone ones count as held), student X.** No name → X, by the account. A name → every
+   student on every roster is ranked by how strongly the name points at them (`ExamCore.nameStrength`, one order: 5 the
+   exact full name · 4 near: each part exact or one slip · 3 a nickname or prefix of the first name with the last · 2 the
+   first or last name alone, exactly · 1 a part, a prefix or a look-alike · 0 none). X only if the name points at X at all
+   and at nobody else more strongly; a tie that includes X is X's (two Marias, "Maria" on one's account; two Avas). Anything
+   else waits with both facts. **N1** ("Ali Khan" on Alice Khanna's account, "Alice Khanna" on Ali's, "Dana Hughes" on her twin
+   Daria's) and **N4** ("Ali" on Alice's) now wait; a slip of X's own name, X's own first name, no name, still place.
+2. **A placement whose basis is gone** (the account moved, or was forgotten and learned again for someone else, by any
+   path) is judged again by the table against the account as it is now, whatever placed it, unless he placed it himself
+   (`examRefile`, rule 3). **N3**: an exact-name test from an account then said to be another student's waits. Note the
+   consequence: after "the account was learned wrong", the account's other tests with **no name** go to the account's new
+   student (rule 1), not to Waiting as the first fix had it; those with a name that points elsewhere wait.
+3. **Learning** (an address not learned yet) from a certain name: only when the address reads as that student first and
+   alone, or among equals, or as nobody (`ExamCore.acctAgrees`). **N7**: "Maria Garcia" from maria.g@ learns.
+- **N2:** on a row from a held account the question no longer says the answer teaches the account; it offers "and the
+  school account is theirs from now on" (unticked: it teaches nothing, and says so).
+- **N5:** with a header row the code column is never one whose header says name, email, username or account; nothing
+  with an @ is a code (an address typed as the code is dropped; a real code beside it is kept); no request is made.
+- **N6:** an account header in any words ("Your school email", "Email (school)", "School Email:"…), never one naming someone
+  else; a headerless paste with two address columns reads no account and the paste box says why.
+- **N8:** "the account was learned wrong" (not "Tally learned it wrong"); the toasts say that the account's other tests are
+  judged again; "X's (as the account reads), and the account is theirs".
+- **Guards:** exam-accounts section 8 and exam-core (each failed on 5a25f91, run in a worktree of it); the invariant suite's
+  account rule is judged by its own oracle written from the table (`window.__inv.strength`, never the code's helpers), its
+  roster now holds look-alikes (Khan/Khanna, Hughes Dana/Daria) and the account paste types the owner's look-alike; on
+  5a25f91 it fails at sequence 110. "No needless questions" (the review's q4) is in exam-accounts: 28 of 28 with exact
+  names and their own addresses placed with no question, 28 of 28 with a slip, first name only or no name placed.
+- **The reviewer's probes re-run** (`/home/claude/tally-rerun/acct2`, `tally` linked to this repo): q1 (a, b, c) held; q3's
+  question held; q4 14/14 and 14/14 in each half; q5 every header held, "code + address" held; q7 "Ali" held; q8 against the
+  code (`q8b`, the reviewer's q8 evaluates the old expression inline) held. Lines still printed FINDING are the table's
+  own rules, not regressions: q2 (no-name tests go to the account's new student), q3's second line and q7's "Ava" / no
+  name (the account places by rule 1 or a tie), q5's two headerless two-address pastes (no account read, by the rule).
+
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
 - After, first run (`ffb456d` + the layout fixes): **72 suites · 2,349 passed · 3 failed**. Two were checks of what this
