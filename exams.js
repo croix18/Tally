@@ -237,7 +237,7 @@ const xtKeyOf = w => w.sec + '\u0001' + w.n;
    name). OFF in the shipped build: AN ACCOUNT NEVER PLACES A ROW BY ITSELF. It learns, and it suggests: a row the account
    would have placed waits in Waiting for you with the account's student as the one-press suggestion and both facts shown;
    his press is his own placement. A certain name places by the name, as before accounts. Only the test build's
-   window.__tally.accountPlaces(true) turns it on, so the suites keep exercising the placing rule for later. */
+   debug handle can turn it on, so the suites keep exercising the placing rule for later. */
 let ACCOUNT_PLACES = false;
 let xtAcctSig = null;   // the accounts as last read: when they change, every row an account placed is read again
 const xtSame = (a, b) => !!a && !!b && a.sec === b.sec && a.n === b.n;
