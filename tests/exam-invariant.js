@@ -153,7 +153,8 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
           A.view.mode = 'tests'; A.view.code = null; A.render();
           const bad = window.__inv.check();
           if (window.__inv.cancelBroke) bad.push('Cancel changed what Tests held');
-          if (name === 'undo' && window.__inv.undid && tests() !== window.__inv.undid) bad.push('Undo did not give back exactly what was there before the last action');
+          if (name === 'undo' && window.__inv.undid && tests() !== window.__inv.undid) { const x = JSON.parse(window.__inv.undid), y = JSON.parse(tests()); const dif = []; const walk = (a, b, p) => { if (dif.length > 3) return; if (JSON.stringify(a) === JSON.stringify(b)) return; if (a && b && typeof a === 'object' && typeof b === 'object') { for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) walk(a[k], b[k], p + '.' + k); } else dif.push(p + ': ' + JSON.stringify(a) + ' → ' + JSON.stringify(b)); }; walk(x, y, '');
+            bad.push('Undo did not give back exactly what was there before the last action: ' + dif.join(' | ').slice(0, 600)); }
           if (A.xtLastUndo && A.xtLastUndo !== u0) window.__inv.before = pre;   // what Undo must give back: the state just before the action it undoes
           if (bad.length) return { q, seq, bad };
         }
@@ -201,7 +202,8 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
   check(c1.renamed.where === 'row' && /-ORTIZ/.test(c1.renamed.who || ''), 'R2-C1: renamed in Focus with the same Student ID: the test stays with them');
   check(c1.idOnOther.where === 'nobody', 'R2-C1: a Student ID that is now on a name sharing no word with the one it had is not trusted: nobody\'s');
   let total = 0, acts = 0, fail = null; const t0 = Date.now(); const B = 50;
-  for (let q = 0; q < N && !fail; q += B) { const r = await p.evaluate(([q, n, s, seed]) => window.__inv.run(q, n, s, seed), [q, Math.min(B, N - q), STEPS, SEED]); if (!r.ok) fail = r; else { total += Math.min(B, N - q); acts += r.acts; } }
+  const FROM = +process.env.INV_FROM || 0;   // to replay from a given sequence (each one starts from the same state)
+  for (let q = FROM; q < N && !fail; q += B) { const r = await p.evaluate(([q, n, s, seed]) => window.__inv.run(q, n, s, seed), [q, Math.min(B, N - q), STEPS, SEED]); if (!r.ok) fail = r; else { total += Math.min(B, N - q); acts += r.acts; } }
   if (fail) console.log('VIOLATION in sequence', fail.q, '(seed ' + SEED + '):\n  ' + fail.seq.join('\n  ') + '\n  -> ' + fail.bad.join('\n  -> '));
   const overlap = await p.evaluate(() => window.__inv.overlap || 0);
   console.log(`RAN ${total} random sequences, ${acts} actions (${overlap} pastes made while a fetch was running), ${((Date.now() - t0) / 1000).toFixed(1)} s (seed ${SEED})`);

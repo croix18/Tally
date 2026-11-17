@@ -1718,6 +1718,9 @@ ties in exam-core), and the probes re-run against this build (`/home/claude/tall
   test's entry holds the student; the row's words are not re-judged). **Left, a limit:** a headerless paste of only a
   Partner-email column can't be told from the account column (no header to read).
 - The invariant suite gains: nothing is placed by an account against a typed name that points elsewhere.
+- The whole suite's first run after these fixes found one more thing (exam-invariant, sequence 1494): Undo after an answer
+  gave back a row with `conflict: null, kept: false` where it had had neither field (a row reopened from a Full save, then
+  read again). Matching now leaves absent fields absent. `INV_FROM=<n>` replays from a given sequence.
 
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
