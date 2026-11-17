@@ -220,6 +220,22 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
     const R = [{ sec: '4', display: 'Smith, Ava' }, { sec: '5', display: 'Brown, Mia' }, { sec: '5', display: 'Brown, Ava' }, { sec: '4', display: 'Lee, Ana' }, { sec: '6', display: 'Okafor, Chidinma' }];
     check(C.matchName('Ava Brown', R).pick === 2 && C.matchName('Chidinma Okafor', R).pick === 4, 'R2-H1: Ava and Mia (two different short names) are not rivals; a name nobody else is near is still placed');
     check(C.NICKNAMES.some(l => l.split(' ').includes('chuy') && l.includes('jesus')) && C.osa('kahn', 'khan') === 1 && C.osa('elias', 'elisa') === 1, 'the nickname list is one plain list in examcore.js; a swap of two letters is one edit'); }
+  /* 16 Nov 2026, school accounts: the address column, and reading the part before the @ */
+  { const H = 'Timestamp\tEmail Address\tFirst and last name\tTest code\n';
+    const a1 = C.readSheet(H + '11/16/2026 10:01:00\t JSmith12@Students.Example.org \tJohn Smith\tK7QF-2M9D-X4TB\n11/16/2026 10:02:00\t\tAva Brooks\tK7QF-2M9D-X4TC\n');
+    check(a1.cols.email === 1 && a1.cols.name === 2 && a1.rows[0].addr === 'jsmith12@students.example.org' && a1.rows[0].name === 'John Smith' && a1.rows[1].addr === '' && a1.rows[1].name === 'Ava Brooks', 'the address column by its header, beside the name: each row keeps its address, lower case and trimmed; a row with no address keeps its name');
+    const a2 = C.readSheet('11/16/2026 10:01:00\tK7QF-2M9D-X4TB\tAva Brooks\tavbro4023@x.org\n11/16/2026 10:02:00\tK7QF-2M9D-X4TC\tJohn Smith\tjohn.s@x.org\n');
+    check(a2.cols.email === 3 && a2.cols.name === 2 && a2.rows[1].addr === 'john.s@x.org', 'with no header, the address column is found by what is in it');
+    const a3 = C.readSheet('Username,Test code\nsmithj@x.org,K7QF-2M9D-X4TB\n');
+    check(a3.cols.email === 0 && a3.cols.name == null && a3.rows[0].name === '' && a3.rows[0].addr === 'smithj@x.org', 'with no name column: the address alone (the row has no name; Tally reads candidates from the account)');
+    const R = ['Smith, John', 'Smith, Jane', 'Smith, Jonathan', 'Doe, Jane', 'Garcia-Lopez, Alexander', 'Brooks, Ava', 'Nguyen, Ava Marie', 'Okafor, Chidinma'].map(d => ({ display: d }));
+    const who = a => C.acctCands(a, R).map(i => R[i].display);
+    check(['john.s@x.org', 'johnsmith@x.org', 'john.smith@x.org'].every(a => who(a)[0] === 'Smith, John' && who(a).length === 1) && who('agarcialopez40@x.org')[0] === 'Garcia-Lopez, Alexander' && who('chidinma.o@x.org')[0] === 'Okafor, Chidinma' && who('brooksa@x.org')[0] === 'Brooks, Ava' && who('ANGUYEN7@X.ORG')[0] === 'Nguyen, Ava Marie',
+      'the part before the @ read: first.last, first.l, firstlast, flast + digits, lastf, a hyphenated last name run together, any case');
+    check(who('jsmith12@x.org').length === 3 && who('smithj@x.org').length === 3 && who('josmi4821@x.org').join() === 'Smith, John,Smith, Jonathan' && who('s123456@x.org').length === 0,
+      'an account that fits two or more students names them all (it narrows, it never picks); one that reads as nobody names nobody');
+    // in matching: two students who fit one account: ask; the account picks nobody by itself
+    check(C.matchName('', R).pick == null && C.acctFit('jsmith', 'Smith, John') > 0 && C.acctFit('jsmith', 'Doe, Jane') === 0, 'the address only narrows: nobody is placed by how an address reads'); }
   /* 16 Nov 2026, "See the test": the link to the unit's teacher copy, and its payload, exactly as the contract says */
   { const RS = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'fixtures', 'exams', 'records.json'), 'utf8'));
     const want = r => ({ v: 1, course: r.course, unit: r.unit, seed: r.seed, cv: r.cv === undefined ? null : r.cv, kit: r.kit, code: r.code, points: r.points, of: r.of,

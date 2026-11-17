@@ -58,7 +58,8 @@ function readSheet(text, o) {
   if (!lines.length) return res;
   var n = Math.max.apply(null, lines.map(function (x) { return x.r.length; })), score = [], j, k;
   for (j = 0; j < n; j++) score.push({ code: 0, when: 0, name: 0, head: '' });
-  lines.forEach(function (x) { for (j = 0; j < n; j++) { var c = x.r[j] || ''; if (!c) continue; if (SEAL.findCodes(c).length) score[j].code++; else if (readWhen(c) != null) score[j].when++; else if (looksName(c)) score[j].name++; } });
+  var isAddr = function (c) { return /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(String(c || '').trim()); };   // an address is never a code ("elindqvist35" reads as one)
+  lines.forEach(function (x) { for (j = 0; j < n; j++) { var c = x.r[j] || ''; if (!c || isAddr(c)) continue; if (SEAL.findCodes(c).length) score[j].code++; else if (readWhen(c) != null) score[j].when++; else if (looksName(c)) score[j].name++; } });
   var best = function (key, not) { var b = null; for (j = 0; j < n; j++) { if (not.indexOf(j) >= 0) continue; if (score[j][key] > 0 && (b == null || score[j][key] > score[b][key])) b = j; } return b; };
   var code = best('code', []); if (code == null) return res;
   // the header: the first line whose code cell holds no code and whose cells are words, not data
@@ -66,11 +67,11 @@ function readSheet(text, o) {
   if (isHead) res.header = first.r.slice();
   var hd = function (j) { return isHead ? String(first.r[j] || '') : ''; };
   var at = best('when', [code]);
-  var nameCols = []; for (j = 0; j < n; j++) if (j !== code && j !== at && score[j].name) nameCols.push(j);
+  var nameCols = []; for (j = 0; j < n; j++) if (j !== code && j !== at && score[j].name && !/e-?mail|user\s*name|account/i.test(hd(j))) nameCols.push(j);
   // the name: a header that is plainly the student's own name ("Your name", "Full name", "Student name", "First and last
   // name") wins over any other header holding "name" ("Partner name (if any)"); two such columns, or none and two columns
   // that could both be names, are a question (alts), asked once when the sheet is pasted
-  var bad = /e-?mail|teacher|period|class|score|grade|unit|partner|parent|guardian/i;
+  var bad = /e-?mail|user\s*name|account|teacher|period|class|score|grade|unit|partner|parent|guardian/i;
   var own = nameCols.filter(function (j) { return /\b(your|full|student'?s?|first(\s+and\s+last)?|last)\b[^,]*name|^\s*name\s*$|^\s*student\s*$/i.test(hd(j)) && !bad.test(hd(j)); });
   var named = own.length ? own : nameCols.filter(function (j) { return /name|student|who/i.test(hd(j)) && !bad.test(hd(j)); });
   var name = named.length ? named[0] : null, alts = named.length > 1 ? named.slice() : [];
@@ -83,7 +84,6 @@ function readSheet(text, o) {
   if (o && o.name != null && o.name >= 0 && o.name < n) { name = o.name; alts = []; }
   // the student's school account (16 Nov 2026: the form collects it, Verified): by its header (Email Address, Email,
   // Username, School account), else the column whose cells are addresses; read beside the name, whatever else there is
-  var isAddr = function (c) { return /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(String(c || '').trim()); };
   var mail = null, data = lines.length - (isHead ? 1 : 0);
   for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && /^\s*(e-?mail(\s+address)?|username|user\s*name|school\s+(e-?mail|account)|account)\s*$/i.test(hd(j))) mail = j;
   for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && lines.filter(function (x) { return isAddr(x.r[j]); }).length >= Math.max(1, data * 0.6)) mail = j;
