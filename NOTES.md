@@ -1758,6 +1758,58 @@ rule as a table, built here as written:
   own rules, not regressions: q2 (no-name tests go to the account's new student), q3's second line and q7's "Ava" / no
   name (the account places by rule 1 or a tie), q5's two headerless two-address pastes (no account read, by the rule).
 
+### School accounts: the third review, and the decision (17 Nov 2026; `/home/claude/reviews/tally-accounts3/REVIEW3.md`)
+N1–N8 closed. Found:
+- **F1 (Critical):** a classmate's exact first or last name plus an initial or a stray word tied with the account's student
+  under `nameStrength` (every multi-word form that isn't first + last scored 1), so the tie went to the account: "Ali K." and
+  "A Khan" from Alice Khanna's account, "Ava B." from Ava Nguyen's, "Ava Marie" (Nguyen's first and middle) from Ava
+  Brooks's, all placed with no question on the first paste and later. The single word "Ali" waited, so an initial made the
+  evidence weaker.
+- **F2 (Medium):** an address that reads as nobody was learned from whichever certain name came first in the paste, even
+  when another student's certain name came from the same address; blank rows then followed row order.
+- **F3 (Low):** after Forget, his answer learning the account for someone else moved the forgotten student's tests, and the
+  toast didn't say so.
+- **F4:** the invariant's oracle was `nameStrength` typed out again (0 disagreements in 19,200 pairs), so it shared F1.
+
+**The decision (the coordinator's, for now): in the shipped build AN ACCOUNT NEVER PLACES A ROW BY ITSELF. It learns, and it
+suggests.** Why: three rounds of review found three different ways for the account to outvote the name typed (C1, N1/N4,
+F1), each with the same result, a test silently on the wrong student; Croix may give a real unit test to real classes in a
+few hours, and a fourth version of the ranking rule could not be reviewed in time. A wrong suggestion costs one press of
+"Someone else"; a wrong placement costs a wrong grade nobody sees.
+- **The switch:** `ACCOUNT_PLACES` (exams.js), `false` in the shipped build. With it off, a row that rules 1–2 would have
+  placed by the account waits in Waiting for you with the account's student as the one-press suggestion and both facts on
+  its line ("Turned in as no name from Ali Khan's school account (khana@…)", or the name typed). His press is his own
+  placement (`how: 'you'`); nothing is placed by `'account'`. A certain name places by the name as on 6444eed, except where
+  the learning rule asks (the address reads as someone else, or is another student's, or is learned as someone else's:
+  those stay questions). Rule 3 still judges again a placement whose account moved, which now only ever makes a row wait.
+  Only the test build's debug handle (`window.__tally.accountPlaces(true)`, stripped from the shipped page with the rest of
+  `window.__tally`) turns it on: exam-accounts and exam-invariant run with it on, so the placing rule keeps being exercised
+  for later. `tests/shipped-build.js` fails if the shipped page has the switch on, sets it twice, or carries the hook.
+- **F2:** an address Tally has seen with two different students' certain names is learned from neither, and each name places
+  itself (as on 6444eed); a blank row from it waits with no suggestion. All of a paste's new rows are in before any is
+  matched, so the answer does not depend on row order. An account already learned is never overwritten except by his answer.
+- **F3:** his answer's toast counts the account's other tests that refile judges again whether or not Tally still held the
+  account ("1 other test from it is judged again against it: waiting for you, with them suggested where the name fits").
+- **Words:** under the paste, "Tally uses the school account to suggest the student and learns it; you confirm. A name Tally
+  is sure of still places a test by itself."; the Verified note says "Tally can suggest the student from a school account
+  because…"; the row's line and the picker say "from X's school account". The switched-on wording is kept for later.
+- **F1 and F4 are not fixed in `nameStrength`**: with the switch off it decides nothing that places a test.
+- **Guards:** `tests/exam-accounts-shipped.js` (the switch as shipped): the reviewer's S1–S10 (69 rows): 0 placed by an
+  account, 0 placed anywhere 6444eed didn't place them, the 16 exact own names place by the name, the 11 rows an account would
+  have placed wait with the account's student suggested and one press puts each there; F2 both orders; his second paste (10
+  rows, all wait), Forget, the answer, F3's toast, Undo exact; the q4 roster: 28 of 28 exact names placed with zero questions,
+  28 of 28 slips / first names / blanks waiting with the right suggestion, 28 of 28 right after the press. On 522f4c4 it fails.
+
+**For when placement is turned on later: try TOKEN DOMINANCE instead of the strength order** (the coordinator's rule; not
+built). Score each typed token against each student: an exact name part 3; a nickname or one slip of a part 2; a prefix or
+initial of a part 1; none 0. The account's student X takes the row only if X matches at least one token, and for EVERY
+other student Y, X's score is at least Y's on every token (ties allowed); anything else asks. Before it places anything:
+an oracle written from that sentence alone (not from the code), and the property "adding evidence for Y never makes X more
+likely" (adding a token that matches Y, or upgrading a token's match to Y, never turns a question into a placement on X),
+checked over generated names on rosters with look-alikes, twins, shared first names and first + middle names. With it,
+"Ali K." from Alice's account asks (the token "Ali" scores 3 for Ali, 1 for Alice), "Ava Marie" from Brooks's asks
+("Marie" 3 for Nguyen, 0 for Brooks), "Ava" on either Ava's account places (a tie on the only token).
+
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
 - After, first run (`ffb456d` + the layout fixes): **72 suites · 2,349 passed · 3 failed**. Two were checks of what this
