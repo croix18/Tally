@@ -247,14 +247,18 @@ function examMatch(r, roster, fresh) {
      anywhere else, certain or not, waits with both facts. */
   const Araw = r.addr ? X.accounts[r.addr] : null; const A = Araw && !Araw.gone && roster.some(x => xtSame(x, Araw)) ? Araw : null;
   const typedTo = m.pick != null ? at(m.pick) : m.suggest != null ? at(m.suggest) : m.cands.length ? at(m.cands[0]) : null;
-  if (r.recheck && A) {   // the account was learned wrong (he said so): its earlier tests wait for him (review H3)
-    r.who = null; r.how = null; r.suggest = null; r.remember = null; r.cands = [{ sec: A.sec, n: A.n }, r.recheck].concat(m.cands.map(at)).filter((w, i, l) => l.findIndex(x => xtSame(x, w)) === i).slice(0, 8);
-    r.conflict = { kind: 'moved', acct: { sec: A.sec, n: A.n }, was: r.recheck, typed: typedTo }; return; }
+  delete r.recheck;
+  /* THE RULE (second review, 17 Nov 2026), for a row from a learned account (gone ones count as held) whose student is X:
+     no name → X, by the account. A name → rank every student by how strongly it points at them (nameStrength); X only if
+     it points at X at all and at nobody else more strongly (a tie that includes X is X's: that is what the account is for).
+     Anything else waits with both facts. */
+  let other = null, otherS = 0, sX = 0;
+  if (Araw && r.name) { sX = A ? EX().nameStrength(r.name, A.n) : 0; roster.forEach((x, i) => { if (A && xtSame(x, A)) return; const v = EX().nameStrength(r.name, x.n); if (v > otherS) { otherS = v; other = i; } }); }
   if (Araw) {
-    const fits = A && (!r.name || m.cands.some(i => xtSame(at(i), A)));
+    const fits = A && (!r.name || (sX > 0 && sX >= otherS));
     if (fits) { r.who = { sec: A.sec, n: A.n }; r.how = m.pick != null && xtSame(at(m.pick), A) ? 'exact' : 'account'; r.cands = [{ sec: A.sec, n: A.n }]; r.suggest = null; r.remember = null; return; }
     if (A || m.pick != null) { r.who = null; r.how = null; r.suggest = null; r.remember = null; r.cands = (A ? [{ sec: A.sec, n: A.n }] : []).concat(m.cands.map(at)).filter((w, i, l) => l.findIndex(x => xtSame(x, w)) === i).slice(0, 8);
-      r.conflict = { kind: 'typed', acct: { sec: Araw.sec, n: Araw.n }, typed: typedTo, gone: !A }; return; }
+      r.conflict = { kind: 'typed', acct: { sec: Araw.sec, n: Araw.n }, typed: other != null ? at(other) : null, gone: !A }; return; }
     // its student is off the roster and no certain name: an ordinary question below, and nothing learned (the entry stays theirs)
   }
   const rank = r.addr ? EX().acctRank(r.addr, roster) : []; const acs = rank.map(x => x.i); const reads = r.addr ? EX().acctReads(r.addr, roster) : null;
@@ -265,7 +269,7 @@ function examMatch(r, roster, fresh) {
     if (r.addr && !Araw) {
       const has = Object.keys(X.accounts).find(a => a !== r.addr && xtSame(X.accounts[a], p));
       // learned from a name only when the address reads as that student first and alone, or as nobody (review C2, L2)
-      const okRead = !rank.length || reads === m.pick;
+      const okRead = EX().acctAgrees(r.addr, roster, m.pick);   // first and alone, or among equals (reviews C2, N7)
       if (has || !okRead) { r.who = null; r.how = null; r.suggest = null; const rd = reads != null && reads !== m.pick ? at(reads) : null;
         r.conflict = { kind: has ? 'has' : 'reads', typed: p, has: has || null, reads: rd, tie: !rd && rank.length > 1 && reads == null }; if (rd && !r.cands.some(c => xtSame(c, rd))) r.cands.unshift(rd); return; }
       xtLearn(r.addr, p, 'name');
@@ -302,6 +306,10 @@ function examRefile() {
   for (const a of Object.keys(X.accounts || {})) { const A = X.accounts[a]; if (A.gone) { if (there(A)) { const B = { ...A }; delete B.gone; X.accounts[a] = B; } continue; } if (there(A)) continue; const to = follow(A); if (to) X.accounts[a] = { ...A, sec: to.sec, n: to.n, ...(to.id ? { id: to.id } : {}) }; else X.accounts[a] = { ...A, gone: true }; }
   const acctSig = JSON.stringify(X.accounts || {}) + '|' + (X.seen || []).length;
   X.rows.forEach(r => { if (r.who && !there(r.who)) { r.who = null; r.how = null; delete r.kept; }
+    // rule 3: a row from an address whose account now names someone else is judged again, however it was placed, unless he
+    // placed it himself (the account moved, or was forgotten and learned again for another student, by any path)
+    { const E = r.addr && X.accounts[r.addr]; if (r.who && r.how !== 'you' && E && !xtSame(E, r.who)) { const old = r.who; r.who = null; r.how = null; delete r.kept;
+        r.codes.forEach(code => { const e = X.recs[code]; if (e && e.who && e.who.how !== 'you' && xtSame(e.who, old)) { e.was = e.who; e.who = null; } }); } }
     if (r.how === 'account' && !r.kept && (acctSig !== xtAcctSig || !xtSame(xtAcct(r.addr, roster), r.who))) { r.who = null; r.how = null; }
     if (!r.who) examMatch(r, roster, false); });
   for (const code of Object.keys(X.recs)) { const e = X.recs[code]; if (!e.who) continue;
@@ -785,18 +793,17 @@ function xtAnswer(r, c, acct) {
   // a name is remembered only when it can only mean this student: never from a row whose account and name disagreed, and
   // never a name that is certainly someone else's (review H4)
   const m = r.name && !r.email ? EX().matchName(r.name, roster) : null; const teach = !!m && !r.conflict && !(m.pick != null && !xtSame(roster[m.pick], c));
-  const learns = r.addr && acct !== 'keep' && (acct === 'move' || !X.accounts[r.addr]);
+  const learns = r.addr && acct !== 'keep' && (acct === 'move' || !X.accounts[r.addr]); const A0 = r.addr && X.accounts[r.addr]; const others = learns && A0 && !xtSame(A0, c) ? xtUnplace(r.addr, A0) - (r.who && xtSame(r.who, A0) ? 1 : 0) : 0;
   xtDo(() => { r.who = { sec: c.sec, n: c.n }; r.how = 'you'; delete r.conflict; delete r.recheck; if (teach) X.alias[EX().nameKey(r.name)] = { sec: c.sec, n: c.n, at: new Date().toISOString() };
     if (learns) { const A = X.accounts[r.addr]; if (A && !xtSame(A, c)) xtUnplace(r.addr, A); xtLearn(r.addr, c, 'you'); }   // only his answer replaces an account (review H1)
     r.codes.forEach(code => { const e = X.recs[code]; if (e) { e.nobody = false; delete e.gone; e.no = (e.no || []).filter(w => !(w.sec === c.sec && w.n === c.n)); } }); },
-    `Row ${r.line} is ${esc(shown(c.n))}'s.${learns ? ` Tally knows the school account ${esc(xtAddrShown(r.addr))} as theirs from now on.` : teach ? ` Tally remembers “${esc(shown(r.name))}” as them, and uses it only where nobody else could be meant.` : ''}`);
+    `Row ${r.line} is ${esc(shown(c.n))}'s.${learns ? ` Tally knows the school account ${esc(xtAddrShown(r.addr))} as theirs from now on.${others > 0 ? ` ${others === 1 ? '1 other test' : others + ' other tests'} from it ${others === 1 ? 'is' : 'are'} judged again against it: placed with them where the name fits, otherwise waiting for you.` : ''}` : teach ? ` Tally remembers “${esc(shown(r.name))}” as them, and uses it only where nobody else could be meant.` : ''}`);
 }
-/* The account was learned wrong (he said so: Not theirs › "Tally learned it wrong", or a conflict's "the account is theirs
-   from now on"): every test it placed by itself on the old student has lost its basis. Those rows wait for him with the facts
-   (kind 'moved'); the tests he placed himself stay. (review H3; Forget is different: it promises nothing placed moves) */
-function xtUnplace(addr, old) { const X = examS(); X.rows.forEach(r => { if (r.addr !== addr || r.how !== 'account' || !r.who || !xtSame(r.who, old)) return;
-    r.recheck = { sec: old.sec, n: old.n }; r.who = null; r.how = null; delete r.kept;
-    r.codes.forEach(code => { const e = X.recs[code]; if (e && e.who && e.who.how !== 'you' && xtSame(e.who, old)) { e.was = e.who; e.who = null; } }); }); }
+/* The account was learned wrong (he said so: Not theirs › "the account was learned wrong", or a conflict's "the account is
+   theirs from now on"): every test from it that he didn't place himself has lost its basis, and the next refile judges it
+   again by the rule against the account as it is now (rule 3): to the new student where the name fits, else Waiting.
+   This counts them, for the toast. (Forget is different: it promises nothing placed moves.) */
+function xtUnplace(addr, old) { return examS().rows.filter(r => r.addr === addr && r.who && r.how !== 'you' && xtSame(r.who, old)).length; }   // the rows refile judges again (rule 3)
 // the rows an account placed stay where they are (Forget, or the account made another student's): nothing already placed moves
 function xtFreeze(addr) { examS().rows.forEach(r => { if (r.addr === addr && r.how === 'account' && r.who) r.kept = true; }); }
 function xtForgetAccount(addr) { xtDo(() => { xtFreeze(addr); delete examS().accounts[addr]; }, `Forgotten: ${esc(xtAddrShown(addr))}. A test from it asks again, or is learned again from a name Tally is sure of; nothing already placed moves.`); }
@@ -814,7 +821,7 @@ function xtConflict(s, r) {
   const opts = f.kind === 'moved' ? [['acct', `${shown(f.acct.n)}'s (the account's now)`], ['was', `${shown(f.was.n)}'s after all`]]
     : f.kind === 'typed' ? (f.gone ? [] : [['acct', `${shown(f.acct.n)}'s (the account's)`]]).concat(typed ? [['typedKeep', `${shown(typed.n)}'s this time (the account stays ${shown(f.acct.n)}'s)`], ['typedMove', `${shown(typed.n)}'s, and the account is theirs from now on`]] : [])
     : f.kind === 'has' ? [['also', `${shown(typed.n)}'s, and this account is theirs too`], ['typedKeep', `${shown(typed.n)}'s this time (don't learn the account)`]]
-    : [['typedLearn', `${shown(typed.n)}'s, and the account is theirs`]].concat(f.reads ? [['reads', `${shown(f.reads.n)}'s (as the account reads)`]] : []);
+    : [['typedLearn', `${shown(typed.n)}'s, and the account is theirs`]].concat(f.reads ? [['reads', `${shown(f.reads.n)}'s (as the account reads), and the account is theirs`]] : []);
   const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private');
   m.innerHTML = `<div class="panel narrow"><header><h2>Whose test is this?</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one"><p>${lead} Until you say, it counts for nobody.</p>
     <div class="xtWhos xtChoices">${opts.map(([k, t]) => `<button class="xtWho" data-ch="${k}"><b>${esc(t)}</b></button>`).join('')}</div>
@@ -828,10 +835,11 @@ function xtConflict(s, r) {
 }
 // nobody yet: the test goes to the tests nobody turned in (the rows that named someone keep their words; he answered for the test)
 function xtNobody(code) { const e = examS().recs[code]; if (!e) return; xtDo(() => { e.nobody = true; if (e.who && e.who.how !== 'you') { e.was = e.who; e.who = null; } }, `${esc(SEALX().showCode(code))} is among the tests nobody turned in.`); }
+let xtMoveAcct = false;
 function xtWho(s, r, acct) {
-  if (!r) return; const h = xtHint(r, examAll()); const cs = h ? r.cands.slice().sort((p, q) => (q.sec === h.sec) - (p.sec === h.sec)) : r.cands;
+  if (!r) return; xtMoveAcct = false; setTimeout(() => { const cb = document.getElementById('xtAcctMove'); if (cb) cb.onchange = () => { xtMoveAcct = cb.checked; }; }, 0); const h = xtHint(r, examAll()); const cs = h ? r.cands.slice().sort((p, q) => (q.sec === h.sec) - (p.sec === h.sec)) : r.cands;
   const C = r.remember ? [r.remember].concat(cs.filter(c => !(c.sec === r.remember.sec && c.n === r.remember.n))) : cs;
-  xtPickStudent('Who turned this in?', `Row ${r.line} of the responses: <b>${esc(r.name ? shown(r.name) : 'no name')}</b>${r.addr ? `, from the school account <b>${esc(xtAddrShown(r.addr))}</b>` : ''}${r.at ? ` at ${esc(r.at)}` : ''}, code ${esc(r.codes.map(c => SEALX().showCode(c)).join(', '))}.${r.remember ? ` You said “${esc(shown(r.name))}” was ${esc(shown(r.remember.n))} before; another student could be meant now.` : C.length ? ' The likely students first.' : ''}${r.addr && acct !== 'keep' && !(examS().accounts[r.addr] && !examS().accounts[r.addr].gone) ? ' Your answer also teaches Tally the account.' : ''}`, C, c => xtAnswer(r, c, acct),
+  xtPickStudent('Who turned this in?', `Row ${r.line} of the responses: <b>${esc(r.name ? shown(r.name) : 'no name')}</b>${r.addr ? `, from the school account <b>${esc(xtAddrShown(r.addr))}</b>` : ''}${r.at ? ` at ${esc(r.at)}` : ''}, code ${esc(r.codes.map(c => SEALX().showCode(c)).join(', '))}.${r.remember ? ` You said “${esc(shown(r.name))}” was ${esc(shown(r.remember.n))} before; another student could be meant now.` : C.length ? ' The likely students first.' : ''}${!r.addr || acct === 'keep' ? '' : !examS().accounts[r.addr] ? ' Your answer also teaches Tally the account.' : `</p><p class="xtAcctMove"><label><input type="checkbox" id="xtAcctMove"> and the school account is theirs from now on</label> <small>(Tally holds it for ${esc(shown(examS().accounts[r.addr].n))}${examS().accounts[r.addr].gone ? ', no longer on a roster' : ''}; unticked, your answer teaches Tally nothing about it)</small>`}`, C, c => xtAnswer(r, c, xtMoveAcct ? 'move' : acct === 'keep' ? 'keep' : examS().accounts[r.addr] ? 'keep' : acct),
     '<button class="pill pale" data-xextra="nobody">Nobody yet</button>', () => xtDo(() => { r.codes.forEach(code => { const e = examS().recs[code]; if (e) { e.nobody = true; if (e.who && e.who.how !== 'you') { e.was = e.who; e.who = null; } } }); }, 'Left with nobody: it is among the tests nobody turned in.'));
 }
 // give a test to a student by hand (it stays with them until he moves it)
@@ -851,12 +859,12 @@ function xtNotTheirs(s, code) {
       // it came from the school account Tally knows as the student it is taken off: whose is the account from now on? (16 Nov)
       const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private');
       m.innerHTML = `<div class="panel narrow"><header><h2>And the school account?</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one"><p>${esc(SEALX().showCode(code))} goes to <b>${esc(shown(c.n))}</b>. It came from <b>${esc(xtAddrShown(ar.addr))}</b>, which Tally knows as ${esc(shown(off.n))}'s.</p>
-        <div class="xtWhos xtChoices"><button class="xtWho" data-acct="move"><b>The account is ${esc(shown(c.n))}'s from now on</b><small>Tally learned it wrong</small></button><button class="xtWho" data-acct="keep"><b>It stays ${esc(shown(off.n))}'s</b><small>this test was taken on a classmate's login</small></button></div>
+        <div class="xtWhos xtChoices"><button class="xtWho" data-acct="move"><b>The account is ${esc(shown(c.n))}'s from now on</b><small>the account was learned wrong${(() => { const n = X.rows.filter(x => x.addr === ar.addr && x.who && x.how !== 'you' && xtSame(x.who, off) && !x.codes.includes(code)).length; return n ? `; ${n === 1 ? 'its other test' : 'its ' + n + ' other tests'} on ${esc(shown(off.n))} will be judged again` : ''; })()}</small></button><button class="xtWho" data-acct="keep"><b>It stays ${esc(shown(off.n))}'s</b><small>this test was taken on a classmate's login</small></button></div>
         <div class="rp-actions"><button class="pill pale" id="mCancel" data-autofocus>Cancel</button></div></div></div>`;
       const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
       m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = ev => { if (ev.target === m) close(); };
       m.querySelectorAll('[data-acct]').forEach(b => b.onclick = () => { close(); const mv = b.dataset.acct === 'move';
-        xtDo(() => { if (mv) { xtUnplace(ar.addr, off); xtLearn(ar.addr, c, 'you'); } xtGiveNow(e, c, off); }, `${esc(SEALX().showCode(code))} is ${esc(shown(c.n))}'s now, not ${esc(shown(off.n))}'s.${mv ? ` The school account ${esc(xtAddrShown(ar.addr))} is theirs from now on.` : ` The school account stays ${esc(shown(off.n))}'s.`}`); }); },
+        xtDo(() => { if (mv) { xtUnplace(ar.addr, off); xtLearn(ar.addr, c, 'you'); } xtGiveNow(e, c, off); }, `${esc(SEALX().showCode(code))} is ${esc(shown(c.n))}'s now, not ${esc(shown(off.n))}'s.${mv ? ` The school account ${esc(xtAddrShown(ar.addr))} is theirs from now on; any other test from it that you didn't place is judged again against it (placed with them where the name fits, otherwise waiting for you).` : ` The school account stays ${esc(shown(off.n))}'s.`}`); }); },
     '<button class="pill pale" data-xextra="nobody">Nobody yet</button>', () => { view.code = null; xtDo(() => { e.no = (e.no || []).filter(w => !(w.sec === off.sec && w.n === off.n)).concat([off]); e.was = e.who; e.who = null; e.nobody = true; delete e.gone; }, `${esc(SEALX().showCode(code))} is among the tests nobody turned in.`); }, off);
 }
 function xtChoose(s, code, how) {

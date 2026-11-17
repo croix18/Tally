@@ -74,6 +74,8 @@ function readSheet(text, o) {
   var code = best('code', []); if (code == null) return res;
   // the header: the first line whose code cell holds no code and whose cells are words, not data
   var first = lines[0], isHead = !SEAL.findCodes(first.r[code] || '').length && first.r.some(function (c) { return /[A-Za-z]/.test(c); }) && readWhen(first.r[0]) == null;
+  // with a header row, the code column is never one whose header says name, email, username or account (review N5)
+  if (isHead && /name|e-?mail|user\s*name|account/i.test(String(first.r[code] || ''))) { var not = []; for (j = 0; j < n; j++) if (/name|e-?mail|user\s*name|account/i.test(String(first.r[j] || ''))) not.push(j); code = best('code', not); if (code == null) return res; }
   if (isHead) res.header = first.r.slice();
   var hd = function (j) { return isHead ? String(first.r[j] || '') : ''; };
   var at = best('when', [code]);
@@ -96,9 +98,12 @@ function readSheet(text, o) {
   // Username, School account), else the column whose cells are addresses; read beside the name, whatever else there is
   // With a header row the account column is taken by its header ONLY, and never one that names someone else ("Parent email",
   // "Partner email (if any)"): review H2. Without one, the column whose cells are addresses.
-  var mail = null, data = lines.length - (isHead ? 1 : 0), ACCT = /^\s*(e-?mail(\s+address)?|username|user\s*name|school\s+(e-?mail|account)|account|student'?s?\s+(e-?mail|account)(\s+address)?)\s*$/i;
-  if (isHead) { for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && ACCT.test(hd(j))) mail = j; }
-  else for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && lines.filter(function (x) { return isAddr(x.r[j]); }).length >= Math.max(1, data * 0.6)) mail = j;
+  // any header that says email / e-mail / username / school or student account, in whatever words ("Your school email",
+  // "Email (school)", "What is your school email?"), unless it names someone else (review N6)
+  var mail = null, data = lines.length - (isHead ? 1 : 0), ACCT = /e-?mail|user\s*name|\baccount\b/i, OTHER = /parent|guardian|\bmom\b|\bdad\b|mother|father|partner|friend|teacher/i;
+  if (isHead) { for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && ACCT.test(hd(j)) && !OTHER.test(hd(j))) mail = j; }
+  else { var am = []; for (j = 0; j < n; j++) if (j !== code && j !== at && j !== name && lines.filter(function (x) { return isAddr(x.r[j]); }).length >= Math.max(1, data * 0.6)) am.push(j);
+    if (am.length === 1) mail = am[0]; else if (am.length > 1) res.acctTwo = true; }   // two address columns and no header: no guess
   res.google = isHead && mail != null && /^\s*email address\s*$/i.test(hd(mail));   // Google's own column, collected Verified when the form says so
   res.alts = alts; res.email = mail;
   res.cols = { code: code, name: name, at: at, email: mail };
@@ -106,7 +111,8 @@ function readSheet(text, o) {
     if (i === 0 && isHead) return;
     var cell = x.r[code] || '', codes = SEAL.findCodes(cell), nm = name == null ? '' : (x.r[name] || ''), w = at == null ? '' : (x.r[at] || ''), ad = mail == null ? '' : addrOf(x.r[mail]);
     if (!codes.length && !cell && !nm && !ad) { res.skipped++; return; }
-    if (!codes.length && SEAL.readCode(cell)) codes = [SEAL.readCode(cell)];
+    if (cell.indexOf('@') >= 0) codes = [];   // an address typed as the code is never a code (review N5)
+    else if (!codes.length && SEAL.readCode(cell)) codes = [SEAL.readCode(cell)];
     res.rows.push({ line: x.line, at: w, when: readWhen(w), name: nm, codes: codes, raw: codes.length ? '' : clip(cell, 60), addr: ad });
   });
   return res;
@@ -256,9 +262,29 @@ function acctFit(local, display) {
 function acctRank(addr, roster) { var T = acctLocal(addr); if (!T.length) return []; return roster.map(function (r, i) { return { i: i, s: acctFit(T, r.display) }; }).filter(function (x) { return x.s > 0; }).sort(function (p, q) { return q.s - p.s; }); }
 // the one student an address reads as best, alone; null when it reads as nobody or as two or more equally (review L2)
 function acctReads(addr, roster) { var R = acctRank(addr, roster); return R.length && (R.length === 1 || R[0].s > R[1].s) ? R[0].i : null; }
+// may an account be learned for the student a certain name picks? Only when the address reads as nobody, or as that student
+// first and alone, or as that student among equals (reviews C2, N7): never when it reads better as someone else
+function acctAgrees(addr, roster, pick) { var R = acctRank(addr, roster); if (!R.length) return true; return R.some(function (x) { return x.i === pick && x.s === R[0].s; }); }
 function acctCands(addr, roster) {
   var T = acctLocal(addr); if (!T.length) return [];
   return roster.map(function (r, i) { return { i: i, s: acctFit(T, r.display) }; }).filter(function (x) { return x.s > 0; }).sort(function (p, q) { return q.s - p.s; }).map(function (x) { return x.i; });
+}
+/* HOW STRONGLY A TYPED NAME POINTS AT A STUDENT (the second review of school accounts, 17 Nov 2026), one order for everything
+   an account is weighed against: 5 the exact full name · 4 a near name (each part exact or one slip) · 3 a nickname or a
+   prefix of the first name with the last name · 2 the first (or last) name alone, exactly · 1 a part of it, a prefix or a
+   look-alike · 0 nothing. A first name that is exactly a student's outranks one that only starts it or looks like it. */
+function nameStrength(typed, display) {
+  var T = tokens(typed), P = partsOf(display); if (!T.length || !P.first || !P.last.length) return 0;
+  var F = [P.first].concat(P.middle), L = P.last.concat(P.last.length > 1 ? [P.last.join('')] : []), all = F.concat(L);
+  if (T.length >= 2 && T.every(function (t) { return all.indexOf(t) >= 0; }) && T.indexOf(P.first) >= 0 && P.last.some(function (l) { return T.indexOf(l) >= 0; })) return 5;
+  var fr = function (t) { return F.indexOf(t) >= 0 ? 3 : F.some(function (f) { return Math.min(f.length, t.length) >= 3 && osa(t, f) <= 1; }) ? 2 : F.some(function (f) { return nick(t, f) || (t.length >= 2 && f.indexOf(t) === 0); }) ? 1 : 0; };
+  var lr = function (t) { return L.indexOf(t) >= 0 ? 3 : L.some(function (l) { return Math.min(l.length, t.length) >= 3 && osa(t, l) <= 1; }) ? 2 : L.some(function (l) { return t.length >= 3 && l.indexOf(t) === 0; }) ? 1 : 0; };
+  if (T.length === 1) { var t = T[0]; return F.indexOf(t) >= 0 || L.indexOf(t) >= 0 ? 2 : fr(t) || lr(t) ? 1 : 0; }
+  var best = 0;
+  for (var i = 0; i < T.length; i++) for (var j = 0; j < T.length; j++) { if (i === j) continue; var a = fr(T[i]), b = lr(T[j]); if (!a || !b) continue;
+    best = Math.max(best, a >= 2 && b >= 2 ? 4 : 3); }
+  if (best) return best;
+  return T.some(function (t) { return fr(t) || lr(t); }) ? 1 : 0;
 }
 var nameKey = function (t) { return tokens(t).sort().join(' '); };
 
@@ -572,7 +598,7 @@ function flags(c) {
 var fmtCode = function (c) { return SEAL.showCode(c); };
 function hm(ms) { if (ms == null) return '?'; var d = new Date(ms); var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
-var api = { addrOf: addrOf, acctRank: acctRank, acctReads: acctReads, acctFit: acctFit, acctCands: acctCands, acctLocal: acctLocal, teacherPayload: teacherPayload, teacherLink: teacherLink, b64u: b64u, NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
+var api = { acctAgrees: acctAgrees, nameStrength: nameStrength, addrOf: addrOf, acctRank: acctRank, acctReads: acctReads, acctFit: acctFit, acctCands: acctCands, acctLocal: acctLocal, teacherPayload: teacherPayload, teacherLink: teacherLink, b64u: b64u, NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
   qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testFull: testFull, testKey: testKey, sameTest: sameTest, scopeShort: scopeShort, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ExamCore = api;
 })(typeof self !== 'undefined' ? self : this);

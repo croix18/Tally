@@ -29,6 +29,7 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
     A.examTakeSheet(a.sheet, 'paste');
     // rosters as roster text only (a gradebook's students would come back as extras when a line is dropped)
     for (const k of A.state.order) { const s = A.state.sections[k]; s.roster = A.rosterFromGradebook(s, s.grades); s.grades = null; }
+    { const s = A.state.sections[A.state.order[0]]; s.roster += '\n3333399001\tKHAN, ALI\n3333399002\tKHANNA, ALICE\n3333399003\tHUGHES, DANA\n3333399004\tHUGHES, DARIA'; }   // look-alikes, so the account rule meets the names it is about (second review)
     A.save(); A.view.mode = 'tests'; A.render();
     return { n, held: Object.keys(X.recs).length, classes: A.state.order.length };
   }, { K, L: LOCKED, sheet: fs.readFileSync(FX('responses.tsv'), 'utf8').trimEnd() + '\n' + lessonRows + '\n' });
@@ -47,6 +48,21 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
     const lines = s => String(s.roster || '').split('\n').filter(l => l.trim());
     const modal = () => document.querySelector('#modal:not(.hidden)');
     const shut = () => { const m = modal(); if (m && m._cancel) m._cancel(); };
+    /* the table's strength order, written here on its own: 5 exact full name · 4 near (each part exact or one slip) · 3 a
+       nickname or prefix of the first name with the last · 2 the first or last name alone, exactly · 1 a part, prefix or
+       look-alike · 0 none */
+    window.__inv.strength = (typed, display) => {
+      const tok = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/['’]/g, '').replace(/[^a-z]+/g, ' ').trim().split(' ').filter(w => w && !/^(jr|sr|ii|iii|iv|v)$/.test(w));
+      const ed = (a, b) => { const d = []; for (let i = 0; i <= a.length; i++) { d[i] = [i]; } for (let j = 0; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) { d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1); } return d[a.length][b.length]; };
+      const groups = (A.EX().NICKNAMES || []).map(l => l.split(' ')); const nick = (a, b) => groups.some(g => g.includes(a) && g.includes(b));
+      const T = tok(typed); const c = String(display).indexOf(','); if (!T.length || c < 0) return 0;
+      const Ls0 = tok(String(display).slice(0, c)), Fs = tok(String(display).slice(c + 1)); if (!Fs.length || !Ls0.length) return 0; const first = Fs[0], Ls = Ls0.concat(Ls0.length > 1 ? [Ls0.join('')] : []);
+      if (T.length >= 2 && T.every(t => Fs.includes(t) || Ls.includes(t)) && T.includes(first) && Ls0.some(l => T.includes(l))) return 5;
+      const fr = t => Fs.includes(t) ? 3 : Fs.some(f => Math.min(f.length, t.length) >= 3 && ed(t, f) <= 1) ? 2 : Fs.some(f => nick(t, f) || (t.length >= 2 && f.startsWith(t))) ? 1 : 0;
+      const lr = t => Ls.includes(t) ? 3 : Ls.some(l => Math.min(l.length, t.length) >= 3 && ed(t, l) <= 1) ? 2 : Ls.some(l => t.length >= 3 && l.startsWith(t)) ? 1 : 0;
+      if (T.length === 1) return Fs.includes(T[0]) || Ls.includes(T[0]) ? 2 : fr(T[0]) || lr(T[0]) ? 1 : 0;
+      let best = 0; T.forEach((a, i) => T.forEach((b, j) => { if (i === j) return; const x = fr(a), y = lr(b); if (x && y) best = Math.max(best, x >= 2 && y >= 2 ? 4 : 3); }));
+      return best || (T.some(t => fr(t) || lr(t)) ? 1 : 0); };
     window.__inv.idle = async () => { for (let i = 0; i < 400 && ((A.examJob && A.examJob.running) || A.xtQueue.size); i++) await new Promise(r => setTimeout(r, 10)); await new Promise(r => setTimeout(r, 5)); for (let i = 0; i < 400 && A.examJob && A.examJob.running; i++) await new Promise(r => setTimeout(r, 10)); };
     window.__inv.save0 = () => { window.__inv.start = JSON.stringify(A.stateForSave()); const r = {}; A.state.order.forEach(k => { r[k] = A.state.sections[k].roster; }); window.__inv.rosters = r; window.__inv.order = A.state.order.slice(); window.__inv.exam = JSON.stringify(A.state.exam); window.__inv.whole = true; };
     window.__inv.reset = async ids => { shut(); A.xtAutoTried.clear();
@@ -61,8 +77,14 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
       const seen = {}; ['row', 'waiting', 'nobody'].forEach(w => L[w].forEach(c => { seen[c] = (seen[c] || []).concat(w); }));
       held.forEach(c => { if (!seen[c] || seen[c].length !== 1) bad.push(`${c} is in ${(seen[c] || ['nowhere']).join(' and ')}`); });
       // an account is one student's; a row placed by an account is placed by the account Tally holds; a forgotten account places nothing
-      // nothing is placed by an account against a typed name that points elsewhere (the accounts review, C1)
-      { const ros = A.examRoster(); X.rows.forEach(r => { if (r.how !== 'account' || r.kept || !r.name || !r.who) return; const m = A.EX().matchName(r.name, ros); if (!m.cands.some(i => ros[i].sec === r.who.sec && ros[i].n === r.who.n)) bad.push(`row ${r.line} ("${r.name}") is placed with ${r.who.n} by the account, though the name points elsewhere`); }); }
+      // THE ACCOUNT RULE, from the second review's table, judged here by an oracle of this suite's own (window.__inv.strength,
+      // written from the table, never the code's helpers): a row placed by an account, with a name typed, must point at the
+      // account's student at all and at nobody else more strongly; and no row from an address whose account now names someone
+      // else stays placed by the old basis (unless he placed it himself)
+      { const ros = A.examRoster(); X.rows.forEach(r => { if (!r.who || r.how === 'you') return; const E = r.addr && X.accounts[r.addr];
+          if (E && !(E.sec === r.who.sec && E.n === r.who.n)) { bad.push(`row ${r.line} from ${r.addr} stays with ${r.who.n} (how ${r.how}) though the account is ${E.n}'s now`); return; }
+          if (r.how !== 'account' || r.kept || !r.name) return; const st = window.__inv.strength; const sX = st(r.name, r.who.n); const top = Math.max(0, ...ros.filter(x => !(x.sec === r.who.sec && x.n === r.who.n)).map(x => st(r.name, x.n)));
+          if (!(sX > 0 && sX >= top)) bad.push(`row ${r.line} ("${r.name}") is placed with ${r.who.n} by the account, though the name points at someone else as strongly or more (${sX} vs ${top})`); }); }
       X.rows.forEach(r => { if (r.how === 'account' && !r.kept) { const w = X.accounts[r.addr]; if (!w || w.gone || w.sec !== r.who.sec || w.n !== r.who.n) bad.push(`row ${r.line} is placed by the account ${r.addr}, which Tally does not hold for ${r.who && r.who.n}`); } });
       Object.keys(X.deleted || {}).forEach(c => { if (L.at[c] || X.recs[c]) bad.push(`${c} is deleted but still held or listed`); });
       if ((window.__fetchBad || []).length) bad.push('a deleted test was fetched without Bring back: ' + window.__fetchBad.splice(0).join(', '));
@@ -114,8 +136,9 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
       waitFetch: async R => { if (!(A.examJob && A.examJob.running)) return null; await window.__inv.idle(); return 'the fetching ends'; },
       // school accounts: rows from an address (learned, new, or a classmate's), with the name right, mistyped, someone else's or none
       pasteAcct: R => { const X = A.examS(); const ros = roster(); const known = Object.keys(X.accounts || {}); const codes = Object.keys(X.recs); const rows = ['Timestamp\tEmail Address\tFirst and last name\tTest code'];
-        for (let i = 0; i < 1 + Math.floor(R() * 3); i++) { const st = pickOf(R, ros); const m = /^([^,]+),\s*(\S+)/.exec(st.n) || [, st.n, '']; const ad = R() < 0.4 && known.length ? pickOf(R, known) : (m[2][0] + m[1]).toLowerCase().replace(/[^a-z]/g, '') + Math.floor(R() * 90) + '@students.example.org';
-          const other = pickOf(R, ros); const o = /^([^,]+),\s*(\S+)/.exec(other.n) || [, other.n, '']; const nm = [m[2] + ' ' + m[1], o[2] + ' ' + o[1], (m[2] + ' ' + m[1]).slice(0, -2), ''][Math.floor(R() * 4)];
+        for (let i = 0; i < 1 + Math.floor(R() * 3); i++) { const useKnown = R() < 0.45 && known.length; const ka = useKnown ? pickOf(R, known) : null; const owner = ka && ros.find(x => x.sec === X.accounts[ka].sec && x.n === X.accounts[ka].n);
+          const st = owner && R() < 0.75 ? owner : R() < 0.35 ? pickOf(R, ros.filter(x => /^(KHAN, ALI|KHANNA, ALICE|HUGHES, DANA|HUGHES, DARIA)$/.test(x.n))) || pickOf(R, ros) : pickOf(R, ros); const m = /^([^,]+),\s*(\S+)/.exec(st.n) || [, st.n, '']; const ad = ka || (m[2][0] + m[1]).toLowerCase().replace(/[^a-z]/g, '') + Math.floor(R() * 90) + '@students.example.org';
+          const LA = { 'KHAN, ALI': 'KHANNA, ALICE', 'KHANNA, ALICE': 'KHAN, ALI', 'HUGHES, DANA': 'HUGHES, DARIA', 'HUGHES, DARIA': 'HUGHES, DANA' }; const other = (LA[st.n] && R() < 0.7 && ros.find(x => x.n === LA[st.n])) || pickOf(R, ros); const o = /^([^,]+),\s*(\S+)/.exec(other.n) || [, other.n, '']; const nm = [m[2] + ' ' + m[1], o[2] + ' ' + o[1], (m[2] + ' ' + m[1]).slice(0, -2), '', o[2], m[2]][Math.floor(R() * 6)];
           rows.push(`11/19/2026 9:${String(Math.floor(R() * 60)).padStart(2, '0')}:0${i}\t${ad}\t${nm}\t${pickOf(R, codes)}`); }
         A.examTakeSheet(rows.join('\n'), 'paste'); A.render(); return 'paste ' + (rows.length - 1) + ' rows with school accounts'; },
       forgetAcct: R => { A.view.xquiet = true; A.render(); const b = pickOf(R, [...document.querySelectorAll('[data-xfacct]')]); if (!b) return null; b.click(); return 'forget an account'; },
