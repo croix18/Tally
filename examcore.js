@@ -300,6 +300,27 @@ function readRecord(r) {
     device: dev, drop: { visits: (num(drop.visits) || 0) + (over.visits || 0), calc: (num(drop.calc) || 0) + (over.calc || 0), scratch: (num(drop.scratch) || 0) + (over.scratch || 0), away: (num(drop.away) || 0) + (over.away || 0), blocked: (num(drop.blocked) || 0) + (over.blocked || 0), idle: (num(drop.idle) || 0) + (over.idle || 0) }
   };
 }
+/* ---------------------------------------------------------------- see the test (16 Nov 2026, Croix: "show me the exact questions")
+   The unit's teacher copy on the site redraws the student's exact test from its seed, proves it is the same test by its keys,
+   and shows each question with the answer, the verdict and the key:  <site>/teacher/<course>/unit-<N>/practice/#test=<payload>
+   payload = base64url(UTF-8 JSON) of {v: 1, course, unit, seed, cv, kit, code, points, of, parts: [[id, answer, result, key], …]}
+   in the record's own part order. answer: what Tally shows in its Answer column ("" when blank); result: "almost", else the
+   verdict when right / wrong / blank, else "unread"; key: the record's RAW key, exactly (the teacher copy compares it with its
+   own redraw character for character). No name, class or roster id: only what the record holds about the test itself.
+   teacherPayload(record) → the object; teacherLink(site, record) → the href. The fragment never reaches the site. */
+function b64u(s) {
+  if (typeof Buffer !== 'undefined') return Buffer.from(s, 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  var bytes = new TextEncoder().encode(s), bin = ''; for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function teacherPayload(rec) {
+  var v = readRecord(rec);
+  return { v: 1, course: v.course, unit: v.unit, seed: v.seed, cv: v.cv === undefined ? null : v.cv, kit: v.kit, code: v.code, points: v.points, of: v.of,
+    parts: v.parts.map(function (p) { return [p.id, p.typed == null ? '' : answerText(p.type, p.typed), p.almost ? 'almost' : ['right', 'wrong', 'blank'].indexOf(p.v) >= 0 ? p.v : 'unread', p.key]; }) };
+}
+function teacherLink(site, rec) {
+  var P = teacherPayload(rec); return String(site || '').replace(/\/+$/, '') + '/teacher/' + encodeURIComponent(String(P.course).toLowerCase()) + '/unit-' + encodeURIComponent(String(P.unit)) + '/practice/#test=' + b64u(JSON.stringify(P));
+}
 var courseName = function (c) { return COURSES[c] ? COURSES[c].name : String(c || '').toUpperCase(); };
 var testName = function (course, unit) { return courseName(course) + ' Unit ' + (unit == null ? '?' : unit); };
 var testKey = function (course, unit) { return String(course || '') + '/' + (unit == null ? '' : unit); };
@@ -487,7 +508,7 @@ function flags(c) {
 var fmtCode = function (c) { return SEAL.showCode(c); };
 function hm(ms) { if (ms == null) return '?'; var d = new Date(ms); var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
-var api = { NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
+var api = { teacherPayload: teacherPayload, teacherLink: teacherLink, b64u: b64u, NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
   qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testKey: testKey, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ExamCore = api;
 })(typeof self !== 'undefined' ? self : this);

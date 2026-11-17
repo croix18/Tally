@@ -267,8 +267,8 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
     await q.click('#xtDone'); await q.waitForTimeout(200);
     site.state.down = true;
     await q.click('#xtPaste'); await q.fill('#xtSheet', fs.readFileSync(FX('responses.csv'), 'utf8')); await q.click('#xtTake'); await fetched(q); await q.waitForTimeout(300);
-    check(/codes couldn't reach the site's test records/.test(await text(q, '#gridwrap')) && await q.locator('[data-xretry]').count() === 1, 'with the network gone: one note for the batch, and Try again (M3)');
-    site.state.down = false; await q.click('[data-xretry]'); await fetched(q); await q.waitForTimeout(300);
+    check(/couldn't reach the site's test records/.test(await text(q, '#toast')) && (await text(q, '#xtWaiting')).match(/The site couldn't be reached for it/g).length >= 6 && await q.locator('#xtWaiting h3 + p [data-xrefetch]').count() === 1 && await q.locator('.gcards').count() === 0, 'with the network gone: one message for the batch; each code waits as not fetched (the site couldn\'t be reached), with one Fetch all again; the class shows no numbers for a test none of its students holds (M3, 16 Nov)');
+    site.state.down = false; await q.click('#xtWaiting h3 + p [data-xrefetch]'); await fetched(q); await q.waitForTimeout(300);
     check(!/couldn't reach the site's test records/.test(await text(q, '#gridwrap')) && await q.locator('tr[data-xcode]').count() === 6, 'Try again with the network back: every 5th Period test fetched');
     // a genuinely signed record full of a student's own strings: shown as text, inert
     await q.evaluate(() => [...document.querySelectorAll('.xtList tbody tr[data-xcode]')].find(r => /QUINLAN/i.test(r.textContent)).click()); await q.waitForTimeout(500);
@@ -288,6 +288,56 @@ const ctl = (site, p, body) => new Promise((res, rej) => { const d = body ? JSON
     check(/can.t open test records here/.test(await text(q2, '#toast')), 'and asking it to fetch says why it can\'t, nothing breaks');
     await o2.ctx.close();
   }
+  /* ---- 9. 16 Nov, Croix's dummy run: a class shows only its own students' tests; Delete and Bring back; See the test; where tests open ---- */
+  { const o = await open(SHIP); const q = o.p; await q.setInputFiles('#file', [fpath]); await q.waitForTimeout(900);
+    if (await q.evaluate(() => document.querySelector('#btnHide').getAttribute('aria-pressed') === 'false')) { await q.click('#btnHide'); await q.waitForTimeout(200); }
+    await q.setInputFiles('#file', [path.join(tmp, 'results.json')]); await q.waitForTimeout(1500);
+    await toTests(q, '4th'); for (let i = 0; i < 80 && /Checking|Fetching/.test(await text(q, '#xtProg')); i++) await q.waitForTimeout(250); await q.waitForTimeout(300);
+    const rowOf = n => q.evaluate(n => { const r = [...document.querySelectorAll('.xtList tbody tr')].find(x => (x.querySelector('.nm') || {}).textContent === n); return r ? r.innerText.replace(/\s+/g, ' ') : ''; }, n);
+    const nums = async () => ({ turned: await text(q, '.gcards .gcard:first-child b'), count: await text(q, '#xtCount') });
+    check(/Tests are opened and closed on the site, on the cockpit's Test card: mrshaffer\.org\/teacher/.test(await text(q, '.xtSiteHint')) && await q.evaluate(() => { const a = document.querySelector('.xtSiteHint a'); return a.target === '_blank' && /noopener/.test(a.rel) && a.href === 'https://mrshaffer.org/teacher/'; }), 'Tests says once, quietly, where tests are opened and closed: the site\'s Test card, a link to its teacher page in a new tab');
+    // See the test: a real link to the unit's teacher copy, built from the checked record, with no name in it
+    const n0 = await nums(); const code = await q.evaluate(() => [...document.querySelectorAll('.xtList tbody tr[data-xcode]')].find(r => /O'NEIL, BRENNAN/.test(r.textContent)).dataset.xcode);
+    await q.click(`tr[data-xcode="${code}"]`); await q.waitForTimeout(500);
+    const see = await q.evaluate(() => { const a = document.querySelector('#xtSeeD'); return a && { href: a.getAttribute('href'), target: a.target, rel: a.rel }; });
+    const pay = see && JSON.parse(Buffer.from(see.href.split('#test=')[1], 'base64url').toString('utf8'));
+    check(see && /^https:\/\/mrshaffer\.org\/teacher\/m7\/unit-10\/practice\/#test=[A-Za-z0-9_-]+$/.test(see.href) && see.target === '_blank' && /noopener/.test(see.rel) && /noreferrer/.test(see.rel) && pay.code === code && pay.v === 1 && Array.isArray(pay.parts) && pay.parts.length > 0 && !/o.neil|brennan|period/i.test(Buffer.from(see.href.split('#test=')[1], 'base64url').toString('utf8')),
+      'a test\'s page has "See the test": a real link (new tab, noopener noreferrer) to the unit\'s teacher copy, its fragment the test itself and never a name or class');
+    await shot(q, '17-detail-see-delete-1366');
+    // Delete: Tally's own dialog, Cancel focused; the row and the class's numbers change; Undo puts it back
+    await q.click('#xtDelD'); await q.waitForTimeout(200); const dlg = await text(q, '#modal');
+    check(/Delete this test\?/.test(dlg) && /O'NEIL, BRENNAN's/.test(dlg) && /On-level Unit 10/.test(dlg) && /bring it back from Deleted tests/.test(dlg) && await q.evaluate(() => document.activeElement && document.activeElement.id === 'mCancel'), 'Delete asks first in Tally\'s own dialog: which test, whose, what happens; Cancel has the focus: ' + dlg.replace(/\s+/g, ' ').slice(0, 200) + ' | focus ' + await q.evaluate(() => document.activeElement && document.activeElement.outerHTML.slice(0, 80)));
+    await shot(q, '18-delete-dialog-1366'); await q.click('#xtDelGo'); await q.waitForTimeout(400);
+    const n1 = await nums();
+    check(/No test turned in/.test(await rowOf("O'NEIL, BRENNAN")) && parseInt(n1.turned) === parseInt(n0.turned) - 1 && /Deleted tests/.test(await q.evaluate(() => document.querySelector('.xtQuiet').innerHTML)) && await q.evaluate(c => !document.querySelector(`[data-xled="${c}"]`), code),
+      'deleted: the row reads "No test turned in", the class\'s numbers change (' + n0.turned + ' → ' + n1.turned + '), it is in no list, only under Deleted tests');
+    check((+(/(\d+) tests? =/.exec(n1.count) || [])[1]) === (+(/(\d+) tests? =/.exec(n0.count) || [])[1]) - 1 && /=\s*(\d+) with a student \+ (\d+) waiting for you \+ (\d+) nobody/.test(n1.count), 'and the count line still adds up, one test fewer: ' + n1.count);
+    const idbGone = await q.evaluate(c => new Promise(res => { const r = indexedDB.open('tally-tests', 1); r.onsuccess = () => { const g = r.result.transaction('locked').objectStore('locked').get(c); g.onsuccess = () => res(g.result === undefined); }; }), code);
+    check(idbGone && !/"/.test('') && await q.evaluate(c => { const s = JSON.parse(localStorage.getItem('tally.v1')); return !s.exam.recs[c] && !!s.exam.deleted[c] && !JSON.stringify(s.exam.deleted[c]).includes('NEIL'); }, code), 'and it is really gone from Tally\'s storage and IndexedDB; only a tombstone with no name stays');
+    await q.click('#toast .tundo'); await q.waitForTimeout(800);
+    check(/O'NEIL, BRENNAN \d+\s*\/\s*36/.test(await rowOf("O'NEIL, BRENNAN")), 'Undo puts it back, its locked copy included (it opens and checks again)');
+    // deleted again, then the same sheet pasted again: still deleted, never asked for
+    await q.click(`tr[data-xcode="${code}"]`); await q.waitForTimeout(400); await q.click('#xtDelD'); await q.click('#xtDelGo'); await q.waitForTimeout(300);
+    const before = sent.length; await q.click('#xtPaste'); await q.fill('#xtSheet', fs.readFileSync(FX('responses.tsv'), 'utf8')); await q.click('#xtTake'); await fetched(q); await q.waitForTimeout(400);
+    await q.setInputFiles('#file', [path.join(tmp, 'results.json')]); await q.waitForTimeout(1200);
+    check(/No test turned in/.test(await rowOf("O'NEIL, BRENNAN")) && !sent.slice(before).some(x => x.url.endsWith(code)) && !/Not fetched yet[^]*O'NEIL/.test(await text(q, '#gridwrap')), 'pasting the same sheet again, and opening the cockpit\'s results file: the deleted test stays deleted and is never fetched by itself');
+    // Bring back
+    await q.click('.xtQuiet summary').catch(() => {}); await q.waitForTimeout(150); await shot(q, '19-deleted-tests-1366', true);
+    await ctl(site, '/__ctl/tally', { pub });   // the stand-in locks what it serves to the key last pasted into its cockpit (section 8 pasted another); this Tally's again
+    await q.click(`[data-xback="${code}"]`); for (let i = 0; i < 40 && !/O'NEIL, BRENNAN \d+\s*\/\s*36/.test(await rowOf("O'NEIL, BRENNAN")); i++) await q.waitForTimeout(250);
+    check(/O'NEIL, BRENNAN \d+\s*\/\s*36/.test(await rowOf("O'NEIL, BRENNAN")) && sent.slice(before).some(x => x.url.endsWith(code)), 'Bring back fetches it from the site again and it is back on the row: ' + (await text(q, '#toast')).slice(0, 120) + ' | ' + (await rowOf("O'NEIL, BRENNAN")));
+    // 5th Period's only test (Unit 10), every one deleted: the class no longer lists it; a nobody's test is only in the lists
+    await toTests(q, '5th'); const five = await q.evaluate(() => [...document.querySelectorAll('.xtList tbody tr[data-xcode]')].map(r => r.dataset.xcode));
+    for (const c of five) { await q.click(`tr[data-xcode="${c}"]`); await q.waitForTimeout(250); await q.click('#xtDelD'); await q.click('#xtDelGo'); await q.waitForTimeout(250); }
+    const t5 = await text(q, '#gridwrap');
+    check(five.length === 6 && /No test for 5th Period yet/.test(t5) && await q.locator('.gcards, .xtList').count() === 0 && /Nobody turned in/.test(t5) && /= \d+ with a student/.test(await text(q, '#xtCount')),
+      'with every one of its tests deleted, 5th Period lists no test: no cards, no table, no numbers; the tests nobody turned in are still in the list at the foot');
+    const badge = await q.evaluate(() => { const t = [...document.querySelectorAll('button, a')].find(x => /^Tests/.test(x.textContent.trim())); return t ? t.textContent.replace(/\D+/g, '') : ''; });
+    check(badge === '', 'and the Tests tab of a class with no test of its own counts nothing that names none of its students: "' + badge + '"');
+    await shot(q, '20-class-without-test-1366', true);
+    const nob = await q.evaluate(() => (document.querySelector('#xtNobody [data-xcode]') || {}).dataset); await q.click('#xtNobody [data-xcode]'); await q.waitForTimeout(500);
+    check(nob && /Nobody yet/.test(await text(q, '.xtWho1')) && await q.locator('#xtSeeD').count() === 1, 'a test nobody turned in opens whole from the list, with See the test, attached to no class');
+    await o.ctx.close(); }
   check(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await browser.close(); await site.close(); done();
 })().catch(e => { console.error(e); check(false, 'crashed: ' + (e && e.message)); done(); process.exit(1); });

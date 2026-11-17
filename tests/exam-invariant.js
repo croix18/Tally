@@ -32,7 +32,7 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
   check(setup.n >= 20 && setup.classes === 2, `the fixture: ${setup.n} tests held in ${setup.classes} classes, the response sheet read`);
 
   // the site, as a stand-in inside the page: a held-back fixture record by its code (a few ms later), else "none"; the key
-  await p.evaluate(a => { window.__site = a; window.fetch = async url => { await new Promise(r => setTimeout(r, 2 + Math.random() * 25)); const u = String(url);
+  await p.evaluate(a => { window.__site = a; window.fetch = async url => { const u = String(url); { const c0 = (/result\/([0-9A-Z]{12})$/.exec(u) || [])[1]; if (c0 && window.__all.examS().deleted[c0] && !(window.__inv && window.__inv.bringing === c0)) (window.__fetchBad = window.__fetchBad || []).push(c0); } await new Promise(r => setTimeout(r, 2 + Math.random() * 25));
     if (/\/api\/test\/key$/.test(u)) return new Response(JSON.stringify({ key: a.key, made: 1 }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     const c = (/result\/([0-9A-Z]{12})$/.exec(u) || [])[1]; return c && a.L[c] ? new Response(JSON.stringify({ code: c, record: a.L[c] }), { status: 200 }) : new Response(JSON.stringify({ error: 'none' }), { status: 404 }); }; }, { L: LOCKED, key: K.site.pub });
   // the runner, in the page: one call runs a batch of sequences and returns the first violation (with its sequence)
@@ -40,7 +40,7 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
     const A = window.__all;
     window.__inv = { start: null };
     const rng = seed => () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-    const tests = () => { const X = A.examS(); return JSON.stringify({ recs: X.recs, rows: X.rows, alias: X.alias, picks: X.picks, dismissed: X.dismissed, seen: X.seen }); };
+    const tests = () => { const X = A.examS(); return JSON.stringify({ recs: X.recs, rows: X.rows, alias: X.alias, picks: X.picks, dismissed: X.dismissed, seen: X.seen, fails: X.fails, deleted: X.deleted }); };
     const lines = s => String(s.roster || '').split('\n').filter(l => l.trim());
     const modal = () => document.querySelector('#modal:not(.hidden)');
     const shut = () => { const m = modal(); if (m && m._cancel) m._cancel(); };
@@ -57,8 +57,10 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
       const X = A.examS(), L = A.xtLedger(), held = Object.keys(X.recs), all = Object.keys(L.at), bad = [];
       const seen = {}; ['row', 'waiting', 'nobody'].forEach(w => L[w].forEach(c => { seen[c] = (seen[c] || []).concat(w); }));
       held.forEach(c => { if (!seen[c] || seen[c].length !== 1) bad.push(`${c} is in ${(seen[c] || ['nowhere']).join(' and ')}`); });
+      Object.keys(X.deleted || {}).forEach(c => { if (L.at[c] || X.recs[c]) bad.push(`${c} is deleted but still held or listed`); });
+      if ((window.__fetchBad || []).length) bad.push('a deleted test was fetched without Bring back: ' + window.__fetchBad.splice(0).join(', '));
       Object.keys(seen).forEach(c => { if (!X.recs[c] && !(L.at[c].why === 'unfetched' && X.rows.some(r => r.codes.includes(c)))) bad.push(`${c} listed but neither held nor named by a response`); });
-      X.rows.forEach(r => r.codes.forEach(c => { if (!L.at[c] && !(X.fails[c] && X.fails[c].why !== 'net')) bad.push(`${c} is named by a response but is in no list (not held, not fetched, not failed)`); }));
+      X.rows.forEach(r => r.codes.forEach(c => { if (!L.at[c] && !(X.deleted || {})[c] && !(X.fails[c] && X.fails[c].why !== 'net')) bad.push(`${c} is named by a response but is in no list (not held, not fetched, not failed)`); }));
       // the page (a class's Tests, as he sees it)
       const cnt = (document.querySelector('#xtCount') || {}).textContent || '';
       const m = /All classes: (\d+) tests? = (\d+) with a student \+ (\d+) waiting for you \+ (\d+) nobody turned in/.exec(cnt);
@@ -103,6 +105,9 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
         for (let i = 0; i < 1 + Math.floor(R() * 3); i++) { const n = pickOf(R, names) || 'Nobody Here'; const m = /^([^,]+),\s*(\S+)/.exec(n); rows.push(`11/18/2026 1${Math.floor(R() * 3)}:${String(Math.floor(R() * 60)).padStart(2, '0')}:0${i}\t${m ? m[2] + ' ' + m[1] : n}\t${pickOf(R, codes)}`); }
         const r = A.examTakeSheet(rows.join('\n'), 'paste'); A.render(); if (r.ok) { if (A.examJob && A.examJob.running) window.__inv.overlap = (window.__inv.overlap || 0) + 1; A.examFetch(r.codes); } return 'paste and fetch ' + (rows.length - 1) + ' rows' + (A.examJob && A.examJob.running ? ' (a fetch running)' : ''); },
       waitFetch: async R => { if (!(A.examJob && A.examJob.running)) return null; await window.__inv.idle(); return 'the fetching ends'; },
+      del: R => { const X = A.examS(); const c = pickOf(R, Object.keys(X.recs).concat(A.examUnfetched())); if (!c) return null; A.xtDeleteAsk(c); const m = modal(); if (!m) return 'delete: no dialog';
+        if (R() < 0.2) { const before = tests(); m.querySelector('#mCancel').click(); if (tests() !== before) window.__inv.cancelBroke = true; return 'delete ' + c + ': Cancel'; } m.querySelector('#xtDelGo').click(); return 'delete ' + c; },
+      back: async R => { const c = pickOf(R, Object.keys(A.examS().deleted || {})); if (!c) return null; await window.__inv.idle(); window.__inv.bringing = c; await A.xtBringBack(c); window.__inv.bringing = null; return 'bring back ' + c + (A.examS().recs[c] ? '' : ' (stays deleted)'); },
       roster: R => { const k = pickOf(R, A.state.order); if (!k) return null; const s = A.state.sections[k], l = lines(s); const what = pickOf(R, ['drop', 'rename', 'move', 'namesake']); const i = Math.floor(R() * l.length); if (!l.length) return null;
         if (what === 'drop') { l.splice(i, 1); s.roster = l.join('\n'); }
         else if (what === 'rename') { l[i] = l[i].replace(/^(\d+\t)?([^,]+),/, (x, id, last) => (id || '') + last + '-ORTIZ,'); s.roster = l.join('\n'); }
@@ -116,7 +121,7 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
         if (x < 0.6) { const b = m.querySelector('[data-xextra="nobody"]'); if (b) { b.click(); return 'Nobody yet'; } }
         const bs = [...m.querySelectorAll('.xtWho')]; const b = pickOf(R, bs); if (!b) { m.querySelector('#mCancel').click(); return 'Cancel (empty)'; } const t = b.textContent; b.click(); return 'picked ' + t.slice(0, 30); }
     };
-    const NAMES = ['answer', 'yes', 'someone', 'not', 'give', 'takeBack', 'nobody', 'undo', 'undo', 'dismiss', 'bring', 'paste', 'pasteFetch', 'pasteFetch', 'waitFetch', 'roster', 'roster', 'delClass', 'full'];
+    const NAMES = ['answer', 'yes', 'someone', 'not', 'give', 'takeBack', 'nobody', 'undo', 'undo', 'dismiss', 'bring', 'paste', 'pasteFetch', 'pasteFetch', 'waitFetch', 'del', 'del', 'back', 'roster', 'roster', 'delClass', 'full'];
     window.__inv.run = async (from, n, steps, seed) => {
       const t0 = performance.now(); let acts = 0;
       for (let q = from; q < from + n; q++) {
@@ -183,7 +188,7 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
   if (fail) console.log('VIOLATION in sequence', fail.q, '(seed ' + SEED + '):\n  ' + fail.seq.join('\n  ') + '\n  -> ' + fail.bad.join('\n  -> '));
   const overlap = await p.evaluate(() => window.__inv.overlap || 0);
   console.log(`RAN ${total} random sequences, ${acts} actions (${overlap} pastes made while a fetch was running), ${((Date.now() - t0) / 1000).toFixed(1)} s (seed ${SEED})`);
-  check(!fail, `after every action of ${total} random sequences (${acts} actions: place, Yes, Someone else, Not theirs, Cancel, Undo, give, take back, Nobody yet, dismiss, bring back, paste, rosters moved, dropped, renamed and given namesakes, a class deleted, a Full save opened), every test held is in exactly one place and the count line adds up; Cancel changes nothing; Undo gives back exactly what was there` + (fail ? ' — FAILED at sequence ' + fail.q : ''));
+  check(!fail, `after every action of ${total} random sequences (${acts} actions: place, Yes, Someone else, Not theirs, Cancel, Undo, give, take back, Nobody yet, dismiss, bring back, paste, pastes during a fetch, Delete and Bring back a test, rosters moved, dropped, renamed and given namesakes, a class deleted, a Full save opened), every test held is in exactly one place and the count line adds up; Cancel changes nothing; Undo gives back exactly what was there` + (fail ? ' — FAILED at sequence ' + fail.q : ''));
   check(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await browser.close(); done();
 })().catch(e => { console.error(e); check(false, 'crashed: ' + e.message); done(); process.exit(1); });

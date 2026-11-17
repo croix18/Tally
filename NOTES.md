@@ -1574,6 +1574,44 @@ Croix's decisions, as built:
   memory and compares; `tests/shipped-build.js` fails if the shipped pages are not the build of the sources or are changed
   and uncommitted.
 
+### Croix's first dummy run (16 Nov 2026, evening)
+He opened A7 Unit 6 on the site, took it on his Android tablet (Brave, Tally from a content:// file) and pasted the bare code
+into Tally. Fetching, opening and checking worked: *"That's really excellent! … It seems to work really well."* Four things
+came back, built here (branch `tests`; not on `main` until the site has the new teacher copies):
+1. *"If I'm running a test in one class, why are all the other classes getting scored on it."* / *"a way to run an open test
+   that's not attached to a specific class."* A class lists a test (course + unit) only when one of ITS OWN students holds a
+   test of it (`xtTests`); `xtCurrent` returns no test otherwise, and the class shows a plain empty state (Paste responses /
+   Open a file), then the two lists at the foot, the count line and the quiet section: no cards, no table, no phantom
+   current-unit test. A code with no name is in Nobody turned in, opens whole from there and touches no class.
+   **The tab's count (decided here):** the warnings of the class's own test on screen, plus each test in Waiting for you that
+   names one of this class's students (its own student, or a response row matched, suggested or remembered as one of them)
+   and isn't already counted by a warning. A waiting test that names no student of any class counts in no class's tab; it is
+   in Waiting for you on every class's Tests page.
+2. *"A way to delete a test so it doesn't show up in the stats for a class and it clears from my tally."* "Delete this test"
+   (quiet, at the foot of a test's page) and "Delete" on every item of Waiting for you and Nobody turned in. Tally's own dialog
+   names the test (name, score, code, whose: masked under Hide names), says what happens and that the site still has it;
+   Cancel has the focus (`data-autofocus`, which the modal's focus handler in app.js now honors). Deleting takes the summary
+   and the locked text out of state and IndexedDB, with its pick, fail and v1 copy. **The tombstone (decided here):**
+   `state.exam.deleted[code] = {at, course, unit, points, of}` (points/of only when it was checked this session; no name),
+   carried by the Full save. **The rows (decided here):** response rows that name a deleted code stay (they are the sheet's
+   history, so pasting the same sheet again adds nothing), but every reader skips the code: no fetch (not by a paste, the
+   auto-fetch, a pass that was already queued, or the cockpit's file), no list, no flag. **The merge rule (decided here): the
+   tombstone wins.** Whatever brings the record back (another tab's save through the merge, a Full save, a fetch that was in
+   flight), `xtPurge` takes it out again on the next refile or ledger. "Deleted tests" in the quiet section lists each with
+   its code, test, score and day, and Bring back (the tombstone off, fetched again; if the site can't be reached or no longer
+   has it, it says so and the tombstone stays). Through `xtDo`, so Undo puts back exactly what Tests held, the locked text
+   included (kept in memory for the session).
+3. *"Is there any way to have it be able to show me the exact questions as well?"* "See the test" on a test's page: a real link
+   (new tab, noopener noreferrer) to `<site>/teacher/<course>/unit-<N>/practice/#test=<payload>`, built from the record checked
+   this session by `ExamCore.teacherLink(site, record)` (`teacherPayload(record)` gives the object; both pure, Node-loadable).
+   payload = base64url(UTF-8 JSON) of `{v: 1, course, unit, seed, cv, kit, code, points, of, parts: [[id, answer, result, key]]}`:
+   answer as the Answer column shows it ("" when blank, clipped at 300), result "almost" / right / wrong / blank / "unread",
+   key the record's raw key. No name, class or roster id. With a quiet line: be signed in to the teacher section in that
+   browser.
+4. He looked in Tally for how to end a test and start a new one (*"Oh shoot I was looking at tally not the website. I found
+   it"*). Tests now says once, quietly, under its title (and in the empty state): "Tests are opened and closed on the site, on
+   the cockpit's Test card: mrshaffer.org/teacher ↗".
+
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
 - After, first run (`ffb456d` + the layout fixes): **72 suites · 2,349 passed · 3 failed**. Two were checks of what this

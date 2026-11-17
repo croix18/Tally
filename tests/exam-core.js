@@ -220,5 +220,18 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
     const R = [{ sec: '4', display: 'Smith, Ava' }, { sec: '5', display: 'Brown, Mia' }, { sec: '5', display: 'Brown, Ava' }, { sec: '4', display: 'Lee, Ana' }, { sec: '6', display: 'Okafor, Chidinma' }];
     check(C.matchName('Ava Brown', R).pick === 2 && C.matchName('Chidinma Okafor', R).pick === 4, 'R2-H1: Ava and Mia (two different short names) are not rivals; a name nobody else is near is still placed');
     check(C.NICKNAMES.some(l => l.split(' ').includes('chuy') && l.includes('jesus')) && C.osa('kahn', 'khan') === 1 && C.osa('elias', 'elisa') === 1, 'the nickname list is one plain list in examcore.js; a swap of two letters is one edit'); }
+  /* 16 Nov 2026, "See the test": the link to the unit's teacher copy, and its payload, exactly as the contract says */
+  { const RS = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'fixtures', 'exams', 'records.json'), 'utf8'));
+    const want = r => ({ v: 1, course: r.course, unit: r.unit, seed: r.seed, cv: r.cv === undefined ? null : r.cv, kit: r.kit, code: r.code, points: r.points, of: r.of,
+      parts: r.parts.map(p => [String(p.id), p.typed == null ? '' : C.answerText(p.type, p.typed), p.almost ? 'almost' : ['right', 'wrong', 'blank'].includes(p.v) ? p.v : 'unread', p.key]) });
+    const dec = h => JSON.parse(Buffer.from(h.split('#test=')[1], 'base64url').toString('utf8'));
+    const bad = RS.filter(x => { const h = C.teacherLink('https://mrshaffer.org/', x.record); const u = new URL(h); return u.pathname !== `/teacher/${x.record.course.toLowerCase()}/unit-${x.record.unit}/practice/` || JSON.stringify(dec(h)) !== JSON.stringify(want(x.record)) || /[^A-Za-z0-9_-]/.test(h.split('#test=')[1]); });
+    const kinds = new Set(); RS.forEach(x => x.record.parts.forEach(p => { kinds.add(p.type); if (p.almost) kinds.add('almost'); kinds.add(p.v === 'blank' ? 'blank' : ['right', 'wrong'].includes(p.v) ? 'verdict' : 'unread'); if (p.type === 'text' && Array.isArray(p.typed)) kinds.add('boxes'); }));
+    check(!bad.length && ['mc', 'multi', 'text', 'boxes', 'nline', 'cgraph', 'almost', 'blank', 'unread'].every(k => kinds.has(k)), 'See the test: for every fixture record (' + RS.length + '; mc, multi, text, text with boxes, nline, cgraph, almost, blank, unreadable), teacherLink(site, record) is <site>/teacher/<course>/unit-<N>/practice/#test=<base64url JSON> and decodes to exactly the contract: ' + JSON.stringify(bad.map(x => x.code)));
+    const names = RS.map(x => x.who).filter(Boolean).flatMap(n => String(n).split(/[ ,]+/)).filter(w => w.length > 2);
+    check(RS.every(x => { const t = Buffer.from(C.teacherLink('https://mrshaffer.org', x.record).split('#test=')[1], 'base64url').toString('utf8'); return !names.some(w => t.toLowerCase().includes(w.toLowerCase())) && !/"(n|name|sec|who|student|roster|class)"/.test(t); }), 'and it holds no name, class or roster id');
+    const long = JSON.parse(JSON.stringify(RS[0].record)); const p0 = long.parts.find(p => p.type === 'text'); p0.typed = 'x'.repeat(400); p0.key = 'k'.repeat(400);
+    const lp = dec(C.teacherLink('https://mrshaffer.org', long)).parts.find(q => q[0] === String(p0.id));
+    check(/… \(100 more characters\)$/.test(lp[1]) && lp[3] === 'k'.repeat(400) && C.teacherPayload(long).parts.length === long.parts.length, 'the 300-character clip applies to the answer, never to the key (the raw key, character for character)'); }
   done();
 })().catch(e => { console.error(e); check(false, 'crashed: ' + e.message); done(); });
