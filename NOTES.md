@@ -1653,7 +1653,7 @@ xtConflict, xtForgetAccount):
   when the sheet has addresses: Tally takes the account as the student only because the form collects it Verified, and it
   can't tell a typed address from a verified one.
 - **The fixture** (`tests/exam/fixtures.js` `account()`): each synthetic student has one address in one of five house
-  styles (flast12, lastf, first.l, fiswho4821, first.last); responses.tsv was regenerated with only that column changed.
+  styles (flast12, lastf, first.l, josmi4821, first.last); responses.tsv was regenerated with only that column changed.
 - Suites: exam-core (reader, the part before the @), `tests/exam-accounts.js` (new: every rule above in the page, 26
   checks, screenshots), exam-invariant (rows from accounts, Forget, conflict answers among the random actions; a row placed
   by an account is always placed by the account Tally holds now).
@@ -1683,6 +1683,8 @@ xtConflict, xtForgetAccount):
   exam-storage 9, shipped-build 2 (`build.py --check`: Tally.html, index.html and Scrub.html are the build of the sources).
 - After the dummy run (`4dcaf9c`, shipped pages rebuilt): **75 suites · 2,462 passed · 0 failed · 0 skipped**. exam-core 113,
   exam-e2e 100, exam-invariant 10 (2,000 sequences, now with Delete and Bring back), exam-storage 9, shipped-build 2.
+- School accounts (`9657e39`, shipped pages rebuilt): **76 suites · 2,494 passed · 0 failed · 0 skipped**. exam-accounts 26 (new),
+  exam-core 119, exam-e2e 100, exam-invariant 10 (2,000 sequences, now with school accounts), exam-storage 9, shipped-build 2.
 
 ## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 
