@@ -230,7 +230,20 @@ function resultsFile(b, locked, keys) {
 }
 async function makeKeys() { return { site: await SEAL.makeSiteKey(), old: await SEAL.makeSiteKey(), forger: await SEAL.makeSiteKey(), tally: await SEAL.makeTallyKey(), other: await SEAL.makeTallyKey() }; }
 
-module.exports = { account, HOSTILE, build, sheets, classFiles, lockAll, resultsFile, makeKeys, QS, OF, P4, P5, firstLast, at };
+/* LESSON TESTS (16 Nov 2026): a lesson test's record is a unit test's plus scope and scopeName, eight items, a point a part.
+   Synthetic, made from the unit records here: 4th Period's first five sit Lesson 10.03 (three of them also have the unit
+   test), 5th Period's first three a two-lesson day, and one record's lesson name is hostile markup. → [{record, who}]
+   (codes are new each time; the suite seals them with the fixtures' keys). */
+function lessons(b, newCode) {
+  const unit = b.recs.filter(x => x.to === 'tally' && x.by === 'site' && x.record.course === 'm7' && x.record.unit === 10).map(x => x.record);
+  const make = (base, scope, scopeName) => { const r = JSON.parse(JSON.stringify(base)); r.code = newCode(); r.parts = r.parts.slice(0, 8); r.of = r.parts.length; r.points = r.parts.filter(p => p.v === 'right').length; r.scope = scope; r.scopeName = scopeName; return r; };
+  const out = [];
+  P4.slice(0, 5).forEach((d, i) => out.push({ who: { sec: 4, n: d }, record: make(unit[i], 'lesson-10.03', 'Lesson 10.03 · Writing inequalities') }));
+  P5.slice(0, 3).forEach((d, i) => out.push({ who: { sec: 5, n: d }, record: make(unit[10 + i], 'lesson-10.09+10', 'Lessons 10.09–10.10 · Solving two-step inequalities') }));
+  out.push({ who: { sec: 4, n: P4[5] }, record: make(unit[5], 'lesson-10.03', '<img src=x onerror="window.__pwned=1"><b>Lesson 10.03</b> \u202Egnihtemos ' + 'x'.repeat(300)) });
+  return out;
+}
+module.exports = { lessons, account, HOSTILE, build, sheets, classFiles, lockAll, resultsFile, makeKeys, QS, OF, P4, P5, firstLast, at };
 
 if (require.main === module) (async () => {
   fs.mkdirSync(OUT, { recursive: true });

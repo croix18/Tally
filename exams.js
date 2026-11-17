@@ -30,8 +30,8 @@ function examPairOk(t) { try { const p = JSON.parse(t); return !!(p && p.priv &&
 const xtAddrOk = a => typeof a === 'string' && /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(a.trim()) ? a.trim().toLowerCase().slice(0, 120) : '';
 const xtWhoOf = (w, how) => w && typeof w === 'object' && typeof w.sec === 'string' && typeof w.n === 'string' ? { sec: w.sec, n: w.n.slice(0, 120), ...(typeof w.id === 'string' && /^\d{4,20}$/.test(w.id) ? { id: w.id } : {}), ...(how ? { how: ['exact', 'remembered', 'you', 'account'].includes(w.how) ? w.how : 'exact', at: xtStr(w.at, 30) } : {}), ...(typeof w.cl === 'string' ? { cl: w.cl.slice(0, 60) } : {}) } : null;
 // the verified summary the class list needs, made from an opened record
-function examSum(r) { const v = EX().readRecord(r); return { course: v.course, unit: v.unit, points: v.points, of: v.of, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, limit: v.limit, rule: v.rule, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, awaySec: v.awaySec, hasLog: !!v.log }; }
-function cleanSum(s) { if (!s || typeof s !== 'object') return null; const o = {}; ['unit', 'points', 'of', 'started', 'finished', 'seconds', 'opened', 'limit', 'unlocks', 'awayN', 'awaySec'].forEach(k => { o[k] = xtNum(s[k]); }); o.course = xtStr(s.course, 8) || ''; o.ended = ['left', 'teacher', 'time'].includes(s.ended) ? s.ended : null; o.rule = s.rule && typeof s.rule === 'object' ? { leave: xtStr(s.rule.leave, 8) || 'count', after: xtNum(s.rule.after) } : null; o.hasLog = !!s.hasLog; return o; }
+function examSum(r) { const v = EX().readRecord(r); return { course: v.course, unit: v.unit, scope: v.scope, scopeName: v.scopeName, points: v.points, of: v.of, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, limit: v.limit, rule: v.rule, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, awaySec: v.awaySec, hasLog: !!v.log }; }
+function cleanSum(s) { if (!s || typeof s !== 'object') return null; const o = {}; ['unit', 'points', 'of', 'started', 'finished', 'seconds', 'opened', 'limit', 'unlocks', 'awayN', 'awaySec'].forEach(k => { o[k] = xtNum(s[k]); }); o.course = xtStr(s.course, 8) || ''; o.scope = typeof s.scope === 'string' && /^[a-z0-9][a-z0-9.+\-]{0,39}$/i.test(s.scope) ? s.scope : ''; o.scopeName = o.scope ? xtStr(s.scopeName, 160) || '' : ''; o.ended = ['left', 'teacher', 'time'].includes(s.ended) ? s.ended : null; o.rule = s.rule && typeof s.rule === 'object' ? { leave: xtStr(s.rule.leave, 8) || 'count', after: xtNum(s.rule.after) } : null; o.hasLog = !!s.hasLog; return o; }
 function cleanRec(e) {
   if (!e || typeof e !== 'object') return null;
   return { got: xtStr(e.got, 30), src: e.src === 'file' ? 'file' : 'site', who: xtWhoOf(e.who, true), no: (Array.isArray(e.no) ? e.no : []).map(w => xtWhoOf(w)).filter(Boolean).slice(0, 20), nobody: !!e.nobody, was: xtWhoOf(e.was, true), ...(xtWhoOf(e.gone, true) ? { gone: xtWhoOf(e.gone, true) } : {}), sum: cleanSum(e.sum), ...(e.legacy ? { legacy: true } : {}) };
@@ -46,13 +46,13 @@ function cleanExam(x) {
   // a save made before site keys carried "paired": the key its trial proved was paired (R2-H3)
   if (x.trial && typeof x.trial.key === 'string') sites.forEach(s => { if (s.key === x.trial.key && !s.paired) s.paired = xtStr(x.trial.at, 30) || 'yes'; });
   const rows = (Array.isArray(x.rows) ? x.rows : []).filter(r => r && typeof r === 'object').map(r => ({ codes: (Array.isArray(r.codes) ? r.codes : []).filter(c => XCODE.test(c)).slice(0, 4), name: xtStr(r.name, 120) || '', line: xtNum(r.line) || 0, when: xtNum(r.when), at: xtStr(r.at, 40) || '', raw: xtStr(r.raw, 60) || '', email: !!r.email, addr: xtAddrOk(r.addr), ...(r.kept ? { kept: true } : {}), got: xtStr(r.got, 30), who: xtWhoOf(r.who), how: ['exact', 'remembered', 'you', 'account'].includes(r.how) ? r.how : null, cands: (Array.isArray(r.cands) ? r.cands : []).map(w => xtWhoOf(w)).filter(Boolean).slice(0, 8), suggest: xtWhoOf(r.suggest), remember: xtWhoOf(r.remember) }));
-  const fails = {}; if (x.fails && typeof x.fails === 'object') for (const k of Object.keys(x.fails)) { const f = x.fails[k]; if (XCODE.test(k) && f && ['none', 'format', 'key', 'signature', 'code', 'net'].includes(f.why)) fails[k] = { why: f.why, course: xtStr(f.course, 8), unit: xtNum(f.unit), at: xtStr(f.at, 30) }; }
+  const fails = {}; if (x.fails && typeof x.fails === 'object') for (const k of Object.keys(x.fails)) { const f = x.fails[k]; if (XCODE.test(k) && f && ['none', 'format', 'key', 'signature', 'code', 'net'].includes(f.why)) fails[k] = { why: f.why, course: xtStr(f.course, 8), unit: xtNum(f.unit), scope: typeof f.scope === 'string' && /^[a-z0-9][a-z0-9.+\-]{0,39}$/i.test(f.scope) ? f.scope : '', at: xtStr(f.at, 30) }; }
   const strMap = (o, ok) => { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) if (SAFE_KEY(k) && ok(o[k])) out[k] = o[k]; return out; };
   const recs = {}; if (x.recs && typeof x.recs === 'object') for (const k of Object.keys(x.recs)) { if (!XCODE.test(k)) continue; const e = cleanRec(x.recs[k]); if (e) recs[k] = e; }
   const locked = {}; if (x.locked && typeof x.locked === 'object') for (const k of Object.keys(x.locked)) if (XCODE.test(k) && typeof x.locked[k] === 'string' && /^[A-Za-z0-9_-]+$/.test(x.locked[k])) locked[k] = x.locked[k];
   const out = { v: 2, site, pairs, sites, trial: x.trial && typeof x.trial === 'object' && typeof x.trial.words === 'string' ? { code: xtStr(x.trial.code, 12), words: x.trial.words.slice(0, 60), at: xtStr(x.trial.at, 30), key: xtStr(x.trial.key, 90) } : null, warned: !!x.warned,
     recs, rows, fails, picks: strMap(x.picks, v => typeof v === 'string' && XCODE.test(v)), alias: strMap(x.alias, v => !!xtWhoOf(v)),
-    period: strMap(x.period, v => v && typeof v === 'object' && /^\d{1,2}:\d{2}$/.test(v.from) && /^\d{1,2}:\d{2}$/.test(v.to)), view: strMap(x.view, v => typeof v === 'string' && v.length < 20), dismissed: strMap(x.dismissed, v => typeof v === 'string'), deleted: (() => { const o = {}; if (x.deleted && typeof x.deleted === 'object') for (const k of Object.keys(x.deleted)) { const d = x.deleted[k]; if (XCODE.test(k) && d && typeof d === 'object') o[k] = { at: xtStr(d.at, 30), course: xtStr(d.course, 8), unit: xtNum(d.unit), points: xtNum(d.points), of: xtNum(d.of) }; } return o; })(),
+    period: strMap(x.period, v => v && typeof v === 'object' && /^\d{1,2}:\d{2}$/.test(v.from) && /^\d{1,2}:\d{2}$/.test(v.to)), view: strMap(x.view, v => typeof v === 'string' && v.length < 20), dismissed: strMap(x.dismissed, v => typeof v === 'string'), deleted: (() => { const o = {}; if (x.deleted && typeof x.deleted === 'object') for (const k of Object.keys(x.deleted)) { const d = x.deleted[k]; if (XCODE.test(k) && d && typeof d === 'object') o[k] = { at: xtStr(d.at, 30), course: xtStr(d.course, 8), unit: xtNum(d.unit), ...(typeof d.scope === 'string' && d.scope ? { scope: d.scope.slice(0, 40), scopeName: xtStr(d.scopeName, 160) || '' } : {}), points: xtNum(d.points), of: xtNum(d.of) }; } return o; })(),
     accounts: (() => { const o = {}; if (x.accounts && typeof x.accounts === 'object') for (const k of Object.keys(x.accounts)) { const w = xtWhoOf(x.accounts[k], true); if (xtAddrOk(k) === k && w) o[k] = { ...w, how: x.accounts[k].how === 'you' ? 'you' : 'name', ...(x.accounts[k].gone ? { gone: true } : {}) }; } return o; })(),
     seen: Array.isArray(x.seen) ? x.seen.filter(v => typeof v === 'string' && v.length < 200).slice(0, 6000) : null, fromSave: xtStr(x.fromSave, 30) };
   if (Object.keys(locked).length) out.locked = locked;
@@ -380,7 +380,7 @@ async function examOpenFile(obj, name) {
     if (X.recs[code] && !X.recs[code].legacy) { n.had++; continue; }
     if (xtDeletedCode(code)) { n.deleted = (n.deleted || 0) + 1; continue; }   // a test he deleted: only Bring back brings it back
     try { const { rec, checked } = await examOpen(r.record, code); if (rec.trial) continue; await examPut(code, r.record, rec, checked, 'file'); n.opened++; if (!checked) n.unchecked++; }
-    catch (e) { const why = ['format', 'key', 'signature', 'code'].includes(e.why) ? e.why : 'format'; X.fails[code] = { why, course: xtStr(r.course, 8), unit: xtNum(+r.unit), at: new Date().toISOString() }; n.failed++; n.why[why] = (n.why[why] || 0) + 1; }
+    catch (e) { const why = ['format', 'key', 'signature', 'code'].includes(e.why) ? e.why : 'format'; X.fails[code] = { why, course: xtStr(r.course, 8), unit: xtNum(+r.unit), scope: typeof r.scope === 'string' && /^[a-z0-9][a-z0-9.+\-]{0,39}$/i.test(r.scope) ? r.scope : '', at: new Date().toISOString() }; n.failed++; n.why[why] = (n.why[why] || 0) + 1; }
   }
   examRefile(); save(); render();
   const loose = examAll().filter(x => !x.sec).length;
@@ -423,8 +423,8 @@ const examKeyUnchecked = () => { const c = examChecked(), S = examS().sites.filt
    it"). A test with no student (Nobody turned in) or waiting for him belongs to no class: it is in the two lists at the foot
    of every class's Tests page, and nowhere else. */
 function xtTests(s) {
-  const m = new Map(); const add = (course, unit, t) => { if (!course) return; const k = EX().testKey(course, unit); const o = m.get(k) || { course, unit, key: k, last: 0 }; o.last = Math.max(o.last, t || 0); m.set(k, o); };
-  examAll().forEach(x => { const u = x.e.sum; if (u && x.sec === s.key && x.n) add(u.course, u.unit, u.finished); });
+  const m = new Map(); const add = (u, t) => { if (!u.course) return; const k = EX().testKey(u.course, u.unit, u.scope); const o = m.get(k) || { course: u.course, unit: u.unit, scope: u.scope || '', scopeName: u.scopeName || '', key: k, last: 0 }; o.last = Math.max(o.last, t || 0); if (u.scopeName && !o.scopeName) o.scopeName = u.scopeName; m.set(k, o); };
+  examAll().forEach(x => { const u = x.e.sum; if (u && x.sec === s.key && x.n) add(u, u.finished); });
   return [...m.values()].sort((a, b) => b.last - a.last || String(a.key).localeCompare(String(b.key)));
 }
 // the test on screen for a class: the one he chose, else the newest; null when no student of the class holds a test
@@ -441,7 +441,7 @@ function xtHint(r, all) {
   const code = r.codes[0], me = examS().recs[code]; if (!me || !me.sum || !xtOk(code) || !r.cands || new Set(r.cands.map(c => c.sec)).size < 2) return null;
   const u = me.sum; let best = null;
   for (const sec of new Set(r.cands.map(c => c.sec))) {
-    const theirs = all.filter(x => x.sec === sec && x.code !== code && x.e.sum && xtOk(x.code) && x.e.sum.course === u.course && x.e.sum.unit === u.unit && x.e.sum.started != null);
+    const theirs = all.filter(x => x.sec === sec && x.code !== code && x.e.sum && xtOk(x.code) && EX().sameTest(x.e.sum, u) && x.e.sum.started != null);
     if (!theirs.length) return null;   // a class with nothing placed yet can't be ruled out (R2-L3)
     const same = u.opened != null && theirs.filter(x => x.e.sum.opened === u.opened).length >= Math.max(1, theirs.length / 2);
     const lo = Math.min(...theirs.map(x => x.e.sum.started)), hi = Math.max(...theirs.map(x => x.e.sum.started));
@@ -453,11 +453,11 @@ function xtHint(r, all) {
 function xtModel(s, t, L) {
   const X = examS(); const C = EX(); const all = examAll(); L = L || xtLedger(); const atRow = c => L.at[c] && L.at[c].where === 'row';
   if (!t) return { rows: [], flags: [], recs: [], rowsSeen: X.rows, L };   // a class with no test of its own: no rows, no numbers, no flags
-  const recs = all.filter(x => x.e.sum).map(x => { const u = x.e.sum; return { code: x.code, course: u.course, unit: u.unit, started: u.started, finished: u.finished, seconds: u.seconds, opened: u.opened, ended: u.ended, limit: u.limit, rule: u.rule, after: u.rule && u.rule.after, unlocks: u.unlocks, awayN: u.awayN, points: u.points, of: u.of, sec: x.sec, n: x.n, how: x.e.who && x.e.who.how, no: x.e.no, nobody: x.e.nobody, was: x.e.was, gone: x.e.gone, ok: xtOk(x.code) }; });
+  const recs = all.filter(x => x.e.sum).map(x => { const u = x.e.sum; return { code: x.code, course: u.course, unit: u.unit, scope: u.scope || '', scopeName: u.scopeName || '', started: u.started, finished: u.finished, seconds: u.seconds, opened: u.opened, ended: u.ended, limit: u.limit, rule: u.rule, after: u.rule && u.rule.after, unlocks: u.unlocks, awayN: u.awayN, points: u.points, of: u.of, sec: x.sec, n: x.n, how: x.e.who && x.e.who.how, no: x.e.no, nobody: x.e.nobody, was: x.e.was, gone: x.e.gone, ok: xtOk(x.code) }; });
   // rows as the flags see them: with what Tally knows of where an unplaced test was sat, and the remembered answer offered
   const D = X.deleted || {}; const rows = X.rows.filter(r => !(r.codes.length && r.codes.every(c => D[c]))).map(r => r.codes.some(c => D[c]) ? { ...r, codes: r.codes.filter(c => !D[c]) } : r).map(r => { if (r.who || !r.codes.length) return r; const h = xtHint(r, all); if (!h) return r; const cands = r.cands.slice().sort((p, q) => (q.sec === h.sec) - (p.sec === h.sec)); return { ...r, hint: h.text, cands, suggest: r.suggest && r.suggest.sec === h.sec ? r.suggest : r.suggest }; });
-  const fl = C.flags({ sec: s.key, prep: s.prep, course: t.course, unit: t.unit, period: X.period[s.key] || null, rows, recs, fails: X.fails, picks: X.picks, known: all.filter(x => !x.sec).map(x => x.code), show: shown, hideText: !!state.settings.hideNames }).filter(f => !X.dismissed[f.id]);
-  const studs = classStudents(s); const here = x => x.e.sum && x.e.sum.course === t.course && x.e.sum.unit === t.unit;
+  const fl = C.flags({ sec: s.key, prep: s.prep, course: t.course, unit: t.unit, scope: t.scope || '', scopeName: t.scopeName || '', period: X.period[s.key] || null, rows, recs, fails: X.fails, picks: X.picks, known: all.filter(x => !x.sec).map(x => x.code), show: shown, hideText: !!state.settings.hideNames }).filter(f => !X.dismissed[f.id]);
+  const studs = classStudents(s); const here = x => x.e.sum && EX().sameTest(x.e.sum, t);
   const rowsOut = studs.map((n, i) => { const mine = all.filter(x => x.sec === s.key && x.n === n && here(x) && atRow(x.code)).map(x => ({ code: x.code, e: x.e, ok: xtOk(x.code) })); const held = all.filter(x => x.sec === s.key && x.n === n && here(x) && !atRow(x.code)).map(x => x.code).concat(X.rows.filter(r => r.who && r.who.sec === s.key && r.who.n === n && r.codes.some(c => L.at[c] && L.at[c].why === 'unfetched')).map(r => r.codes[0]));
     const okd = mine.filter(x => x.ok); const pk = X.picks[s.key + '|' + n + '|' + t.key]; const use = okd.length === 1 && mine.length === 1 ? okd[0] : okd.find(x => x.code === pk) || null;
     return { i, n, mine, held, use, v: use ? xtV(use.e.sum) : null, flags: fl.filter(f => (f.names || []).includes(n)) }; });
@@ -520,7 +520,7 @@ function renderTests(s) {
     if (f.kind === 'none' && f.near && f.near.length && f.rows && f.rows[0] && f.rows[0].who) return `<button class="pill small" data-xnear="${f.code}" data-to="${f.near[0]}">Give ${esc(SEALX().showCode(f.near[0]))} to ${esc(shown(f.rows[0].who.n))}</button>`;
     if (f.kind === 'twice') return `<button class="pill small" data-xtwice="${esc(f.names[0])}">Choose the one that counts</button>`;
     if (['left', 'period', 'apart', 'opening', 'rule', 'long', 'teacher', 'time', 'makeup'].includes(f.kind)) return `<button class="pill small pale" data-xcode="${f.code}">Open the test</button>`;
-    if (f.kind === 'other') return `<button class="pill small pale" data-xtest="${esc(C.testKey(f.course, f.unit))}">Open ${esc(C.testName(f.course, f.unit))}</button>`;
+    if (f.kind === 'other') return `<button class="pill small pale" data-xtest="${esc(C.testKey(f.course, f.unit, f.scope))}">Open ${esc(C.testName(f.course, f.unit, f.scope, f.scopeName))}</button>`;
     if (!examCan()) return '';
     if (f.kind === 'net') return `<button class="pill small" data-xretry="1">Try again</button>`;
     if (f.kind === 'code' || f.kind === 'format') return `<button class="pill small pale" data-xagain="${f.code}">Fetch again</button>`;
@@ -528,14 +528,14 @@ function renderTests(s) {
   const flagRow = f => `<li class="${f.level}"><span class="xtFi">${ico(f.level === 'warn' ? 'warn' : 'info')}</span><div><b>${esc(f.text)}</b><p>${esc(f.todo)}</p></div><div class="xtAct">${fbtn(f)}<button class="linkbtn xtDis" data-xdis="${esc(f.id)}" title="Dismiss: it goes to the dismissed list at the foot of Tests, where it can be brought back">Dismiss</button></div></li>`;
   const empty = !t;
   const more = view.xflags ? warns.length : Math.min(warns.length, warns.length > 4 ? 3 : 4);
-  const title = list.length > 1 ? `<label class="xtTitle xtTitleSel"><span class="vh">Test</span><select id="xtPick">${list.map(x => `<option value="${esc(x.key)}" ${t && x.key === t.key ? 'selected' : ''}>${esc(C.testName(x.course, x.unit))}</option>`).join('')}</select></label>` : `<h2 class="xtTitle">${list.length ? esc(C.testName(t.course, t.unit)) : 'Tests'}</h2>`;
+  const title = list.length > 1 ? `<label class="xtTitle xtTitleSel"><span class="vh">Test</span><select id="xtPick">${list.map(x => `<option value="${esc(x.key)}" ${t && x.key === t.key ? 'selected' : ''}>${esc(C.testName(x.course, x.unit, x.scope, x.scopeName))}</option>`).join('')}</select>${t && t.scope ? `<span class="xtScopeName">${esc(C.testFull(t.course, t.unit, t.scope, t.scopeName))}</span>` : ''}</label>` : `<h2 class="xtTitle">${list.length ? `<span class="xtScopeName">${esc(C.testFull(t.course, t.unit, t.scope, t.scopeName))}</span>` : 'Tests'}</h2>`;
   const cnt = xtCounts(L);
   const alias = Object.entries(X.alias), dism = Object.entries(X.dismissed), accts = Object.entries(X.accounts || {}).sort((a, b) => String(a[1].n).localeCompare(String(b[1].n))), dels = Object.entries(X.deleted || {}).sort((a, b) => String(b[1].at).localeCompare(String(a[1].at)));
   const quiet = alias.length || dism.length || dels.length || accts.length ? `<details class="xtQuiet" ${view.xquiet ? 'open' : ''}><summary>What Tally remembers (${alias.length + accts.length}) · dismissed (${dism.length})${dels.length ? ` · deleted tests (${dels.length})` : ''}</summary><div class="xtQuietBody">
       ${accts.length ? `<h4 id="xtAccounts">School accounts</h4><ul>${accts.map(([a, w]) => `<li><span>${esc(xtAddrShown(a))} is ${esc(shown(w.n))}${state.sections[w.sec] ? ` <small>${esc(labShort(state.sections[w.sec].label))}</small>` : ''} <small>${w.gone ? 'no longer on a roster' : (w.how === 'you' ? 'your answer' : 'learned from the name') + (w.at ? ', ' + esc(fmtDate(localDay(w.at))) : '')}</small></span><button class="linkbtn" data-xfacct="${Object.keys(X.accounts).indexOf(a)}">Forget</button></li>`).join('')}</ul><p class="ghint">A test from one of these is that student's. Forget: the next test from it asks again (or is learned again from a name Tally is sure of); nothing already placed moves.</p>` : ''}
       ${alias.length ? `<h4>Names you answered</h4><ul>${alias.map(([k, w], ai) => `<li><span>“${esc(H ? mask(k) : k)}” is ${esc(shown(w.n))}${state.sections[w.sec] ? ` <small>${esc(labShort(state.sections[w.sec].label))}</small>` : ''}${w.at ? ` <small>since ${esc(fmtDate(localDay(w.at)))}</small>` : ''}</span><button class="linkbtn" data-xforget="${ai}">Forget</button></li>`).join('')}</ul><p class="ghint">Tally uses an answer only when the same words could mean nobody else; otherwise it asks, with this student first.</p>` : ''}
       ${dism.length ? `<h4>Dismissed</h4><ul>${dism.map(([id, at]) => `<li><span>${esc(xtDismissText(id))} <small>${esc(fmtDate(localDay(at)))}</small></span><button class="linkbtn" data-xundis="${esc(id)}">Bring back</button></li>`).join('')}</ul>` : ''}
-      ${dels.length ? `<h4 id="xtDeleted">Deleted tests</h4><ul>${dels.map(([code, d]) => `<li><span><span class="xtCode">${esc(SEALX().showCode(code))}</span> · ${esc(d.course ? C.testName(d.course, d.unit) : 'a test')}${d.points != null ? ` · ${d.points} / ${d.of}` : ''} <small>deleted ${esc(fmtDate(localDay(d.at)))}</small></span><button class="linkbtn" data-xback="${code}">Bring back</button></li>`).join('')}</ul><p class="ghint">Tally doesn't keep these. Bring back fetches the test from the site again.</p>` : ''}</div></details>` : '';
+      ${dels.length ? `<h4 id="xtDeleted">Deleted tests</h4><ul>${dels.map(([code, d]) => `<li><span><span class="xtCode">${esc(SEALX().showCode(code))}</span> · ${esc(d.course ? C.testName(d.course, d.unit, d.scope, d.scopeName) : 'a test')}${d.points != null ? ` · ${d.points} / ${d.of}` : ''} <small>deleted ${esc(fmtDate(localDay(d.at)))}</small></span><button class="linkbtn" data-xback="${code}">Bring back</button></li>`).join('')}</ul><p class="ghint">Tally doesn't keep these. Bring back fetches the test from the site again.</p>` : ''}</div></details>` : '';
   wrap.innerHTML = `<div class="grades xt">
     <div class="xtTop">${title}<div class="xtTopR">${xtStatusHtml()}${list.length ? `<button class="linkbtn xtPerBtn" id="xtPeriod" title="When this class meets: a test started or finished outside it is flagged">${per ? `Period ${esc(xtHp(per.from))}–${esc(xtHp(per.to))}` : 'Set the period\'s times'}</button>` : ''}</div></div>
     ${empty ? '' : `<p class="ghint xtSiteHint">${xtSiteHint()}</p>`}
@@ -573,7 +573,7 @@ const xtConflictWords = r => { const f = r.conflict; return f.kind === 'typed' ?
 function xtLedgerHtml(L) {
   const X = examS(); const C = EX(); if (!L.waiting.length && !L.nobody.length) return '';
   const sumOf = code => { const e = X.recs[code], u = e && e.sum; return u && xtOk(code) ? `${u.points} / ${u.of}, taken ${C.hm(u.started)}–${C.hm(u.finished)}` : ''; };
-  const testOf = code => { const u = X.recs[code] && X.recs[code].sum; return u && u.course ? C.testName(u.course, u.unit) : X.recs[code] ? 'A test' : 'A code turned in'; };
+  const testOf = code => { const u = X.recs[code] && X.recs[code].sum; return u && u.course ? C.testName(u.course, u.unit, u.scope, u.scopeName) : X.recs[code] ? 'A test' : 'A code turned in'; };
   const rowsOf = code => X.rows.filter(r => r.codes.includes(code));
   const item = (code, body, btns) => `<li data-xled="${code}"><div><b>${esc(testOf(code))}</b> · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${sumOf(code) ? ` · ${esc(sumOf(code))}` : ''}<p>${body}</p></div><div class="xtAct">${btns}<button class="linkbtn xtDel" data-xdel="${code}" title="Delete this test from Tally (it can be brought back from Deleted tests)">Delete</button></div></li>`;
   const W = L.waiting.map(code => { const a = L.at[code], e = X.recs[code] || { no: [] }, rs = rowsOf(code); const who = e.who ? ` It is ${esc(shown(e.who.n))}'s.` : '';
@@ -607,7 +607,7 @@ function xtStoreLine() {
   return `<div class="notice xtStore" role="status"><span>${ico('warn')}</span><span><b>${lsW ? `This browser's room for Tally is ${lsPct}% full` : `This browser's room for test records is ${idbPct}% full`}</b> (${lsW ? `${u.mb(u.total)} of about ${u.mb(u.quota)} MB; Tests is ${u.mb(tests)} MB of it` : `${(q.usage / 1048576).toFixed(1)} of ${(q.quota / 1048576).toFixed(0)} MB`}). Make a Full save now and keep it in your school Drive: it holds everything. When the room is full, Tally can't save new work in this browser.${here ? ' Tests are kept only here and in your Full saves.' : ''}</span><button class="pill small" id="xtStoreSave">Full save</button></div>`;
 }
 function testsBarHtml(s) {
-  if (view.code) { const h = examHeld(view.code); const u = h && h.e.sum; return `<div class="crumb"><button id="xtBack">‹ Tests</button><h2>${u ? esc(EX().testName(u.course, u.unit)) : 'Tests'}</h2></div>`; }
+  if (view.code) { const h = examHeld(view.code); const u = h && h.e.sum; return `<div class="crumb"><button id="xtBack">‹ Tests</button><h2>${u ? esc(EX().testName(u.course, u.unit, u.scope, u.scopeName)) : 'Tests'}</h2></div>`; }
   if (!examPairs().length || view.connect) return `<span class="meta">Tests taken on the website, opened with Tally's own key</span>`;
   return `<div class="spacer"></div><button class="pill toggle" id="xtCopy" title="Every student's points, in Focus order, to paste into the Focus column">Copy scores</button><button class="pill toggle" id="xtOpen" title="The response sheet saved as CSV, or the cockpit's results file">Open a file</button><button class="pill" id="xtPaste">Paste responses</button>`;
 }
@@ -702,7 +702,7 @@ async function xdbDel(code) { await xdbOpen(); if (!xdb) return; await xdbTx('re
 const xtDeletedCode = c => !!(examS().deleted || {})[c];
 function xtDeleteAsk(code) {
   const X = examS(), e = X.recs[code], u = e && e.sum, ok = xtOk(code), C = EX(); const who = e && e.who ? e.who.n : null;
-  const name = u && u.course ? C.testName(u.course, u.unit) : 'This test';
+  const name = u && u.course ? C.testName(u.course, u.unit, u.scope, u.scopeName) : 'This test';
   const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private');
   m.innerHTML = `<div class="panel narrow"><header><h2>Delete this test?</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one">
     <p><b>${esc(name)}</b>${u && ok ? ` · ${u.points} / ${u.of}` : ''} · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${who ? ` · ${esc(shown(who))}'s` : ''}</p>
@@ -715,7 +715,7 @@ function xtDeleteAsk(code) {
 function examDelete(code) {
   const X = examS(), e = X.recs[code], u = (e && e.sum) || {}; const f = X.fails[code] || {}; const text = xtLocked.get(code) || (X.locked || {})[code]; if (text) xtTrash.set(code, text);
   if (view.code === code) view.code = null;
-  xtDo(() => { X.deleted[code] = { at: new Date().toISOString(), course: u.course || f.course || null, unit: u.unit != null ? u.unit : f.unit != null ? f.unit : null, points: xtOk(code) ? u.points : null, of: xtOk(code) ? u.of : null };
+  xtDo(() => { X.deleted[code] = { at: new Date().toISOString(), course: u.course || f.course || null, unit: u.unit != null ? u.unit : f.unit != null ? f.unit : null, ...(u.scope ? { scope: u.scope, scopeName: u.scopeName || '' } : {}), points: xtOk(code) ? u.points : null, of: xtOk(code) ? u.of : null };
     xtLocked.delete(code); xdbDel(code); xtPurge(); }, `${esc(SEALX().showCode(code))} is deleted. It is under Deleted tests at the foot of Tests.`);
 }
 // Bring back: the tombstone off, fetched from the site again; if it can't be, the tombstone goes back and he is told why
@@ -842,7 +842,7 @@ function xtChoose(s, code, how) {
   xtPickStudent(how === 'shared' ? 'Whose test is this?' : 'Give this test to a student', lead, cands, c => xtGive(code, c));
 }
 function xtTwice(s, t, n) {
-  const list = examAll().filter(x => x.sec === s.key && x.n === n && x.e.sum && x.e.sum.course === t.course && x.e.sum.unit === t.unit && xtOk(x.code));
+  const list = examAll().filter(x => x.sec === s.key && x.n === n && x.e.sum && EX().sameTest(x.e.sum, t) && xtOk(x.code));
   const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private');
   m.innerHTML = `<div class="panel narrow"><header><h2>${esc(shown(n))}: two tests</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one"><p>Each was a separate sitting on the site. The one you choose is the score; the other stays here, marked. If one isn't theirs, open it and press Not theirs.</p>
     <div class="xtWhos">${list.map(x => { const u = x.e.sum; return `<button class="xtWho" data-c="${x.code}"><b>${u.points} / ${u.of}</b><small>taken ${esc(EX().hm(u.started))}–${esc(EX().hm(u.finished))} · ${esc(EX().clock(u.seconds))} · away ${u.awayN || 0}</small><span class="xtCode">${esc(SEALX().showCode(x.code))}</span></button>`; }).join('')}</div>
@@ -865,12 +865,12 @@ async function xtCopy(s) {
   const M = xtModel(s, t); const gb = s.grades && Array.isArray(s.grades.students) && s.grades.students.length ? s.grades.students : null;
   const order = gb || classStudents(s); const by = new Map(M.rows.map(r => [r.n, r])); const byN = new Map(); M.rows.forEach(r => { const k = norm(r.n); byN.set(k, byN.has(k) ? null : r); });   // a gradebook row by its exact name, else by a plain name only one student has
   const lines = order.map(n => { const r = by.get(n) || byN.get(norm(n)); return r && r.use && r.v.points != null ? String(r.v.points) : ''; });
-  const got = lines.filter(Boolean).length; if (!got) { toast(`No scores for ${esc(EX().testName(t.course, t.unit))} in ${esc(s.label)} yet.`, true); return; }
+  const got = lines.filter(Boolean).length; if (!got) { toast(`No scores for ${esc(EX().testName(t.course, t.unit, t.scope, t.scopeName))} in ${esc(s.label)} yet.`, true); return; }
   const ofs = [...new Set(M.rows.filter(r => r.use).map(r => r.v.of))]; const two = M.rows.filter(r => r.mine.length > 1 && !r.use).length;
   const text = lines.join('\n'); let ok = legacyCopy(text);
   if (!ok && window.isSecureContext && navigator.clipboard) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {} }
-  const title = `${EX().testName(t.course, t.unit)} test · /${ofs.length === 1 ? ofs[0] : ofs.join(' or ')}`;
-  if (ok) toast(`<b>${esc(EX().testName(t.course, t.unit))}</b> copied: ${plural(lines.length, 'row')} in ${gb ? 'the Focus gradebook\'s' : 'roster'} order · ${got} with a score${lines.length - got ? ` · ${lines.length - got} blank` : ''}${ofs.length === 1 ? ` · out of <b>${ofs[0]}</b>` : ` · <b>not every test is out of the same points (${ofs.join(', ')})</b>`}${two ? ` · <b>${plural(two, 'student')} with two tests left blank until you choose</b>` : ''}`, false, 8000);
+  const title = `${EX().testName(t.course, t.unit, t.scope, t.scopeName)} test · /${ofs.length === 1 ? ofs[0] : ofs.join(' or ')}`;
+  if (ok) toast(`<b>${esc(EX().testName(t.course, t.unit, t.scope, t.scopeName))}</b> copied: ${plural(lines.length, 'row')} in ${gb ? 'the Focus gradebook\'s' : 'roster'} order · ${got} with a score${lines.length - got ? ` · ${lines.length - got} blank` : ''}${ofs.length === 1 ? ` · out of <b>${ofs[0]}</b>` : ` · <b>not every test is out of the same points (${ofs.join(', ')})</b>`}${two ? ` · <b>${plural(two, 'student')} with two tests left blank until you choose</b>` : ''}`, false, 8000);
   else showCopyBox(text, title);
 }
 
@@ -929,7 +929,7 @@ function renderTestDetail(s, code) {
     wrap.innerHTML = `<div class="grades xt"><div class="notice info"><span>${ico('info')}</span><span><b>Tally can't show this test.</b> ${esc({ unchecked: 'It is signed by a key this Tally has not checked: connect to the site once (Tally asks the site whether it serves that key), or enter a trial code under Connection. Until then it is never scored.', legacy: 'An earlier build of Tally kept it without its locked copy, so it can\'t be checked: fetch it again from the class list.', missing: 'Its locked copy is missing: fetch it again from the class list.', signature: 'What is stored was not signed by the site (a changed Full save?): it is never shown or scored.', key: 'It is locked to a key this Tally doesn\'t have.', format: 'What is stored is not a test record.', code: 'What is stored answers to another code.' }[st] || (examCan() ? 'It hasn\'t been checked yet.' : 'This browser can\'t open test records here (no Web Crypto). Open Tally on your laptop in Chrome or Edge.'))}</span></div></div>`; return;
   }
   const v = EX().readRecord(rec); const C = EX(); const n = e.who ? e.who.n : null;
-  const { t } = xtCurrent(s); const M = xtModel(s, { course: v.course, unit: v.unit, key: C.testKey(v.course, v.unit) });
+  const { t } = xtCurrent(s); const M = xtModel(s, { course: v.course, unit: v.unit, scope: v.scope, scopeName: v.scopeName, key: C.testKey(v.course, v.unit, v.scope) });
   const fl = M.flags.filter(f => f.code === code || (f.kind === 'twice' && (f.codes || []).includes(code)));
   const pc = xtPct(v.points, v.of); const L = v.log;
   const devClock = L && L.t0 != null && v.started != null ? Math.round((L.t0 - v.started) / 1000) : null;
@@ -950,7 +950,7 @@ function renderTestDetail(s, code) {
   const D = v.device || {}; const dv = (x, f) => x == null ? '<span class="xtNone">not reported</span>' : esc(f ? f(x) : String(x));
   wrap.innerHTML = `<div class="grades xt xtD">
     <section class="xtHead">
-      <div class="xtWho1"><h2>${n ? esc(shown(n)) : '<span class="xtNone">Nobody yet</span>'}</h2><p>${esc(C.testName(v.course, v.unit))} · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${e.src === 'file' ? ' · from the cockpit\'s file' : ''}</p>
+      <div class="xtWho1"><h2>${n ? esc(shown(n)) : '<span class="xtNone">Nobody yet</span>'}</h2><p><span class="xtScopeName">${esc(C.testFull(v.course, v.unit, v.scope, v.scopeName))}</span> · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${e.src === 'file' ? ' · from the cockpit\'s file' : ''}</p>
         ${!n ? `<div class="xtOwn"><span>${e.gone ? `Nobody's now. It had been ${e.gone.how === 'you' ? 'given to' : 'with'} ${esc(shown(e.gone.n))}${e.gone.cl ? ` (${esc(e.gone.cl)})` : ''}, who is no longer on that roster.` : e.was ? `Nobody's now. It had been ${esc(shown(e.was.n))}'s.` : 'Nobody turned this code in.'}</span><button class="pill small" id="xtGiveD">Give it to a student</button></div>` : `<div class="xtOwn"><span>${esc(xtHowWords(e.who, code))}</span><button class="pill small pale" id="xtNotD" title="This test isn't ${esc(shown(n))}'s: take it off them and say whose it is">Not theirs</button></div>`}
         <div class="xtSee"><a class="pill small" id="xtSeeD" href="${esc(EX().teacherLink(X.site, rec))}" target="_blank" rel="noopener noreferrer">See the test ↗</a><span>Opens this unit's teacher copy on the site, with the questions as this student was given them. Be signed in to the teacher section in this browser.</span></div></div>
       <div class="xtBig"><b>${v.points ?? '?'}</b><small>/ ${v.of ?? '?'}</small><span>${pc == null ? '' : pc + '%'}</span></div>

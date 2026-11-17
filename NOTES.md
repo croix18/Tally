@@ -1658,6 +1658,31 @@ xtConflict, xtForgetAccount):
   checks, screenshots), exam-invariant (rows from accounts, Forget, conflict answers among the random actions; a row placed
   by an account is always placed by the account Tally holds now).
 
+### Lesson tests (16 Nov 2026, 8:12 pm)
+Croix: *"I want you to apply that across all of the practice tests, so I can test on a specific unit or lesson to test on."*
+Settled with him: the same locked test, drawing one lesson's 8 questions, opened from the site's Test card. What reaches
+Tally: a lesson test's record is a unit test's plus `scope` (the practice page's id: "lesson-10.03", a two-lesson day
+"lesson-10.09+10", a thread day "lesson-t-a1") and `scopeName` ("Lesson 10.03 · Writing inequalities"); a unit test's record
+is exactly as before. As built:
+- **The test is course + unit + scope** (`testKey(course, unit, scope)`: a unit test's key is unchanged, "m7/10"; a lesson
+  test's is "m7/10#lesson-10.03"; `sameTest`). The class's list and picker, its numbers and table, picks for a student
+  with two tests, flags and their ids, the period/apart/opening/long comparisons, the tab's count, Copy scores, the test
+  remembered per class, tombstones, fails (from the cockpit's file) and the summary Tally keeps all carry the scope. A
+  student with the unit test and a lesson test of the same unit has two different tests, not "two tests".
+- **Decided here:** a lesson test of the class's own unit is in the picker, not an "another test" note (that note stays for
+  another unit or course); a shared code shows under its own test only.
+- **Names:** `testName` short for lists and the picker ("On-level Unit 10 · Lesson 10.03", from the part of scopeName
+  before " · ", else from the scope); `testFull` with the lesson's own name on the test's page and under the class's title.
+  A record without the fields is the unit test. The scope is read from the record (an odd scope is no scope; the name is
+  text, capped at 120 characters, isolated with `unicode-bidi: isolate`, always through esc()). An old summary without a
+  scope reads as a unit test until the record is checked again this session, when its summary is made from the record.
+- **See the test:** a lesson test's payload carries `scope` right after `seed`; a unit test's is byte for byte as before.
+- **The cockpit's results file** with lesson rows opens as before; the row's scope is kept only as a label on a code that
+  failed to open (where its note shows); the test is whatever the locked record says.
+- Fixtures: `tests/exam/fixtures.js` `lessons()` (4th Period: five of Lesson 10.03, three of them with the unit test too;
+  5th Period: a two-lesson day only; one hostile lesson name), sealed by the suites. Suites: exam-core (keys, names, the
+  payload, flags), `tests/exam-lessons.js` (new, 16 checks, screenshots), exam-invariant (lesson tests among the records).
+
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
 - After, first run (`ffb456d` + the layout fixes): **72 suites · 2,349 passed · 3 failed**. Two were checks of what this

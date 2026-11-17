@@ -324,6 +324,7 @@ function readRecord(r) {
   var sum = function (l) { return l.reduce(function (a, e) { return a + (e.sec || 0); }, 0); };
   return {
     code: str(r.code) || '', id: str(r.id) || '', trial: r.trial === true, course: str(r.course) || '', unit: num(r.unit), cv: r.cv, kit: str(r.kit), seed: str(r.seed),
+    scope: typeof r.scope === 'string' && /^[a-z0-9][a-z0-9.+\-]{0,39}$/i.test(r.scope) ? r.scope : '', scopeName: typeof r.scope === 'string' && r.scope && typeof r.scopeName === 'string' ? clip(r.scopeName, 120) : '',
     started: started, finished: finished, seconds: started != null && finished != null && finished >= started ? Math.round((finished - started) / 1000) : null,
     saves: num(site.saves), timeline: arr(site.timeline).filter(function (e) { return Array.isArray(e) && num(e[0]) != null; }).slice(0, 1500).map(function (e) { return { at: e[0], part: e[1] == null ? '' : String(e[1]) }; }),
     rule: r.rule && typeof r.rule === 'object' ? { leave: str(r.rule.leave) || 'count', after: num(r.rule.after) } : null, ended: r.ended === 'left' || r.ended === 'teacher' || r.ended === 'time' ? r.ended : null, limit: num(site.limit), unlocks: num(r.unlocks),
@@ -349,15 +350,25 @@ function b64u(s) {
 }
 function teacherPayload(rec) {
   var v = readRecord(rec);
-  return { v: 1, course: v.course, unit: v.unit, seed: v.seed, cv: v.cv === undefined ? null : v.cv, kit: v.kit, code: v.code, points: v.points, of: v.of,
-    parts: v.parts.map(function (p) { return [p.id, p.typed == null ? '' : answerText(p.type, p.typed), p.almost ? 'almost' : ['right', 'wrong', 'blank'].indexOf(p.v) >= 0 ? p.v : 'unread', p.key]; }) };
+  var head = { v: 1, course: v.course, unit: v.unit, seed: v.seed }; if (v.scope) head.scope = v.scope;   // a lesson test's scope; a unit test's payload stays exactly as it was
+  return Object.assign(head, { cv: v.cv === undefined ? null : v.cv, kit: v.kit, code: v.code, points: v.points, of: v.of,
+    parts: v.parts.map(function (p) { return [p.id, p.typed == null ? '' : answerText(p.type, p.typed), p.almost ? 'almost' : ['right', 'wrong', 'blank'].indexOf(p.v) >= 0 ? p.v : 'unread', p.key]; }) });
 }
 function teacherLink(site, rec) {
   var P = teacherPayload(rec); return String(site || '').replace(/\/+$/, '') + '/teacher/' + encodeURIComponent(String(P.course).toLowerCase()) + '/unit-' + encodeURIComponent(String(P.unit)) + '/practice/#test=' + b64u(JSON.stringify(P));
 }
 var courseName = function (c) { return COURSES[c] ? COURSES[c].name : String(c || '').toUpperCase(); };
-var testName = function (course, unit) { return courseName(course) + ' Unit ' + (unit == null ? '?' : unit); };
-var testKey = function (course, unit) { return String(course || '') + '/' + (unit == null ? '' : unit); };
+/* LESSON TESTS (16 Nov 2026, Croix: "so I can test on a specific unit or lesson"). A lesson test's record is a unit test's plus
+   scope (the practice page's id: "lesson-10.03", a two-lesson day "lesson-10.09+10", a thread day "lesson-t-a1") and scopeName
+   ("Lesson 10.03 · Writing inequalities"). The test is course + unit + scope: a unit test (no scope) and a lesson test of the
+   same unit never mix. testKey keeps a unit test's key exactly as it was ("m7/10"); a lesson test's is "m7/10#lesson-10.03".
+   testName: short, for lists ("On-level Unit 10 · Lesson 10.03"); testFull: with the lesson's own name, for its page. */
+var scopeShort = function (scope, scopeName) { if (!scope) return ''; var n = String(scopeName || '').split(' · ')[0].trim(); if (n) return n.slice(0, 40);
+  var m = /^lesson-(t-)?(.+)$/.exec(scope); return m ? (m[1] ? 'Thread ' + m[2].toUpperCase() : 'Lesson ' + m[2]) : String(scope).slice(0, 40); };
+var testName = function (course, unit, scope, scopeName) { return courseName(course) + ' Unit ' + (unit == null ? '?' : unit) + (scope ? ' · ' + scopeShort(scope, scopeName) : ''); };
+var testFull = function (course, unit, scope, scopeName) { return courseName(course) + ' Unit ' + (unit == null ? '?' : unit) + (scope ? ' · ' + (String(scopeName || '').trim() || scopeShort(scope)) : ''); };
+var testKey = function (course, unit, scope) { return String(course || '') + '/' + (unit == null ? '' : unit) + (scope ? '#' + scope : ''); };
+var sameTest = function (a, b) { return !!a && !!b && a.course === b.course && a.unit === b.unit && (a.scope || '') === (b.scope || ''); };
 
 /* ---------------------------------------------------------------- what does not add up
    Pure on purpose: the screens hand in what Tally holds and get back every flag with what is wrong and what to do.
@@ -417,11 +428,11 @@ function placeAll(rows, recs) {
           picks: {"sec|n|course/unit": code}, known: [codes the site has], show: name → what the screen may show}
    Level: 'warn' (he should look) or 'info' (a note). */
 function flags(c) {
-  var out = [], here = function (x) { return x.course === c.course && x.unit === c.unit; }, mine = function (w) { return !!w && w.sec === c.sec; };
+  var out = [], here = function (x) { return sameTest(x, c); }, mine = function (w) { return !!w && w.sec === c.sec; };
   var rows = c.rows || [], recs = c.recs || [], fails = c.fails || {}, held = {}, shownName = c.show || function (n) { return n; };
   /* a flag's id: kind | code | names | the test | what makes it this one and no other (R2-M2): dismissing one never silences
      another, and a note whose cause changes (other codes failing, other tests turned in) comes back as a new one */
-  var tk = testKey(c.course, c.unit), rowId = function (r) { return r ? (r.at || r.when || '') + '#' + r.line + '#' + (r.codes || []).join(',') + '#' + (r.raw || '') : ''; };
+  var tk = testKey(c.course, c.unit, c.scope), rowId = function (r) { return r ? (r.at || r.when || '') + '#' + r.line + '#' + (r.codes || []).join(',') + '#' + (r.raw || '') : ''; };
   var push = function (f) { f.id = f.id || [f.kind, f.code || '', (f.names || []).join(','), tk, f.uniq != null ? f.uniq : f.rows && f.rows[0] ? rowId(f.rows[0]) : ''].join('|'); out.push(f); };
   recs.forEach(function (x) { held[x.code] = x; });
   var P = placeAll(rows, recs.map(function (x) { return { code: x.code, who: x.sec && x.n ? { sec: x.sec, n: x.n, how: x.how || (x.pin ? 'you' : 'exact') } : x.pin ? { sec: x.pin.sec, n: x.pin.n, how: 'you' } : null, no: x.no, nobody: x.nobody, gone: x.gone }; }));
@@ -431,6 +442,7 @@ function flags(c) {
   // a code two students turned in
   Object.keys(P.shared).forEach(function (code) {
     var rs = P.shared[code], x = held[code]; if (!rs.some(function (r) { return mine(r.who); }) && (rs.some(function (r) { return r.who; }) || !(x && here(x)))) return;
+    if (x && x.course && !here(x)) return;   // a shared code of another test (a lesson test of this unit is another test) shows there
     var who = []; rs.forEach(function (r) { var n = r.who ? r.who.n : r.name; if (who.indexOf(n) < 0) who.push(n); });
     push({ kind: 'shared', level: 'warn', code: code, rows: rs, names: who, text: 'Two students turned in the same code: ' + who.map(shownName).join(' and ') + '.',
       todo: 'Only one of them took this test. Look at the code on each student\'s results screen (or ask), then say whose it is; until then it counts for nobody.' });
@@ -442,7 +454,7 @@ function flags(c) {
   Object.keys(fails).forEach(function (code) {
     var fx = fails[code] && typeof fails[code] === 'object' ? fails[code] : { why: fails[code] }, why = fx.why, rs = claimed[code] || [];
     var who = rs.map(function (r) { return r.who && r.who.sec === c.sec ? r.who.n : null; }).filter(Boolean);
-    if (!who.length) { if (rs.some(function (r) { return r.who; })) return; if (fx.course != null && !(fx.course === c.course && fx.unit === c.unit)) return; }
+    if (!who.length) { if (rs.some(function (r) { return r.who; })) return; if (fx.course != null && !sameTest(fx, c)) return; }
     if ((why === 'none' || why === 'format') && who.length && who.every(function (n) { return holds[n]; })) return;   // the child turned in the right code since
     var whom = who.length ? who.map(shownName).join(' and ') : rs.length ? 'a response with no student matched (' + shownName(rs[0].name || 'no name') + ')' : 'the cockpit\'s file';
     var near = why === 'none' ? nearCodes(code, (c.known || []).concat(unclaimed)) : [];
@@ -461,9 +473,9 @@ function flags(c) {
   // records held for this class
   var mineRecs = recs.filter(function (x) { return x.sec === c.sec && x.n && x.ok !== false; });   // only records checked this session
   var byStu = {}; mineRecs.filter(here).forEach(function (x) { (byStu[x.n] = byStu[x.n] || []).push(x); });
-  Object.keys(byStu).forEach(function (n) { var l = byStu[n]; if (l.length < 2) return; var pk = (c.picks || {})[c.sec + '|' + n + '|' + testKey(c.course, c.unit)];
+  Object.keys(byStu).forEach(function (n) { var l = byStu[n]; if (l.length < 2) return; var pk = (c.picks || {})[c.sec + '|' + n + '|' + testKey(c.course, c.unit, c.scope)];
     if (pk && l.some(function (x) { return x.code === pk; })) return;
-    push({ kind: 'twice', level: 'warn', names: [n], uniq: l.map(function (x) { return x.code; }).sort().join(','), codes: l.map(function (x) { return x.code; }), text: shownName(n) + ' has ' + l.length + ' tests for ' + testName(c.course, c.unit) + ' (' + l.map(function (x) { return hm(x.started) + '–' + hm(x.finished) + (x.points != null ? ', ' + x.points + ' / ' + x.of : ''); }).join('; ') + ').',
+    push({ kind: 'twice', level: 'warn', names: [n], uniq: l.map(function (x) { return x.code; }).sort().join(','), codes: l.map(function (x) { return x.code; }), text: shownName(n) + ' has ' + l.length + ' tests for ' + testName(c.course, c.unit, c.scope, c.scopeName) + ' (' + l.map(function (x) { return hm(x.started) + '–' + hm(x.finished) + (x.points != null ? ', ' + x.points + ' / ' + x.of : ''); }).join('; ') + ').',
       todo: 'Each was a separate sitting on the site. Choose the one that counts; the other stays in Tally, marked. If one isn\'t theirs, open it and press Not theirs.' }); });
   mineRecs.filter(here).forEach(function (x) {
     if (x.ended === 'left') push({ kind: 'left', level: 'warn', code: x.code, names: [x.n], text: shownName(x.n) + '\'s test ended itself: they left it ' + (x.after || x.awayN || 'too many') + ' times.',
@@ -518,9 +530,9 @@ function flags(c) {
       todo: 'Open the test: its timeline shows where the time went.' }); });
   });
   // records of this class for another test, or another course
-  var other = {}; mineRecs.filter(function (x) { return !here(x); }).forEach(function (x) { var k = testKey(x.course, x.unit); var o = other[k] = other[k] || { course: x.course, unit: x.unit, n: 0, codes: [] }; o.n++; o.codes.push(x.code); });
-  Object.keys(other).forEach(function (k) { var o = other[k]; push({ kind: 'other', level: 'info', course: o.course, unit: o.unit, n: o.n, uniq: k + ':' + o.codes.sort().join(','), text: (o.n === 1 ? '1 test' : o.n + ' tests') + ' turned in here ' + (o.n === 1 ? 'is' : 'are') + ' for ' + testName(o.course, o.unit) + ', not ' + testName(c.course, c.unit) + '.',
-    todo: (COURSES[o.course] && COURSES[o.course].prep !== c.prep ? 'That is the other course\'s test: the student may have opened the wrong one. ' : '') + 'Open ' + testName(o.course, o.unit) + ' to see ' + (o.n === 1 ? 'it' : 'them') + '.' }); });
+  var other = {}; mineRecs.filter(function (x) { return !(x.course === c.course && x.unit === c.unit); }).forEach(function (x) { var k = testKey(x.course, x.unit, x.scope); var o = other[k] = other[k] || { scope: x.scope || '', scopeName: x.scopeName || '', course: x.course, unit: x.unit, n: 0, codes: [] }; o.n++; o.codes.push(x.code); });
+  Object.keys(other).forEach(function (k) { var o = other[k]; push({ kind: 'other', level: 'info', course: o.course, unit: o.unit, scope: o.scope, scopeName: o.scopeName, n: o.n, uniq: k + ':' + o.codes.sort().join(','), text: (o.n === 1 ? '1 test' : o.n + ' tests') + ' turned in here ' + (o.n === 1 ? 'is' : 'are') + ' for ' + testName(o.course, o.unit, o.scope, o.scopeName) + ', not ' + testName(c.course, c.unit, c.scope, c.scopeName) + '.',
+    todo: (COURSES[o.course] && COURSES[o.course].prep !== c.prep ? 'That is the other course\'s test: the student may have opened the wrong one. ' : '') + 'Open ' + testName(o.course, o.unit, o.scope, o.scopeName) + ' to see ' + (o.n === 1 ? 'it' : 'them') + '.' }); });
   // tests nobody turned in, of this test (with what the record shows of when and where it was taken)
   recs.filter(function (x) { return P.state[x.code] === 'nobody' && here(x) && x.ok !== false; }).forEach(function (x) {
     push({ kind: 'unclaimed', level: 'warn', code: x.code, text: 'Nobody turned in ' + fmtCode(x.code) + ' (' + (x.points != null ? x.points + ' / ' + x.of + ', ' : '') + (x.started != null ? 'taken ' + hm(x.started) + '–' : 'finished ') + hm(x.finished) + (x.opened != null ? ', in the opening of ' + hm(x.opened) : '') + (x.ended === 'teacher' ? ', not finished: closed by the site' : x.ended === 'time' ? ', ran out of time: closed by the site' : '') + ').' + (x.gone ? ' It had been ' + (x.gone.how === 'you' ? 'given to ' : 'with ') + shownName(x.gone.n) + (x.gone.cl ? ' (' + x.gone.cl + ')' : '') + ', who is no longer on that roster.' : ''),
@@ -545,6 +557,6 @@ var fmtCode = function (c) { return SEAL.showCode(c); };
 function hm(ms) { if (ms == null) return '?'; var d = new Date(ms); var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
 var api = { acctFit: acctFit, acctCands: acctCands, acctLocal: acctLocal, teacherPayload: teacherPayload, teacherLink: teacherLink, b64u: b64u, NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
-  qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testKey: testKey, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
+  qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testFull: testFull, testKey: testKey, sameTest: sameTest, scopeShort: scopeShort, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ExamCore = api;
 })(typeof self !== 'undefined' ? self : this);

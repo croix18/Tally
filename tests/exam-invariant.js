@@ -13,6 +13,9 @@ const FX = n => path.resolve('fixtures', 'exams', n);
 const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, STEPS = 7;
 (async () => {
   const K = JSON.parse(fs.readFileSync(FX('keys.json'), 'utf8')); const LOCKED = JSON.parse(fs.readFileSync(FX('locked.json'), 'utf8'));
+  // lesson tests too (16 Nov 2026): two tests of one unit in play (the unit test and Lesson 10.03, a two-lesson day in 5th)
+  const F = require('./exam/fixtures.js'); const LS = F.lessons(F.build(), SEAL.newCode); for (const x of LS) LOCKED[x.record.code] = await SEAL.seal(x.record, K.site.priv, K.tally.pub);
+  const lessonRows = LS.map((x, i) => `11/17/2026 11:${String(10 + i).padStart(2, '0')}:00\t\t${x.who.sec}\t${F.firstLast(x.who.n).replace(' Jr.', '')}\t${x.record.code}\t`).join('\n');
   const browser = await chromium.launch({ executablePath: exe }); const errs = [];
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } }); const p = await ctx.newPage();
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
@@ -28,7 +31,7 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
     for (const k of A.state.order) { const s = A.state.sections[k]; s.roster = A.rosterFromGradebook(s, s.grades); s.grades = null; }
     A.save(); A.view.mode = 'tests'; A.render();
     return { n, held: Object.keys(X.recs).length, classes: A.state.order.length };
-  }, { K, L: LOCKED, sheet: fs.readFileSync(FX('responses.tsv'), 'utf8') });
+  }, { K, L: LOCKED, sheet: fs.readFileSync(FX('responses.tsv'), 'utf8').trimEnd() + '\n' + lessonRows + '\n' });
   check(setup.n >= 20 && setup.classes === 2, `the fixture: ${setup.n} tests held in ${setup.classes} classes, the response sheet read`);
 
   // the site, as a stand-in inside the page: a held-back fixture record by its code (a few ms later), else "none"; the key
@@ -75,7 +78,7 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
       const C = A.EX();
       for (const c of L.row) { const to = L.at[c].to, s = A.state.sections[to && to.sec], u = X.recs[c].sum;
         if (!s || !A.classStudents(s).includes(to.n)) { bad.push(`${c} is on a row of ${to && to.n} (${to && to.sec}), who is not on a roster`); continue; }
-        const Mo = A.xtModel(s, { course: u.course, unit: u.unit, key: C.testKey(u.course, u.unit) }, L); const r = Mo.rows.find(x => x.n === to.n);
+        const Mo = A.xtModel(s, { course: u.course, unit: u.unit, scope: u.scope || '', scopeName: u.scopeName || '', key: C.testKey(u.course, u.unit, u.scope) }, L); const r = Mo.rows.find(x => x.n === to.n);
         if (!r || !r.mine.some(x => x.code === c)) bad.push(`${c} should be on ${to.n}'s row and is not`); }
       for (const k of A.state.order) { const s = A.state.sections[k]; for (const t of A.xtTests(s)) for (const r of A.xtModel(s, t, L).rows) for (const x of r.mine) if (L.at[x.code].where !== 'row') bad.push(`${x.code} shows on ${r.n}'s row but is ${L.at[x.code].where}`); }
       // the rendered class: each test on its rows is shown there (its score, a "choose", or being checked)
