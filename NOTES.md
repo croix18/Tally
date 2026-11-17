@@ -1810,6 +1810,12 @@ checked over generated names on rosters with look-alikes, twins, shared first na
 "Ali K." from Alice's account asks (the token "Ali" scores 3 for Ali, 1 for Alice), "Ava Marie" from Brooks's asks
 ("Marie" 3 for Nguyen, 0 for Brooks), "Ava" on either Ava's account places (a tie on the only token).
 
+- **Suite run on the build that ships** (`99841e8`, ACCOUNT_PLACES off): **78 suites · 2,557 passed · 0 failed · 0 skipped**
+  (17 Nov, 3:13 am; `build.py --check` passes; Tally.html SHA-256
+  `48d8a41ef3a7dad8389f067d761acde8b9ffe856ffdaeb1fe80273939abeeb56`). The coordinator then ran the third review's probes on a
+  copy of it: first paste, 69 rows against `6444eed`: 59 the same, 10 where this build asks and the old one placed, **0
+  placed by an account, 0 placed where the old build asked**; second paste: every line held, no row by an account.
+
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
 - After, first run (`ffb456d` + the layout fixes): **72 suites · 2,349 passed · 3 failed**. Two were checks of what this
