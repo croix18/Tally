@@ -18,8 +18,8 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
     const sent = []; p.on('request', q => { if (!/^(file|data|blob):/.test(q.url())) sent.push(q.url()); }); await p.goto('file://' + path.resolve(APP)); await p.waitForTimeout(400); return { ctx, p, sent }; };
   const A = (p, fn, arg) => p.evaluate(([s, a]) => (new Function('A', 'arg', 'return (' + s + ')(A, arg)'))(window.__all, a), [fn.toString(), arg === undefined ? null : arg]);
   const text = (p, sel) => p.evaluate(s => (document.querySelector(s) || {}).innerText || '', sel);
-  const both = async (p, name, full) => { await p.evaluate(() => { window.scrollTo(0, 0); const t = document.querySelector('#toast'); if (t) t.style.visibility = 'hidden'; }); await p.screenshot({ path: path.join(SHOTS, name + '-1366.png'), fullPage: !!full });
-    await p.setViewportSize({ width: 400, height: 860 }); await p.waitForTimeout(250); await p.screenshot({ path: path.join(SHOTS, name + '-400.png'), fullPage: !!full }); await p.setViewportSize({ width: 1366, height: 768 }); await p.waitForTimeout(150); await p.evaluate(() => { const t = document.querySelector('#toast'); if (t) t.style.visibility = ''; }); };
+  const both = async (p, name, sel) => { const at = async () => p.evaluate(sel => { const t = document.querySelector('#toast'); if (t) t.style.visibility = 'hidden'; const e = sel && document.querySelector(sel); if (e) e.scrollIntoView({ block: 'start' }); }, sel || null); await at(); await p.screenshot({ path: path.join(SHOTS, name + '-1366.png') });
+    await p.setViewportSize({ width: 400, height: 860 }); await p.waitForTimeout(250); await at(); await p.screenshot({ path: path.join(SHOTS, name + '-400.png') }); await p.setViewportSize({ width: 1366, height: 768 }); await p.waitForTimeout(150); await p.evaluate(() => { const t = document.querySelector('#toast'); if (t) t.style.visibility = ''; }); };
   const { ctx, p, sent } = await open();
   await p.setInputFiles('#file', fs.readdirSync(FX('')).filter(f => /^IXL-Score-Grid/.test(f)).map(FX)); await p.waitForTimeout(900);
   for (const f of ['focus_gradebook_p4.csv', 'focus_gradebook_p5.csv']) { await p.setInputFiles('#file', [FX(f)]); await p.waitForTimeout(700); await pick(p); await p.waitForTimeout(300); const a = await p.$('#askApply'); if (a) { await a.click(); await p.waitForTimeout(200); } }
@@ -43,7 +43,7 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
   const w1 = await text(p, '#xtWaiting');
   check(/Ava/.test(w1) && await p.locator(`#xtWaiting [data-xyes][data-n="${U(P4[1])}"]`).count() === 1 && !a1[acct(P4[1])], '"Ava" from an account that reads as Brooks, Ava: one press to say yes (the account narrowed the two Avas to one), nothing learned yet');
   check(await p.locator(`#xtWaiting [data-xyes][data-n="${U(P4[12])}"]`).count() === 1, 'a row with no name: the account alone suggests the one student it can be; he assigns');
-  await both(p, 'a1-first-paste-accounts-to-assign', true);
+  await both(p, 'a1-first-paste-accounts-to-assign', '#xtWaiting');
   await p.click(`#xtWaiting [data-xyes][data-n="${U(P4[1])}"]`); await p.waitForTimeout(300); await p.click(`#xtWaiting [data-xyes][data-n="${U(P4[12])}"]`); await p.waitForTimeout(300);
   const a1b = await accts();
   check(a1b[acct(P4[1])] === U(P4[1]) + '|you' && a1b[acct(P4[12])] === U(P4[12]) + '|you' && (await where(codes[6])).who === U(P4[1]), 'his one press places each and learns the account (no "yes to all")');
@@ -59,7 +59,7 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
   await p.click(`tr[data-xcode="${codes[8]}"]`); await p.waitForTimeout(500);
   check(new RegExp(`Turned in from ${U(P4[4]).replace(/'/g, '.')}'s school account \\(${acct(P4[4]).replace(/\./g, '\\.')}\\)`).test(await text(p, '.xtOwn')), 'the test\'s page says which account turned it in: ' + (await text(p, '.xtOwn')).slice(0, 120));
   check(!/%40|@/.test(decodeURIComponent((await p.getAttribute('#xtSeeD', 'href')).split('#test=')[0])) && !Buffer.from((await p.getAttribute('#xtSeeD', 'href')).split('#test=')[1], 'base64url').toString().includes('@'), 'no address in the See-the-test link');
-  await both(p, 'a2-test-placed-by-account'); await p.click('#xtBack'); await p.waitForTimeout(300);
+  await both(p, 'a2-test-placed-by-account', '.xtD'); await p.click('#xtBack'); await p.waitForTimeout(300);
 
   /* 3. conflicts: each waits and changes nothing until answered */
   const snap = () => A(p, A => JSON.stringify({ r: A.examS().recs, a: A.examS().accounts }));
@@ -87,7 +87,7 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
 
   /* 4. Forget: future rows ask again; nothing already placed moves */
   const fa = acct(P4[5]); const fi = await A(p, (A, a) => Object.keys(A.examS().accounts).indexOf(a), fa);
-  await p.click('.xtQuiet summary'); await p.waitForTimeout(150); await both(p, 'a4-accounts-list', true);
+  await p.click('.xtQuiet summary'); await p.waitForTimeout(150); await both(p, 'a4-accounts-list', '#xtAccounts');
   await p.click(`[data-xfacct="${fi}"]`); await p.waitForTimeout(300);
   check(!(await accts())[fa] && (await where(codes[9])).who === U(P4[5]), 'Forget: the account is gone, and the test it placed stays where it was');
   await paste(sheet([[fa, 'Dom', codes[14]]]));

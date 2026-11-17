@@ -1612,6 +1612,52 @@ came back, built here (branch `tests`; not on `main` until the site has the new 
    it"*). Tests now says once, quietly, under its title (and in the empty state): "Tests are opened and closed on the site, on
    the cockpit's Test card: mrshaffer.org/teacher ↗".
 
+### School accounts (16 Nov 2026, 8:22 pm)
+Croix: *"Also, the Google form I can force them to use a managed account ie their school account so I should be able to
+easily id who submits the form."* Asked what an address looks like: *"It's their name but also sometimes abbreviated and
+mixed. So also learn. I can help assign the first time."* The site's form steps now say: Settings › Responses › Collect email
+addresses › Verified, only his district; the name question stays. A sheet is Timestamp, Email Address, First and last name,
+Test code, in any order. As built (`examcore.js` readSheet / acctFit / acctCands; `exams.js` examMatch, xtAnswer,
+xtConflict, xtForgetAccount):
+- **The reader** finds the address column whenever there is one: by its header (Email Address, Email, Username, School
+  account), else the column whose cells are addresses; every row keeps `addr` (lower case, trimmed). A Username/Email column
+  is never taken for the name. **Found while testing:** an address can read as a code ("elindqvist35" → E11NDQV1ST35), so an
+  address cell is never scored as a code. With no name column the row's name is empty (it was the part before the @, as a
+  suggestion): the account itself now does that job.
+- **Learned accounts:** `state.exam.accounts[address] = {sec, n, id, how: 'name' | 'you', at}`; in the Full save and the
+  cross-tab merge like the rest of state.exam; not in the Board save (which holds no Tests at all). An account follows its
+  student by the same rule as a placed test (same Student ID; or plainly the same child moved); otherwise it is marked
+  "no longer on a roster" and places nothing until the student is back.
+- **A row from a learned account** is that student's (how "school account"), unless the typed name is a certain match
+  for a different student: then it waits with both facts ("Row 2 came from LINDQVIST, ELSA's school account; the name typed
+  is PATEL, ROHAN") and three choices: the account's student; the typed one this time (the account stays); the typed one
+  and the account moves; or Someone else.
+- **A new address with a certain name** is placed as before and learned, unless (a) that student already has another
+  account, or (b) the address reads as some student and not this one. **(b) is stricter than the brief, on purpose:** a
+  child typing a classmate's exact name on his own login would otherwise teach Tally his login as the classmate's. Either
+  waits with the facts; nothing is learned until he answers.
+- **A new address, a name not certain:** today's question, with the account as evidence: the candidates who fit both the
+  name and the address come first, and when exactly one does, that is the suggestion (one press). No name (or no name
+  column): the candidates are the students the address reads as; one fits → suggested. His answer learns the account (and
+  the name, as before). The address only ever ranks and narrows; nobody is placed by how an address reads.
+- **Waiting for you** gives each such row one press for the suggestion (the student's name on the button), Someone else,
+  Nobody yet; a conflict row has "Whose is it?". No "yes to all".
+- **Not theirs** on a test its account placed: after the student is picked, the same dialog asks "And the school
+  account?": theirs from now on (Tally learned it wrong) or it stays (a test on a classmate's login).
+- **Forget** (the quiet section's "School accounts" list): the next row from that address asks again (or is learned again
+  from a certain name); the rows it placed are kept where they are (`r.kept`), so nothing already placed moves. Making an
+  account another student's freezes its earlier rows the same way.
+- **Shown:** the row's how "school account"; the test's page "Turned in from X's school account (address): Tally learned it
+  from a name it was sure of on Nov 16". Under Hide names every address is masked (`a•••@domain`) on screen and in markup
+  (Forget buttons carry an index). No address in a request, the See-the-test link or the Board save. Under the paste box,
+  when the sheet has addresses: Tally takes the account as the student only because the form collects it Verified, and it
+  can't tell a typed address from a verified one.
+- **The fixture** (`tests/exam/fixtures.js` `account()`): each synthetic student has one address in one of five house
+  styles (flast12, lastf, first.l, fiswho4821, first.last); responses.tsv was regenerated with only that column changed.
+- Suites: exam-core (reader, the part before the @), `tests/exam-accounts.js` (new: every rule above in the page, 26
+  checks, screenshots), exam-invariant (rows from accounts, Forget, conflict answers among the random actions; a row placed
+  by an account is always placed by the account Tally holds now).
+
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
 - After, first run (`ffb456d` + the layout fixes): **72 suites · 2,349 passed · 3 failed**. Two were checks of what this
