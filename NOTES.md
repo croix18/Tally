@@ -1786,6 +1786,9 @@ rule as a table, built here as written:
 - School accounts (`9657e39`, shipped pages rebuilt): **76 suites · 2,494 passed · 0 failed · 0 skipped**. exam-accounts 26 (new),
   exam-core 119, exam-e2e 100, exam-invariant 10 (2,000 sequences, now with school accounts), exam-storage 9, shipped-build 2.
 - Lesson tests (`8823ed4`): **77 suites · 2,515 passed · 0 failed · 0 skipped** (exam-lessons 16 new, exam-core 124).
+- The two accounts reviews (`31c755a`): **77 suites · 2,539 passed · 0 failed · 0 skipped** (exam-accounts 41, exam-core 133,
+  exam-invariant 10 with the table's oracle and look-alikes, 2,000 sequences). The first full run after the first review
+  failed once (exam-invariant, Undo after a reopened row; fixed in `9384f70`).
 
 ## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 
