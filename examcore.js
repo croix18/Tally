@@ -81,16 +81,20 @@ function readSheet(text, o) {
     if (name != null) { var close = nameCols.filter(function (j) { return j !== name && words(j) >= words(name) * 0.8 && words(j) > 0; }); if (close.length) alts = [name].concat(close); }
   }
   if (o && o.name != null && o.name >= 0 && o.name < n) { name = o.name; alts = []; }
-  // no name at all: the part of an email address before the @, said to be from the email (L3)
-  var mail = null; for (j = 0; j < n && name == null; j++) if (j !== code && j !== at && lines.filter(function (x) { return /^[^\s@]+@[^\s@]+$/.test(x.r[j] || ''); }).length >= Math.max(1, (lines.length - (isHead ? 1 : 0)) * 0.6)) mail = j;
+  // the student's school account (16 Nov 2026: the form collects it, Verified): by its header (Email Address, Email,
+  // Username, School account), else the column whose cells are addresses; read beside the name, whatever else there is
+  var isAddr = function (c) { return /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(String(c || '').trim()); };
+  var mail = null, data = lines.length - (isHead ? 1 : 0);
+  for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && /^\s*(e-?mail(\s+address)?|username|user\s*name|school\s+(e-?mail|account)|account)\s*$/i.test(hd(j))) mail = j;
+  for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && lines.filter(function (x) { return isAddr(x.r[j]); }).length >= Math.max(1, data * 0.6)) mail = j;
   res.alts = alts; res.email = mail;
   res.cols = { code: code, name: name, at: at, email: mail };
   lines.forEach(function (x, i) {
     if (i === 0 && isHead) return;
-    var cell = x.r[code] || '', codes = SEAL.findCodes(cell), nm = name == null ? (mail != null ? String(x.r[mail] || '').split('@')[0].replace(/[._\d]+/g, ' ').trim() : '') : (x.r[name] || ''), w = at == null ? '' : (x.r[at] || '');
-    if (!codes.length && !cell && !nm) { res.skipped++; return; }
+    var cell = x.r[code] || '', codes = SEAL.findCodes(cell), nm = name == null ? '' : (x.r[name] || ''), w = at == null ? '' : (x.r[at] || ''), ad = mail == null ? '' : String(x.r[mail] || '').trim().toLowerCase();
+    if (!codes.length && !cell && !nm && !ad) { res.skipped++; return; }
     if (!codes.length && SEAL.readCode(cell)) codes = [SEAL.readCode(cell)];
-    res.rows.push({ line: x.line, at: w, when: readWhen(w), name: nm, codes: codes, raw: codes.length ? '' : clip(cell, 60), email: name == null && mail != null });
+    res.rows.push({ line: x.line, at: w, when: readWhen(w), name: nm, codes: codes, raw: codes.length ? '' : clip(cell, 60), addr: isAddr(ad) ? ad.slice(0, 120) : '' });
   });
   return res;
 }
@@ -209,6 +213,36 @@ function matchName(typed, roster, o) {
   // a forgiving reading: suggested when it is the one close student and nobody is near it
   if (c.length && c[0].f >= 0.75 && c[0].l >= 0.6 && c[0].s >= 1.55 && (c.length === 1 || c[1].s < c[0].s - 0.5)) out.suggest = c[0].i;
   return out;
+}
+/* ---------------------------------------------------------------- school accounts (16 Nov 2026)
+   Croix: "It's their name but also sometimes abbreviated and mixed." The part of an address before the @ is read into who it
+   could be: jsmith12, smithj, john.s, j.smith, josmi4821, johnsmith, first.last. Digits go; dots, underscores and hyphens split
+   it into pieces; each piece must be the start of a first or last name (one piece may be split in two: an initial and a
+   name, or the first letters of each). → acctFit(local, display): 0 when it can't be them, else a score (letters matched,
+   more when a whole name is spelled out). acctCands(addr, roster): every student it could be, the likeliest first. It only
+   ranks and narrows: a student is never placed by how an address reads, only by an account Tally has learned. */
+function acctLocal(addr) { var a = String(addr || '').toLowerCase(); var l = a.indexOf('@') >= 0 ? a.slice(0, a.indexOf('@')) : a; return l.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['’]/g, '').replace(/\d+/g, ' ').split(/[^a-z]+/).filter(Boolean); }
+function acctFit(local, display) {
+  var T = Array.isArray(local) ? local : acctLocal(local), P = partsOf(display); if (!T.length || !P.first || !P.last.length) return 0;
+  var F = P.first, L = P.last.join(''), Ls = P.last.concat(P.last.length > 1 ? [L] : []), Fs = [F].concat(P.middle);
+  var pre = function (t, w) { return !!t && !!w && w.indexOf(t) === 0; };
+  var lastPre = function (t) { return Ls.some(function (l) { return pre(t, l); }); }, firstPre = function (t) { return Fs.some(function (f) { return pre(t, f); }); };
+  var whole = function (t) { return Fs.indexOf(t) >= 0 || Ls.indexOf(t) >= 0 ? 2 : 0; };
+  var best = 0, sc;
+  if (T.length >= 2) {
+    var a = T[0], b = T[T.length - 1];
+    if ((firstPre(a) && lastPre(b)) || (lastPre(a) && firstPre(b))) { sc = a.length + b.length + whole(a) + whole(b); if (a.length + b.length >= 3) best = Math.max(best, sc); }
+    return best;
+  }
+  var t = T[0];
+  for (var k = 1; k < t.length; k++) { var x = t.slice(0, k), y = t.slice(k);
+    if ((firstPre(x) && lastPre(y)) || (lastPre(x) && firstPre(y))) { sc = t.length + whole(x) + whole(y) + (Math.min(x.length, y.length) >= 2 ? 1 : 0); best = Math.max(best, sc); } }
+  if (!best && t.length >= 4 && (lastPre(t) || firstPre(t))) best = 1;   // a name alone ("smith12"): it could be them, barely
+  return best;
+}
+function acctCands(addr, roster) {
+  var T = acctLocal(addr); if (!T.length) return [];
+  return roster.map(function (r, i) { return { i: i, s: acctFit(T, r.display) }; }).filter(function (x) { return x.s > 0; }).sort(function (p, q) { return q.s - p.s; }).map(function (x) { return x.i; });
 }
 var nameKey = function (t) { return tokens(t).sort().join(' '); };
 
@@ -496,9 +530,11 @@ function flags(c) {
     var x = held[r.codes[0]]; if (x && !here(x) && x.course) return;
     if (P.state[r.codes[0]] === 'placed') return;              // its test is placed (the same child twice, or he answered)
     if (r.cands && r.cands.length && !r.cands.some(function (w) { return w && w.sec === c.sec; }) && !(r.suggest && r.suggest.sec === c.sec)) return;
-    var s = r.suggest, rem = r.remember;
+    var s = r.suggest, rem = r.remember, cf = r.conflict;
+    if (cf) return push({ kind: 'who', level: 'warn', rows: [r], code: r.codes[0], conflict: cf, names: [], text: cf.kind === 'typed' ? 'Row ' + r.line + ' came from ' + shownName(cf.acct.n) + '\'s school account; the name typed is ' + shownName(cf.typed.n) + '.' : cf.kind === 'has' ? '“' + shownName(r.name) + '” (row ' + r.line + ') came from a school account Tally doesn\'t know, and ' + shownName(cf.typed.n) + ' has another.' : '“' + shownName(r.name) + '” (row ' + r.line + ') came from a school account that reads as ' + shownName(cf.reads.n) + '.',
+      todo: 'Until you say whose it is, the test counts for nobody.' });
     push({ kind: 'who', level: 'warn', rows: [r], code: r.codes[0], suggest: s || rem || null,
-      text: r.name ? (s ? '“' + shownName(r.name) + '” — ' + shownName(s.n) + '?' : rem ? '“' + shownName(r.name) + '” — ' + shownName(rem.n) + ', as you said before?' : 'Tally isn\'t sure who “' + shownName(r.name) + '” is (row ' + r.line + ').') + (r.email ? ' (the name is from the email address)' : '') + (r.hint ? ' The test ' + r.hint + '.' : '') : 'Row ' + r.line + ' has a code and no name.',
+      text: !r.name && r.addr ? (s ? 'A test from a school account Tally doesn\'t know yet (row ' + r.line + ') — ' + shownName(s.n) + '?' : 'A test from a school account Tally doesn\'t know yet (row ' + r.line + ').') : r.name ? (s ? '“' + shownName(r.name) + '” — ' + shownName(s.n) + '?' : rem ? '“' + shownName(r.name) + '” — ' + shownName(rem.n) + ', as you said before?' : 'Tally isn\'t sure who “' + shownName(r.name) + '” is (row ' + r.line + ').') + (r.email ? ' (the name is from the email address)' : '') + (r.hint ? ' The test ' + r.hint + '.' : '') : 'Row ' + r.line + ' has a code and no name.',
       todo: s || rem ? 'Until you say, the test counts for nobody.' : 'Choose the student. Until you do, the test counts for nobody.' }); });
   rows.filter(function (r) { return !(r.codes || []).length && r.raw && (!r.who || r.who.sec === c.sec) && !(r.who && holds[r.who.n]); }).forEach(function (r) {
     push({ kind: 'badcode', level: 'warn', rows: [r], names: r.who ? [r.who.n] : [], text: (c.hideText ? 'What ' + (r.who ? shownName(r.who.n) : 'row ' + r.line) + ' typed (' + String(r.raw).length + ' characters)' : '“' + r.raw + '” (' + (r.who ? shownName(r.who.n) : shownName(r.name || 'row ' + r.line)) + ')') + ' is not a code: a code is 12 letters and digits, like K7QF-2M9D-X4TB.',
@@ -508,7 +544,7 @@ function flags(c) {
 var fmtCode = function (c) { return SEAL.showCode(c); };
 function hm(ms) { if (ms == null) return '?'; var d = new Date(ms); var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
-var api = { teacherPayload: teacherPayload, teacherLink: teacherLink, b64u: b64u, NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
+var api = { acctFit: acctFit, acctCands: acctCands, acctLocal: acctLocal, teacherPayload: teacherPayload, teacherLink: teacherLink, b64u: b64u, NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
   qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testKey: testKey, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ExamCore = api;
 })(typeof self !== 'undefined' ? self : this);

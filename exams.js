@@ -27,7 +27,8 @@ const xtNum = v => typeof v === 'number' && isFinite(v) ? v : null;
 const xtStr = (v, n) => typeof v === 'string' ? v.slice(0, n || 200) : null;
 const XCODE = /^[0-9A-HJKMNP-TV-Z]{12}$/;
 function examPairOk(t) { try { const p = JSON.parse(t); return !!(p && p.priv && p.priv.kty === 'EC' && p.priv.d && /^TALLY1\.[A-Za-z0-9_-]{87}$/.test(p.pub)); } catch (e) { return false; } }
-const xtWhoOf = (w, how) => w && typeof w === 'object' && typeof w.sec === 'string' && typeof w.n === 'string' ? { sec: w.sec, n: w.n.slice(0, 120), ...(typeof w.id === 'string' && /^\d{4,20}$/.test(w.id) ? { id: w.id } : {}), ...(how ? { how: ['exact', 'remembered', 'you'].includes(w.how) ? w.how : 'exact', at: xtStr(w.at, 30) } : {}), ...(typeof w.cl === 'string' ? { cl: w.cl.slice(0, 60) } : {}) } : null;
+const xtAddrOk = a => typeof a === 'string' && /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(a.trim()) ? a.trim().toLowerCase().slice(0, 120) : '';
+const xtWhoOf = (w, how) => w && typeof w === 'object' && typeof w.sec === 'string' && typeof w.n === 'string' ? { sec: w.sec, n: w.n.slice(0, 120), ...(typeof w.id === 'string' && /^\d{4,20}$/.test(w.id) ? { id: w.id } : {}), ...(how ? { how: ['exact', 'remembered', 'you', 'account'].includes(w.how) ? w.how : 'exact', at: xtStr(w.at, 30) } : {}), ...(typeof w.cl === 'string' ? { cl: w.cl.slice(0, 60) } : {}) } : null;
 // the verified summary the class list needs, made from an opened record
 function examSum(r) { const v = EX().readRecord(r); return { course: v.course, unit: v.unit, points: v.points, of: v.of, started: v.started, finished: v.finished, seconds: v.seconds, opened: v.opened, ended: v.ended, limit: v.limit, rule: v.rule, unlocks: v.unlocks, awayN: v.log ? v.away.length : null, awaySec: v.awaySec, hasLog: !!v.log }; }
 function cleanSum(s) { if (!s || typeof s !== 'object') return null; const o = {}; ['unit', 'points', 'of', 'started', 'finished', 'seconds', 'opened', 'limit', 'unlocks', 'awayN', 'awaySec'].forEach(k => { o[k] = xtNum(s[k]); }); o.course = xtStr(s.course, 8) || ''; o.ended = ['left', 'teacher', 'time'].includes(s.ended) ? s.ended : null; o.rule = s.rule && typeof s.rule === 'object' ? { leave: xtStr(s.rule.leave, 8) || 'count', after: xtNum(s.rule.after) } : null; o.hasLog = !!s.hasLog; return o; }
@@ -44,7 +45,7 @@ function cleanExam(x) {
   const seen = new Set(); const sites = (Array.isArray(x.sites) ? x.sites : []).filter(s => s && typeof s.key === 'string' && /^[A-Za-z0-9_-]{87}$/.test(s.key) && !seen.has(s.key) && seen.add(s.key)).map(s => ({ key: s.key, made: xtNum(s.made), got: xtStr(s.got, 30), ...(xtStr(s.paired, 30) ? { paired: xtStr(s.paired, 30) } : {}) }));
   // a save made before site keys carried "paired": the key its trial proved was paired (R2-H3)
   if (x.trial && typeof x.trial.key === 'string') sites.forEach(s => { if (s.key === x.trial.key && !s.paired) s.paired = xtStr(x.trial.at, 30) || 'yes'; });
-  const rows = (Array.isArray(x.rows) ? x.rows : []).filter(r => r && typeof r === 'object').map(r => ({ codes: (Array.isArray(r.codes) ? r.codes : []).filter(c => XCODE.test(c)).slice(0, 4), name: xtStr(r.name, 120) || '', line: xtNum(r.line) || 0, when: xtNum(r.when), at: xtStr(r.at, 40) || '', raw: xtStr(r.raw, 60) || '', email: !!r.email, got: xtStr(r.got, 30), who: xtWhoOf(r.who), how: ['exact', 'remembered', 'you'].includes(r.how) ? r.how : null, cands: (Array.isArray(r.cands) ? r.cands : []).map(w => xtWhoOf(w)).filter(Boolean).slice(0, 8), suggest: xtWhoOf(r.suggest), remember: xtWhoOf(r.remember) }));
+  const rows = (Array.isArray(x.rows) ? x.rows : []).filter(r => r && typeof r === 'object').map(r => ({ codes: (Array.isArray(r.codes) ? r.codes : []).filter(c => XCODE.test(c)).slice(0, 4), name: xtStr(r.name, 120) || '', line: xtNum(r.line) || 0, when: xtNum(r.when), at: xtStr(r.at, 40) || '', raw: xtStr(r.raw, 60) || '', email: !!r.email, addr: xtAddrOk(r.addr), ...(r.kept ? { kept: true } : {}), got: xtStr(r.got, 30), who: xtWhoOf(r.who), how: ['exact', 'remembered', 'you', 'account'].includes(r.how) ? r.how : null, cands: (Array.isArray(r.cands) ? r.cands : []).map(w => xtWhoOf(w)).filter(Boolean).slice(0, 8), suggest: xtWhoOf(r.suggest), remember: xtWhoOf(r.remember) }));
   const fails = {}; if (x.fails && typeof x.fails === 'object') for (const k of Object.keys(x.fails)) { const f = x.fails[k]; if (XCODE.test(k) && f && ['none', 'format', 'key', 'signature', 'code', 'net'].includes(f.why)) fails[k] = { why: f.why, course: xtStr(f.course, 8), unit: xtNum(f.unit), at: xtStr(f.at, 30) }; }
   const strMap = (o, ok) => { const out = {}; if (o && typeof o === 'object') for (const k of Object.keys(o)) if (SAFE_KEY(k) && ok(o[k])) out[k] = o[k]; return out; };
   const recs = {}; if (x.recs && typeof x.recs === 'object') for (const k of Object.keys(x.recs)) { if (!XCODE.test(k)) continue; const e = cleanRec(x.recs[k]); if (e) recs[k] = e; }
@@ -52,6 +53,7 @@ function cleanExam(x) {
   const out = { v: 2, site, pairs, sites, trial: x.trial && typeof x.trial === 'object' && typeof x.trial.words === 'string' ? { code: xtStr(x.trial.code, 12), words: x.trial.words.slice(0, 60), at: xtStr(x.trial.at, 30), key: xtStr(x.trial.key, 90) } : null, warned: !!x.warned,
     recs, rows, fails, picks: strMap(x.picks, v => typeof v === 'string' && XCODE.test(v)), alias: strMap(x.alias, v => !!xtWhoOf(v)),
     period: strMap(x.period, v => v && typeof v === 'object' && /^\d{1,2}:\d{2}$/.test(v.from) && /^\d{1,2}:\d{2}$/.test(v.to)), view: strMap(x.view, v => typeof v === 'string' && v.length < 20), dismissed: strMap(x.dismissed, v => typeof v === 'string'), deleted: (() => { const o = {}; if (x.deleted && typeof x.deleted === 'object') for (const k of Object.keys(x.deleted)) { const d = x.deleted[k]; if (XCODE.test(k) && d && typeof d === 'object') o[k] = { at: xtStr(d.at, 30), course: xtStr(d.course, 8), unit: xtNum(d.unit), points: xtNum(d.points), of: xtNum(d.of) }; } return o; })(),
+    accounts: (() => { const o = {}; if (x.accounts && typeof x.accounts === 'object') for (const k of Object.keys(x.accounts)) { const w = xtWhoOf(x.accounts[k], true); if (xtAddrOk(k) === k && w) o[k] = { ...w, how: x.accounts[k].how === 'you' ? 'you' : 'name', ...(x.accounts[k].gone ? { gone: true } : {}) }; } return o; })(),
     seen: Array.isArray(x.seen) ? x.seen.filter(v => typeof v === 'string' && v.length < 200).slice(0, 6000) : null, fromSave: xtStr(x.fromSave, 30) };
   if (Object.keys(locked).length) out.locked = locked;
   // v1 → v2: a record kept opened by the build before the review has no locked text to check again. It is kept (nothing is
@@ -221,15 +223,48 @@ function examRoster() { const out = []; for (const k of state.order) { const s =
 const xtKeyOf = w => w.sec + '\u0001' + w.n;
 /* A response row to a student: only when it is certainly theirs (examcore matchName: exact and unrivaled), or by what he
    answered before when that is still the only sensible reading (fresh rows only; older rows are offered it, never given it). */
+/* SCHOOL ACCOUNTS (Croix, 16 Nov 2026: "the Google form I can force them to use a managed account ie their school account so
+   I should be able to easily id who submits the form" … "It's their name but also sometimes abbreviated and mixed. So also
+   learn. I can help assign the first time."). The form collects the address Verified, so an address Tally has LEARNED is
+   the student: state.exam.accounts[address] = {sec, n, id, how: 'name' (from a certain name) | 'you' (his answer), at}.
+   One address is one student; a student may have more than one address only when he says so. A row from a learned
+   address is that student's ("school account"), unless the name typed on it is certainly someone else: then it waits for
+   him with both facts. A new address is learned from a certain name (exact and unrivaled, as always) unless that student
+   already has another address, or the address reads as someone else's: then it waits. Otherwise the address only ranks
+   and narrows the candidates (acctCands), and his answer learns it. Forget: future rows ask or learn again; nothing
+   already placed moves (its rows are kept as they are). */
+const xtSame = (a, b) => !!a && !!b && a.sec === b.sec && a.n === b.n;
+function xtAcct(addr, roster) { const A = addr && examS().accounts[addr]; if (!A || A.gone) return null; return roster.some(x => xtSame(x, A)) ? A : null; }
+function xtLearn(addr, w, how) { const X = examS(); if (!addr) return; const x = examRoster().find(r => xtSame(r, w)); X.accounts[addr] = { sec: w.sec, n: w.n, ...(x && x.id ? { id: x.id } : {}), how, at: new Date().toISOString() }; }
 function examMatch(r, roster, fresh) {
   const X = examS(); const there = w => !!w && roster.some(x => x.sec === w.sec && x.n === w.n);
-  if (r.how === 'you' && there(r.who)) return;
-  const m = EX().matchName(r.name, roster, { noPick: r.email }); const at = i => ({ sec: roster[i].sec, n: roster[i].n });
-  r.cands = m.cands.map(at); r.suggest = m.suggest != null ? at(m.suggest) : null; r.remember = null;
-  if (m.pick != null) { r.who = at(m.pick); r.how = 'exact'; return; }
+  if ((r.how === 'you' || r.kept) && there(r.who)) return;
+  r.conflict = null; r.kept = false; const at = i => ({ sec: roster[i].sec, n: roster[i].n }); const idx = w => roster.findIndex(x => xtSame(x, w));
+  const m = r.name ? EX().matchName(r.name, roster, { noPick: r.email }) : { pick: null, how: null, suggest: null, cands: [], rivals: [] };
+  const A = xtAcct(r.addr, roster);
+  if (A) {   // a learned account: that student's, unless the name typed is certainly someone else's
+    const p = m.pick != null ? at(m.pick) : null;
+    if (p && !xtSame(p, A)) { r.who = null; r.how = null; r.cands = [{ sec: A.sec, n: A.n }, p]; r.suggest = null; r.remember = null; r.conflict = { kind: 'typed', acct: { sec: A.sec, n: A.n }, typed: p }; return; }
+    r.who = { sec: A.sec, n: A.n }; r.how = 'account'; r.cands = [{ sec: A.sec, n: A.n }]; r.suggest = null; r.remember = null; return;
+  }
+  const acs = r.addr ? EX().acctCands(r.addr, roster) : [];
+  const both = m.cands.filter(i => acs.includes(i)); const order = [...new Set(both.concat(m.cands, acs))];
+  r.cands = order.slice(0, 8).map(at); r.suggest = m.suggest != null ? at(m.suggest) : null; r.remember = null;
+  if (m.pick != null) {
+    const p = at(m.pick);
+    if (r.addr) {
+      const has = Object.keys(X.accounts).find(a => a !== r.addr && !X.accounts[a].gone && xtSame(X.accounts[a], p));
+      const reads = acs.length && !acs.includes(m.pick) ? at(acs[0]) : null;   // the address reads as another student, not this one
+      if (has || reads) { r.who = null; r.how = null; r.suggest = null; r.conflict = { kind: has ? 'has' : 'reads', typed: p, has: has || null, reads }; if (reads && !r.cands.some(c => xtSame(c, reads))) r.cands.unshift(reads); return; }
+      xtLearn(r.addr, p, 'name');
+    }
+    r.who = p; r.how = 'exact'; return;
+  }
   if (r.how === 'remembered' && there(r.who) && !m.cands.some(i => !(roster[i].sec === r.who.sec && roster[i].n === r.who.n))) return;   // placed by a remembered answer, and still the only reading
   r.who = null; r.how = null;
-  const al = r.name ? X.alias[EX().nameKey(r.name)] : null;
+  if (r.addr) { if (r.name ? both.length === 1 : acs.length === 1) r.suggest = at(r.name ? both[0] : acs[0]); else if (r.name && both.length > 1) r.suggest = null; }   // one student fits the name and the address
+  if (!r.name) return;
+  const al = X.alias[EX().nameKey(r.name)];
   if (al && there(al)) {
     const others = m.cands.filter(i => !(roster[i].sec === al.sec && roster[i].n === al.n));
     if (!others.length && fresh) { r.who = { sec: al.sec, n: al.n }; r.how = 'remembered'; }
@@ -247,14 +282,18 @@ function examRefile() {
   xtPurge(); const X = examS(); const roster = examRoster(); const byKey = new Map(roster.map(x => [xtKeyOf(x), x]));
   const there = w => { if (!w) return false; const x = byKey.get(xtKeyOf(w)); return !!x && !(w.id && x.id && w.id !== x.id); };
   const before = X.seen ? new Set(X.seen) : null;
-  X.rows.forEach(r => { if (r.who && !there(r.who)) { r.who = null; r.how = null; } if (!r.who) examMatch(r, roster, false); });
+  // the same rule for a learned account as for a placed test (below): it follows its student only when it is plainly the same child
+  const follow = w => { if (w.id && roster.some(x => x.id)) { const h = roster.filter(x => x.id === w.id); const w0 = new Set(norm(w.n).split(' ')); return h.length === 1 && norm(h[0].n).split(' ').some(v => v.length > 1 && w0.has(v)) ? h[0] : null; }
+    if (!before) return null; const k = norm(w.n); const h = roster.filter(x => norm(x.n) === k); const had = [...before].filter(b => norm(b.slice(b.indexOf('\u0001') + 1)) === k && b !== xtKeyOf(w));
+    return h.length === 1 && !before.has(xtKeyOf(h[0])) && !had.length ? h[0] : null; };
+  for (const a of Object.keys(X.accounts || {})) { const A = X.accounts[a]; if (A.gone) { if (there(A)) { const B = { ...A }; delete B.gone; X.accounts[a] = B; } continue; } if (there(A)) continue; const to = follow(A); if (to) X.accounts[a] = { ...A, sec: to.sec, n: to.n, ...(to.id ? { id: to.id } : {}) }; else X.accounts[a] = { ...A, gone: true }; }
+  X.rows.forEach(r => { if (r.who && !there(r.who)) { r.who = null; r.how = null; r.kept = false; }
+    if (r.how === 'account' && !r.kept && !xtSame(xtAcct(r.addr, roster), r.who)) { r.who = null; r.how = null; }
+    if (!r.who) examMatch(r, roster, false); });
   for (const code of Object.keys(X.recs)) { const e = X.recs[code]; if (!e.who) continue;
     if (there(e.who)) { const x = byKey.get(xtKeyOf(e.who)); if (x.id && !e.who.id) e.who = { ...e.who, id: x.id }; continue; }
-    let to = null;
     // by the same Student ID, and a name that shares a word with the one it had (an ID on a different name is not trusted)
-    if (e.who.id && roster.some(x => x.id)) { const h = roster.filter(x => x.id === e.who.id); const w0 = new Set(norm(e.who.n).split(' ')); if (h.length === 1 && norm(h[0].n).split(' ').some(w => w.length > 1 && w0.has(w))) to = h[0]; }
-    else if (before) { const k = norm(e.who.n); const h = roster.filter(x => norm(x.n) === k); const had = [...before].filter(b => norm(b.slice(b.indexOf('\u0001') + 1)) === k && b !== xtKeyOf(e.who));
-      if (h.length === 1 && !before.has(xtKeyOf(h[0])) && !had.length) to = h[0]; }
+    const to = follow(e.who);
     if (to) e.who = { ...e.who, sec: to.sec, n: to.n, ...(to.id ? { id: to.id } : {}) };
     else { const sec = state.sections[e.who.sec]; e.gone = { ...e.who, cl: sec ? labShort(sec.label) : (e.who.cl || '') }; e.was = e.who; e.who = null; } }
   const P = EX().placeAll(X.rows, xtEntries());
@@ -290,7 +329,7 @@ function examTakeSheet(text, from, o) {
   if (got.cols.code == null) return { ok: false, why: 'Tally found no test code in that. A code is 12 letters and digits, like K7QF-2M9D-X4TB: copy the response sheet\'s rows (or the whole sheet) and paste again.' };
   const key = r => (r.codes.join(',') || r.raw) + '|' + EX().nameKey(r.name) + '|' + (r.when || r.at);
   const have = new Set(X.rows.map(key)); const roster = examRoster(); let added = 0;
-  for (const r of got.rows) { if (have.has(key(r))) continue; have.add(key(r)); const row = { codes: r.codes, name: r.name, line: r.line, when: r.when, at: r.at, raw: r.raw, email: !!r.email, got: now, who: null, how: null, cands: [], suggest: null, remember: null }; examMatch(row, roster, true); X.rows.push(row); added++; }
+  for (const r of got.rows) { if (have.has(key(r))) continue; have.add(key(r)); const row = { codes: r.codes, name: r.name, line: r.line, when: r.when, at: r.at, raw: r.raw, email: !!r.email, addr: xtAddrOk(r.addr), got: now, who: null, how: null, cands: [], suggest: null, remember: null }; examMatch(row, roster, true); X.rows.push(row); added++; }
   if (X.rows.length > 6000) { const keep = new Set(); X.rows.slice(-2000).forEach(r => keep.add(r)); X.rows.forEach(r => { if (!r.who && r.codes.some(c => !X.recs[c] || !X.recs[c].who)) keep.add(r); }); X.rows = X.rows.filter(r => keep.has(r)); }
   if (added) xtGen++; examRefile(); save();
   const codes = [...new Set(got.rows.flatMap(r => r.codes))];
@@ -465,7 +504,7 @@ function renderTests(s) {
   const th = (id, lbl, cls) => `<th class="${cls || ''}" aria-sort="${sort === id ? 'ascending' : 'none'}"><button class="xtSort ${sort === id ? 'on' : ''}" data-xsort="${id}">${lbl}</button></th>`;
   const CHIP = { shared: 'Shared code', none: 'Not found', format: 'Not a record', key: 'Other key', signature: 'Not signed', code: 'Wrong code', net: 'Not fetched', twice: 'Two tests', left: 'Ended: left', period: 'Outside period', apart: 'Apart from class', opening: 'Other opening', rule: 'Rule not kept', long: 'Long sitting', teacher: 'Not finished', time: 'Out of time', other: 'Other test', unclaimed: 'Nobody', who: 'Who?', badcode: 'Bad code', makeup: 'Make-up?', groups: 'Two groups' };
   const flagChip = f => `<span class="xtChip ${f.level}">${esc(CHIP[f.kind] || f.kind)}</span>`;
-  const HOW = { exact: '', remembered: 'remembered', you: 'given by you' };
+  const HOW = { exact: '', remembered: 'remembered', you: 'given by you', account: 'school account' };
   const row = r => { const v = r.v;
     if (!r.use) { const f = r.flags; const wait = r.mine.filter(x => !x.ok); return `<tr class="none"><td class="xtNo">${r.i + 1}</td><td class="stu"><button class="nm nmbtn" data-prof="${esc(r.n)}">${esc(shown(r.n))}</button></td><td colspan="4" class="xtMissing">${r.mine.filter(x => x.ok).length > 1 ? `${r.mine.length} tests: choose the one that counts` : wait.length ? 'Checking its test…' : r.held.length ? 'Its test is waiting for you: see <a href="#xtWaiting">Waiting for you</a>, below' : f.length ? 'See what to look at, above' : 'No test turned in'}</td><td>${f.map(flagChip).join('')}</td></tr>`; }
     const pc = xtPct(v.points, v.of); const how = r.use.e.who && HOW[r.use.e.who.how];
@@ -476,7 +515,7 @@ function renderTests(s) {
       <td class="xtFin">${esc(xtWhen(v.finished))}</td><td class="xtFl">${r.flags.map(flagChip).join('')}<button class="linkbtn xtNot" data-xnot="${r.use.code}" title="This test isn't ${esc(shown(r.n))}'s: take it off them and say whose it is">Not theirs</button></td></tr>`; };
   const fbtn = f => {   // the button that does something about each flag
     if (f.kind === 'shared') return `<button class="pill small" data-xshare="${f.code}">Say whose it is</button>`;
-    if (f.kind === 'who') { const i = X.rows.findIndex(r => r.line === f.rows[0].line && r.codes.join() === f.rows[0].codes.join() && r.name === f.rows[0].name); return f.suggest ? `<span class="xtBtns"><button class="pill small" data-xyes="${i}" data-sec="${esc(f.suggest.sec)}" data-n="${esc(f.suggest.n)}">Yes</button><button class="pill small pale" data-xwho="${i}">Someone else</button></span>` : `<button class="pill small" data-xwho="${i}">Choose the student</button>`; }
+    if (f.kind === 'who') { const i = X.rows.findIndex(r => r.line === f.rows[0].line && r.codes.join() === f.rows[0].codes.join() && r.name === f.rows[0].name); if (f.conflict) return `<button class="pill small" data-xconf="${i}">Whose is it?</button>`; return f.suggest ? `<span class="xtBtns"><button class="pill small" data-xyes="${i}" data-sec="${esc(f.suggest.sec)}" data-n="${esc(f.suggest.n)}">Yes</button><button class="pill small pale" data-xwho="${i}">Someone else</button></span>` : `<button class="pill small" data-xwho="${i}">Choose the student</button>`; }
     if (f.kind === 'unclaimed') return `<span class="xtBtns"><button class="pill small pale" data-xcode="${f.code}">Open</button><button class="pill small" data-xgive="${f.code}">Give it to a student</button></span>`;
     if (f.kind === 'none' && f.near && f.near.length && f.rows && f.rows[0] && f.rows[0].who) return `<button class="pill small" data-xnear="${f.code}" data-to="${f.near[0]}">Give ${esc(SEALX().showCode(f.near[0]))} to ${esc(shown(f.rows[0].who.n))}</button>`;
     if (f.kind === 'twice') return `<button class="pill small" data-xtwice="${esc(f.names[0])}">Choose the one that counts</button>`;
@@ -491,8 +530,9 @@ function renderTests(s) {
   const more = view.xflags ? warns.length : Math.min(warns.length, warns.length > 4 ? 3 : 4);
   const title = list.length > 1 ? `<label class="xtTitle xtTitleSel"><span class="vh">Test</span><select id="xtPick">${list.map(x => `<option value="${esc(x.key)}" ${t && x.key === t.key ? 'selected' : ''}>${esc(C.testName(x.course, x.unit))}</option>`).join('')}</select></label>` : `<h2 class="xtTitle">${list.length ? esc(C.testName(t.course, t.unit)) : 'Tests'}</h2>`;
   const cnt = xtCounts(L);
-  const alias = Object.entries(X.alias), dism = Object.entries(X.dismissed), dels = Object.entries(X.deleted || {}).sort((a, b) => String(b[1].at).localeCompare(String(a[1].at)));
-  const quiet = alias.length || dism.length || dels.length ? `<details class="xtQuiet" ${view.xquiet ? 'open' : ''}><summary>What Tally remembers (${alias.length}) · dismissed (${dism.length})${dels.length ? ` · deleted tests (${dels.length})` : ''}</summary><div class="xtQuietBody">
+  const alias = Object.entries(X.alias), dism = Object.entries(X.dismissed), accts = Object.entries(X.accounts || {}).sort((a, b) => String(a[1].n).localeCompare(String(b[1].n))), dels = Object.entries(X.deleted || {}).sort((a, b) => String(b[1].at).localeCompare(String(a[1].at)));
+  const quiet = alias.length || dism.length || dels.length || accts.length ? `<details class="xtQuiet" ${view.xquiet ? 'open' : ''}><summary>What Tally remembers (${alias.length + accts.length}) · dismissed (${dism.length})${dels.length ? ` · deleted tests (${dels.length})` : ''}</summary><div class="xtQuietBody">
+      ${accts.length ? `<h4 id="xtAccounts">School accounts</h4><ul>${accts.map(([a, w]) => `<li><span>${esc(xtAddrShown(a))} is ${esc(shown(w.n))}${state.sections[w.sec] ? ` <small>${esc(labShort(state.sections[w.sec].label))}</small>` : ''} <small>${w.gone ? 'no longer on a roster' : (w.how === 'you' ? 'your answer' : 'learned from the name') + (w.at ? ', ' + esc(fmtDate(localDay(w.at))) : '')}</small></span><button class="linkbtn" data-xfacct="${Object.keys(X.accounts).indexOf(a)}">Forget</button></li>`).join('')}</ul><p class="ghint">A test from one of these is that student's. Forget: the next test from it asks again (or is learned again from a name Tally is sure of); nothing already placed moves.</p>` : ''}
       ${alias.length ? `<h4>Names you answered</h4><ul>${alias.map(([k, w], ai) => `<li><span>“${esc(H ? mask(k) : k)}” is ${esc(shown(w.n))}${state.sections[w.sec] ? ` <small>${esc(labShort(state.sections[w.sec].label))}</small>` : ''}${w.at ? ` <small>since ${esc(fmtDate(localDay(w.at)))}</small>` : ''}</span><button class="linkbtn" data-xforget="${ai}">Forget</button></li>`).join('')}</ul><p class="ghint">Tally uses an answer only when the same words could mean nobody else; otherwise it asks, with this student first.</p>` : ''}
       ${dism.length ? `<h4>Dismissed</h4><ul>${dism.map(([id, at]) => `<li><span>${esc(xtDismissText(id))} <small>${esc(fmtDate(localDay(at)))}</small></span><button class="linkbtn" data-xundis="${esc(id)}">Bring back</button></li>`).join('')}</ul>` : ''}
       ${dels.length ? `<h4 id="xtDeleted">Deleted tests</h4><ul>${dels.map(([code, d]) => `<li><span><span class="xtCode">${esc(SEALX().showCode(code))}</span> · ${esc(d.course ? C.testName(d.course, d.unit) : 'a test')}${d.points != null ? ` · ${d.points} / ${d.of}` : ''} <small>deleted ${esc(fmtDate(localDay(d.at)))}</small></span><button class="linkbtn" data-xback="${code}">Bring back</button></li>`).join('')}</ul><p class="ghint">Tally doesn't keep these. Bring back fetches the test from the site again.</p>` : ''}</div></details>` : '';
@@ -524,6 +564,12 @@ const XWHY = { shared: 'Two students turned in this code', who: 'Tally isn\'t su
   unchecked: 'Signed by a key this Tally has not checked: connect to the site once, or run a trial (Connection)', signature: 'What is stored was not signed by the site (a changed Full save?): never scored', key: 'Locked to a key this Tally doesn\'t have',
   format: 'What is stored is not a test record', unfetched: 'Not fetched yet', code: 'What is stored answers to another code', nocrypto: 'This browser can\'t check test records here: open Tally on your laptop in Chrome or Edge', wait: 'Being checked' };
 function xtUnfetchedWords(code) { const f = examS().fails[code]; return f && f.why === 'net' ? ` The site couldn't be reached for it (${esc(fmtDate(localDay(f.at)))}): fetch it again when the network is back.` : examJob && examJob.running ? ' It is in the queue: Tally fetches it next.' : ''; }
+// one press per row: Yes to the suggestion, else the picker; a row whose account and name disagree, its own question
+function xtRowBtns(code) { const X = examS(); const rs = X.rows.filter(r => r.codes.includes(code)); const r = rs.find(x => !x.who) || rs[0]; if (!r) return `<button class="pill small" data-xgive="${code}">Give it to a student</button>`; const i = X.rows.indexOf(r);
+  if (r.conflict) return `<button class="pill small" data-xconf="${i}">Whose is it?</button>`;
+  if (r.suggest) return `<button class="pill small" data-xyes="${i}" data-sec="${esc(r.suggest.sec)}" data-n="${esc(r.suggest.n)}">${esc(shown(r.suggest.n))}</button><button class="pill small pale" data-xwho="${i}">Someone else</button>`;
+  return `<button class="pill small" data-xwho="${i}">Choose the student</button>`; }
+const xtConflictWords = r => { const f = r.conflict; return f.kind === 'typed' ? `From ${esc(shown(f.acct.n))}'s school account; the name typed is ${esc(shown(f.typed.n))}.` : f.kind === 'has' ? `${esc(shown(f.typed.n))} has another school account (${esc(xtAddrShown(f.has))}).` : `The name typed is ${esc(shown(f.typed.n))}; the account reads as ${esc(shown(f.reads.n))}.`; };
 function xtLedgerHtml(L) {
   const X = examS(); const C = EX(); if (!L.waiting.length && !L.nobody.length) return '';
   const sumOf = code => { const e = X.recs[code], u = e && e.sum; return u && xtOk(code) ? `${u.points} / ${u.of}, taken ${C.hm(u.started)}–${C.hm(u.finished)}` : ''; };
@@ -531,11 +577,11 @@ function xtLedgerHtml(L) {
   const rowsOf = code => X.rows.filter(r => r.codes.includes(code));
   const item = (code, body, btns) => `<li data-xled="${code}"><div><b>${esc(testOf(code))}</b> · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${sumOf(code) ? ` · ${esc(sumOf(code))}` : ''}<p>${body}</p></div><div class="xtAct">${btns}<button class="linkbtn xtDel" data-xdel="${code}" title="Delete this test from Tally (it can be brought back from Deleted tests)">Delete</button></div></li>`;
   const W = L.waiting.map(code => { const a = L.at[code], e = X.recs[code] || { no: [] }, rs = rowsOf(code); const who = e.who ? ` It is ${esc(shown(e.who.n))}'s.` : '';
-    const typed = rs.length ? ` Turned in as ${rs.map(r => `<b>${esc(shown(r.who ? r.who.n : r.name || 'no name'))}</b> (row ${r.line})`).join(' and ')}.` : '';
+    const typed = rs.length ? ` Turned in as ${rs.map(r => `<b>${esc(shown(r.who ? r.who.n : r.name || 'no name'))}</b>${r.addr ? ` from <b>${esc(xtAddrShown(r.addr))}</b>` : ''} (row ${r.line})`).join(' and ')}.${rs.map(r => r.conflict ? ' ' + xtConflictWords(r) : '').join('')}` : '';
     const not = (e.no || []).length ? ` Not ${e.no.map(w => esc(shown(w.n))).join(' or ')}'s (you said so).` : '';
     const gone = X.fails[code] && X.fails[code].why === 'none' && ['missing', 'legacy'].includes(a.why) ? ` <b>The site no longer has it</b> (asked ${esc(fmtDate(localDay(X.fails[code].at)))}): the score is still in the cockpit's results for that day.` : '';
     const btn = ['missing', 'legacy', 'unfetched'].includes(a.why) && examCan() ? `<button class="pill small" data-xrefetch="${code}">Fetch again</button>` : a.why === 'unchecked' ? '<button class="pill small pale" data-xconn="1">Connection</button>'
-      : a.why === 'shared' ? `<button class="pill small" data-xshare="${code}">Say whose it is</button>` : a.why === 'who' ? `<button class="pill small" data-xgive="${code}">Give it to a student</button><button class="pill small pale" data-xnobody="${code}">Nobody yet</button>` : '';
+      : a.why === 'shared' ? `<button class="pill small" data-xshare="${code}">Say whose it is</button>` : a.why === 'who' ? xtRowBtns(code) + `<button class="pill small pale" data-xnobody="${code}">Nobody yet</button>` : '';
     const why2 = a.why === 'unchecked' ? (xtSiteAsk && xtSiteAsk.net ? ' The site could not be reached: Tally asks again by itself.' : xtSiteAsk && xtSiteAsk.served && !xtSiteAsk.ok && examSavedKeys().length ? ' The site\'s key now is a different one: a test signed with a key the site has since replaced can\'t be checked in this browser; its score is in the cockpit.' : '') : a.why === 'unfetched' ? xtUnfetchedWords(code) : '';
     return item(code, `${esc(XWHY[a.why] || a.why)}.${a.why === 'who' || a.why === 'shared' || a.why === 'unfetched' ? typed + not : who}${why2}${gone}`, btn); });
   const N = L.nobody.map(code => { const e = X.recs[code]; const g = e.gone;
@@ -588,6 +634,7 @@ function xtWire(s, t, M) {
   on('[data-xundis]', b => { view.xquiet = true; xtDo(() => { delete examS().dismissed[b.dataset.xundis]; }, 'Brought back.'); });
   on('[data-xforget]', b => { view.xquiet = true; xtDo(() => { const k = Object.keys(examS().alias)[+b.dataset.xforget]; if (k != null) delete examS().alias[k]; }, 'Forgotten. Tally asks about that name again.'); });
   on('[data-xnobody]', b => xtNobody(b.dataset.xnobody));
+  on('[data-xconf]', b => xtConflict(s, examS().rows[+b.dataset.xconf])); on('[data-xfacct]', b => { view.xquiet = true; const a = Object.keys(examS().accounts)[+b.dataset.xfacct]; if (a) xtForgetAccount(a); });
   on('[data-xdel]', b => xtDeleteAsk(b.dataset.xdel)); on('[data-xback]', b => { view.xquiet = true; xtBringBack(b.dataset.xback); });
   on('#xtStoreSave', () => saveFull());
   on('#xtPaste2', () => xtPasteBox()); on('#xtOpen2', () => xtFilePick()); on('#xtPeriod', () => xtPeriodBox(s)); on('#xtMoreFlags', () => { view.xflags = !view.xflags; render(); });
@@ -617,13 +664,14 @@ function xtPasteBox() {
   m.innerHTML = `<div class="panel narrow"><header><h2>Paste the form's responses</h2><button id="mClose" aria-label="Close">×</button></header>
     <div class="body one"><p>In the response sheet, select the rows (or click the corner to select everything), copy, and paste here. Tally finds the timestamp, the name and the code itself; other columns and the header row don't matter.</p>
       <textarea id="xtSheet" class="xtSheet" spellcheck="false" ${state.settings.hideNames ? 'placeholder="Names stay hidden on screen; they are still read."' : 'placeholder="11/16/2026 10:42:13&#9;Ava Nguyen&#9;K7QF-2M9D-X4TB"'}></textarea>
-      <p class="xtSheetSay" id="xtSheetSay" aria-live="polite"></p><div id="xtNameAsk"></div>
+      <p class="xtSheetSay" id="xtSheetSay" aria-live="polite"></p><p class="ghint xtSheetTrust" id="xtSheetTrust" hidden>Tally takes a school account as the student because your form collects it <b>Verified</b> (Settings › Responses › Collect email addresses). Tally can't tell a typed address from a verified one, so keep that setting on.</p><div id="xtNameAsk"></div>
       <div class="rp-actions"><button class="pill" id="xtTake">Fetch the tests</button><button class="pill pale" id="mCancel">Cancel</button></div></div></div>`;
   const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
   m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
   const ta = $('#xtSheet');
   const paint = () => { const g = EX().readSheet(ta.value, nameCol != null ? { name: nameCol } : undefined); const n = g.rows.reduce((a, r) => a + r.codes.length, 0); const hd = j => g.header ? g.header[j] : 'column ' + (j + 1);
-    $('#xtSheetSay').textContent = !ta.value.trim() ? '' : g.cols.code == null ? 'No code found yet.' : `${plural(g.rows.length, 'response')}, ${plural(n, 'code')}: codes from “${hd(g.cols.code)}”${g.cols.name != null ? `, names from “${hd(g.cols.name)}”` : g.cols.email != null ? `, no name column: names from the email addresses (the part before the @), which Tally only suggests` : ', no name column'}.`;
+    $('#xtSheetSay').textContent = !ta.value.trim() ? '' : g.cols.code == null ? 'No code found yet.' : `${plural(g.rows.length, 'response')}, ${plural(n, 'code')}: codes from “${hd(g.cols.code)}”${g.cols.name != null ? `, names from “${hd(g.cols.name)}”` : ', no name column'}${g.cols.email != null ? `, school accounts from “${hd(g.cols.email)}”` : ''}.`;
+    $('#xtSheetTrust').hidden = !(ta.value.trim() && g.cols.email != null);
     const ask = $('#xtNameAsk'); ask.innerHTML = g.alts && g.alts.length > 1 && nameCol == null ? `<p class="xtSheetQ"><b>Which column is the student's own name?</b></p><div class="seg">${g.alts.map(j => `<button data-ncol="${j}" class="${j === g.cols.name ? 'on' : ''}">${esc(hd(j))}</button>`).join('')}</div>` : '';
     ask.querySelectorAll('[data-ncol]').forEach(b => b.onclick = () => { nameCol = +b.dataset.ncol; paint(); }); };
   ta.oninput = () => { nameCol = null; paint(); };
@@ -681,7 +729,7 @@ async function xtBringBack(code) {
 let xtGen = 0;
 let xtLastUndo = null;
 const xtRosterSig = () => examRoster().map(x => xtKeyOf(x) + '\u0002' + x.id).join('\n');
-const xtSnap = () => { const X = examS(); return { gen: xtGen, roster: xtRosterSig(), data: JSON.stringify({ recs: X.recs, rows: X.rows, alias: X.alias, picks: X.picks, dismissed: X.dismissed, seen: X.seen, fails: X.fails, deleted: X.deleted, ...(X.legacy && Object.keys(X.legacy).length ? { legacy: X.legacy } : {}) }) }; };
+const xtSnap = () => { const X = examS(); return { gen: xtGen, roster: xtRosterSig(), data: JSON.stringify({ recs: X.recs, rows: X.rows, alias: X.alias, picks: X.picks, dismissed: X.dismissed, seen: X.seen, fails: X.fails, deleted: X.deleted, accounts: X.accounts, ...(X.legacy && Object.keys(X.legacy).length ? { legacy: X.legacy } : {}) }) }; };
 function xtDo(fn, say, quiet) {
   const snap = xtSnap(); fn(); examRefile(); save(); render(); const id = 'xtUndo' + (++xtGen);
   xtLastUndo = { snap: { ...snap, gen: xtGen }, id }; const mine = xtLastUndo;
@@ -715,18 +763,49 @@ function xtPickStudent(title, lead, cands, onPick, extra, onExtra, not) {
 }
 /* He answered a row: it is that student's. Remembered for that name (used later only where it is still the only reading);
    other rows with the same words are offered it, not given it. Undoable. */
-function xtAnswer(r, c) {
+/* He answered a row: it is that student's. The typed name is remembered (used later only where it is still the only reading)
+   and the row's school account is learned for them, unless it is already another student's. acct: 'move' makes the account
+   theirs from now on (the rows it already placed stay where they are); 'keep' leaves the account as it is. Undoable. */
+function xtAnswer(r, c, acct) {
   const X = examS();
-  xtDo(() => { r.who = { sec: c.sec, n: c.n }; r.how = 'you'; if (r.name && !r.email) X.alias[EX().nameKey(r.name)] = { sec: c.sec, n: c.n, at: new Date().toISOString() };
+  xtDo(() => { r.who = { sec: c.sec, n: c.n }; r.how = 'you'; r.conflict = null; if (r.name && !r.email) X.alias[EX().nameKey(r.name)] = { sec: c.sec, n: c.n, at: new Date().toISOString() };
+    if (r.addr && acct !== 'keep') { const A = X.accounts[r.addr]; if (acct === 'move' && A && !xtSame(A, c)) xtFreeze(r.addr); if (!A || A.gone || acct === 'move') xtLearn(r.addr, c, 'you'); }
     r.codes.forEach(code => { const e = X.recs[code]; if (e) { e.nobody = false; delete e.gone; e.no = (e.no || []).filter(w => !(w.sec === c.sec && w.n === c.n)); } }); },
-    `Row ${r.line} is ${esc(shown(c.n))}'s.${r.name && !r.email ? ` Tally remembers “${esc(shown(r.name))}” as them, and uses it only where nobody else could be meant.` : ''}`);
+    `Row ${r.line} is ${esc(shown(c.n))}'s.${r.addr && acct !== 'keep' && (!X.accounts[r.addr] || xtSame(X.accounts[r.addr], c)) ? ` Tally knows the school account ${esc(xtAddrShown(r.addr))} as theirs.` : r.name && !r.email ? ` Tally remembers “${esc(shown(r.name))}” as them, and uses it only where nobody else could be meant.` : ''}`);
+}
+// the rows an account placed stay where they are (Forget, or the account made another student's): nothing already placed moves
+function xtFreeze(addr) { examS().rows.forEach(r => { if (r.addr === addr && r.how === 'account' && r.who) r.kept = true; }); }
+function xtForgetAccount(addr) { xtDo(() => { xtFreeze(addr); delete examS().accounts[addr]; }, `Forgotten: ${esc(xtAddrShown(addr))}. A test from it asks again, or is learned again from a name Tally is sure of; nothing already placed moves.`); }
+// an address as the screen may show it: masked under Hide names (it holds the student's name)
+const xtAddrShown = a => { a = String(a || ''); if (!state.settings.hideNames) return a; const i = a.indexOf('@'); return (a[0] || '') + '•••' + (i >= 0 ? a.slice(i) : ''); };
+/* A row whose school account and typed name disagree, or whose account can't be learned without asking: the facts, and the
+   choices. Nothing changes until he answers. */
+function xtConflict(s, r) {
+  const f = r.conflict; if (!f) return xtWho(s, r);
+  const ad = `<b>${esc(xtAddrShown(r.addr))}</b>`, nm = x => `<b>${esc(shown(x.n))}</b>`, typed = f.typed;
+  const lead = f.kind === 'typed' ? `Row ${r.line} came from ${nm(f.acct)}'s school account (${ad}); the name typed is ${nm(typed)}.`
+    : f.kind === 'has' ? `Row ${r.line}: the name typed is ${nm(typed)}, from the school account ${ad}; Tally knows ${nm(typed)} by another account (<b>${esc(xtAddrShown(f.has))}</b>).`
+    : `Row ${r.line}: the name typed is ${nm(typed)}, but the school account ${ad} reads as ${nm(f.reads)}.`;
+  const opts = f.kind === 'typed' ? [['acct', `${shown(f.acct.n)}'s (the account's)`], ['typedKeep', `${shown(typed.n)}'s this time (the account stays ${shown(f.acct.n)}'s)`], ['typedMove', `${shown(typed.n)}'s, and the account is theirs from now on`]]
+    : f.kind === 'has' ? [['also', `${shown(typed.n)}'s, and this account is theirs too`], ['typedKeep', `${shown(typed.n)}'s this time (don't learn the account)`]]
+    : [['typedLearn', `${shown(typed.n)}'s, and the account is theirs`], ['reads', `${shown(f.reads.n)}'s (as the account reads)`]];
+  const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private');
+  m.innerHTML = `<div class="panel narrow"><header><h2>Whose test is this?</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one"><p>${lead} Until you say, it counts for nobody.</p>
+    <div class="xtWhos xtChoices">${opts.map(([k, t]) => `<button class="xtWho" data-ch="${k}"><b>${esc(t)}</b></button>`).join('')}</div>
+    <div class="rp-actions"><button class="pill pale" id="xtConfOther">Someone else…</button><button class="pill pale" id="mCancel" data-autofocus>Cancel</button></div></div></div>`;
+  const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
+  m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = ev => { if (ev.target === m) close(); };
+  $('#xtConfOther').onclick = () => { close(); xtWho(s, r, 'keep'); };
+  m.querySelectorAll('[data-ch]').forEach(b => b.onclick = () => { close(); const k = b.dataset.ch;
+    if (k === 'acct') xtAnswer(r, f.acct, 'keep'); else if (k === 'typedKeep') xtAnswer(r, typed, 'keep'); else if (k === 'typedMove') xtAnswer(r, typed, 'move');
+    else if (k === 'also' || k === 'typedLearn') xtAnswer(r, typed, 'move'); else if (k === 'reads') xtAnswer(r, f.reads, 'move'); });
 }
 // nobody yet: the test goes to the tests nobody turned in (the rows that named someone keep their words; he answered for the test)
 function xtNobody(code) { const e = examS().recs[code]; if (!e) return; xtDo(() => { e.nobody = true; if (e.who && e.who.how !== 'you') { e.was = e.who; e.who = null; } }, `${esc(SEALX().showCode(code))} is among the tests nobody turned in.`); }
-function xtWho(s, r) {
+function xtWho(s, r, acct) {
   if (!r) return; const h = xtHint(r, examAll()); const cs = h ? r.cands.slice().sort((p, q) => (q.sec === h.sec) - (p.sec === h.sec)) : r.cands;
   const C = r.remember ? [r.remember].concat(cs.filter(c => !(c.sec === r.remember.sec && c.n === r.remember.n))) : cs;
-  xtPickStudent('Who turned this in?', `Row ${r.line} of the responses: <b>${esc(r.name ? shown(r.name) : 'no name')}</b>${r.email ? ' (from the email address)' : ''}${r.at ? ` at ${esc(r.at)}` : ''}, code ${esc(r.codes.map(c => SEALX().showCode(c)).join(', '))}.${r.remember ? ` You said “${esc(shown(r.name))}” was ${esc(shown(r.remember.n))} before; another student could be meant now.` : C.length ? ' The likely students first.' : ''}`, C, c => xtAnswer(r, c),
+  xtPickStudent('Who turned this in?', `Row ${r.line} of the responses: <b>${esc(r.name ? shown(r.name) : 'no name')}</b>${r.addr ? `, from the school account <b>${esc(xtAddrShown(r.addr))}</b>` : ''}${r.at ? ` at ${esc(r.at)}` : ''}, code ${esc(r.codes.map(c => SEALX().showCode(c)).join(', '))}.${r.remember ? ` You said “${esc(shown(r.name))}” was ${esc(shown(r.remember.n))} before; another student could be meant now.` : C.length ? ' The likely students first.' : ''}${r.addr && acct !== 'keep' && !(examS().accounts[r.addr] && !examS().accounts[r.addr].gone) ? ' Your answer also teaches Tally the account.' : ''}`, C, c => xtAnswer(r, c, acct),
     '<button class="pill pale" data-xextra="nobody">Nobody yet</button>', () => xtDo(() => { r.codes.forEach(code => { const e = examS().recs[code]; if (e) { e.nobody = true; if (e.who && e.who.how !== 'you') { e.was = e.who; e.who = null; } } }); }, 'Left with nobody: it is among the tests nobody turned in.'));
 }
 // give a test to a student by hand (it stays with them until he moves it)
@@ -741,7 +820,17 @@ function xtNotTheirs(s, code) {
   const rs = X.rows.filter(r => r.codes.includes(code)); const cands = []; rs.forEach(r => (r.cands || []).concat(r.suggest ? [r.suggest] : []).forEach(c => { if (!(c.sec === off.sec && c.n === off.n) && !cands.some(x => x.sec === c.sec && x.n === c.n)) cands.push(c); }));
   const u = xtOk(code) && e.sum;
   xtPickStudent('Who turned this in?', `If ${esc(SEALX().showCode(code))} isn't ${esc(shown(off.n))}'s, whose is it?${u ? ` The test: ${u.points} / ${u.of}, taken ${esc(EX().hm(u.started))}–${esc(EX().hm(u.finished))}.` : ''}${rs.length ? ` It was turned in as ${rs.map(r => `<b>${esc(shown(r.name || 'no name'))}</b>`).join(' and ')}.` : ''} Cancel leaves it with ${esc(shown(off.n))}.`, cands,
-    c => { view.code = null; xtDo(() => xtGiveNow(e, c, off), `${esc(SEALX().showCode(code))} is ${esc(shown(c.n))}'s now, not ${esc(shown(off.n))}'s.`); },
+    c => { view.code = null; const ar = X.rows.find(r => r.codes.includes(code) && r.addr && xtSame(X.accounts[r.addr], off));
+      if (!ar) return xtDo(() => xtGiveNow(e, c, off), `${esc(SEALX().showCode(code))} is ${esc(shown(c.n))}'s now, not ${esc(shown(off.n))}'s.`);
+      // it came from the school account Tally knows as the student it is taken off: whose is the account from now on? (16 Nov)
+      const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('private');
+      m.innerHTML = `<div class="panel narrow"><header><h2>And the school account?</h2><button id="mClose" aria-label="Close">×</button></header><div class="body one"><p>${esc(SEALX().showCode(code))} goes to <b>${esc(shown(c.n))}</b>. It came from <b>${esc(xtAddrShown(ar.addr))}</b>, which Tally knows as ${esc(shown(off.n))}'s.</p>
+        <div class="xtWhos xtChoices"><button class="xtWho" data-acct="move"><b>The account is ${esc(shown(c.n))}'s from now on</b><small>Tally learned it wrong</small></button><button class="xtWho" data-acct="keep"><b>It stays ${esc(shown(off.n))}'s</b><small>this test was taken on a classmate's login</small></button></div>
+        <div class="rp-actions"><button class="pill pale" id="mCancel" data-autofocus>Cancel</button></div></div></div>`;
+      const close = () => { m.classList.add('hidden'); m.classList.remove('private'); m.innerHTML = ''; };
+      m._cancel = close; $('#mClose').onclick = close; $('#mCancel').onclick = close; m.onclick = ev => { if (ev.target === m) close(); };
+      m.querySelectorAll('[data-acct]').forEach(b => b.onclick = () => { close(); const mv = b.dataset.acct === 'move';
+        xtDo(() => { if (mv) { xtFreeze(ar.addr); xtLearn(ar.addr, c, 'you'); } xtGiveNow(e, c, off); }, `${esc(SEALX().showCode(code))} is ${esc(shown(c.n))}'s now, not ${esc(shown(off.n))}'s.${mv ? ` The school account ${esc(xtAddrShown(ar.addr))} is theirs from now on.` : ` The school account stays ${esc(shown(off.n))}'s.`}`); }); },
     '<button class="pill pale" data-xextra="nobody">Nobody yet</button>', () => { view.code = null; xtDo(() => { e.no = (e.no || []).filter(w => !(w.sec === off.sec && w.n === off.n)).concat([off]); e.was = e.who; e.who = null; e.nobody = true; delete e.gone; }, `${esc(SEALX().showCode(code))} is among the tests nobody turned in.`); }, off);
 }
 function xtChoose(s, code, how) {
@@ -829,7 +918,7 @@ function xtConnectPage(s) {
 // what a fact can mean: said on the test's own page, never in a list of names (Croix after the review, M1, N1, N2)
 const XMAYBE = { apart: 'It can mean a make-up you arranged, a late start, a test taken somewhere else while it was open (at home), or one started early to see the questions.', opening: 'It can mean a make-up in an opening you made for it, or a test taken while you had it open for someone else.', makeup: '', long: 'It can mean extended time (an accommodation), a test left open and come back to, or a student who worked slowly.', rule: 'The page counts and locks on the student\'s device; it can mean the page was tampered with, or a device problem.', period: 'It can mean a make-up, or a test taken outside class while it was open.' };
 const xtSecGone = sec => !state.sections[sec];
-const xtHowWords = w => w.how === 'you' ? `You gave this test to ${shown(w.n)}${w.at ? ' on ' + fmtDate(localDay(w.at)) : ''}.` : w.how === 'remembered' ? `Placed with ${shown(w.n)} by a name you answered before (remembered from ${w.at ? fmtDate(localDay(w.at)) : 'earlier'}).` : `Turned in as ${shown(w.n)}: the name matched them and no one else.`;
+const xtHowWords = (w, code) => w.how === 'account' ? `Turned in from ${shown(w.n)}'s school account${(() => { const r = code && examS().rows.find(x => x.codes.includes(code) && x.addr && x.how === 'account'); return r ? ' (' + xtAddrShown(r.addr) + ')' : ''; })()}: Tally learned it ${(() => { const r = code && examS().rows.find(x => x.codes.includes(code) && x.addr); const A = r && examS().accounts[r.addr]; return A ? (A.how === 'you' ? 'from your answer' : 'from a name it was sure of') + (A.at ? ' on ' + fmtDate(localDay(A.at)) : '') : 'earlier'; })()}.` : w.how === 'you' ? `You gave this test to ${shown(w.n)}${w.at ? ' on ' + fmtDate(localDay(w.at)) : ''}.` : w.how === 'remembered' ? `Placed with ${shown(w.n)} by a name you answered before (remembered from ${w.at ? fmtDate(localDay(w.at)) : 'earlier'}).` : `Turned in as ${shown(w.n)}: the name matched them and no one else.`;
 function renderTestDetail(s, code) {
   const X = examS(), e = X.recs[code]; const wrap = $('#gridwrap');
   if (!e) { view.code = null; return renderTests(s); }
@@ -862,7 +951,7 @@ function renderTestDetail(s, code) {
   wrap.innerHTML = `<div class="grades xt xtD">
     <section class="xtHead">
       <div class="xtWho1"><h2>${n ? esc(shown(n)) : '<span class="xtNone">Nobody yet</span>'}</h2><p>${esc(C.testName(v.course, v.unit))} · <span class="xtCode">${esc(SEALX().showCode(code))}</span>${e.src === 'file' ? ' · from the cockpit\'s file' : ''}</p>
-        ${!n ? `<div class="xtOwn"><span>${e.gone ? `Nobody's now. It had been ${e.gone.how === 'you' ? 'given to' : 'with'} ${esc(shown(e.gone.n))}${e.gone.cl ? ` (${esc(e.gone.cl)})` : ''}, who is no longer on that roster.` : e.was ? `Nobody's now. It had been ${esc(shown(e.was.n))}'s.` : 'Nobody turned this code in.'}</span><button class="pill small" id="xtGiveD">Give it to a student</button></div>` : `<div class="xtOwn"><span>${esc(xtHowWords(e.who))}</span><button class="pill small pale" id="xtNotD" title="This test isn't ${esc(shown(n))}'s: take it off them and say whose it is">Not theirs</button></div>`}
+        ${!n ? `<div class="xtOwn"><span>${e.gone ? `Nobody's now. It had been ${e.gone.how === 'you' ? 'given to' : 'with'} ${esc(shown(e.gone.n))}${e.gone.cl ? ` (${esc(e.gone.cl)})` : ''}, who is no longer on that roster.` : e.was ? `Nobody's now. It had been ${esc(shown(e.was.n))}'s.` : 'Nobody turned this code in.'}</span><button class="pill small" id="xtGiveD">Give it to a student</button></div>` : `<div class="xtOwn"><span>${esc(xtHowWords(e.who, code))}</span><button class="pill small pale" id="xtNotD" title="This test isn't ${esc(shown(n))}'s: take it off them and say whose it is">Not theirs</button></div>`}
         <div class="xtSee"><a class="pill small" id="xtSeeD" href="${esc(EX().teacherLink(X.site, rec))}" target="_blank" rel="noopener noreferrer">See the test ↗</a><span>Opens this unit's teacher copy on the site, with the questions as this student was given them. Be signed in to the teacher section in this browser.</span></div></div>
       <div class="xtBig"><b>${v.points ?? '?'}</b><small>/ ${v.of ?? '?'}</small><span>${pc == null ? '' : pc + '%'}</span></div>
       <dl class="xtFacts">

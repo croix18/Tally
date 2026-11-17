@@ -160,6 +160,7 @@ function build(seed) {
   hostile(recs.find(x => x.code === p5[0]).record);                                                       // a genuinely signed record full of a student's own strings
   // the responses, as the form collected them
   P4.forEach((d, i) => {
+    const stu = d; const row = (name, c, when) => rows.push({ when, name, code: c, stu });
     const when = fmt(recs.find(x => x.code === codes[i]).record.site.finished + 40000 + i * 1000);
     if (i === 10) return row('Mikayla Jonson', codes[i], when);                                // a typo in the name: matched, loosely
     if (i === 0) return row('ava nguyen', codes[i].toLowerCase().replace(/(.{4})(.{4})/, '$1 $2 '), when);   // lower case, spaces
@@ -173,20 +174,27 @@ function build(seed) {
     if (i === 26) return row(firstLast(d), codes[26].slice(0, 8), when);                       // a code cut short: not a code
     row(firstLast(d), codes[i], when);
   });
-  row(firstLast(P4[8]), twice, fmt(at(11, 20)));                                                  // Rohan's second test
-  row(firstLast(P4[12]), other, fmt(at(10, 31)));                                                 // the one locked to another Tally (Piotr's own is above too)
-  row(firstLast(P4[16]), forged, fmt(at(10, 32)));
-  row(firstLast(P4[18]), unit9, fmt(at(10, 33)));
-  row(firstLast(P4[19]), a7, fmt(at(10, 34)));
-  P5.forEach((d, i) => row(firstLast(d), p5[i], fmt(at(11, 25 + i))));
+  const rowS = (d, c, when) => rows.push({ when, name: firstLast(d), code: c, stu: d });
+  rowS(P4[8], twice, fmt(at(11, 20)));                                                  // Rohan's second test
+  rowS(P4[12], other, fmt(at(10, 31)));                                                 // the one locked to another Tally (Piotr's own is above too)
+  rowS(P4[16], forged, fmt(at(10, 32)));
+  rowS(P4[18], unit9, fmt(at(10, 33)));
+  rowS(P4[19], a7, fmt(at(10, 34)));
+  P5.forEach((d, i) => rowS(d, p5[i], fmt(at(11, 25 + i))));
   return { students: { 4: P4, 5: P5 }, recs, rows, fmt, codes: { twice, other, forged, unit9, a7, late, oldKey, nobody, p5, byIndex: codes }, OF };
 }
 
 /* the response sheet two ways: as copied from the sheet (tabs, the form's own column order and an extra question), and as its
    CSV download (another order, blank rows, quotes) */
+/* each student's school account (16 Nov 2026): the address the form collects, Verified. "It's their name but also sometimes
+   abbreviated and mixed": a few house styles, one per student (synthetic; the district's real pattern isn't known) */
+function account(d) { const [l, f] = d.split(', '); const w = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z ]/g, '').replace(/\b(jr|sr)\b/g, '').trim();
+  const first = w(f).split(' ')[0], last = w(l).replace(/ /g, ''); const h = [...d].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
+  const style = [first[0] + last + (h % 90 + 10), last + first[0], first + '.' + last[0], first.slice(0, 2) + last.slice(0, 3) + (1000 + h % 9000), first + '.' + last][h % 5];
+  return style + '@students.example.org'; }
 function sheets(b) {
   const tsv = ['Timestamp\tEmail Address\tWhat period are you in?\tFull name\tYour test code\tHow did it go?'];
-  b.rows.forEach((x, i) => { tsv.push([x.when, 'student' + (i + 1) + '@students.example.org', x.name === 'Rory Quinlan' || /Santos|Achebe|Larsen|Mendez|Yilmaz/.test(x.name) ? '5' : '4', x.name, x.code, i % 5 ? '' : 'ok I think'].join('\t')); if (i === 6) tsv.push('\t\t\t\t\t'); });
+  b.rows.forEach((x, i) => { tsv.push([x.when, account(x.stu), x.name === 'Rory Quinlan' || /Santos|Achebe|Larsen|Mendez|Yilmaz/.test(x.name) ? '5' : '4', x.name, x.code, i % 5 ? '' : 'ok I think'].join('\t')); if (i === 6) tsv.push('\t\t\t\t\t'); });
   const q = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   const csv = ['"Your test code","Full name","Timestamp","How did it go?"'];
   b.rows.forEach((x, i) => { csv.push([x.code, x.name, x.when, i % 7 ? '' : 'fine, I guess'].map(q).join(',')); if (i % 9 === 4) csv.push(',,,'); });
@@ -222,7 +230,7 @@ function resultsFile(b, locked, keys) {
 }
 async function makeKeys() { return { site: await SEAL.makeSiteKey(), old: await SEAL.makeSiteKey(), forger: await SEAL.makeSiteKey(), tally: await SEAL.makeTallyKey(), other: await SEAL.makeTallyKey() }; }
 
-module.exports = { HOSTILE, build, sheets, classFiles, lockAll, resultsFile, makeKeys, QS, OF, P4, P5, firstLast, at };
+module.exports = { account, HOSTILE, build, sheets, classFiles, lockAll, resultsFile, makeKeys, QS, OF, P4, P5, firstLast, at };
 
 if (require.main === module) (async () => {
   fs.mkdirSync(OUT, { recursive: true });

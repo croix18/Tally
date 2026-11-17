@@ -43,7 +43,7 @@ const deep = (a, b) => { try { assert.deepStrictEqual(a, b); return true; } catc
   /* 4. the response sheet */
   const tsv = fs.readFileSync('fixtures/exams/responses.tsv', 'utf8'), csv = fs.readFileSync('fixtures/exams/responses.csv', 'utf8');
   const b = F.build();
-  for (const [name, text, cols] of [['copied from the sheet (tabs)', tsv, { code: 4, name: 3, at: 0, email: null }], ['the CSV download (another order, blank rows, quotes)', csv, { code: 0, name: 1, at: 2, email: null }], ['the rows alone, no header', tsv.split('\n').slice(1).join('\n'), { code: 4, name: 3, at: 0, email: null }]]) {
+  for (const [name, text, cols] of [['copied from the sheet (tabs)', tsv, { code: 4, name: 3, at: 0, email: 1 }], ['the CSV download (another order, blank rows, quotes)', csv, { code: 0, name: 1, at: 2, email: null }], ['the rows alone, no header', tsv.split('\n').slice(1).join('\n'), { code: 4, name: 3, at: 0, email: 1 }]]) {
     const s = C.readSheet(text);
     check(deep(s.cols, cols) && s.rows.length === b.rows.length, `${name}: the code, name and time columns are found, every response read (${s.rows.length}; cols ${JSON.stringify(s.cols)})`);
     const codes = s.rows.flatMap(r => r.codes); const want = b.rows.map(r => SEAL.readCode(r.code)).filter(Boolean);
