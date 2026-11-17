@@ -1683,6 +1683,42 @@ is exactly as before. As built:
   5th Period: a two-lesson day only; one hostile lesson name), sealed by the suites. Suites: exam-core (keys, names, the
   payload, flags), `tests/exam-lessons.js` (new, 16 checks, screenshots), exam-invariant (lesson tests among the records).
 
+### School accounts: the adversarial review (16 Nov 2026; `/home/claude/reviews/tally-accounts/REVIEW.md`, "do not ship")
+The rule underneath was wrong: a learned account outranked any typed name that wasn't an exact, unrivaled match, and the
+checks on learning missed common cases. Each finding below has a check that failed on 7183562 for the reviewer's reason
+(`tests/exam-accounts.js` section 7, on the reviewer's synthetic rosters in `tests/exam/fx-accounts`; the reader and the
+ties in exam-core), and the probes re-run against this build (`/home/claude/tally-rerun/acct`, a copy of the probes with
+`tally` linked to this repo) print `held` for every one.
+- **C1:** a learned account places a row by itself only when no name was typed or the name typed fits the account's student
+  (the student is among the names it could be). Any other name, certain or not ("Rohan Pattel", "Camile Moreau",
+  "Mikayla" from Elsa's account), waits with both facts. Rows an account placed are read again whenever the accounts change
+  (so rows placed under the old rule are re-read once too).
+- **C2:** an account is learned from a certain name only when the address reads as that student first and alone, or as
+  nobody (`acctReads`); "Alice Khanna" from akhan@ (reads as KHAN, ALI first) waits and teaches nothing.
+- **H1:** an account whose student is off the roster still counts as held: nothing is learned over it, a certain name for
+  someone else waits ("no longer on a roster"), and only his answer replaces it.
+- **H2:** with a header row, the account column is taken by its header only (Email Address, Email, Username, Student
+  email…), never one that names someone else (Parent/Partner email); the content fallback is for headerless pastes only.
+  The Verified note shows only for Google's own "Email Address" column (`readSheet(…).google`).
+- **H3 (done differently from the suggestion's details, same aim):** when he says an account was learned wrong (Not theirs
+  › "Tally learned it wrong", or a conflict's "the account is theirs from now on"), every test that account placed by itself
+  on the old student leaves that student and waits (`r.recheck`, kind 'moved': "Tally had learned it as X's … you said it is
+  Y's", choices Y's / X's after all / Someone else). Tests he placed himself stay. Forget still freezes (it promises nothing
+  placed moves). A test's page reads whose account it was from its row: "…which Tally knew then as X's; it is Y's now".
+- **H4:** a name is remembered only when it can only mean that student: never from a row whose account and name disagreed,
+  never a name that is certainly someone else's.
+- **M1:** a cell with an @ is never scored as a code; "Name <address>" and "mailto:" give the address (`addrOf`).
+- **L1:** the address test is linear (`addrOf`: a length check first, then a split, no backtracking): ten 50,000-character
+  crafted answers read in ~45 ms (were ~20 s). **L2:** an address that reads as two students equally reads as neither:
+  "reads as more than one student", no "as the account reads" button.
+- **My own look for the same class of mistake:** (1) a remembered name could place a row against what its address reads as:
+  now it is only offered then; (2) his generic answer could overwrite a gone account: now only an explicit "theirs from now
+  on" replaces an entry; (3) rows placed by an account under the old rule: re-read when the accounts change, as above.
+  **Left, by design (R2):** a test placed by a certain name stays with that student if a rival later joins the roster (the
+  test's entry holds the student; the row's words are not re-judged). **Left, a limit:** a headerless paste of only a
+  Partner-email column can't be told from the account column (no header to read).
+- The invariant suite gains: nothing is placed by an account against a typed name that points elsewhere.
+
 ### Suite runs
 - Before any change (`61d4374`): **70 suites · 2,228 passed · 0 failed** (`node tests/run.js`).
 - After, first run (`ffb456d` + the layout fixes): **72 suites · 2,349 passed · 3 failed**. Two were checks of what this
@@ -1710,6 +1746,7 @@ is exactly as before. As built:
   exam-e2e 100, exam-invariant 10 (2,000 sequences, now with Delete and Bring back), exam-storage 9, shipped-build 2.
 - School accounts (`9657e39`, shipped pages rebuilt): **76 suites · 2,494 passed · 0 failed · 0 skipped**. exam-accounts 26 (new),
   exam-core 119, exam-e2e 100, exam-invariant 10 (2,000 sequences, now with school accounts), exam-storage 9, shipped-build 2.
+- Lesson tests (`8823ed4`): **77 suites · 2,515 passed · 0 failed · 0 skipped** (exam-lessons 16 new, exam-core 124).
 
 ## Deep audit, 15 Nov 2026: found, fixed and left (the full list is `review/audit-nov15/RESULTS.md`)
 
