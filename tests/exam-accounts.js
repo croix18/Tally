@@ -67,7 +67,7 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
   const s3 = [[acct(P4[7]), typed(P4[8]), codes[11]]]; await paste(sheet(s3));
   if (process.env.XDEBUG) console.log('ROWS', JSON.stringify(await A(p, A => A.examS().rows.slice(-3).map(r => [r.line, r.name, r.addr, r.codes, r.how]))), await text(p, '#toast'), await text(p, '#modal'));
   const c3 = await where(codes[11]); const w3 = await text(p, '#xtWaiting');
-  check(c3.where === 'waiting' && !c3.who && new RegExp(`From ${U(P4[7])}'s school account; the name typed is ${U(P4[8])}`).test(w3), 'an account and a certain name for two different students: it waits, with both facts: "' + (w3.match(/From [^.]*\./) || [''])[0] + '"');
+  check(c3.where === 'waiting' && !c3.who && new RegExp(`From ${U(P4[7])}'s school account; the name typed points at ${U(P4[8])}`).test(w3), 'an account and a certain name for two different students: it waits, with both facts: "' + (w3.match(/From [^.]*\./) || [''])[0] + '"');
   const before3 = await snap(); const ci = await A(p, (A, c) => A.examS().rows.findIndex(r => r.codes.includes(c)), codes[11]);
   await p.click(`#xtWaiting [data-xconf="${ci}"]`); await p.waitForTimeout(200); await both(p, 'a3-conflict-question');
   check(await p.locator('#modal [data-ch]').count() === 3 && await p.evaluate(() => document.activeElement && document.activeElement.id === 'mCancel'), 'the question offers: the account\'s student, the typed one this time, the typed one with the account moved (and Someone else); Cancel focused');
@@ -117,6 +117,75 @@ const FX = n => path.resolve('fixtures', 'exams', n); const SHOTS = process.env.
   const inv = await A(p, A => { const X = A.examS(), seen = {}; const bad = []; for (const [a, w] of Object.entries(X.accounts)) { if (seen[a]) bad.push(a); seen[a] = 1; }
     X.rows.forEach(r => { if (r.how === 'account' && !r.kept && !(X.accounts[r.addr] && X.accounts[r.addr].sec === r.who.sec && X.accounts[r.addr].n === r.who.n)) bad.push('row ' + r.line); }); return bad; });
   check(!inv.length, 'every row placed by an account is placed by the account Tally holds now: ' + inv.join(', '));
+  /* 7. THE REVIEW (16 Nov 2026, reviews/tally-accounts/REVIEW.md). Each scenario is the reviewer's probe, on its synthetic rosters
+     (tests/exam/fx-accounts: Kim, Daniel → KHAN, ALI; Bello, Tunde → KHANNA, ALICE; Ivanova, Daria → HUGHES, DARIA, Caleb's twin).
+     Each failed on 7183562 for the reviewer's reason. A fresh Tally for each, so one can't hide another. */
+  const FXA = n => path.resolve('tests', 'exam', 'fx-accounts', n);
+  const fresh = async (rosterText) => { const o = await open(); const q = o.p; const B = (fn, arg) => q.evaluate(([s, a]) => (new Function('A', 'arg', 'return (' + s + ')(A, arg)'))(window.__all, a), [fn.toString(), arg === undefined ? null : arg]);
+    await q.setInputFiles('#file', fs.readdirSync(FXA('')).filter(f => /^IXL-Score-Grid/.test(f)).map(FXA)); await q.waitForTimeout(900);
+    for (const f of ['focus_gradebook_p4.csv', 'focus_gradebook_p5.csv']) { await q.setInputFiles('#file', [FXA(f)]); await q.waitForTimeout(700); await pick(q); await q.waitForTimeout(300); const a = await q.$('#askApply'); if (a) { await a.click(); await q.waitForTimeout(200); } }
+    await B(async (A, a) => { const X = A.examS(); X.pairs = [JSON.stringify({ priv: a.K.tally.priv, pub: a.K.tally.pub, made: new Date().toISOString() })]; X.sites = [{ key: a.K.site.pub, made: 1, got: new Date().toISOString() }]; X.trial = { code: 'X', words: 'a b c d', at: new Date().toISOString(), key: a.K.site.pub }; X.warned = true; A.xtLocalAdd('mine', a.K.tally.pub); A.xtLocalAdd('checked', a.K.site.pub);
+      for (const code of a.codes) { try { const { rec, checked } = await A.examOpen(a.L[code], code); await A.examPut(code, a.L[code], rec, checked, 'site'); } catch (e) {} }
+      if (a.rt) for (const k of A.state.order) { const s = A.state.sections[k]; s.roster = A.rosterFromGradebook(s, s.grades); s.grades = null; } A.save(); }, { K, L: LOCKED, codes, rt: !!rosterText });
+    await q.click('#rail .rc:has-text("4th")'); await q.waitForTimeout(250); await q.click('#openTests'); await q.waitForTimeout(400);
+    const pasteQ = async (t) => { await q.click('#xtPaste'); await q.fill('#xtSheet', t); await q.waitForTimeout(150); await q.click('#xtTake'); await q.waitForTimeout(500); };
+    const whereQ = c => B((A, c) => { const e = A.examS().recs[c]; const L = A.xtLedger(); return { where: L.at[c] && L.at[c].where, who: e && e.who ? e.who.n : null, how: e && e.who ? e.who.how : null }; }, c);
+    const acctsQ = () => B(A => { const o = {}; for (const [a, w] of Object.entries(A.examS().accounts)) o[a] = w.n + '|' + w.how + (w.gone ? '|gone' : ''); return o; });
+    return { ...o, q, B, pasteQ, whereQ, acctsQ }; };
+  const E = 'elindqvist35@students.example.org', AK = 'akhan@students.example.org';
+  { // C1: a learned account must not outrank a typed name that points at someone else, certain or not
+    const T = await fresh(); await T.pasteQ(sheet([[E, 'Elsa Lindqvist', codes[0]]]));
+    await T.pasteQ(sheet([[E, 'Rohan Pattel', codes[1]], [E, 'Camile Moreau', codes[2]], [E, 'Mikayla', codes[3]], [E, 'Elsa Lindqvst', codes[4]], [E, '', codes[5]]]));
+    const w = await Promise.all([1, 2, 3, 4, 5].map(k => T.whereQ(codes[k])));
+    check(w.slice(0, 3).every(x => x.where === 'waiting' && !x.who) && w[3].who === 'LINDQVIST, ELSA' && w[4].who === 'LINDQVIST, ELSA', 'C1: from Elsa\'s learned account, "Rohan Pattel", "Camile Moreau" and "Mikayla" (names that point at classmates, not certainly) each wait with both facts; her own name with a slip, or no name, is placed by the account: ' + JSON.stringify(w.map(x => x.where + ':' + (x.who || ''))));
+    await T.ctx.close(); }
+  { // C2: an account is learned from a name only when the address reads as that student first and unrivaled, or as nobody
+    const T = await fresh(); await T.pasteQ(sheet([[AK, 'Alice Khanna', codes[0]]]));
+    const a = await T.acctsQ(); const w0 = await T.whereQ(codes[0]);
+    await T.pasteQ(sheet([[AK, 'Ali Kahn', codes[1]], [AK, '', codes[2]]])); const w1 = await T.whereQ(codes[1]), w2 = await T.whereQ(codes[2]);
+    check(!a[AK] && w0.where === 'waiting' && w1.who !== 'KHANNA, ALICE' && w2.who !== 'KHANNA, ALICE', 'C2: akhan@ (reads as KHAN, ALI first) typed "Alice Khanna": nothing learned, it waits; Ali\'s next tests never go to Alice: ' + JSON.stringify([a[AK] || null, w0.where, w1.who, w2.who]));
+    await T.ctx.close(); }
+  { // H1: an account "no longer on a roster" still counts as held: a certain name for someone else asks, never re-learns it
+    const T = await fresh(true); await T.pasteQ(sheet([[E, 'Elsa Lindqvist', codes[0]]]));
+    const saved = await T.B(A => { const s = A.state.sections[A.state.active]; const was = s.roster; s.roster = was.split('\n').filter(l => !/LINDQVIST/.test(l)).join('\n'); A.save(); A.render(); return was; }); await T.q.waitForTimeout(300);
+    await T.pasteQ(sheet([[E, 'Rohan Patel', codes[1]]])); const a1 = (await T.acctsQ())[E]; const w1 = await T.whereQ(codes[1]);
+    await T.B((A, r) => { A.state.sections[A.state.active].roster = r; A.save(); A.render(); }, saved); await T.q.waitForTimeout(300);
+    await T.pasteQ(sheet([[E, '', codes[2]]])); const w2 = await T.whereQ(codes[2]);
+    check(/^LINDQVIST, ELSA/.test(a1) && w1.where === 'waiting' && w2.who === 'LINDQVIST, ELSA', 'H1: Elsa\'s account while she is off the roster stays hers ("' + a1 + '"); a row from it typed "Rohan Patel" waits; when she is back her test goes to her');
+    await T.ctx.close(); }
+  { // H2: a Parent / Partner email column is never the school account
+    const T = await fresh(); const PE = 'hughes.family@gmail.example.com';
+    const notes = []; for (const head of ['Timestamp\tFirst and last name\tTest code\tParent email', 'Timestamp\tFirst and last name\tTest code\tPartner email (if any)']) {
+      await T.q.click('#xtPaste'); await T.q.fill('#xtSheet', head + '\n' + `11/16/2026 10:10:00\tCaleb Hughes\t${codes[0]}\t${PE}`); await T.q.waitForTimeout(200);
+      notes.push([await T.q.evaluate(() => document.querySelector('#xtSheetSay').textContent), await T.q.evaluate(() => !document.querySelector('#xtSheetTrust').hidden)]); await T.q.click('#modal #mClose'); await T.q.waitForTimeout(150); }
+    await T.pasteQ('Timestamp\tFirst and last name\tTest code\tParent email\n' + `11/16/2026 10:10:00\tCaleb Hughes\t${codes[0]}\t${PE}`);
+    await T.pasteQ('Timestamp\tFirst and last name\tTest code\tParent email\n' + `11/16/2026 10:11:00\tDaria Hughs\t${codes[1]}\t${PE}`);
+    const w = await T.whereQ(codes[1]); const a = await T.acctsQ();
+    check(notes.every(n => !/school accounts from/.test(n[0]) && !n[1]) && !a[PE] && w.who !== 'HUGHES, CALEB', 'H2: a "Parent email" or "Partner email (if any)" column is not read as the school account (no Verified note, nothing learned); Daria\'s test is never placed with Caleb: ' + JSON.stringify(notes));
+    await T.ctx.close(); }
+  { // H3: "Tally learned it wrong" sends the account's other tests back to Waiting, and no page says the account was the old student's now
+    const T = await fresh(); await T.pasteQ(sheet([[AK, 'Ali Kahn', codes[0]]])); const ci = await T.B((A, c) => A.examS().rows.findIndex(r => r.codes.includes(c)), codes[0]);
+    await T.B((A, a) => { const r = A.examS().rows[a.i]; const sec = A.state.active; A.xtAnswer(r, { sec, n: 'KHANNA, ALICE' }); }, { i: ci });   // his answer, wrongly: Alice
+    await T.pasteQ(sheet([[AK, '', codes[1]], [AK, '', codes[2]]])); const before = [await T.whereQ(codes[1]), await T.whereQ(codes[2])];
+    await T.B((A, c) => { A.view.code = null; A.xtNotTheirs(A.state.sections[A.state.active], c); }, codes[2]); await T.q.waitForTimeout(200);
+    await T.q.click('#modal .xtWho:has-text("KHAN, ALI")'); await T.q.waitForTimeout(200); await T.q.click('#modal [data-acct="move"]'); await T.q.waitForTimeout(400);
+    const w1 = await T.whereQ(codes[1]); const words = await T.B((A, c) => { const e = A.examS().recs[c]; return e && e.who ? A.xtHowWords(e.who, c) : ''; }, codes[1]);
+    check(before.every(x => x.who === 'KHANNA, ALICE') && w1.where === 'waiting' && (await T.whereQ(codes[2])).who === 'KHAN, ALI' && (await T.acctsQ())[AK] === 'KHAN, ALI|you' && !/KHANNA, ALICE's school account/.test(words), 'H3: "the account is KHAN, ALI\'s from now on (Tally learned it wrong)": that test goes to Ali, the account\'s other test leaves Alice\'s row for Waiting for you: ' + JSON.stringify(w1));
+    await T.ctx.close(); }
+  { // H4: answering a conflict "the account's" never teaches the classmate's typed name as that student
+    const T = await fresh(true); await T.pasteQ(sheet([[E, 'Elsa Lindqvist', codes[0]]])); await T.pasteQ(sheet([[E, 'Rohan Patel', codes[1]]]));
+    const ci = await T.B((A, c) => A.examS().rows.findIndex(r => r.codes.includes(c)), codes[1]); await T.q.click(`#xtWaiting [data-xconf="${ci}"]`); await T.q.waitForTimeout(150); await T.q.click('#modal [data-ch="acct"]'); await T.q.waitForTimeout(300);
+    const al = await T.B(A => JSON.stringify(A.examS().alias)); const toast = await T.q.evaluate(() => document.querySelector('#toast').textContent);
+    await T.B(A => { const s = A.state.sections[A.state.active]; s.roster = s.roster.split('\n').filter(l => !/PATEL, ROHAN/.test(l)).join('\n'); A.save(); A.render(); }); await T.q.waitForTimeout(300);
+    await T.pasteQ(sheet([['rpatel@students.example.org', 'Rohan Patel', codes[2]]])); const w = await T.whereQ(codes[2]);
+    check(!/patel|rohan/i.test(al) && !/remembers “Rohan Patel”/.test(toast) && w.who !== 'LINDQVIST, ELSA', 'H4: answering "LINDQVIST, ELSA\'s (the account\'s)" remembers no name; a later "Rohan Patel" is never placed with Elsa: ' + al);
+    await T.ctx.close(); }
+  { // M1: an Email Address cell that is not a bare address is never a code; its address is read
+    const T = await fresh(); const sent0 = T.sent.length;
+    await T.pasteQ('Timestamp\tEmail Address\tFirst and last name\tTest code\n' + `11/16/2026 10:10:00\tElsa Lindqvist <${E}>\tElsa Lindqvist\t${codes[0]}\n11/16/2026 10:11:00\tHannah Fischer <hfischer1234@students.example.org>\tHannah Fischer\t${codes[1]}\n`); await T.q.waitForTimeout(800);
+    const rows = await T.B(A => A.examS().rows.map(r => ({ codes: r.codes, addr: r.addr })));
+    check(rows.length === 2 && rows[0].codes[0] === codes[0] && rows[1].codes[0] === codes[1] && rows[0].addr === E && !T.sent.slice(sent0).some(u => /E11NDQV1ST35|HF1SCHER1234/.test(u)), 'M1: "Name <address>" in the Email Address column: the codes come from the code column, the address is read, nothing spelled from an address is requested: ' + JSON.stringify(rows));
+    await T.ctx.close(); }
   check(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await browser.close(); done();
 })().catch(e => { console.error(e); check(false, 'crashed: ' + (e && e.message)); done(); process.exit(1); });

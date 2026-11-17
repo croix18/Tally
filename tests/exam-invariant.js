@@ -61,6 +61,8 @@ const N = +process.env.INV_N || 2000, SEED = +process.env.INV_SEED || 20261116, 
       const seen = {}; ['row', 'waiting', 'nobody'].forEach(w => L[w].forEach(c => { seen[c] = (seen[c] || []).concat(w); }));
       held.forEach(c => { if (!seen[c] || seen[c].length !== 1) bad.push(`${c} is in ${(seen[c] || ['nowhere']).join(' and ')}`); });
       // an account is one student's; a row placed by an account is placed by the account Tally holds; a forgotten account places nothing
+      // nothing is placed by an account against a typed name that points elsewhere (the accounts review, C1)
+      { const ros = A.examRoster(); X.rows.forEach(r => { if (r.how !== 'account' || r.kept || !r.name || !r.who) return; const m = A.EX().matchName(r.name, ros); if (!m.cands.some(i => ros[i].sec === r.who.sec && ros[i].n === r.who.n)) bad.push(`row ${r.line} ("${r.name}") is placed with ${r.who.n} by the account, though the name points elsewhere`); }); }
       X.rows.forEach(r => { if (r.how === 'account' && !r.kept) { const w = X.accounts[r.addr]; if (!w || w.gone || w.sec !== r.who.sec || w.n !== r.who.n) bad.push(`row ${r.line} is placed by the account ${r.addr}, which Tally does not hold for ${r.who && r.who.n}`); } });
       Object.keys(X.deleted || {}).forEach(c => { if (L.at[c] || X.recs[c]) bad.push(`${c} is deleted but still held or listed`); });
       if ((window.__fetchBad || []).length) bad.push('a deleted test was fetched without Bring back: ' + window.__fetchBad.splice(0).join(', '));

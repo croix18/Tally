@@ -52,14 +52,24 @@ var looksName = function (t) { t = String(t || ''); return /[A-Za-zÀ-ɏ]{2,}/.t
 /* → {cols: {code, name, at}, rows: [{line, at, when, name, codes, raw}], skipped, header}
    line: the row's number on the sheet (1 = the first line pasted). codes: every code in the code cell (findCodes reads
    spaces, hyphens, lower case, O for 0 and I or L for 1); raw: that cell as typed, kept when no code reads out of it. */
+/* An address, from a cell: "a@b.org", "Name <a@b.org>", "mailto:a@b.org" → "a@b.org" (lower case); anything else → "". No
+   backtracking: a crafted 50,000-character cell is refused by its length first (review L1). */
+function addrOf(c) {
+  var t = String(c == null ? '' : c).trim(); if (!t || t.length > 400) return '';
+  var lt = t.indexOf('<'), gt = t.lastIndexOf('>'); if (lt >= 0 && gt > lt) t = t.slice(lt + 1, gt).trim();
+  t = t.replace(/^mailto:/i, '').toLowerCase(); if (t.length > 254) return '';
+  var p = t.split('@'); if (p.length !== 2 || !p[0] || !p[1] || /[\s,;<>]/.test(t) || p[1].indexOf('.') <= 0 || p[1].charAt(p[1].length - 1) === '.') return '';
+  return t.slice(0, 120);
+}
+function isAddr(c) { return !!addrOf(c); }
 function readSheet(text, o) {
   var rows = rowsOf(text), lines = rows.map(function (r, i) { return { r: r, line: i + 1 }; }).filter(function (x) { return x.r.some(function (c) { return c !== ''; }); });
   var res = { cols: { code: null, name: null, at: null }, rows: [], skipped: 0, header: null };
   if (!lines.length) return res;
   var n = Math.max.apply(null, lines.map(function (x) { return x.r.length; })), score = [], j, k;
   for (j = 0; j < n; j++) score.push({ code: 0, when: 0, name: 0, head: '' });
-  var isAddr = function (c) { return /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(String(c || '').trim()); };   // an address is never a code ("elindqvist35" reads as one)
-  lines.forEach(function (x) { for (j = 0; j < n; j++) { var c = x.r[j] || ''; if (!c || isAddr(c)) continue; if (SEAL.findCodes(c).length) score[j].code++; else if (readWhen(c) != null) score[j].when++; else if (looksName(c)) score[j].name++; } });
+  // a cell with an @ in it is never a code: "elindqvist35" reads as one, and so does "Elsa <elindqvist35@…>" (review M1)
+  lines.forEach(function (x) { for (j = 0; j < n; j++) { var c = x.r[j] || ''; if (!c || c.indexOf('@') >= 0) continue; if (SEAL.findCodes(c).length) score[j].code++; else if (readWhen(c) != null) score[j].when++; else if (looksName(c)) score[j].name++; } });
   var best = function (key, not) { var b = null; for (j = 0; j < n; j++) { if (not.indexOf(j) >= 0) continue; if (score[j][key] > 0 && (b == null || score[j][key] > score[b][key])) b = j; } return b; };
   var code = best('code', []); if (code == null) return res;
   // the header: the first line whose code cell holds no code and whose cells are words, not data
@@ -84,17 +94,20 @@ function readSheet(text, o) {
   if (o && o.name != null && o.name >= 0 && o.name < n) { name = o.name; alts = []; }
   // the student's school account (16 Nov 2026: the form collects it, Verified): by its header (Email Address, Email,
   // Username, School account), else the column whose cells are addresses; read beside the name, whatever else there is
-  var mail = null, data = lines.length - (isHead ? 1 : 0);
-  for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && /^\s*(e-?mail(\s+address)?|username|user\s*name|school\s+(e-?mail|account)|account)\s*$/i.test(hd(j))) mail = j;
-  for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && lines.filter(function (x) { return isAddr(x.r[j]); }).length >= Math.max(1, data * 0.6)) mail = j;
+  // With a header row the account column is taken by its header ONLY, and never one that names someone else ("Parent email",
+  // "Partner email (if any)"): review H2. Without one, the column whose cells are addresses.
+  var mail = null, data = lines.length - (isHead ? 1 : 0), ACCT = /^\s*(e-?mail(\s+address)?|username|user\s*name|school\s+(e-?mail|account)|account|student'?s?\s+(e-?mail|account)(\s+address)?)\s*$/i;
+  if (isHead) { for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && ACCT.test(hd(j))) mail = j; }
+  else for (j = 0; j < n && mail == null; j++) if (j !== code && j !== at && j !== name && lines.filter(function (x) { return isAddr(x.r[j]); }).length >= Math.max(1, data * 0.6)) mail = j;
+  res.google = isHead && mail != null && /^\s*email address\s*$/i.test(hd(mail));   // Google's own column, collected Verified when the form says so
   res.alts = alts; res.email = mail;
   res.cols = { code: code, name: name, at: at, email: mail };
   lines.forEach(function (x, i) {
     if (i === 0 && isHead) return;
-    var cell = x.r[code] || '', codes = SEAL.findCodes(cell), nm = name == null ? '' : (x.r[name] || ''), w = at == null ? '' : (x.r[at] || ''), ad = mail == null ? '' : String(x.r[mail] || '').trim().toLowerCase();
+    var cell = x.r[code] || '', codes = SEAL.findCodes(cell), nm = name == null ? '' : (x.r[name] || ''), w = at == null ? '' : (x.r[at] || ''), ad = mail == null ? '' : addrOf(x.r[mail]);
     if (!codes.length && !cell && !nm && !ad) { res.skipped++; return; }
     if (!codes.length && SEAL.readCode(cell)) codes = [SEAL.readCode(cell)];
-    res.rows.push({ line: x.line, at: w, when: readWhen(w), name: nm, codes: codes, raw: codes.length ? '' : clip(cell, 60), addr: isAddr(ad) ? ad.slice(0, 120) : '' });
+    res.rows.push({ line: x.line, at: w, when: readWhen(w), name: nm, codes: codes, raw: codes.length ? '' : clip(cell, 60), addr: ad });
   });
   return res;
 }
@@ -240,6 +253,9 @@ function acctFit(local, display) {
   if (!best && t.length >= 4 && (lastPre(t) || firstPre(t))) best = 1;   // a name alone ("smith12"): it could be them, barely
   return best;
 }
+function acctRank(addr, roster) { var T = acctLocal(addr); if (!T.length) return []; return roster.map(function (r, i) { return { i: i, s: acctFit(T, r.display) }; }).filter(function (x) { return x.s > 0; }).sort(function (p, q) { return q.s - p.s; }); }
+// the one student an address reads as best, alone; null when it reads as nobody or as two or more equally (review L2)
+function acctReads(addr, roster) { var R = acctRank(addr, roster); return R.length && (R.length === 1 || R[0].s > R[1].s) ? R[0].i : null; }
 function acctCands(addr, roster) {
   var T = acctLocal(addr); if (!T.length) return [];
   return roster.map(function (r, i) { return { i: i, s: acctFit(T, r.display) }; }).filter(function (x) { return x.s > 0; }).sort(function (p, q) { return q.s - p.s; }).map(function (x) { return x.i; });
@@ -543,7 +559,7 @@ function flags(c) {
     if (P.state[r.codes[0]] === 'placed') return;              // its test is placed (the same child twice, or he answered)
     if (r.cands && r.cands.length && !r.cands.some(function (w) { return w && w.sec === c.sec; }) && !(r.suggest && r.suggest.sec === c.sec)) return;
     var s = r.suggest, rem = r.remember, cf = r.conflict;
-    if (cf) return push({ kind: 'who', level: 'warn', rows: [r], code: r.codes[0], conflict: cf, names: [], text: cf.kind === 'typed' ? 'Row ' + r.line + ' came from ' + shownName(cf.acct.n) + '\'s school account; the name typed is ' + shownName(cf.typed.n) + '.' : cf.kind === 'has' ? '“' + shownName(r.name) + '” (row ' + r.line + ') came from a school account Tally doesn\'t know, and ' + shownName(cf.typed.n) + ' has another.' : '“' + shownName(r.name) + '” (row ' + r.line + ') came from a school account that reads as ' + shownName(cf.reads.n) + '.',
+    if (cf) return push({ kind: 'who', level: 'warn', rows: [r], code: r.codes[0], conflict: cf, names: [], text: cf.kind === 'moved' ? 'Row ' + r.line + ' came from a school account Tally had learned as ' + shownName(cf.was.n) + '\'s; you said it is ' + shownName(cf.acct.n) + '\'s.' : cf.kind === 'typed' ? 'Row ' + r.line + ' came from ' + shownName(cf.acct.n) + '\'s school account' + (cf.gone ? ' (no longer on a roster)' : '') + '; the name typed ' + (cf.typed ? 'points at ' + shownName(cf.typed.n) : 'isn\'t theirs') + '.' : cf.kind === 'reads' && !cf.reads ? '“' + shownName(r.name) + '” (row ' + r.line + ') came from a school account that reads as more than one student.' : cf.kind === 'has' ? '“' + shownName(r.name) + '” (row ' + r.line + ') came from a school account Tally doesn\'t know, and ' + shownName(cf.typed.n) + ' has another.' : '“' + shownName(r.name) + '” (row ' + r.line + ') came from a school account that reads as ' + shownName(cf.reads.n) + '.',
       todo: 'Until you say whose it is, the test counts for nobody.' });
     push({ kind: 'who', level: 'warn', rows: [r], code: r.codes[0], suggest: s || rem || null,
       text: !r.name && r.addr ? (s ? 'A test from a school account Tally doesn\'t know yet (row ' + r.line + ') — ' + shownName(s.n) + '?' : 'A test from a school account Tally doesn\'t know yet (row ' + r.line + ').') : r.name ? (s ? '“' + shownName(r.name) + '” — ' + shownName(s.n) + '?' : rem ? '“' + shownName(r.name) + '” — ' + shownName(rem.n) + ', as you said before?' : 'Tally isn\'t sure who “' + shownName(r.name) + '” is (row ' + r.line + ').') + (r.email ? ' (the name is from the email address)' : '') + (r.hint ? ' The test ' + r.hint + '.' : '') : 'Row ' + r.line + ' has a code and no name.',
@@ -556,7 +572,7 @@ function flags(c) {
 var fmtCode = function (c) { return SEAL.showCode(c); };
 function hm(ms) { if (ms == null) return '?'; var d = new Date(ms); var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
-var api = { acctFit: acctFit, acctCands: acctCands, acctLocal: acctLocal, teacherPayload: teacherPayload, teacherLink: teacherLink, b64u: b64u, NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
+var api = { addrOf: addrOf, acctRank: acctRank, acctReads: acctReads, acctFit: acctFit, acctCands: acctCands, acctLocal: acctLocal, teacherPayload: teacherPayload, teacherLink: teacherLink, b64u: b64u, NICKNAMES: NICKNAMES, osa: osa, rival: rival, COURSES: COURSES, clip: clip, placeAll: placeAll, flags: flags, hm: hm, clock: clock, dur: dur, rowsOf: rowsOf, readWhen: readWhen, readSheet: readSheet, tokens: tokens, partsOf: partsOf, edit: edit, matchName: matchName, nameKey: nameKey,
   qOf: qOf, answerText: answerText, keyText: keyText, readRecord: readRecord, courseName: courseName, testName: testName, testFull: testFull, testKey: testKey, sameTest: sameTest, scopeShort: scopeShort, minutes: minutes, outsidePeriod: outsidePeriod, distance: distance, nearCodes: nearCodes };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ExamCore = api;
 })(typeof self !== 'undefined' ? self : this);
