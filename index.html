@@ -4648,9 +4648,11 @@ function todayISO() { const t = new Date(); return `${t.getFullYear()}-${pad2(t.
 const TEST_DATES = {
   acc: [['Unit 3', 'Exponents and Scientific Notation', '2026-10-15'], ['Unit 4', 'Solving Problems with Rational Numbers', '2026-10-26'], ['Unit 5', 'Multi-Step Proportional Relationships', '2026-11-05'], ['Unit 6', 'Relationships in Triangles', '2026-11-17'],
     ['Unit 11', '', '2026-12-11'], ['Unit 7', '', '2027-01-14'], ['Unit 10', '', '2027-01-28'], ['Unit 12', '', '2027-02-09'], ['Units 8–9', '', '2027-02-18'], ['Unit 13', '', '2027-03-01'], ['Unit 14', '', '2027-03-11'], ['Units 15–16', '', '2027-04-12'], ['Unit 17', '', '2027-04-15']],
-  on: [['Unit 3', 'Operations with Rational Numbers', '2026-09-24', '2026-09-25'], ['Unit 4', 'Area', '2026-10-19', '2026-10-20'], ['Unit 9', 'Algebraic Expressions', '2026-11-02', '2026-11-03'], ['Unit 10', 'Equations and Inequalities', '2026-11-19', '2026-11-20'],
-    ['Unit 8', 'Evaluating Numeric Expressions', '2026-12-10', '2026-12-11'], ['Unit 5', 'Scaling With Proportional Relationships', '2027-01-21', '2027-01-22'], ['Unit 7', 'Solving Percentage Problems With Proportional Relationships', '2027-02-09', '2027-02-10'],
-    ['Unit 11', 'Representing Proportional Relationships', '2027-02-25', '2027-02-26'], ['Unit 6', 'Solving Multi-Step Problems With Proportional Relationships', '2027-03-18', '2027-03-19'], ['Unit 12', 'Surface Area and Volume', '2027-04-08', '2027-04-09'], ['Unit 13', 'Numerical and Categorical Data', '2027-04-27', '2027-04-28']]
+  /* M7 ruling 57 (Croix, 18 Nov 2026): Unit 10 tested after Thanksgiving, Unit 13 before the winter break (its grade in Q3),
+     Unit 8 last — the plan as M7's tools/mkscope.py lays it. A Tally that already has its list keeps it (Settings → Course). */
+  on: [['Unit 3', 'Operations with Rational Numbers', '2026-09-24', '2026-09-25'], ['Unit 4', 'Area', '2026-10-19', '2026-10-20'], ['Unit 9', 'Algebraic Expressions', '2026-11-02', '2026-11-03'], ['Unit 10', 'Equations and Inequalities', '2026-12-01', '2026-12-02'],
+    ['Unit 13', 'Numerical and Categorical Data', '2026-12-15', '2026-12-16'], ['Unit 5', 'Scaling With Proportional Relationships', '2027-01-21', '2027-01-22'], ['Unit 7', 'Solving Percentage Problems', '2027-02-09', '2027-02-10'],
+    ['Unit 11', 'Representing Proportional Relationships', '2027-02-25', '2027-02-26'], ['Unit 6', 'Solving Multi-Step Problems With Proportional Relationships', '2027-03-18', '2027-03-19'], ['Unit 12', 'Surface Area and Volume', '2027-04-08', '2027-04-09'], ['Unit 8', 'Evaluating Numeric Expressions', '2027-04-22', '2027-04-23']]
 };
 // A row as stored: text trimmed and capped, days as YYYY-MM-DD that are real days (a last day only when it is after
 // the first).

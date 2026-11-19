@@ -2046,6 +2046,20 @@ over a full year, the tablet, FAST/Quickview/PDF imports, the seating algorithm,
 **Fixed the same day from the review:** the unit-name reader now reads "Unit 3/4 Test", "Unit 3 and Unit 4 Test"
 and "Units 3, 4, and 5 Test", and "Re-Assessment" / "Test Corrections" are not unit assessments.
 
+## M7's test dates moved (18 Nov 2026, M7 ruling 57; session_01W9n2X1DGdhkjT92EJfNN3K)
+
+Croix moved M7's Unit 10 test past Thanksgiving (Tue–Wed 1–2 Dec) and put Unit 13 before the winter break (Tue–Wed
+15–16 Dec, its grade in Q3 "so they can make it up if needed"); Unit 8 now closes the year (Thu–Fri 22–23 Apr).
+`quarters.js` TEST_DATES carries the new on-level list — it is only the starting list of a Tally with none saved:
+**Croix's own Tally keeps the list he edits in Settings → Course → Test dates, so M7's Unit 10, Unit 13 and Unit 8 rows
+there are his to change** (he was told). Closing Q2: leave Unit 13 unticked so its IXL stays owed in Q3. Two pinned
+checks moved with the data: test-dates.js (the next on-level test after 4 Nov is Unit 10 on 1 Dec) and
+audit-nov15-quar.js TIM-09 (typing 21 over Unit 10's last day, now Dec 2, keeps Dec 21).
+The full suite then: 2555 passed, 2 failed — shipped-build.js (the uncommitted Tally.html, gone once committed) and
+weekly-layout.js, which fails this week without the change too: it expects the retake notice's HOWL days to be Wed 25 and
+Thu 26 Nov, which are Thanksgiving break, and the notice (rightly, RPT-09) names Wed 2 and Thu 3 Dec. A date-dependent check
+to fix: it should take the next school-week Wednesday and Thursday.
+
 ## Weekly routine
 
 1. Export both IXL Score Grids (accelerated, on-level) and the five Focus gradebooks.

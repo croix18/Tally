@@ -70,7 +70,7 @@ async function accClass(p, q2) {
     const sel2 = `input[data-f="to"][data-i="${i}"]`;
     await p.evaluate(s => { const e = document.querySelector(s); e.focus(); e.value = '2026-11-02'; e.dispatchEvent(new Event('change')); e.blur(); }, sel2);
     const after = await p.evaluate(s => ({ row: window.__tally.state.testDates.on.find(y => y.unit === 'Unit 10'), box: document.querySelector(s).value }), sel2);
-    check(mid === '2026-11-21', 'TIM-09: typing 21 over a two-day test\'s last day (Nov 20) keeps Nov 21: ' + mid);
+    check(mid === '2026-12-21', 'TIM-09: typing 21 over a two-day test\'s last day (Dec 2, since M7 ruling 57) keeps Dec 21: ' + mid);
     check(after.row.to === '' && after.box === '', 'TIM-09: a last day before the first day, once the box is left, is still cleared in the row and the box: ' + JSON.stringify(after));
   });
 
